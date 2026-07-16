@@ -30,7 +30,7 @@ namespace SummaRace.Features.Race
         [SerializeField] private GameObject patrolModelPrefab;
         [SerializeField] private GameObject[] sceneryPrefabs;
         [SerializeField] private GameObject fencePrefab;
-        [SerializeField] private Material highlightMaterial;
+        [SerializeField] private Sprite worldCardSprite;
         [SerializeField] private TMP_FontAsset worldLabelFont;
 
         [Header("Cartoon FX (optional)")]
@@ -162,12 +162,19 @@ namespace SummaRace.Features.Race
             UpdateDangerVisuals();
             if (_danger >= GameRules.DangerMax) StartCoroutine(CaughtRoutine());
 
-            // The correct piece must always be collected — recycle a missed checkpoint.
+            // The correct piece must always be collected — recycle a missed checkpoint,
+            // but never on top of the next gate (that read as a looping bug).
             if (_currentElement < _checkpoints.Length)
             {
                 var cp = _checkpoints[_currentElement];
                 if (cp != null && cp.position.z < -3f)
-                    cp.position += Vector3.forward * 25f;
+                {
+                    float newZ = cp.position.z + 25f;
+                    if (_currentElement + 1 < _checkpoints.Length && _checkpoints[_currentElement + 1] != null)
+                        newZ = Mathf.Min(newZ, _checkpoints[_currentElement + 1].position.z - 12f);
+                    newZ = Mathf.Max(newZ, 14f); // always respawn comfortably ahead of the player
+                    cp.position = new Vector3(cp.position.x, cp.position.y, newZ);
+                }
             }
 
             if (_feedbackTimer > 0f)
@@ -215,6 +222,17 @@ namespace SummaRace.Features.Race
             ShowFeedback("You got it! SPEED BOOST!", new Color(0.2f, 0.6f, 0.2f));
             SpawnFx(collectFxPrefab, pickup.transform.position);
 
+            // The collected card celebrates: flies up and pops away.
+            var cardT = pickup.transform;
+            cardT.SetParent(null, true);
+            var col = pickup.GetComponent<Collider>();
+            if (col != null) col.enabled = false;
+            var bob = pickup.GetComponent<PickupBob>();
+            if (bob != null) Destroy(bob);
+            Tween.PositionY(cardT, cardT.position.y + 2.2f, 0.45f, Ease.OutQuad);
+            Tween.Scale(cardT, Vector3.zero, 0.5f, Ease.InBack)
+                .OnComplete(() => { if (cardT != null) Destroy(cardT.gameObject); });
+
             Destroy(_checkpoints[_currentElement].gameObject);
             _checkpoints[_currentElement] = null;
             _correctPickup = null;
@@ -235,16 +253,13 @@ namespace SummaRace.Features.Race
 
             Destroy(pickup.gameObject);
 
-            // Highlight the correct pickup: it glows until collected (TDD §11.4).
+            // Highlight the correct pickup: golden card + gentle grow until collected (TDD §11.4).
             if (_correctPickup != null)
             {
-                _correctPickup.localScale = Vector3.one * 1.6f;
-                var rend = _correctPickup.GetComponent<Renderer>();
-                if (rend != null)
-                {
-                    if (highlightMaterial != null) rend.material = highlightMaterial;
-                    else rend.material.color = new Color(1f, 0.9f, 0.2f);
-                }
+                _correctPickup.localScale = new Vector3(2.3f, 2.3f, 0.5f);
+                var sr = _correctPickup.GetComponentInChildren<SpriteRenderer>();
+                if (sr != null) sr.color = new Color(1f, 0.85f, 0.35f);
+                Tween.PunchScale(_correctPickup, Vector3.one * 0.18f, 0.4f);
             }
         }
 
@@ -487,33 +502,33 @@ namespace SummaRace.Features.Race
         }
 
         /// <summary>3D TMP label on a dark backing card (race world text, mockup 17 style).</summary>
-        private void BuildWorldLabel(Transform parent, Vector3 localPos, Vector3 localScale,
-            Vector2 rect, string text, Color textColor, float maxFontSize)
+        /// <summary>Rounded kit-sprite card with text — clean, small, kid-friendly (mockup 17).</summary>
+        private void BuildWorldCard(Transform parent, Vector3 localPos, Vector3 localScale,
+            Vector2 size, string text, Color textColor, Color cardColor, float maxFontSize)
         {
-            var go = new GameObject("Label");
+            var go = new GameObject("Card");
             go.transform.SetParent(parent, false);
             go.transform.localPosition = localPos;
             go.transform.localScale = localScale;
 
-            var tmp = go.AddComponent<TextMeshPro>();
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = worldCardSprite;
+            sr.drawMode = SpriteDrawMode.Sliced;
+            sr.size = size;
+            sr.color = cardColor;
+
+            var textGo = new GameObject("Text");
+            textGo.transform.SetParent(go.transform, false);
+            textGo.transform.localPosition = new Vector3(0f, 0f, -0.02f); // toward the camera
+            var tmp = textGo.AddComponent<TextMeshPro>();
             if (worldLabelFont != null) tmp.font = worldLabelFont;
             tmp.text = text;
             tmp.alignment = TextAlignmentOptions.Center;
             tmp.color = textColor;
-            tmp.rectTransform.sizeDelta = rect;
+            tmp.rectTransform.sizeDelta = new Vector2(size.x - 0.15f, size.y - 0.12f);
             tmp.enableAutoSizing = true;
-            tmp.fontSizeMin = 0.5f;
+            tmp.fontSizeMin = 0.2f;
             tmp.fontSizeMax = maxFontSize;
-
-            var quad = GameObject.CreatePrimitive(PrimitiveType.Quad);
-            quad.name = "LabelBack";
-            Destroy(quad.GetComponent<Collider>()); // must never catch the player's trigger
-            quad.transform.SetParent(go.transform, false);
-            quad.transform.localPosition = new Vector3(0f, 0f, 0.02f);
-            quad.transform.localScale = new Vector3(rect.x + 0.2f, rect.y + 0.2f, 1f);
-            var rend = quad.GetComponent<Renderer>();
-            rend.material = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
-            rend.material.color = new Color(0.15f, 0.18f, 0.28f, 1f);
         }
 
         private Transform BuildCheckpoint(int elementIndex)
@@ -535,12 +550,13 @@ namespace SummaRace.Features.Race
 
             for (int lane = 0; lane < 3; lane++)
             {
+                // Invisible trigger volume; the rounded answer card IS the visible pickup.
                 var cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 cube.name = "Option_" + lane;
                 cube.transform.SetParent(root, false);
-                cube.transform.localPosition = new Vector3((lane - 1) * GameRules.LaneWidth, 1f, 0f);
-                cube.transform.localScale = new Vector3(1.6f, 1.6f, 0.6f);
-                cube.GetComponent<Renderer>().material.color = new Color(0.96f, 0.87f, 0.70f);
+                cube.transform.localPosition = new Vector3((lane - 1) * GameRules.LaneWidth, 1.35f, 0f);
+                cube.transform.localScale = new Vector3(1.9f, 1.9f, 0.5f);
+                cube.GetComponent<Renderer>().enabled = false;
                 cube.GetComponent<Collider>().isTrigger = true;
 
                 cube.AddComponent<PickupBob>();
@@ -550,14 +566,13 @@ namespace SummaRace.Features.Race
                 if (correct[lane] && elementIndex == 0) _correctPickup = cube.transform;
                 if (correct[lane]) TagAsCorrectOf(elementIndex, cube.transform);
 
-                // Floating world-space label: white text on a dark card (mockup 17).
-                BuildWorldLabel(cube.transform, new Vector3(0f, 1.15f, 0f), Vector3.one,
-                    new Vector2(1.5f, 0.9f), texts[lane], Color.white, 2.5f);
+                BuildWorldCard(cube.transform, Vector3.zero, Vector3.one,
+                    new Vector2(1.2f, 0.66f), texts[lane], new Color(0.20f, 0.24f, 0.32f), Color.white, 2f);
             }
 
-            // SWBST banner above the middle of the gate.
-            BuildWorldLabel(root, new Vector3(0f, 4.2f, 0f), Vector3.one,
-                new Vector2(5f, 1.1f), element.type, new Color(1f, 0.85f, 0.3f), 4f);
+            // Small SWBST pill floating above the gate — never blocks the view.
+            BuildWorldCard(root, new Vector3(0f, 3.6f, 0f), Vector3.one,
+                new Vector2(2.6f, 0.62f), element.type, new Color(0.42f, 0.28f, 0.05f), new Color(1f, 0.83f, 0.25f), 3f);
 
             return root;
         }
@@ -579,10 +594,10 @@ namespace SummaRace.Features.Race
             var pickup = gate.AddComponent<OptionPickup>();
             pickup.isFinishGate = true;
 
-            // Label must undo the gate's non-uniform scale to stay square.
+            // Card must undo the gate's non-uniform scale to stay square.
             var inverse = new Vector3(1f / (GameRules.LaneWidth * 3f), 1f / 3f, 1f);
-            BuildWorldLabel(gate.transform, new Vector3(0f, 1.2f, 0f), inverse,
-                new Vector2(6f, 1.5f), "FINISH", Color.white, 5f);
+            BuildWorldCard(gate.transform, new Vector3(0f, 1.2f, 0f), inverse,
+                new Vector2(5f, 1.3f), "FINISH", new Color(0.42f, 0.28f, 0.05f), new Color(1f, 0.83f, 0.25f), 4.5f);
         }
 
         // ---------- HUD ----------
