@@ -62,7 +62,7 @@ namespace SummaRace.Core
             _fadeGroup.blocksRaycasts = to > 0.5f;
         }
 
-        /// <summary>Builds the persistent full-screen fade overlay in code (no prefab needed).</summary>
+        /// <summary>Builds the persistent loading overlay in code: gradient sky, gold tip card (no prefab needed).</summary>
         private void BuildFadeCanvas()
         {
             var canvasGo = new GameObject("FadeCanvas");
@@ -72,28 +72,70 @@ namespace SummaRace.Core
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 999; // always on top
 
+            // Deep-blue gradient backdrop (falls back to flat navy if sprite missing).
             var imageGo = new GameObject("FadeImage");
             imageGo.transform.SetParent(canvasGo.transform, false);
             var image = imageGo.AddComponent<Image>();
-            image.color = Color.black;
+            var gradient = Resources.Load<Sprite>("UI/loading_gradient");
+            if (gradient != null)
+            {
+                image.sprite = gradient;
+                image.transform.localScale = new Vector3(1f, -1f, 1f); // deep at top
+            }
+            image.color = new Color(0.16f, 0.32f, 0.55f);
             var rect = image.rectTransform;
             rect.anchorMin = Vector2.zero;
             rect.anchorMax = Vector2.one;
             rect.offsetMin = Vector2.zero;
             rect.offsetMax = Vector2.zero;
 
+            // Gold-bordered card holding the SWBST tip.
+            var cardGo = new GameObject("TipCard");
+            cardGo.transform.SetParent(canvasGo.transform, false);
+            var card = cardGo.AddComponent<Image>();
+            var goldPanel = Resources.Load<Sprite>("UI/panel_gold");
+            if (goldPanel != null)
+            {
+                card.sprite = goldPanel;
+                card.type = Image.Type.Sliced;
+                card.pixelsPerUnitMultiplier = 0.6f;
+            }
+            else
+            {
+                card.color = new Color(0.98f, 0.93f, 0.80f);
+            }
+            var cardRect = card.rectTransform;
+            cardRect.anchorMin = new Vector2(0.08f, 0.42f);
+            cardRect.anchorMax = new Vector2(0.92f, 0.58f);
+            cardRect.offsetMin = Vector2.zero;
+            cardRect.offsetMax = Vector2.zero;
+
             var tipGo = new GameObject("TipText");
-            tipGo.transform.SetParent(canvasGo.transform, false);
+            tipGo.transform.SetParent(cardGo.transform, false);
             _tipText = tipGo.AddComponent<TextMeshProUGUI>();
-            // Font comes from TMP Settings default (Nunito) — no explicit assignment needed.
-            _tipText.fontSize = 36;
+            // Font comes from TMP Settings default (Nunito).
+            _tipText.fontSize = 38;
             _tipText.alignment = TextAlignmentOptions.Center;
-            _tipText.color = Color.white;
+            _tipText.color = new Color(0.35f, 0.25f, 0.10f); // warm brown on cream
             var tipRect = _tipText.rectTransform;
-            tipRect.anchorMin = new Vector2(0.1f, 0.4f);
-            tipRect.anchorMax = new Vector2(0.9f, 0.6f);
+            tipRect.anchorMin = new Vector2(0.06f, 0.10f);
+            tipRect.anchorMax = new Vector2(0.94f, 0.90f);
             tipRect.offsetMin = Vector2.zero;
             tipRect.offsetMax = Vector2.zero;
+
+            // Small "Loading..." above the card.
+            var loadGo = new GameObject("LoadingText");
+            loadGo.transform.SetParent(canvasGo.transform, false);
+            var loading = loadGo.AddComponent<TextMeshProUGUI>();
+            loading.text = GameText.LoadingLabel;
+            loading.fontSize = 34;
+            loading.alignment = TextAlignmentOptions.Center;
+            loading.color = new Color(1f, 1f, 1f, 0.85f);
+            var loadRect = loading.rectTransform;
+            loadRect.anchorMin = new Vector2(0.2f, 0.585f);
+            loadRect.anchorMax = new Vector2(0.8f, 0.635f);
+            loadRect.offsetMin = Vector2.zero;
+            loadRect.offsetMax = Vector2.zero;
 
             _fadeGroup = canvasGo.AddComponent<CanvasGroup>();
             _fadeGroup.alpha = 0f;

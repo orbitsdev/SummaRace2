@@ -29,6 +29,12 @@ namespace SummaRace.Features.Race
         [SerializeField] private GameObject patrolModelPrefab;
         [SerializeField] private GameObject[] sceneryPrefabs;
         [SerializeField] private TMP_FontAsset worldLabelFont;
+
+        [Header("Cartoon FX (optional)")]
+        [SerializeField] private GameObject collectFxPrefab;
+        [SerializeField] private GameObject wrongFxPrefab;
+        [SerializeField] private GameObject caughtFxPrefab;
+        [SerializeField] private GameObject finishFxPrefab;
         [SerializeField] private RectTransform dangerFill;
         [SerializeField] private Image vignette;
         [SerializeField] private GameObject briefingPanel;
@@ -100,6 +106,9 @@ namespace SummaRace.Features.Race
                 if (_speedEffectTimer <= 0f) _speedMultiplier = 1f;
             }
 
+            // Run cycle keeps pace with the boost/slow so feet don't slide.
+            if (_playerAnim != null) _playerAnim.speed = _speedMultiplier;
+
             // Scroll the world toward the player.
             float speed = _story.mission.playerSpeed * _speedMultiplier;
             _world.position += Vector3.back * speed * dt;
@@ -160,6 +169,7 @@ namespace SummaRace.Features.Race
             _speedEffectTimer = GameRules.BoostSeconds;
             _danger = Mathf.Max(0f, _danger - GameRules.DangerRelief);
             ShowFeedback("You got it! SPEED BOOST!", new Color(0.2f, 0.6f, 0.2f));
+            SpawnFx(collectFxPrefab, pickup.transform.position);
 
             Destroy(_checkpoints[_currentElement].gameObject);
             _checkpoints[_currentElement] = null;
@@ -177,6 +187,7 @@ namespace SummaRace.Features.Race
             _speedEffectTimer = GameRules.SlowSeconds;
             _danger = Mathf.Min(GameRules.DangerMax, _danger + GameRules.DangerOnWrong);
             ShowFeedback("Not quite — grab the glowing one!", new Color(0.75f, 0.45f, 0.05f));
+            SpawnFx(wrongFxPrefab, pickup.transform.position);
 
             Destroy(pickup.gameObject);
 
@@ -198,6 +209,7 @@ namespace SummaRace.Features.Race
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxCaught);
             if (caughtPanel != null) caughtPanel.SetActive(true);
             if (_playerAnim != null) _playerAnim.SetTrigger("Stumble");
+            if (_player != null) SpawnFx(caughtFxPrefab, _player.transform.position + Vector3.up * 1.6f);
             EventBus.Raise(new PlayerCaught());
 
             yield return new WaitForSeconds(1.5f);
@@ -212,6 +224,7 @@ namespace SummaRace.Features.Race
             _player.InputEnabled = false;
             SetRunning(false);
             if (_playerAnim != null) _playerAnim.SetTrigger("Dance"); // victory dance!
+            if (_player != null) SpawnFx(finishFxPrefab, _player.transform.position + new Vector3(0f, 2.5f, 4f));
 
             var result = new RaceResult
             {
@@ -346,6 +359,13 @@ namespace SummaRace.Features.Race
             return null;
         }
 
+        private void SpawnFx(GameObject prefab, Vector3 position)
+        {
+            if (prefab == null) return;
+            var fx = Instantiate(prefab, position, Quaternion.identity);
+            Destroy(fx, 4f); // CFXR effects self-stop; this just tidies the scene
+        }
+
         private void SetRunning(bool running)
         {
             if (_playerAnim != null) _playerAnim.SetBool("Running", running);
@@ -409,6 +429,7 @@ namespace SummaRace.Features.Race
                 cube.GetComponent<Renderer>().material.color = new Color(0.96f, 0.87f, 0.70f);
                 cube.GetComponent<Collider>().isTrigger = true;
 
+                cube.AddComponent<PickupBob>();
                 var pickup = cube.AddComponent<OptionPickup>();
                 pickup.elementIndex = elementIndex;
                 pickup.isCorrect = correct[lane];

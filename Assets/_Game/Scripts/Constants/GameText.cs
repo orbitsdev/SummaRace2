@@ -24,6 +24,9 @@ namespace SummaRace.Constants
             "Amazing! You found every story part!", // 3 stars
         };
 
+        /// <summary>Small header above the tip card on the loading overlay.</summary>
+        public const string LoadingLabel = "Loading...";
+
         // SWBST loading tips (SceneLoader shows one at random, GDD §11.5)
         public static readonly string[] LoadingTips =
         {
