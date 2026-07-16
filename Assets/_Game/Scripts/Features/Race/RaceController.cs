@@ -628,10 +628,12 @@ namespace SummaRace.Features.Race
             float t = _danger / GameRules.DangerMax;
 
             // Patrol creeps closer as danger rises — smoothed so it feels like a chaser, not a mirror.
+            // Camera sits 5.4m back, so under ~5m the patrol LOOMS INTO VIEW behind the player:
+            // invisible while safe, visibly closing in once danger passes ~2/3 (subway-runner pressure).
             if (_patrol != null)
             {
                 var playerPos = _player.transform.position;
-                float targetZ = playerPos.z - (3f + (1f - t) * 12f);
+                float targetZ = playerPos.z - (1.8f + (1f - t) * 11f);
                 float nx = Mathf.Lerp(_patrol.position.x, playerPos.x, 5f * Time.deltaTime);
                 float nz = Mathf.Lerp(_patrol.position.z, targetZ, 3f * Time.deltaTime);
                 _patrol.position = new Vector3(nx, 0f, nz);
