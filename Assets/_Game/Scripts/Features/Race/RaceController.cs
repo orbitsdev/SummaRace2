@@ -38,6 +38,7 @@ namespace SummaRace.Features.Race
         [SerializeField] private GameObject wrongFxPrefab;
         [SerializeField] private GameObject caughtFxPrefab;
         [SerializeField] private GameObject finishFxPrefab;
+        [SerializeField] private GameObject boostTrailPrefab;
         [SerializeField] private ShakeData caughtShake;
         [SerializeField] private RectTransform dangerFill;
         [SerializeField] private Image vignette;
@@ -88,8 +89,29 @@ namespace SummaRace.Features.Race
 
         private void StartMission()
         {
+            if (_state != State.Briefing) return;
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxClick);
             if (briefingPanel != null) briefingPanel.SetActive(false);
+            StartCoroutine(CountdownRoutine());
+        }
+
+        /// <summary>3-2-1-GO! before the run — every runner game needs one.</summary>
+        private IEnumerator CountdownRoutine()
+        {
+            if (bannerGroup != null) bannerGroup.SetActive(true);
+            string[] steps = { "3", "2", "1", "GO!" };
+            foreach (var step in steps)
+            {
+                if (bannerText != null)
+                {
+                    bannerText.text = step;
+                    Tween.PunchScale(bannerText.transform, Vector3.one * 0.45f, 0.3f);
+                }
+                if (AudioManager.Instance != null)
+                    AudioManager.Instance.PlaySfx(step == "GO!" ? AudioKeys.SfxBoost : AudioKeys.SfxPop);
+                yield return new WaitForSeconds(step == "GO!" ? 0.45f : 0.7f);
+            }
+
             _state = State.Running;
             _player.InputEnabled = true;
             SetRunning(true);
@@ -112,6 +134,10 @@ namespace SummaRace.Features.Race
 
             // Run cycle keeps pace with the boost/slow so feet don't slide.
             if (_playerAnim != null) _playerAnim.speed = _speedMultiplier;
+
+            // Wind trail only while boosted.
+            bool boosting = _speedMultiplier > 1.05f;
+            if (_boostTrail != null && _boostTrail.activeSelf != boosting) _boostTrail.SetActive(boosting);
 
             // Grass footsteps in time with the run cycle.
             _footstepTimer -= dt * _speedMultiplier;
@@ -228,6 +254,10 @@ namespace SummaRace.Features.Race
             _state = State.Caught;
             _timesCaught++;
             _danger = GameRules.DangerAfterCaught;
+            if (_playerAnim != null) _playerAnim.speed = 1f;
+            // The patrol actually lunges in to make the tag.
+            if (_patrol != null && _player != null)
+                Tween.Position(_patrol, _player.transform.position + new Vector3(0f, 0f, -1.3f), 0.25f, Ease.OutQuad);
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxCaught);
             if (caughtPanel != null) caughtPanel.SetActive(true);
             if (_playerAnim != null) _playerAnim.SetTrigger("Stumble");
@@ -320,6 +350,13 @@ namespace SummaRace.Features.Race
             var chaseCam = Camera.main != null ? Camera.main.GetComponent<RaceChaseCamera>() : null;
             if (chaseCam != null) chaseCam.SetTarget(playerGo.transform);
 
+            if (boostTrailPrefab != null)
+            {
+                _boostTrail = Instantiate(boostTrailPrefab, playerGo.transform);
+                _boostTrail.transform.localPosition = new Vector3(0f, 1f, -0.4f);
+                _boostTrail.SetActive(false);
+            }
+
             // Patrol behind (visual pressure only).
             var patrolGo = new GameObject("Patrol");
             _patrolAnim = SpawnCharacter(patrolGo.transform, patrolModelPrefab, new Color(0.25f, 0.35f, 0.85f));
@@ -338,6 +375,7 @@ namespace SummaRace.Features.Race
 
         private Animator _playerAnim;
         private Animator _patrolAnim;
+        private GameObject _boostTrail;
         private float _footstepTimer;
         private int _footstepIndex;
 
@@ -557,7 +595,7 @@ namespace SummaRace.Features.Race
             if (bannerGroup != null) bannerGroup.SetActive(true);
             if (bannerText == null) return;
             bannerText.text = _currentElement < 5
-                ? "Collect: " + _story.elements[_currentElement].type
+                ? "Collect: " + _story.elements[_currentElement].type + "   (" + (_currentElement + 1) + " of 5)"
                 : "Run to the FINISH!";
         }
 
@@ -574,11 +612,14 @@ namespace SummaRace.Features.Race
         {
             float t = _danger / GameRules.DangerMax;
 
-            // Patrol creeps closer as danger rises.
+            // Patrol creeps closer as danger rises — smoothed so it feels like a chaser, not a mirror.
             if (_patrol != null)
             {
                 var playerPos = _player.transform.position;
-                _patrol.position = new Vector3(playerPos.x, 1f, playerPos.z - (3f + (1f - t) * 12f));
+                float targetZ = playerPos.z - (3f + (1f - t) * 12f);
+                float nx = Mathf.Lerp(_patrol.position.x, playerPos.x, 5f * Time.deltaTime);
+                float nz = Mathf.Lerp(_patrol.position.z, targetZ, 3f * Time.deltaTime);
+                _patrol.position = new Vector3(nx, 0f, nz);
             }
 
             if (dangerFill != null)
