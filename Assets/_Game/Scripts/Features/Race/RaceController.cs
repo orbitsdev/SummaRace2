@@ -23,6 +23,10 @@ namespace SummaRace.Features.Race
         [SerializeField] private GameObject bannerGroup;
         [SerializeField] private TMP_Text bannerText;
         [SerializeField] private TMP_Text feedbackText;
+
+        [Header("World visuals (fallback = grey-box primitives)")]
+        [SerializeField] private GameObject playerModelPrefab;
+        [SerializeField] private GameObject patrolModelPrefab;
         [SerializeField] private RectTransform dangerFill;
         [SerializeField] private Image vignette;
         [SerializeField] private GameObject briefingPanel;
@@ -73,6 +77,7 @@ namespace SummaRace.Features.Race
             if (briefingPanel != null) briefingPanel.SetActive(false);
             _state = State.Running;
             _player.InputEnabled = true;
+            SetRunning(true);
             ShowBanner();
         }
 
@@ -187,6 +192,7 @@ namespace SummaRace.Features.Race
             _danger = GameRules.DangerAfterCaught;
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxCaught);
             if (caughtPanel != null) caughtPanel.SetActive(true);
+            if (_playerAnim != null) _playerAnim.SetTrigger("Stumble");
             EventBus.Raise(new PlayerCaught());
 
             yield return new WaitForSeconds(1.5f);
@@ -199,6 +205,8 @@ namespace SummaRace.Features.Race
         {
             _state = State.Finished;
             _player.InputEnabled = false;
+            SetRunning(false);
+            if (_playerAnim != null) _playerAnim.SetTrigger("Dance"); // victory dance!
 
             var result = new RaceResult
             {
@@ -225,33 +233,50 @@ namespace SummaRace.Features.Race
         {
             _world = new GameObject("World").transform;
 
-            // Ground: one long green strip (object pooling comes with polish).
+            // Grass ground with three colored running lanes (mockup 17 style).
             var ground = GameObject.CreatePrimitive(PrimitiveType.Cube);
             ground.name = "Ground";
             ground.transform.SetParent(_world, false);
             float length = 40f + _checkpoints_Length() * _story.mission.checkpointSpacing + 60f;
-            ground.transform.localScale = new Vector3(GameRules.LaneWidth * 3f + 2f, 0.5f, length);
+            ground.transform.localScale = new Vector3(GameRules.LaneWidth * 3f + 6f, 0.5f, length);
             ground.transform.localPosition = new Vector3(0f, -0.25f, length * 0.5f - 20f);
-            ground.GetComponent<Renderer>().material.color = new Color(0.45f, 0.75f, 0.35f);
+            ground.GetComponent<Renderer>().material.color = new Color(0.43f, 0.73f, 0.29f); // grass
             Destroy(ground.GetComponent<Collider>());
 
-            // Player capsule at the origin.
-            var playerGo = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            playerGo.name = "Player";
+            var laneColors = new[]
+            {
+                new Color(0.29f, 0.45f, 0.84f), // blue
+                new Color(0.95f, 0.76f, 0.11f), // yellow
+                new Color(0.34f, 0.73f, 0.30f)  // green
+            };
+            for (int lane = 0; lane < 3; lane++)
+            {
+                var strip = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                strip.name = "Lane_" + lane;
+                strip.transform.SetParent(_world, false);
+                strip.transform.localScale = new Vector3(GameRules.LaneWidth * 0.9f, 0.1f, length);
+                strip.transform.localPosition = new Vector3((lane - 1) * GameRules.LaneWidth, 0.03f, length * 0.5f - 20f);
+                strip.GetComponent<Renderer>().material.color = laneColors[lane];
+                Destroy(strip.GetComponent<Collider>());
+            }
+
+            // Player at the origin: physics root + character model (or grey-box capsule).
+            var playerGo = new GameObject("Player");
             playerGo.tag = "Player";
-            playerGo.transform.position = new Vector3(0f, 1f, 0f);
-            playerGo.GetComponent<Renderer>().material.color = new Color(0.95f, 0.5f, 0.15f);
+            playerGo.transform.position = Vector3.zero;
+            var col = playerGo.AddComponent<CapsuleCollider>();
+            col.center = new Vector3(0f, 1f, 0f);
+            col.height = 2f;
+            col.radius = 0.4f;
             var rb = playerGo.AddComponent<Rigidbody>();
             rb.isKinematic = true;
+            _playerAnim = SpawnCharacter(playerGo.transform, playerModelPrefab, new Color(0.95f, 0.5f, 0.15f));
             _player = playerGo.AddComponent<PlayerRunner>();
             _player.InputEnabled = false;
 
-            // Patrol cube behind (visual pressure only).
-            var patrolGo = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            patrolGo.name = "Patrol";
-            patrolGo.transform.localScale = new Vector3(2f, 2f, 2f);
-            patrolGo.GetComponent<Renderer>().material.color = new Color(0.25f, 0.35f, 0.85f);
-            Destroy(patrolGo.GetComponent<Collider>());
+            // Patrol behind (visual pressure only).
+            var patrolGo = new GameObject("Patrol");
+            _patrolAnim = SpawnCharacter(patrolGo.transform, patrolModelPrefab, new Color(0.25f, 0.35f, 0.85f));
             _patrol = patrolGo.transform;
 
             // 5 checkpoints in S-W-B-S-T order.
@@ -264,6 +289,34 @@ namespace SummaRace.Features.Race
         }
 
         private int _checkpoints_Length() => 5;
+
+        private Animator _playerAnim;
+        private Animator _patrolAnim;
+
+        /// <summary>Instantiates the rigged character, or a grey-box capsule when no prefab is wired.</summary>
+        private Animator SpawnCharacter(Transform parent, GameObject modelPrefab, Color fallbackColor)
+        {
+            if (modelPrefab != null)
+            {
+                var model = Instantiate(modelPrefab, parent);
+                model.transform.localPosition = Vector3.zero;
+                model.transform.localRotation = Quaternion.identity;
+                return model.GetComponentInChildren<Animator>();
+            }
+
+            var prim = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            prim.transform.SetParent(parent, false);
+            prim.transform.localPosition = new Vector3(0f, 1f, 0f);
+            prim.GetComponent<Renderer>().material.color = fallbackColor;
+            Destroy(prim.GetComponent<Collider>());
+            return null;
+        }
+
+        private void SetRunning(bool running)
+        {
+            if (_playerAnim != null) _playerAnim.SetBool("Running", running);
+            if (_patrolAnim != null) _patrolAnim.SetBool("Running", running);
+        }
 
         private Transform BuildCheckpoint(int elementIndex)
         {

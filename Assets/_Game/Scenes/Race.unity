@@ -655,6 +655,8 @@ MonoBehaviour:
   bannerGroup: {fileID: 2144390835}
   bannerText: {fileID: 201435604}
   feedbackText: {fileID: 889410491}
+  playerModelPrefab: {fileID: 4271666566645896117, guid: 0bbfc2d816be92346af6d519af60af94, type: 3}
+  patrolModelPrefab: {fileID: 3597802053881237544, guid: 95ba22d2f3f969840b366c907eee4c74, type: 3}
   dangerFill: {fileID: 1216938201}
   vignette: {fileID: 394905015}
   briefingPanel: {fileID: 1237808912}
