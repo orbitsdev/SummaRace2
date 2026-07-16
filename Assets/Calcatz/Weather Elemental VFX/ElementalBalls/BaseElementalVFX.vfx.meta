@@ -1,0 +1,21 @@
+fileFormatVersion: 2
+guid: 5edf7bc0e1b260a63ada82b240cc83a4
+VisualEffectImporter:
+  externalObjects: {}
+  serializedVersion: 1
+  template:
+    name: 
+    category: 
+    description: 
+    icon: {instanceID: 0}
+    thumbnail: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 373358
+  packageName: Weather And Elemental VFX Pack
+  packageVersion: 1.0
+  assetPath: Assets/Calcatz/Weather Elemental VFX/ElementalBalls/BaseElementalVFX.vfx
+  uploadId: 899708

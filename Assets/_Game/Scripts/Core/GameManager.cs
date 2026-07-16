@@ -16,6 +16,7 @@ namespace SummaRace.Core
         public LearnerProfile CurrentLearner { get; set; }
         public RaceResult LastRaceResult { get; private set; }
         public int LastArrangeAttempts { get; private set; }
+        public string LastSummaryText { get; set; }
 
         private void Awake()
         {

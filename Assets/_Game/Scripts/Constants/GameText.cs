@@ -5,6 +5,16 @@ namespace SummaRace.Constants
     {
         public const string TapToStart = "TAP TO START";
 
+        public const string SummaryHint =
+            "Example: Somebody wanted ___, but ___, so ___, then ___.";
+
+        // Gentle nudges shown when a summary needs another try (GDD §4.5)
+        public static readonly string[] SummaryNudges =
+        {
+            "Try writing a little more — use the story parts above!",
+            "Almost! Can you say it in one sentence about the Somebody?",
+        };
+
         // Praise lines by star count (index 1..3)
         public static readonly string[] PraiseByStars =
         {

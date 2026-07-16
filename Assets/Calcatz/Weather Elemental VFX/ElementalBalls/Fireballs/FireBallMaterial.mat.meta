@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 5c7d7d57ffa3e71b3850a4fb552b2836
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 373358
+  packageName: Weather And Elemental VFX Pack
+  packageVersion: 1.0
+  assetPath: Assets/Calcatz/Weather Elemental VFX/ElementalBalls/Fireballs/FireBallMaterial.mat
+  uploadId: 899708
