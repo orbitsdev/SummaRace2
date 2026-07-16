@@ -23,7 +23,8 @@ SummaRace is an **offline Android reading game** (Unity 6 / URP 17.4.0, portrait
 | B skeleton, C core systems, D content pipeline | ✅ done |
 | **E vertical slice (M1)** — full loop Boot→MainMenu→StorySelect→Reader→Race→Arrange→Summary→Results, grey-box, sounds wired | ✅ **code-complete**; full-loop playtest by owner pending |
 | **F1 typography** — all UI on TextMeshPro; TMP assets in `Art/Fonts/TMP/` (Fredoka-SemiBold = headings/buttons, Nunito-Regular = body + TMP default, Nunito-Bold = feedback); Summary uses TMP_InputField; Results stars are Hyper_Casual_UI sprite Images | ✅ done (verify in playtest) |
-| F2+ polish (UI kit skin/palette, PrimeTween juice, real characters, world dressing) | ⬜ next |
+| **F2 UI skin** — Hyper_Casual_UI kit applied: 9-sliced pill buttons + Rectangle 356 panels everywhere, sky/curved-hill backdrops (generated `_Game/Art/UI/hill_arc.png`), race banner on toggled BannerBG pill | ✅ done (verify in playtest) |
+| F3+ polish (PrimeTween juice, real characters, world dressing, hero image) | ⬜ next |
 | G 29 more stories + SessionMap · H asset pass · I research features (PIN/logging/export) · J device builds | ⬜ later |
 
 Post-MVP scenes NameEntry/SessionMap/TeacherMenu/Settings exist as named scenes but are empty/placeholder by design. SampleScene deleted (GDD D18 done).
