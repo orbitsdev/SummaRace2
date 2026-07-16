@@ -657,6 +657,14 @@ MonoBehaviour:
   feedbackText: {fileID: 889410491}
   playerModelPrefab: {fileID: 4271666566645896117, guid: 0bbfc2d816be92346af6d519af60af94, type: 3}
   patrolModelPrefab: {fileID: 3597802053881237544, guid: 95ba22d2f3f969840b366c907eee4c74, type: 3}
+  sceneryPrefabs:
+  - {fileID: 1490343738201892, guid: 7e0b0adf7ef381644b302ff611ad5bd6, type: 3}
+  - {fileID: 1210459693873458, guid: 9c78d16e4711178429930c47d8e89427, type: 3}
+  - {fileID: 1490343738201892, guid: 7e0b0adf7ef381644b302ff611ad5bd6, type: 3}
+  - {fileID: 1451074748068950, guid: 7e473d16764048e40986f54d84b14754, type: 3}
+  - {fileID: 1210459693873458, guid: 9c78d16e4711178429930c47d8e89427, type: 3}
+  - {fileID: 1240686429475702, guid: 1530caefe50f68042978f4b8cd52a92b, type: 3}
+  - {fileID: 1991978804857108, guid: b2e600f943c41f34a89a2843ea98a353, type: 3}
   dangerFill: {fileID: 1216938201}
   vignette: {fileID: 394905015}
   briefingPanel: {fileID: 1237808912}

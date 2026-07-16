@@ -27,6 +27,7 @@ namespace SummaRace.Features.Race
         [Header("World visuals (fallback = grey-box primitives)")]
         [SerializeField] private GameObject playerModelPrefab;
         [SerializeField] private GameObject patrolModelPrefab;
+        [SerializeField] private GameObject[] sceneryPrefabs;
         [SerializeField] private RectTransform dangerFill;
         [SerializeField] private Image vignette;
         [SerializeField] private GameObject briefingPanel;
@@ -260,6 +261,8 @@ namespace SummaRace.Features.Race
                 Destroy(strip.GetComponent<Collider>());
             }
 
+            BuildScenery(length);
+
             // Player at the origin: physics root + character model (or grey-box capsule).
             var playerGo = new GameObject("Player");
             playerGo.tag = "Player";
@@ -292,6 +295,30 @@ namespace SummaRace.Features.Race
 
         private Animator _playerAnim;
         private Animator _patrolAnim;
+
+        /// <summary>Trees/stones along both track sides; deterministic so every run of a story looks the same.</summary>
+        private void BuildScenery(float length)
+        {
+            if (sceneryPrefabs == null || sceneryPrefabs.Length == 0) return;
+
+            float edge = GameRules.LaneWidth * 1.5f + 2f;
+            for (float z = -10f; z < length - 25f; z += 7f)
+            {
+                for (int s = 0; s < 2; s++)
+                {
+                    float side = s == 0 ? -1f : 1f;
+                    int pick = Mathf.Abs((int)(z * 7.31f + side * 3f)) % sceneryPrefabs.Length;
+                    var prefab = sceneryPrefabs[pick];
+                    if (prefab == null) continue;
+
+                    var prop = Instantiate(prefab, _world);
+                    float lateral = edge + Mathf.PingPong(z * 0.53f, 2.5f);
+                    prop.transform.localPosition = new Vector3(side * lateral, 0f, z + (side > 0f ? 3f : 0f));
+                    prop.transform.localRotation = Quaternion.Euler(0f, (z * 41f) % 360f, 0f);
+                    prop.transform.localScale = Vector3.one * 2f; // pack props are small; 2x reads like the mockup
+                }
+            }
+        }
 
         /// <summary>Instantiates the rigged character, or a grey-box capsule when no prefab is wired.</summary>
         private Animator SpawnCharacter(Transform parent, GameObject modelPrefab, Color fallbackColor)
