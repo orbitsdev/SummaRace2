@@ -4,42 +4,69 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-SummaRace2 is a **Unity 6 (6000.4.1f1)** project built on the **Universal Render Pipeline (URP 17.4.0)**. It is currently at the template stage: the only C# code is the URP template's `Assets/TutorialInfo` (`Readme`/`ReadmeEditor`), so most game systems are yet to be written.
+SummaRace is an **offline Android reading game** (Unity 6 / URP 17.4.0, portrait, new Input System) teaching Grade-4 learners to summarize stories via the **SWBST framework** (Somebody·Wanted·But·So·Then). It is a **college thesis instrument** — 40 learners will use it across 10 sessions and be compared to a control group.
+
+**Read the docs in `Documentation/` before making design decisions:**
+- `SummaRace_Project_Brief.md` — orientation (read first)
+- `SummaRace_Final_GDD.docx` — design bible; all decisions D1–D18 are LOCKED
+- `SummaRace_Technical_Design_Document.md` — implementation spec (scenes, scripts, events, race system)
+- `SummaRace_Build_Guide.md` — build order (phases A–J)
+- `SummaRace_Asset_Requirements_List.md` — asset bill of materials
+- `Documentation/Mockups/1..27.png` — validated prototype screens (visual target). Live demo: https://tdrx44.csb.app/
+
+**Non-negotiables:** 100% offline (no networking/ads/analytics), never punish the learner (wrong answers never block; "caught" is friendly, never game-over), content is JSON data never code, all 30 stories flow through one reusable engine.
+
+## Build state (updated 2026-07-16)
+
+| Phase | Status |
+|---|---|
+| B skeleton, C core systems, D content pipeline | ✅ done |
+| **E vertical slice (M1)** — full loop Boot→MainMenu→StorySelect→Reader→Race→Arrange→Summary→Results, grey-box, sounds wired | ✅ **code-complete**; full-loop playtest by owner pending |
+| F polish (UI kit skin, fonts, PrimeTween juice, real characters, world dressing) | ⬜ next |
+| G 29 more stories + SessionMap · H asset pass · I research features (PIN/logging/export) · J device builds | ⬜ later |
+
+Post-MVP scenes NameEntry/SessionMap/TeacherMenu/Settings exist as named scenes but are empty/placeholder by design. `Assets/Scenes/SampleScene.unity` is template leftover — delete when convenient (GDD D18).
+
+**Known flags:**
+- `s01_easy.json` page-split/questions/distractors were AI-authored (source doc lacked them for Day 1) — **needs researcher review** before study build (GDD D6).
+- BitGem `cop.fbx` logs obsolete external-material warnings — fix by extracting materials during Phase F.
+- Narration plan: pre-generate clips with **edge-tts** (`en-PH-RosaNeural`) into `Resources/Stories/Narration/` named `s01_easy_p1` etc. Runtime TTS is forbidden (offline rule). Not yet generated.
+
+## Architecture (implemented — follow these patterns)
+
+- **Singletons** (`_Game/Scripts/Core/`): `Bootstrapper` (Boot scene) creates `[Core]` GameObject with `GameManager`, `AudioManager`, `SaveManager`, `SceneLoader` (DontDestroyOnLoad). `EventBus` is static pub/sub; event payloads in `Core/GameEvents.cs` (catalog in TDD §8).
+- **Features never call each other** — raise EventBus events + read `GameManager` state. Scene flow only via `SceneLoader.Instance.Load(SceneNames.X)`.
+- **Constants only** (`_Game/Scripts/Constants/`): `SceneNames`, `AudioKeys`, `PrefKeys`, `GameRules` (all tuning numbers), `GameText` (all learner-facing strings). Never hard-code a scene name, audio key, gameplay number, or UI string.
+- **Content pipeline** (`_Game/Scripts/Data/`): `StoryLoader.Load("s01_easy")` reads `Resources/Stories/<id>.json` → validated `StoryData`. Add a story = add a JSON, zero code.
+- **Audio**: clips live in `Assets/_Game/Resources/Audio/` named exactly per `AudioKeys` (e.g. `sfx_correct.ogg`); `AudioManager.Instance.PlaySfx(AudioKeys.SfxCorrect)`. Swap a sound = replace the file. Raw Kenney packs in `Assets/Audio/Kenney/` are the source library.
+- **Every scene controller** null-checks `GameManager.Instance`/`CurrentStory` and falls back to `StoryLoader.Load("s01_easy")` so any scene can be played directly in-editor (TDD §13).
+- **Naming**: PascalCase scripts/scenes/methods, `_camelCase` privates, `[SerializeField] private` over public, snake_case asset files, namespaces `SummaRace.<Layer>` matching folders.
+- **Third-party packs go in `Assets/Plugins/`** (13 packs there now). Design reference for UI skin: `Plugins/Hyper_Casual_UI/Scenes/Demo_Game_UI`. Fonts: `Assets/Art/Fonts/` Fredoka (headings) + Nunito (body) — make TMP assets in Phase F. Characters + Mixamo clips (all Humanoid): `Assets/Art/Characters/`.
+
+## Workflow rules (owner's standing instructions)
+
+- **Professional quality at every stage**: grey-box = placeholder *visuals* only; logic must always be correct, complete, sound-wired, dead-end-free. Placeholder screens allowed only as temporary "never a dead end" stubs.
+- **Commit + push after every verified milestone** (small commits). Owner playtests in the Editor before a milestone counts as done.
+- Grey-box first, one story before thirty, GDD wins design arguments, docs win over improvisation.
 
 ## Working with the Unity Editor (MCP)
 
 This project has **MCP For Unity** (`com.coplaydev.unity-mcp`) installed. When a Unity Editor instance is connected, prefer the `mcp__UnityMCP__*` tools over editing serialized assets by hand:
 
 - **Read editor/project state via MCP resources**, then mutate via tools — check state before changing it.
-- Use `manage_scene`, `manage_gameobject`, `manage_components`, `manage_prefabs`, `manage_material`, etc. for scene/object edits (raw `.unity`/`.asset`/`.prefab` YAML edits bypass Unity's serialization and break GUID/fileID references).
-- Use `create_script`/`apply_text_edits`/`manage_script` for C#, then `read_console` to confirm compilation succeeded before continuing.
-- Use `run_tests` for Edit/Play mode tests and `manage_editor` (play/pause/stop) for play-mode control.
-- Do **not** run Unity CLI `-batchmode` builds/tests while the Editor is open on this project — it locks the project. Drive the open Editor through MCP instead.
-
-If no Unity instance is connected, C# still compiles through the generated `Assembly-CSharp*.csproj`, but scene/asset changes require the Editor.
+- Scenes/objects: `manage_scene`, `manage_gameobject`, etc. — raw `.unity`/`.prefab` YAML edits break GUID/fileID references. Complex scene builds work well via `execute_code` (C#6-ish subset; use `UnityEngine.Object.DestroyImmediate`, wire `[SerializeField]` fields via `SerializedObject`).
+- C#: write files, then refresh with compile and verify the type exists in `Assembly-CSharp` before building scenes that reference it.
+- Do **not** run Unity CLI `-batchmode` while the Editor is open — it locks the project.
+- **Gotchas learned:** (1) If a new `.cs` validates clean but its type never appears in `Assembly-CSharp` (compile time ~1ms, file missing from CompilationPipeline sources), Unity's incremental compiler has stale tracking → delete the `.cs`+`.meta`, refresh, re-add the file fresh. (2) Play mode pauses without Editor focus (Run In Background off) — the MCP bridge stalls; have the owner click Unity/press Play. (3) Asset-store imports land in `Assets/` root — move to `Plugins/` via `AssetDatabase.MoveAsset` (or move file+`.meta` together on disk), never a bare file move.
 
 ## Code layout & assemblies
 
-There are **no `.asmdef` files**, so all scripts compile into the two default assemblies:
-
-- Runtime scripts → `Assembly-CSharp` (any `.cs` under `Assets/` not in an `Editor/` folder).
-- Editor-only scripts → `Assembly-CSharp-Editor` (any `.cs` inside a folder named `Editor/`, e.g. `Assets/TutorialInfo/Scripts/Editor/`).
-
-If the codebase grows, introduce `.asmdef` files to split runtime/editor/tests before adding significant systems — this keeps compile times down and is required for isolated test assemblies.
+No `.asmdef` files: runtime → `Assembly-CSharp`, editor-only (`Editor/` folders) → `Assembly-CSharp-Editor`. Introduce asmdefs before adding test assemblies or if compile times grow.
 
 ## Rendering
 
-URP is configured with **two quality tiers**, selected per platform in Project Settings → Quality / Graphics:
-
-- `Assets/Settings/PC_RPAsset.asset` + `PC_Renderer.asset`
-- `Assets/Settings/Mobile_RPAsset.asset` + `Mobile_Renderer.asset`
-
-When adding renderer features, shaders, or post-processing, apply changes to **both** renderers (or deliberately decide a feature is PC- or mobile-only). Volume profiles live in `Assets/Settings/` (`DefaultVolumeProfile`, `SampleSceneProfile`).
+Two URP tiers (Project Settings → Quality/Graphics): `Assets/Settings/PC_RPAsset` + `PC_Renderer`, `Mobile_RPAsset` + `Mobile_Renderer`. Apply renderer/shader/post changes to **both** (or deliberately tier-gate). Device floor: 2GB Android 8, 30fps in race, APK ≤ 300MB. Android: IL2CPP, ARM64, min API 26, portrait locked.
 
 ## Input
 
-Uses the **new Input System (1.19.0)**, not the legacy `Input` manager. Bindings are defined in `Assets/InputSystem_Actions.inputactions`. Add/modify controls there and reference the generated actions rather than polling `Input.GetKey`.
-
-## Notable packages available
-
-AI Navigation (NavMesh 2.0), Timeline, Visual Scripting, and the Multiplayer Center are installed and can be used without adding dependencies.
+New Input System only (`Assets/InputSystem_Actions.inputactions`). UI needs `InputSystemUIInputModule` on the EventSystem. Race lane-switching polls `Keyboard.current`/`Touchscreen.current` (see `PlayerRunner`).
