@@ -1,0 +1,88 @@
+{
+  "id": "s01_easy",
+  "session": 1,
+  "difficulty": "easy",
+  "title": "The Playground",
+  "heroImage": "Stories/Art/s01_easy",
+  "mainIdea": "Molly solved a problem with her friend Bella at the playground by using an \"I message\" to express her feelings so they could properly take turns on the swing.",
+  "pages": [
+    {
+      "text": "Molly and her friend Bella were playing at the playground. They were supposed to take turns on the swing. Molly counted up to 100 while Bella was on the swing.",
+      "narration": "Stories/Narration/s01_easy_p1",
+      "question": {
+        "text": "Who is the story about?",
+        "options": ["Molly and her friend Bella", "The teacher", "A boy named Duncan"],
+        "correctIndex": 0
+      }
+    },
+    {
+      "text": "Bella didn't go down the swing. \"Bella! I counted up to 100, it's my turn!\" said Molly. \"You counted too fast, it's still my turn,\" Bella said.",
+      "narration": "Stories/Narration/s01_easy_p2",
+      "question": {
+        "text": "What did Molly want?",
+        "options": ["To go home early", "A new toy", "A turn on the swing"],
+        "correctIndex": 2
+      }
+    },
+    {
+      "text": "Molly was upset. She wanted a turn on the swing, too! What could she do? Molly could tell the teacher, but her teacher always wanted them to try to solve their problems first.",
+      "narration": "Stories/Narration/s01_easy_p3",
+      "question": {
+        "text": "What was Molly's problem?",
+        "options": ["It started to rain", "Bella would not give her a turn", "She lost her lunchbox"],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "How would she solve the problem? She decided to use an \"I message\". That means to tell the other person how you're feeling, why you feel that way, and what they can do to make it better.",
+      "narration": "Stories/Narration/s01_easy_p4",
+      "question": {
+        "text": "What did Molly decide to do?",
+        "options": ["Use an \"I message\" to share her feelings", "Tell the teacher right away", "Take the swing while Bella wasn't looking"],
+        "correctIndex": 0
+      }
+    },
+    {
+      "text": "\"Bella, I feel sad because we were supposed to take turns after 100 counts. Will you please get off?\" Molly asked. Finally, Bella got off the swing. Molly was happy because she solved her problem all by herself!",
+      "narration": "Stories/Narration/s01_easy_p5",
+      "question": {
+        "text": "How did the story end?",
+        "options": ["Bella stayed on the swing all day", "The teacher solved the problem", "Bella got off and Molly had her turn"],
+        "correctIndex": 2
+      }
+    }
+  ],
+  "elements": [
+    {
+      "type": "SOMEBODY",
+      "correct": "Molly",
+      "distractors": ["Bella", "The teacher"]
+    },
+    {
+      "type": "WANTED",
+      "correct": "She wanted a turn on the swing",
+      "distractors": ["She wanted to go home early", "She wanted a brand new swing"]
+    },
+    {
+      "type": "BUT",
+      "correct": "Bella would not get off the swing",
+      "distractors": ["It started to rain", "The swing was broken"]
+    },
+    {
+      "type": "SO",
+      "correct": "Molly used an \"I message\" to tell Bella how she felt",
+      "distractors": ["Molly told the teacher right away", "Molly walked away and gave up"]
+    },
+    {
+      "type": "THEN",
+      "correct": "Bella got off and Molly happily took her turn",
+      "distractors": ["Molly went home feeling sad", "The teacher gave them a new swing"]
+    }
+  ],
+  "mission": {
+    "playerSpeed": 5.5,
+    "checkpointSpacing": 30,
+    "startingDanger": 0,
+    "dangerPerSecond": 1.5
+  }
+}
