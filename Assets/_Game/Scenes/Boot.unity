@@ -398,8 +398,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: SummaRace
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: f3b748a641b77c647a84f87626998cc5, type: 2}
-  m_sharedMaterial: {fileID: 675219890660197301, guid: f3b748a641b77c647a84f87626998cc5, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 2d80ca966f93d3f4baba91251ab4761c, type: 2}
+  m_sharedMaterial: {fileID: -3740141390931714523, guid: 2d80ca966f93d3f4baba91251ab4761c, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
