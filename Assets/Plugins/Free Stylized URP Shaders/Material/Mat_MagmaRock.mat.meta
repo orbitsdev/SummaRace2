@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 05979c39827c64768afa2203ef17c3af
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 353190
+  packageName: Free Stylized URP Shaders
+  packageVersion: 1.0
+  assetPath: Assets/Free Stylized URP Shaders/Material/Mat_MagmaRock.mat
+  uploadId: 927774

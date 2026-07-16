@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 5c3f430af5ef4461b925b45e2f169b99
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 353190
+  packageName: Free Stylized URP Shaders
+  packageVersion: 1.0
+  assetPath: Assets/Free Stylized URP Shaders/Demo/StylizedFXStudios_Prototype_Global_URP.mat
+  uploadId: 927774
