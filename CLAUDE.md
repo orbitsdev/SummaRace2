@@ -28,7 +28,8 @@ SummaRace is an **offline Android reading game** (Unity 6 / URP 17.4.0, portrait
 | **F4 race reskin** — `_Game/Prefabs/PlayerCharacter` (Ch46 kid) + `PatrolCharacter` (Ty, ZombieRun) spawn via `RaceController.playerModelPrefab/patrolModelPrefab` (grey-box fallback if unwired); AnimatorControllers in `_Game/Animation/` (Running bool, Stumble/Dance triggers); grass track w/ blue-yellow-green lanes | ✅ done (verify in playtest) |
 | **F4b world dressing** — Supercyan forest props (URP-converted) line the race track via `RaceController.sceneryPrefabs`/`BuildScenery`, deterministic scatter, 2x scale | ✅ done (verify in playtest) |
 | **F5 hero + world labels** — StorySelect easy card shows hero image + title from story JSON (missing art → title-only fallback); race world text is 3D TMP (Fredoka) on dark backing quads | ✅ done (verify in playtest) |
-| **Phase F complete** → owner full-loop playtest = the "M1 polished" gate. Then Phase G (29 stories + SessionMap — use Hyper_Casual_UI `Level screen.png` as SessionMap template) | ⬜ next |
+| **F6 eye-candy** — gradient backgrounds all UI scenes (`v_gradient(_soft).png`), gold-gradient floating title w/ `Fredoka…Display.mat` underlay shadow, `RaceChaseCamera` (lane follow + boost FOV kick via `RaceController.SpeedMultiplier`) | ✅ done (verify in playtest) |
+| **Phase F complete** → owner full-loop playtest = the "M1 polished" gate. Then Phase G (29 stories + SessionMap — use Hyper_Casual_UI `Level screen.png` as SessionMap template). Unused-but-imported: Kevin Iglesias Basic Motions (strafe-lean/sprint candidates), Cartoon FX Remaster (collect burst/star pop/confetti), StarterAssets footstep WAVs | ⬜ next |
 | G 29 more stories + SessionMap · H asset pass · I research features (PIN/logging/export) · J device builds | ⬜ later |
 
 Post-MVP scenes NameEntry/SessionMap/TeacherMenu/Settings exist as named scenes but are empty/placeholder by design. SampleScene deleted (GDD D18 done).
