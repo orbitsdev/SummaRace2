@@ -3,13 +3,13 @@ using SummaRace.Core;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace SummaRace.Features.Race
+namespace SummaRace.UI
 {
     /// <summary>
-    /// Temporary stand-in until the real runner is built (Phase E4).
-    /// Keeps the loop alive: never a crash, never a dead end (GDD §11.6).
+    /// Generic "under construction" screen so unfinished scenes are never
+    /// a dead end (GDD §11.6). Removed as real features replace them.
     /// </summary>
-    public class RacePlaceholder : MonoBehaviour
+    public class PlaceholderScreen : MonoBehaviour
     {
         [SerializeField] private Button backButton;
 
