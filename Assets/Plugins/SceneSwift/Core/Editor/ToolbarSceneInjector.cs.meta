@@ -1,0 +1,9 @@
+fileFormatVersion: 2
+guid: 819028727f9bc854b9c60ecc951f6765
+AssetOrigin:
+  serializedVersion: 1
+  productId: 369640
+  packageName: SceneSwift Free
+  packageVersion: 1.0.0
+  assetPath: Assets/SceneSwift/Core/Editor/ToolbarSceneInjector.cs
+  uploadId: 888214

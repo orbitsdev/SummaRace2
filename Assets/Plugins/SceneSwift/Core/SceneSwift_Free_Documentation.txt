@@ -1,0 +1,193 @@
+================================================================================
+                        SceneSwift - Free Edition
+                           Documentation v1.0.0
+================================================================================
+
+TABLE OF CONTENTS
+-----------------
+  1. Introduction
+  2. Requirements
+  3. Installation
+  4. Getting Started
+  5. Features
+     5.1  Toolbar Scene Switcher
+     5.2  Quick Scene Menu
+     5.3  Recent Scenes
+     5.4  Scene Search
+  6. Menu Reference
+  7. Troubleshooting
+  8. Upgrading to SceneSwift Pro
+  9. Support & Contact
+
+================================================================================
+1. INTRODUCTION
+================================================================================
+
+SceneSwift is a lightweight Unity editor extension that adds a scene switcher
+directly to your main toolbar. Switch between scenes with a single click
+without navigating through folders in the Project window.
+
+SceneSwift works with all render pipelines and Unity versions from 2021
+through Unity 6.
+
+================================================================================
+2. REQUIREMENTS
+================================================================================
+
+  - Unity 2021.3 LTS or newer (2021, 2022, 2024, Unity 6)
+  - Any render pipeline: Built-in, URP, or HDRP
+  - Editor only (no runtime dependencies)
+
+================================================================================
+3. INSTALLATION
+================================================================================
+
+  Step 1:  Import the SceneSwift package from the Unity Asset Store via
+           Window > Package Manager, or by double-clicking the downloaded
+           .unitypackage file.
+
+  Step 2:  Once imported, SceneSwift activates automatically. You will see
+           the current scene name appear in your editor toolbar.
+
+  Step 3:  No additional setup is required. SceneSwift is ready to use
+           immediately.
+
+================================================================================
+4. GETTING STARTED
+================================================================================
+
+  After installation, look at the top toolbar of the Unity Editor. You will
+  see a button showing the name of your currently active scene followed by a
+  small triangle (▾).
+
+  Click this button to open the Quick Scene Menu, which shows your recent
+  scenes and all scenes in the project.
+
+  Simply click any scene name in the dropdown to switch to it.
+
+================================================================================
+5. FEATURES
+================================================================================
+
+--------------------------------------------------------------------------------
+5.1  Toolbar Scene Switcher
+--------------------------------------------------------------------------------
+
+  The toolbar scene switcher is injected directly into the Unity editor's
+  main toolbar. It displays the name of the currently active scene.
+
+  - Click the scene name button to open the Quick Scene Menu.
+  - The toolbar adapts automatically to your Unity version:
+      * Unity 6: Uses the new MainToolbarWindow API.
+      * Unity 2021-2024: Uses the legacy Toolbar injection method.
+
+  If toolbar injection is not available for your editor layout, a warning
+  will appear in the console suggesting you use Tools > SceneSwift instead.
+
+--------------------------------------------------------------------------------
+5.2  Quick Scene Menu
+--------------------------------------------------------------------------------
+
+  The Quick Scene Menu is a dropdown popup that appears when you click the
+  toolbar button. It contains:
+
+  - RECENT SCENES: The last 10 scenes you opened, listed in order of most
+    recent first. This lets you quickly jump back to scenes you were
+    working on.
+
+  - ALL SCENES: Every scene in your project (excluding read-only package
+    scenes), sorted alphabetically by name.
+
+  Click any scene name to open it. If your current scene has unsaved
+  changes, Unity will prompt you to save before switching.
+
+--------------------------------------------------------------------------------
+5.3  Recent Scenes
+--------------------------------------------------------------------------------
+
+  SceneSwift automatically tracks the scenes you open. Up to 10 recent
+  scenes are stored in the SceneSwift settings asset.
+
+  Recent scenes persist across editor sessions and are shared across all
+  users of the project (since they are stored in a ScriptableObject asset).
+
+  Recent scenes that no longer exist in the project are automatically
+  filtered out.
+
+--------------------------------------------------------------------------------
+5.4  Scene Search
+--------------------------------------------------------------------------------
+
+  When browsing scenes in the Quick Scene Menu, scenes are sorted
+  alphabetically for easy scanning. For projects with many scenes, consider
+  upgrading to SceneSwift Pro which includes a dedicated search bar,
+  favorites, color tags, and scene groups.
+
+================================================================================
+6. MENU REFERENCE
+================================================================================
+
+  SceneSwift/Settings (Create Asset Menu)
+      Creates a new SceneSwift settings asset. This is created automatically
+      the first time SceneSwift runs, at:
+      Assets/SceneSwift/Settings/SceneManagerSettings.asset
+
+================================================================================
+7. TROUBLESHOOTING
+================================================================================
+
+  ISSUE: Toolbar button does not appear.
+  FIX:   Some custom editor layouts may prevent toolbar injection. Check the
+         Console for a "[SceneSwift]" warning message. Restarting Unity or
+         resetting your editor layout (Window > Layouts > Default) usually
+         resolves this.
+
+  ISSUE: Scenes from packages appear in the list.
+  FIX:   SceneSwift automatically excludes scenes from read-only packages
+         (paths starting with "Packages/"). If you see unexpected scenes,
+         verify they are not in your Assets folder.
+
+  ISSUE: Recent scenes list shows old/deleted scenes.
+  FIX:   SceneSwift filters out invalid scene paths automatically. If an
+         entry persists, open the settings asset at
+         Assets/SceneSwift/Settings/SceneManagerSettings.asset
+         and clear the Recent list manually.
+
+  ISSUE: "Save current scene?" dialog appears every time.
+  FIX:   This is standard Unity behavior. SceneSwift asks Unity to prompt
+         you to save unsaved changes before switching scenes. Save your
+         scene (Ctrl+S) before switching to avoid this.
+
+================================================================================
+8. UPGRADING TO SCENESWIFT PRO
+================================================================================
+
+  SceneSwift Pro adds powerful workflow features on top of the free edition:
+
+  - FAVORITES: Star your most-used scenes for instant access.
+  - COLOR TAGS: Assign 20 glossy color swatches to visually organize scenes.
+  - SCENE GROUPS: Group related scenes and load them all with one click
+    (additive scene loading).
+  - DEDICATED WINDOW: A full editor window (Tools > SceneSwift) with
+    favorites, recent, all scenes, groups, search, and settings.
+  - PLAY MODE OVERRIDE: Automatically load a specific boot scene when you
+    press Play, then return to your working scene when you stop.
+  - STARTUP SCENE: Set which scene is first in your Build Settings directly
+    from the SceneSwift window.
+
+  To upgrade, visit the Unity Asset Store and search for "SceneSwift Pro".
+
+================================================================================
+9. SUPPORT & CONTACT
+================================================================================
+
+  If you encounter any issues or have feature requests, please contact us:
+
+  - Email: nakranipiyush01@gmail.com
+  - Unity Asset Store: Leave a review or send a message through the store.
+
+  Thank you for using SceneSwift!
+
+================================================================================
+                     Copyright (c) 2026. All rights reserved.
+================================================================================

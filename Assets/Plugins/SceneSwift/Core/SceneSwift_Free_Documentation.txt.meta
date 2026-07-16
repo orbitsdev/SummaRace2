@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 6d3c0c95cbdac9d4fbe9f62fceb92f24
+TextScriptImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 369640
+  packageName: SceneSwift Free
+  packageVersion: 1.0.0
+  assetPath: Assets/SceneSwift/Core/SceneSwift_Free_Documentation.txt
+  uploadId: 888214

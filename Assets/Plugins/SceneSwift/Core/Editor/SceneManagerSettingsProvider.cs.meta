@@ -1,0 +1,9 @@
+fileFormatVersion: 2
+guid: df560c75ff7a3cd41be8c79e861c88d4
+AssetOrigin:
+  serializedVersion: 1
+  productId: 369640
+  packageName: SceneSwift Free
+  packageVersion: 1.0.0
+  assetPath: Assets/SceneSwift/Core/Editor/SceneManagerSettingsProvider.cs
+  uploadId: 888214
