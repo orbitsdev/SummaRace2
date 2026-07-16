@@ -20,6 +20,10 @@ namespace SummaRace.Features.Reader
         [SerializeField] private Button nextButton;
         [SerializeField] private TMP_Text nextButtonLabel;
 
+        [Header("Narration")]
+        [SerializeField] private Button voiceButton;
+        [SerializeField] private TMP_Text voiceButtonLabel;
+
         [Header("Question")]
         [SerializeField] private GameObject questionPanel;
         [SerializeField] private TMP_Text questionText;
@@ -47,6 +51,8 @@ namespace SummaRace.Features.Reader
             }
 
             if (nextButton != null) nextButton.onClick.AddListener(OnNext);
+            if (voiceButton != null) voiceButton.onClick.AddListener(ToggleNarration);
+            RefreshVoiceButton();
             for (int i = 0; i < optionButtons.Length; i++)
             {
                 int index = i; // capture
@@ -74,6 +80,39 @@ namespace SummaRace.Features.Reader
 
             if (index > 0 && AudioManager.Instance != null)
                 AudioManager.Instance.PlaySfx(AudioKeys.SfxPageTurn);
+
+            PlayPageNarration();
+        }
+
+        // ---------- narration (GDD: optional voice, learner-controlled) ----------
+
+        private static bool NarrationEnabled
+        {
+            get => PlayerPrefs.GetInt(PrefKeys.NarrationOn, 1) == 1;
+            set => PlayerPrefs.SetInt(PrefKeys.NarrationOn, value ? 1 : 0);
+        }
+
+        private void PlayPageNarration()
+        {
+            if (AudioManager.Instance == null) return;
+            if (NarrationEnabled) AudioManager.Instance.PlayNarration(_story.pages[_pageIndex].narration);
+            else AudioManager.Instance.StopNarration();
+        }
+
+        private void ToggleNarration()
+        {
+            NarrationEnabled = !NarrationEnabled;
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxClick);
+            RefreshVoiceButton();
+            PlayPageNarration(); // re-read the current page when switched on
+        }
+
+        private void RefreshVoiceButton()
+        {
+            if (voiceButtonLabel == null) return;
+            voiceButtonLabel.text = NarrationEnabled ? GameText.VoiceOn : GameText.VoiceOff;
+            if (voiceButton != null && voiceButton.image != null)
+                voiceButton.image.color = NarrationEnabled ? Color.white : new Color(0.75f, 0.75f, 0.78f);
         }
 
         private void OnNext()

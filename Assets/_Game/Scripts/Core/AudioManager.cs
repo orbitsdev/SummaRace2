@@ -15,6 +15,7 @@ namespace SummaRace.Core
         private readonly Dictionary<string, AudioClip> _cache = new();
         private AudioSource _musicSource;
         private AudioSource _sfxSource;
+        private AudioSource _voiceSource;
         private float _musicVolume = 0.8f;
         private float _sfxVolume = 1f;
 
@@ -29,6 +30,30 @@ namespace SummaRace.Core
 
             _sfxSource = gameObject.AddComponent<AudioSource>();
             _sfxSource.playOnAwake = false;
+
+            _voiceSource = gameObject.AddComponent<AudioSource>();
+            _voiceSource.playOnAwake = false;
+        }
+
+        /// <summary>Plays a story narration clip from a full Resources path (e.g. "Stories/Narration/s01_easy_p1").</summary>
+        public void PlayNarration(string resourcePath)
+        {
+            StopNarration();
+            if (string.IsNullOrEmpty(resourcePath)) return;
+            var clip = Resources.Load<AudioClip>(resourcePath);
+            if (clip == null)
+            {
+                Debug.LogWarning($"AudioManager: narration '{resourcePath}' not found."); // missing clip = silent page, never an error state
+                return;
+            }
+            _voiceSource.clip = clip;
+            _voiceSource.volume = 1f;
+            _voiceSource.Play();
+        }
+
+        public void StopNarration()
+        {
+            if (_voiceSource != null && _voiceSource.isPlaying) _voiceSource.Stop();
         }
 
         public void PlaySfx(string key)
