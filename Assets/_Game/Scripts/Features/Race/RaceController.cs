@@ -28,6 +28,8 @@ namespace SummaRace.Features.Race
         [SerializeField] private GameObject playerModelPrefab;
         [SerializeField] private GameObject patrolModelPrefab;
         [SerializeField] private GameObject[] sceneryPrefabs;
+        [SerializeField] private GameObject fencePrefab;
+        [SerializeField] private Material highlightMaterial;
         [SerializeField] private TMP_FontAsset worldLabelFont;
 
         [Header("Cartoon FX (optional)")]
@@ -196,7 +198,11 @@ namespace SummaRace.Features.Race
             {
                 _correctPickup.localScale = Vector3.one * 1.6f;
                 var rend = _correctPickup.GetComponent<Renderer>();
-                if (rend != null) rend.material.color = new Color(1f, 0.9f, 0.2f);
+                if (rend != null)
+                {
+                    if (highlightMaterial != null) rend.material = highlightMaterial;
+                    else rend.material.color = new Color(1f, 0.9f, 0.2f);
+                }
             }
         }
 
@@ -316,26 +322,70 @@ namespace SummaRace.Features.Race
         private Animator _playerAnim;
         private Animator _patrolAnim;
 
-        /// <summary>Trees/stones along both track sides; deterministic so every run of a story looks the same.</summary>
+        /// <summary>Fences, trees, props and clouds along the track; deterministic so every run of a story looks the same.</summary>
         private void BuildScenery(float length)
         {
-            if (sceneryPrefabs == null || sceneryPrefabs.Length == 0) return;
-
             float edge = GameRules.LaneWidth * 1.5f + 2f;
-            for (float z = -10f; z < length - 25f; z += 7f)
+
+            // Wooden fence lines hugging the track (mockup 17).
+            if (fencePrefab != null)
             {
+                for (float z = -12f; z < length - 22f; z += 1.8f)
                 for (int s = 0; s < 2; s++)
                 {
                     float side = s == 0 ? -1f : 1f;
-                    int pick = Mathf.Abs((int)(z * 7.31f + side * 3f)) % sceneryPrefabs.Length;
-                    var prefab = sceneryPrefabs[pick];
-                    if (prefab == null) continue;
+                    var f = Instantiate(fencePrefab, _world);
+                    f.transform.localPosition = new Vector3(side * (edge - 1.1f), 0f, z);
+                    f.transform.localRotation = Quaternion.Euler(0f, 90f, 0f); // fence mesh runs along X
+                }
+            }
 
-                    var prop = Instantiate(prefab, _world);
-                    float lateral = edge + Mathf.PingPong(z * 0.53f, 2.5f);
-                    prop.transform.localPosition = new Vector3(side * lateral, 0f, z + (side > 0f ? 3f : 0f));
-                    prop.transform.localRotation = Quaternion.Euler(0f, (z * 41f) % 360f, 0f);
-                    prop.transform.localScale = Vector3.one * 2f; // pack props are small; 2x reads like the mockup
+            // Trees / props / friendly animals beyond the fence.
+            if (sceneryPrefabs != null && sceneryPrefabs.Length > 0)
+            {
+                for (float z = -10f; z < length - 25f; z += 7f)
+                {
+                    for (int s = 0; s < 2; s++)
+                    {
+                        float side = s == 0 ? -1f : 1f;
+                        int pick = Mathf.Abs((int)(z * 7.31f + side * 3f)) % sceneryPrefabs.Length;
+                        var prefab = sceneryPrefabs[pick];
+                        if (prefab == null) continue;
+
+                        var prop = Instantiate(prefab, _world);
+                        float lateral = edge + Mathf.PingPong(z * 0.53f, 2.5f);
+                        prop.transform.localPosition = new Vector3(side * lateral, 0f, z + (side > 0f ? 3f : 0f));
+                        prop.transform.localRotation = Quaternion.Euler(0f, (z * 41f) % 360f, 0f);
+                        prop.transform.localScale = Vector3.one * 2f; // pack props are small; 2x reads like the mockup
+                    }
+                }
+            }
+
+            BuildClouds(length);
+        }
+
+        /// <summary>Puffy cartoon clouds: squashed white unlit spheres drifting past with the world.</summary>
+        private void BuildClouds(float length)
+        {
+            var cloudMat = new Material(Shader.Find("Universal Render Pipeline/Unlit")) { color = Color.white };
+            for (float z = 5f; z < length + 40f; z += 22f)
+            {
+                float side = ((int)(z / 22f) % 2 == 0) ? -1f : 1f;
+                var cloud = new GameObject("Cloud").transform;
+                cloud.SetParent(_world, false);
+                cloud.localPosition = new Vector3(side * (8f + (z * 0.37f) % 9f), 11f + (z * 0.61f) % 5f, z);
+
+                int puffs = 3;
+                for (int i = 0; i < puffs; i++)
+                {
+                    var puff = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                    Destroy(puff.GetComponent<Collider>());
+                    puff.transform.SetParent(cloud, false);
+                    float t = i - (puffs - 1) * 0.5f;
+                    puff.transform.localPosition = new Vector3(t * 1.6f, Mathf.Abs(t) * -0.4f, 0f);
+                    float s = 2.4f - Mathf.Abs(t) * 0.7f;
+                    puff.transform.localScale = new Vector3(s, s * 0.62f, s * 0.8f);
+                    puff.GetComponent<Renderer>().sharedMaterial = cloudMat;
                 }
             }
         }
