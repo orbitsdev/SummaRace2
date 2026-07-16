@@ -29,6 +29,7 @@ namespace SummaRace.Features.Race
         [SerializeField] private GameObject playerModelPrefab;
         [SerializeField] private GameObject patrolModelPrefab;
         [SerializeField] private GameObject[] sceneryPrefabs;
+        [SerializeField] private GameObject[] skylinePrefabs;
         [SerializeField] private GameObject fencePrefab;
         [SerializeField] private Sprite worldCardSprite;
         [SerializeField] private TMP_FontAsset worldLabelFont;
@@ -440,7 +441,30 @@ namespace SummaRace.Features.Race
                 }
             }
 
+            BuildSkyline(length);
             BuildClouds(length);
+        }
+
+        /// <summary>Distant cartoon-city skyline beyond the park — big blocks fading into the fog.</summary>
+        private void BuildSkyline(float length)
+        {
+            if (skylinePrefabs == null || skylinePrefabs.Length == 0) return;
+
+            for (float z = 10f; z < length + 60f; z += 30f)
+            {
+                for (int s = 0; s < 2; s++)
+                {
+                    float side = s == 0 ? -1f : 1f;
+                    int pick = Mathf.Abs((int)(z * 3.17f + s * 7f)) % skylinePrefabs.Length;
+                    var prefab = skylinePrefabs[pick];
+                    if (prefab == null) continue;
+
+                    var block = Instantiate(prefab, _world);
+                    float lateral = 26f + (z * 0.83f) % 8f;
+                    block.transform.localPosition = new Vector3(side * lateral, 0f, z);
+                    block.transform.localRotation = Quaternion.Euler(0f, side > 0f ? 180f : 0f, 0f);
+                }
+            }
         }
 
         /// <summary>Puffy cartoon clouds: squashed white unlit spheres drifting past with the world.</summary>
