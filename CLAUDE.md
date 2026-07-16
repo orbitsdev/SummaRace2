@@ -25,14 +25,15 @@ SummaRace is an **offline Android reading game** (Unity 6 / URP 17.4.0, portrait
 | **F1 typography** — all UI on TextMeshPro; TMP assets in `Art/Fonts/TMP/` (Fredoka-SemiBold = headings/buttons, Nunito-Regular = body + TMP default, Nunito-Bold = feedback); Summary uses TMP_InputField; Results stars are Hyper_Casual_UI sprite Images | ✅ done (verify in playtest) |
 | **F2 UI skin** — Hyper_Casual_UI kit applied: 9-sliced pill buttons + Rectangle 356 panels everywhere, sky/curved-hill backdrops (generated `_Game/Art/UI/hill_arc.png`), race banner on toggled BannerBG pill | ✅ done (verify in playtest) |
 | **F3 juice + bordered panels** — major cards on the kit's bordered popup sprites (gold `Daily Reward pannel`, teal `Frame 1583`); `SummaRace.UI.ButtonSquash` on every button, `PanelIntro` pop-in on cards/popups; PrimeTween PunchScale on stars + race feedback | ✅ done (verify in playtest) |
-| F4+ polish (race character/track reskin — Mixamo chars, TextMesh world labels; hero image; SFX pass check) | ⬜ next |
+| **F4 race reskin** — `_Game/Prefabs/PlayerCharacter` (Ch46 kid) + `PatrolCharacter` (Ty, ZombieRun) spawn via `RaceController.playerModelPrefab/patrolModelPrefab` (grey-box fallback if unwired); AnimatorControllers in `_Game/Animation/` (Running bool, Stumble/Dance triggers); grass track w/ blue-yellow-green lanes | ✅ done (verify in playtest) |
+| F5+ polish (hero image for The Playground; world-space TextMesh label styling; world dressing) | ⬜ next |
 | G 29 more stories + SessionMap · H asset pass · I research features (PIN/logging/export) · J device builds | ⬜ later |
 
 Post-MVP scenes NameEntry/SessionMap/TeacherMenu/Settings exist as named scenes but are empty/placeholder by design. SampleScene deleted (GDD D18 done).
 
 **Known flags:**
 - `s01_easy.json` page-split/questions/distractors were AI-authored (source doc lacked them for Day 1) — **needs researcher review** before study build (GDD D6).
-- BitGem `cop.fbx` logs obsolete external-material warnings — fix by extracting materials during Phase F.
+- ~~BitGem `cop.fbx` external-material warnings~~ **fixed** (InPrefab import + URP-converted `cop_blue.mat`); note cop is a **Generic** rig — it cannot play the Mixamo Humanoid clips, so the patrol uses Ty instead. `Aj.fbx` renders invisible (mesh offset?) — parked, not used.
 - Narration plan: pre-generate clips with **edge-tts** (`en-PH-RosaNeural`) into `Resources/Stories/Narration/` named `s01_easy_p1` etc. Runtime TTS is forbidden (offline rule). Not yet generated.
 - Race world-space labels (pickups, gates, FINISH) still use legacy 3D `TextMesh` — restyle during the race reskin (F4), not part of the TMP UI migration.
 - Design references inside Hyper_Casual_UI `Sprites/GameUI/`: `Victory Pannel.png` (Results screen, applied), `Level screen.png` (numbered circle grid = template for Phase G SessionMap), `Main Menu.png` (glossy icon pills). The pack's demo scenes are baked showcase sprites, not prefabs; several kit sprites ship with broken import settings (not Sprite type / Multiple mode with no rects) — fix importer before use.
