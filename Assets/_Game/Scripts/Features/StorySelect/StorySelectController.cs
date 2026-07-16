@@ -1,5 +1,7 @@
 using SummaRace.Constants;
 using SummaRace.Core;
+using SummaRace.Data;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -16,10 +18,16 @@ namespace SummaRace.Features.StorySelect
         [SerializeField] private Button hardButton;
         [SerializeField] private Button backButton;
 
+        [Header("Easy card content")]
+        [SerializeField] private Image easyHeroImage;
+        [SerializeField] private TMP_Text easyLabel;
+
         private void Start()
         {
             if (easyButton != null)
                 easyButton.onClick.AddListener(() => SelectStory("s01_easy"));
+
+            SetupEasyCard();
 
             // Locked for the MVP slice — gentle feedback only, never a dead end.
             SetupLocked(averageButton);
@@ -32,6 +40,20 @@ namespace SummaRace.Features.StorySelect
                     if (SceneLoader.Instance != null)
                         SceneLoader.Instance.Load(SceneNames.MainMenu);
                 });
+        }
+
+        /// <summary>Hero image + title come from story data; missing art falls back to the title-only card (TDD §9.4).</summary>
+        private void SetupEasyCard()
+        {
+            var story = StoryLoader.Load("s01_easy");
+            if (story == null) return;
+
+            if (easyLabel != null) easyLabel.text = "EASY\n" + story.title;
+
+            if (easyHeroImage == null) return;
+            var sprite = string.IsNullOrEmpty(story.heroImage) ? null : Resources.Load<Sprite>(story.heroImage);
+            if (sprite != null) easyHeroImage.sprite = sprite;
+            easyHeroImage.gameObject.SetActive(sprite != null);
         }
 
         private void SelectStory(string storyId)

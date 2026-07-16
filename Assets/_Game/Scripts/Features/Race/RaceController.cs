@@ -28,6 +28,7 @@ namespace SummaRace.Features.Race
         [SerializeField] private GameObject playerModelPrefab;
         [SerializeField] private GameObject patrolModelPrefab;
         [SerializeField] private GameObject[] sceneryPrefabs;
+        [SerializeField] private TMP_FontAsset worldLabelFont;
         [SerializeField] private RectTransform dangerFill;
         [SerializeField] private Image vignette;
         [SerializeField] private GameObject briefingPanel;
@@ -345,6 +346,36 @@ namespace SummaRace.Features.Race
             if (_patrolAnim != null) _patrolAnim.SetBool("Running", running);
         }
 
+        /// <summary>3D TMP label on a dark backing card (race world text, mockup 17 style).</summary>
+        private void BuildWorldLabel(Transform parent, Vector3 localPos, Vector3 localScale,
+            Vector2 rect, string text, Color textColor, float maxFontSize)
+        {
+            var go = new GameObject("Label");
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = localPos;
+            go.transform.localScale = localScale;
+
+            var tmp = go.AddComponent<TextMeshPro>();
+            if (worldLabelFont != null) tmp.font = worldLabelFont;
+            tmp.text = text;
+            tmp.alignment = TextAlignmentOptions.Center;
+            tmp.color = textColor;
+            tmp.rectTransform.sizeDelta = rect;
+            tmp.enableAutoSizing = true;
+            tmp.fontSizeMin = 0.5f;
+            tmp.fontSizeMax = maxFontSize;
+
+            var quad = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            quad.name = "LabelBack";
+            Destroy(quad.GetComponent<Collider>()); // must never catch the player's trigger
+            quad.transform.SetParent(go.transform, false);
+            quad.transform.localPosition = new Vector3(0f, 0f, 0.02f);
+            quad.transform.localScale = new Vector3(rect.x + 0.2f, rect.y + 0.2f, 1f);
+            var rend = quad.GetComponent<Renderer>();
+            rend.material = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
+            rend.material.color = new Color(0.15f, 0.18f, 0.28f, 1f);
+        }
+
         private Transform BuildCheckpoint(int elementIndex)
         {
             var element = _story.elements[elementIndex];
@@ -378,31 +409,14 @@ namespace SummaRace.Features.Race
                 if (correct[lane] && elementIndex == 0) _correctPickup = cube.transform;
                 if (correct[lane]) TagAsCorrectOf(elementIndex, cube.transform);
 
-                // Floating world-space label.
-                var labelGo = new GameObject("Label");
-                labelGo.transform.SetParent(cube.transform, false);
-                labelGo.transform.localPosition = new Vector3(0f, 1.1f, 0f);
-                labelGo.transform.localScale = Vector3.one * 0.08f;
-                var mesh = labelGo.AddComponent<TextMesh>();
-                mesh.text = Wrap(texts[lane], 16);
-                mesh.fontSize = 60;
-                mesh.characterSize = 0.5f;
-                mesh.anchor = TextAnchor.LowerCenter;
-                mesh.alignment = TextAlignment.Center;
-                mesh.color = Color.black;
+                // Floating world-space label: white text on a dark card (mockup 17).
+                BuildWorldLabel(cube.transform, new Vector3(0f, 1.15f, 0f), Vector3.one,
+                    new Vector2(1.5f, 0.9f), texts[lane], Color.white, 2.5f);
             }
 
             // SWBST banner above the middle of the gate.
-            var typeGo = new GameObject("TypeLabel");
-            typeGo.transform.SetParent(root, false);
-            typeGo.transform.localPosition = new Vector3(0f, 4.2f, 0f);
-            var typeMesh = typeGo.AddComponent<TextMesh>();
-            typeMesh.text = element.type;
-            typeMesh.fontSize = 80;
-            typeMesh.characterSize = 0.35f;
-            typeMesh.anchor = TextAnchor.MiddleCenter;
-            typeMesh.alignment = TextAlignment.Center;
-            typeMesh.color = new Color(0.13f, 0.3f, 0.55f);
+            BuildWorldLabel(root, new Vector3(0f, 4.2f, 0f), Vector3.one,
+                new Vector2(5f, 1.1f), element.type, new Color(1f, 0.85f, 0.3f), 4f);
 
             return root;
         }
@@ -424,16 +438,10 @@ namespace SummaRace.Features.Race
             var pickup = gate.AddComponent<OptionPickup>();
             pickup.isFinishGate = true;
 
-            var labelGo = new GameObject("Label");
-            labelGo.transform.SetParent(gate.transform, false);
-            labelGo.transform.localPosition = new Vector3(0f, 1.2f, 0f);
-            var mesh = labelGo.AddComponent<TextMesh>();
-            mesh.text = "FINISH";
-            mesh.fontSize = 90;
-            mesh.characterSize = 0.12f;
-            mesh.anchor = TextAnchor.MiddleCenter;
-            mesh.alignment = TextAlignment.Center;
-            mesh.color = new Color(0.5f, 0.3f, 0.05f);
+            // Label must undo the gate's non-uniform scale to stay square.
+            var inverse = new Vector3(1f / (GameRules.LaneWidth * 3f), 1f / 3f, 1f);
+            BuildWorldLabel(gate.transform, new Vector3(0f, 1.2f, 0f), inverse,
+                new Vector2(6f, 1.5f), "FINISH", Color.white, 5f);
         }
 
         // ---------- HUD ----------
@@ -477,27 +485,5 @@ namespace SummaRace.Features.Race
                 vignette.color = new Color(1f, 0.55f, 0.1f, t * 0.28f);
         }
 
-        private static string Wrap(string text, int lineLength)
-        {
-            var words = text.Split(' ');
-            var sb = new System.Text.StringBuilder();
-            int lineLen = 0;
-            foreach (var word in words)
-            {
-                if (lineLen + word.Length > lineLength && lineLen > 0)
-                {
-                    sb.Append('\n');
-                    lineLen = 0;
-                }
-                else if (lineLen > 0)
-                {
-                    sb.Append(' ');
-                    lineLen++;
-                }
-                sb.Append(word);
-                lineLen += word.Length;
-            }
-            return sb.ToString();
-        }
     }
 }

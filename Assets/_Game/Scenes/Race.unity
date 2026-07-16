@@ -665,6 +665,7 @@ MonoBehaviour:
   - {fileID: 1210459693873458, guid: 9c78d16e4711178429930c47d8e89427, type: 3}
   - {fileID: 1240686429475702, guid: 1530caefe50f68042978f4b8cd52a92b, type: 3}
   - {fileID: 1991978804857108, guid: b2e600f943c41f34a89a2843ea98a353, type: 3}
+  worldLabelFont: {fileID: 11400000, guid: 2d80ca966f93d3f4baba91251ab4761c, type: 2}
   dangerFill: {fileID: 1216938201}
   vignette: {fileID: 394905015}
   briefingPanel: {fileID: 1237808912}
