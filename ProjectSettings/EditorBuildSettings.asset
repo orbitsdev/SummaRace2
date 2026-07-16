@@ -6,7 +6,40 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Scenes/SampleScene.unity
-    guid: 99c9720ab356a0642a771bea13969a05
+    path: Assets/_Game/Scenes/Boot.unity
+    guid: d5297128bdd7a164ba22866d01debc8d
+  - enabled: 1
+    path: Assets/_Game/Scenes/MainMenu.unity
+    guid: b20c5094e89134740a954cd9a998906e
+  - enabled: 1
+    path: Assets/_Game/Scenes/StorySelect.unity
+    guid: c7112e54ad688df4197be3bc6c7d1cc4
+  - enabled: 1
+    path: Assets/_Game/Scenes/Reader.unity
+    guid: 65525ce0a0d449d4d9c52c0ba5291f87
+  - enabled: 1
+    path: Assets/_Game/Scenes/Race.unity
+    guid: 8a081ec63c30fd542b66bed3b421ad5d
+  - enabled: 1
+    path: Assets/_Game/Scenes/Arrange.unity
+    guid: 259654320454d4d40a3d2d5ee0f350e6
+  - enabled: 1
+    path: Assets/_Game/Scenes/Summary.unity
+    guid: 8bb3b126fc2ac0b4da100d7514d363f5
+  - enabled: 1
+    path: Assets/_Game/Scenes/Results.unity
+    guid: d645634b6054f6f4b88ccbd46cac5649
+  - enabled: 1
+    path: Assets/_Game/Scenes/NameEntry.unity
+    guid: d469b2011e9fce04cbfdc07fe2b5bce5
+  - enabled: 1
+    path: Assets/_Game/Scenes/SessionMap.unity
+    guid: 45ff562ec903b7843bc2da257cc1c9da
+  - enabled: 1
+    path: Assets/_Game/Scenes/TeacherMenu.unity
+    guid: 5a1bbaa7ba3cbd94980660b7726bdb0b
+  - enabled: 1
+    path: Assets/_Game/Scenes/Settings.unity
+    guid: 685e31e1ae52e63469f0feafd354e273
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
