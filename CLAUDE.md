@@ -35,6 +35,7 @@ Post-MVP scenes NameEntry/SessionMap/TeacherMenu/Settings exist as named scenes 
 - BitGem `cop.fbx` logs obsolete external-material warnings — fix by extracting materials during Phase F.
 - Narration plan: pre-generate clips with **edge-tts** (`en-PH-RosaNeural`) into `Resources/Stories/Narration/` named `s01_easy_p1` etc. Runtime TTS is forbidden (offline rule). Not yet generated.
 - Race world-space labels (pickups, gates, FINISH) still use legacy 3D `TextMesh` — restyle during the race reskin (F4), not part of the TMP UI migration.
+- Design references inside Hyper_Casual_UI `Sprites/GameUI/`: `Victory Pannel.png` (Results screen, applied), `Level screen.png` (numbered circle grid = template for Phase G SessionMap), `Main Menu.png` (glossy icon pills). The pack's demo scenes are baked showcase sprites, not prefabs; several kit sprites ship with broken import settings (not Sprite type / Multiple mode with no rects) — fix importer before use.
 
 ## Architecture (implemented — follow these patterns)
 
