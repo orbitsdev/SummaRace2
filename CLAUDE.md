@@ -22,15 +22,17 @@ SummaRace is an **offline Android reading game** (Unity 6 / URP 17.4.0, portrait
 |---|---|
 | B skeleton, C core systems, D content pipeline | ✅ done |
 | **E vertical slice (M1)** — full loop Boot→MainMenu→StorySelect→Reader→Race→Arrange→Summary→Results, grey-box, sounds wired | ✅ **code-complete**; full-loop playtest by owner pending |
-| F polish (UI kit skin, fonts, PrimeTween juice, real characters, world dressing) | ⬜ next |
+| **F1 typography** — all UI on TextMeshPro; TMP assets in `Art/Fonts/TMP/` (Fredoka-SemiBold = headings/buttons, Nunito-Regular = body + TMP default, Nunito-Bold = feedback); Summary uses TMP_InputField; Results stars are Hyper_Casual_UI sprite Images | ✅ done (verify in playtest) |
+| F2+ polish (UI kit skin/palette, PrimeTween juice, real characters, world dressing) | ⬜ next |
 | G 29 more stories + SessionMap · H asset pass · I research features (PIN/logging/export) · J device builds | ⬜ later |
 
-Post-MVP scenes NameEntry/SessionMap/TeacherMenu/Settings exist as named scenes but are empty/placeholder by design. `Assets/Scenes/SampleScene.unity` is template leftover — delete when convenient (GDD D18).
+Post-MVP scenes NameEntry/SessionMap/TeacherMenu/Settings exist as named scenes but are empty/placeholder by design. SampleScene deleted (GDD D18 done).
 
 **Known flags:**
 - `s01_easy.json` page-split/questions/distractors were AI-authored (source doc lacked them for Day 1) — **needs researcher review** before study build (GDD D6).
 - BitGem `cop.fbx` logs obsolete external-material warnings — fix by extracting materials during Phase F.
 - Narration plan: pre-generate clips with **edge-tts** (`en-PH-RosaNeural`) into `Resources/Stories/Narration/` named `s01_easy_p1` etc. Runtime TTS is forbidden (offline rule). Not yet generated.
+- Race world-space labels (pickups, gates, FINISH) still use legacy 3D `TextMesh` — restyle during the race reskin (F4), not part of the TMP UI migration.
 
 ## Architecture (implemented — follow these patterns)
 
