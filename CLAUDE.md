@@ -27,13 +27,15 @@ SummaRace is an **offline Android reading game** (Unity 6 / URP 17.4.0, portrait
 | **F3 juice + bordered panels** — major cards on the kit's bordered popup sprites (gold `Daily Reward pannel`, teal `Frame 1583`); `SummaRace.UI.ButtonSquash` on every button, `PanelIntro` pop-in on cards/popups; PrimeTween PunchScale on stars + race feedback | ✅ done (verify in playtest) |
 | **F4 race reskin** — `_Game/Prefabs/PlayerCharacter` (Ch46 kid) + `PatrolCharacter` (Ty, ZombieRun) spawn via `RaceController.playerModelPrefab/patrolModelPrefab` (grey-box fallback if unwired); AnimatorControllers in `_Game/Animation/` (Running bool, Stumble/Dance triggers); grass track w/ blue-yellow-green lanes | ✅ done (verify in playtest) |
 | **F4b world dressing** — Supercyan forest props (URP-converted) line the race track via `RaceController.sceneryPrefabs`/`BuildScenery`, deterministic scatter, 2x scale | ✅ done (verify in playtest) |
-| F5+ polish (hero image for The Playground; world-space TextMesh label styling; SFX check — StarterAssets has footstep/land WAVs if wanted) | ⬜ next |
+| **F5 hero + world labels** — StorySelect easy card shows hero image + title from story JSON (missing art → title-only fallback); race world text is 3D TMP (Fredoka) on dark backing quads | ✅ done (verify in playtest) |
+| **Phase F complete** → owner full-loop playtest = the "M1 polished" gate. Then Phase G (29 stories + SessionMap — use Hyper_Casual_UI `Level screen.png` as SessionMap template) | ⬜ next |
 | G 29 more stories + SessionMap · H asset pass · I research features (PIN/logging/export) · J device builds | ⬜ later |
 
 Post-MVP scenes NameEntry/SessionMap/TeacherMenu/Settings exist as named scenes but are empty/placeholder by design. SampleScene deleted (GDD D18 done).
 
 **Known flags:**
 - `s01_easy.json` page-split/questions/distractors were AI-authored (source doc lacked them for Day 1) — **needs researcher review** before study build (GDD D6).
+- `Resources/Stories/Art/s01_easy.png` is a **TEMP hero image** cropped from Mockups/3.png — replace when the researcher locks the 30-image style (Phase G). No image-gen provider keys are configured in MCP (`generate_image` needs fal.ai/OpenRouter key if wanted).
 - ~~BitGem `cop.fbx` external-material warnings~~ **fixed** (InPrefab import + URP-converted `cop_blue.mat`); note cop is a **Generic** rig — it cannot play the Mixamo Humanoid clips, so the patrol uses Ty instead. `Aj.fbx` renders invisible (mesh offset?) — parked, not used.
 - Narration plan: pre-generate clips with **edge-tts** (`en-PH-RosaNeural`) into `Resources/Stories/Narration/` named `s01_easy_p1` etc. Runtime TTS is forbidden (offline rule). Not yet generated.
 - Race world-space labels (pickups, gates, FINISH) still use legacy 3D `TextMesh` — restyle during the race reskin (F4), not part of the TMP UI migration.
