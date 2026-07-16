@@ -26,7 +26,8 @@ SummaRace is an **offline Android reading game** (Unity 6 / URP 17.4.0, portrait
 | **F2 UI skin** — Hyper_Casual_UI kit applied: 9-sliced pill buttons + Rectangle 356 panels everywhere, sky/curved-hill backdrops (generated `_Game/Art/UI/hill_arc.png`), race banner on toggled BannerBG pill | ✅ done (verify in playtest) |
 | **F3 juice + bordered panels** — major cards on the kit's bordered popup sprites (gold `Daily Reward pannel`, teal `Frame 1583`); `SummaRace.UI.ButtonSquash` on every button, `PanelIntro` pop-in on cards/popups; PrimeTween PunchScale on stars + race feedback | ✅ done (verify in playtest) |
 | **F4 race reskin** — `_Game/Prefabs/PlayerCharacter` (Ch46 kid) + `PatrolCharacter` (Ty, ZombieRun) spawn via `RaceController.playerModelPrefab/patrolModelPrefab` (grey-box fallback if unwired); AnimatorControllers in `_Game/Animation/` (Running bool, Stumble/Dance triggers); grass track w/ blue-yellow-green lanes | ✅ done (verify in playtest) |
-| F5+ polish (hero image for The Playground; world-space TextMesh label styling; world dressing) | ⬜ next |
+| **F4b world dressing** — Supercyan forest props (URP-converted) line the race track via `RaceController.sceneryPrefabs`/`BuildScenery`, deterministic scatter, 2x scale | ✅ done (verify in playtest) |
+| F5+ polish (hero image for The Playground; world-space TextMesh label styling; SFX check — StarterAssets has footstep/land WAVs if wanted) | ⬜ next |
 | G 29 more stories + SessionMap · H asset pass · I research features (PIN/logging/export) · J device builds | ⬜ later |
 
 Post-MVP scenes NameEntry/SessionMap/TeacherMenu/Settings exist as named scenes but are empty/placeholder by design. SampleScene deleted (GDD D18 done).
