@@ -19,6 +19,7 @@ namespace SummaRace.Features.Race
         public static RaceController Instance { get; private set; }
 
         [Header("HUD")]
+        [SerializeField] private GameObject bannerGroup;
         [SerializeField] private TMP_Text bannerText;
         [SerializeField] private TMP_Text feedbackText;
         [SerializeField] private RectTransform dangerFill;
@@ -60,6 +61,7 @@ namespace SummaRace.Features.Race
 
             if (briefingPanel != null) briefingPanel.SetActive(true);
             if (caughtPanel != null) caughtPanel.SetActive(false);
+            if (bannerGroup != null) bannerGroup.SetActive(false); // shown when the run starts
             if (startMissionButton != null)
                 startMissionButton.onClick.AddListener(StartMission);
         }
@@ -360,6 +362,7 @@ namespace SummaRace.Features.Race
             // Track the glowing-correct reference for the current gate.
             if (_currentElement < 5) _correctPickup = _correctOf[_currentElement];
 
+            if (bannerGroup != null) bannerGroup.SetActive(true);
             if (bannerText == null) return;
             bannerText.text = _currentElement < 5
                 ? "Collect: " + _story.elements[_currentElement].type
