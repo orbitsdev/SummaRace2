@@ -1,5 +1,6 @@
 using System.Collections;
 using SummaRace.Constants;
+using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -17,7 +18,7 @@ namespace SummaRace.Core
         private const float FadeSeconds = 0.25f;
 
         private CanvasGroup _fadeGroup;
-        private Text _tipText;
+        private TextMeshProUGUI _tipText;
         private bool _loading;
 
         private void Awake()
@@ -83,10 +84,10 @@ namespace SummaRace.Core
 
             var tipGo = new GameObject("TipText");
             tipGo.transform.SetParent(canvasGo.transform, false);
-            _tipText = tipGo.AddComponent<Text>();
-            _tipText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            _tipText = tipGo.AddComponent<TextMeshProUGUI>();
+            // Font comes from TMP Settings default (Nunito) — no explicit assignment needed.
             _tipText.fontSize = 36;
-            _tipText.alignment = TextAnchor.MiddleCenter;
+            _tipText.alignment = TextAlignmentOptions.Center;
             _tipText.color = Color.white;
             var tipRect = _tipText.rectTransform;
             tipRect.anchorMin = new Vector2(0.1f, 0.4f);

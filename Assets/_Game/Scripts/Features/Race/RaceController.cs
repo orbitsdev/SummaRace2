@@ -2,6 +2,7 @@ using System.Collections;
 using SummaRace.Constants;
 using SummaRace.Core;
 using SummaRace.Data;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -18,8 +19,8 @@ namespace SummaRace.Features.Race
         public static RaceController Instance { get; private set; }
 
         [Header("HUD")]
-        [SerializeField] private Text bannerText;
-        [SerializeField] private Text feedbackText;
+        [SerializeField] private TMP_Text bannerText;
+        [SerializeField] private TMP_Text feedbackText;
         [SerializeField] private RectTransform dangerFill;
         [SerializeField] private Image vignette;
         [SerializeField] private GameObject briefingPanel;

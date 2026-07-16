@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using SummaRace.Constants;
 using SummaRace.Core;
 using SummaRace.Data;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -18,16 +19,16 @@ namespace SummaRace.Features.Arrange
     {
         [Header("Slots (S-W-B-S-T order)")]
         [SerializeField] private Button[] slotButtons = new Button[5];
-        [SerializeField] private Text[] slotLabels = new Text[5];
+        [SerializeField] private TMP_Text[] slotLabels = new TMP_Text[5];
 
         [Header("Piece pool")]
         [SerializeField] private Button[] pieceButtons = new Button[5];
-        [SerializeField] private Text[] pieceLabels = new Text[5];
+        [SerializeField] private TMP_Text[] pieceLabels = new TMP_Text[5];
 
         [Header("Actions")]
         [SerializeField] private Button verifyButton;
         [SerializeField] private Button undoButton;
-        [SerializeField] private Text statusText;
+        [SerializeField] private TMP_Text statusText;
 
         private static readonly Color SlotEmpty = new Color(0.92f, 0.92f, 0.88f);
         private static readonly Color SlotFilled = new Color(0.96f, 0.87f, 0.70f);
@@ -218,7 +219,7 @@ namespace SummaRace.Features.Arrange
                     slotLabels[i].text = _slotContent[i] >= 0
                         ? _pieceTexts[_slotContent[i]]
                         : _story.elements[i].type;
-                    slotLabels[i].fontStyle = _slotContent[i] >= 0 ? FontStyle.Normal : FontStyle.Bold;
+                    slotLabels[i].fontStyle = _slotContent[i] >= 0 ? FontStyles.Normal : FontStyles.Bold;
                 }
                 if (slotButtons[i] != null && !_slotLocked[i])
                     slotButtons[i].image.color = _slotContent[i] >= 0 ? SlotFilled : SlotEmpty;

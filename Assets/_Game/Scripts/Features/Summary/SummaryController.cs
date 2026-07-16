@@ -1,6 +1,7 @@
 using SummaRace.Constants;
 using SummaRace.Core;
 using SummaRace.Data;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -13,11 +14,11 @@ namespace SummaRace.Features.Summary
     /// </summary>
     public class SummaryController : MonoBehaviour
     {
-        [SerializeField] private Text referenceText;
-        [SerializeField] private Text hintText;
-        [SerializeField] private InputField summaryInput;
+        [SerializeField] private TMP_Text referenceText;
+        [SerializeField] private TMP_Text hintText;
+        [SerializeField] private TMP_InputField summaryInput;
         [SerializeField] private Button submitButton;
-        [SerializeField] private Text nudgeText;
+        [SerializeField] private TMP_Text nudgeText;
 
         private StoryData _story;
         private int _nudgeCount;

@@ -1,6 +1,7 @@
 using SummaRace.Constants;
 using SummaRace.Core;
 using SummaRace.Data;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -14,17 +15,17 @@ namespace SummaRace.Features.Reader
     public class ReaderController : MonoBehaviour
     {
         [Header("Page")]
-        [SerializeField] private Text pageText;
-        [SerializeField] private Text progressText;
+        [SerializeField] private TMP_Text pageText;
+        [SerializeField] private TMP_Text progressText;
         [SerializeField] private Button nextButton;
-        [SerializeField] private Text nextButtonLabel;
+        [SerializeField] private TMP_Text nextButtonLabel;
 
         [Header("Question")]
         [SerializeField] private GameObject questionPanel;
-        [SerializeField] private Text questionText;
+        [SerializeField] private TMP_Text questionText;
         [SerializeField] private Button[] optionButtons = new Button[3];
-        [SerializeField] private Text[] optionLabels = new Text[3];
-        [SerializeField] private Text feedbackText;
+        [SerializeField] private TMP_Text[] optionLabels = new TMP_Text[3];
+        [SerializeField] private TMP_Text feedbackText;
 
         private static readonly Color OptionNormal = new Color(0.96f, 0.87f, 0.70f); // warm tan
         private static readonly Color OptionCorrect = new Color(0.55f, 0.85f, 0.45f); // friendly green

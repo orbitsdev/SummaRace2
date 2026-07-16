@@ -2,6 +2,7 @@ using System.Collections;
 using SummaRace.Constants;
 using SummaRace.Core;
 using SummaRace.Data;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -13,15 +14,16 @@ namespace SummaRace.Features.Results
     /// </summary>
     public class ResultsController : MonoBehaviour
     {
-        [SerializeField] private Text titleText;
-        [SerializeField] private Text[] starTexts = new Text[3];
-        [SerializeField] private Text praiseText;
+        [SerializeField] private TMP_Text titleText;
+        [SerializeField] private Image[] starImages = new Image[3];
+        [SerializeField] private TMP_Text praiseText;
         [SerializeField] private GameObject mainIdeaPanel;
-        [SerializeField] private Text mainIdeaText;
+        [SerializeField] private TMP_Text mainIdeaText;
         [SerializeField] private Button nextButton;
 
-        private static readonly Color StarOff = new Color(0.75f, 0.75f, 0.7f);
-        private static readonly Color StarOn = new Color(1f, 0.8f, 0.1f);
+        // Sprite is already golden — off = dark silhouette, on = full color.
+        private static readonly Color StarOff = new Color(0.35f, 0.35f, 0.38f);
+        private static readonly Color StarOn = Color.white;
 
         private StoryData _story;
 
@@ -38,7 +40,7 @@ namespace SummaRace.Features.Results
             if (mainIdeaPanel != null) mainIdeaPanel.SetActive(false);
             if (mainIdeaText != null) mainIdeaText.text = _story.mainIdea;
 
-            foreach (var star in starTexts)
+            foreach (var star in starImages)
                 if (star != null) star.color = StarOff;
 
             if (nextButton != null)
@@ -57,7 +59,7 @@ namespace SummaRace.Features.Results
 
             for (int i = 0; i < stars; i++)
             {
-                if (starTexts[i] != null) starTexts[i].color = StarOn;
+                if (starImages[i] != null) starImages[i].color = StarOn;
                 if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxStar);
                 yield return new WaitForSeconds(0.45f);
             }
