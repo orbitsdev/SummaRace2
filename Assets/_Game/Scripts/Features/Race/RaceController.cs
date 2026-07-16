@@ -48,6 +48,9 @@ namespace SummaRace.Features.Race
         private int _currentElement;
         private float _danger;
         private float _speedMultiplier = 1f;
+
+        /// <summary>Current boost/slow factor — read by the chase camera for its FOV kick.</summary>
+        public float SpeedMultiplier => _speedMultiplier;
         private float _speedEffectTimer;
         private float _feedbackTimer;
         private float _runSeconds;
@@ -277,6 +280,9 @@ namespace SummaRace.Features.Race
             _playerAnim = SpawnCharacter(playerGo.transform, playerModelPrefab, new Color(0.95f, 0.5f, 0.15f));
             _player = playerGo.AddComponent<PlayerRunner>();
             _player.InputEnabled = false;
+
+            var chaseCam = Camera.main != null ? Camera.main.GetComponent<RaceChaseCamera>() : null;
+            if (chaseCam != null) chaseCam.SetTarget(playerGo.transform);
 
             // Patrol behind (visual pressure only).
             var patrolGo = new GameObject("Patrol");
