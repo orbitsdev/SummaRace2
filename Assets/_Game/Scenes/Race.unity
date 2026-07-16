@@ -674,6 +674,15 @@ MonoBehaviour:
   - {fileID: 8073443194988779917, guid: 6b0b0b098177a3b439c80991ec9deacc, type: 3}
   - {fileID: 1646981259178978, guid: 1eb894c97da32c940a90228cac9bea1c, type: 3}
   - {fileID: 1646981259178978, guid: 6d56b50e711a5204d9059e0c99b70eda, type: 3}
+  - {fileID: 8483353424882059376, guid: d77f3988a559cee4f85af6b47c0539a7, type: 3}
+  - {fileID: 3936762733482998003, guid: 259f49cbcfd39ed4eb70f61fd89b598e, type: 3}
+  - {fileID: 52932905164622209, guid: 640b94cf88de4ef459ce14645b2736d9, type: 3}
+  - {fileID: 787257008305991662, guid: 6fda6d14dbbf5c54fb01d830757a8d1f, type: 3}
+  skylinePrefabs:
+  - {fileID: 4508651562860150202, guid: 6d3bd000f9d3e3c479ee0339e54f1247, type: 3}
+  - {fileID: 8171410634475633590, guid: 0cd0e09ea28be304eae00f533b94ffd9, type: 3}
+  - {fileID: 5781593798904203336, guid: 5317394648af5b94eaea206e07e79629, type: 3}
+  - {fileID: 4724550707367194761, guid: 54bb0c6cea2adb2408f37dd1ba7a7dd7, type: 3}
   fencePrefab: {fileID: 100000, guid: d2100f10c342364479e7a527f9ef5429, type: 3}
   worldCardSprite: {fileID: 21300000, guid: e96be3c2e6d907741939a389219ea24f, type: 3}
   worldLabelFont: {fileID: 11400000, guid: 2d80ca966f93d3f4baba91251ab4761c, type: 2}
