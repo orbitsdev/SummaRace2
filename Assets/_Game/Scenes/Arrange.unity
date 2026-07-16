@@ -131,6 +131,7 @@ GameObject:
   - component: {fileID: 29815370}
   - component: {fileID: 29815369}
   - component: {fileID: 29815371}
+  - component: {fileID: 29815372}
   m_Layer: 0
   m_Name: Piece_1
   m_TagString: Untagged
@@ -240,6 +241,18 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &29815372
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 29815367}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba5c5b49667967c4cb0211b7f7a77c6e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SummaRace.UI.ButtonSquash
 --- !u!1 &53200999
 GameObject:
   m_ObjectHideFlags: 0
@@ -468,6 +481,7 @@ GameObject:
   - component: {fileID: 96828287}
   - component: {fileID: 96828286}
   - component: {fileID: 96828288}
+  - component: {fileID: 96828289}
   m_Layer: 0
   m_Name: Slot_1
   m_TagString: Untagged
@@ -578,6 +592,18 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &96828289
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 96828284}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba5c5b49667967c4cb0211b7f7a77c6e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SummaRace.UI.ButtonSquash
 --- !u!1 &144849290
 GameObject:
   m_ObjectHideFlags: 0
@@ -727,6 +753,7 @@ GameObject:
   - component: {fileID: 183697559}
   - component: {fileID: 183697558}
   - component: {fileID: 183697560}
+  - component: {fileID: 183697561}
   m_Layer: 0
   m_Name: Slot_4
   m_TagString: Untagged
@@ -837,6 +864,18 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &183697561
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 183697556}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba5c5b49667967c4cb0211b7f7a77c6e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SummaRace.UI.ButtonSquash
 --- !u!1 &189941290
 GameObject:
   m_ObjectHideFlags: 0
@@ -1277,6 +1316,7 @@ GameObject:
   - component: {fileID: 535102349}
   - component: {fileID: 535102348}
   - component: {fileID: 535102350}
+  - component: {fileID: 535102351}
   m_Layer: 0
   m_Name: Piece_2
   m_TagString: Untagged
@@ -1386,6 +1426,18 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &535102351
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 535102346}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba5c5b49667967c4cb0211b7f7a77c6e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SummaRace.UI.ButtonSquash
 --- !u!1 &636222969
 GameObject:
   m_ObjectHideFlags: 0
@@ -2199,6 +2251,7 @@ GameObject:
   - component: {fileID: 998675345}
   - component: {fileID: 998675344}
   - component: {fileID: 998675346}
+  - component: {fileID: 998675347}
   m_Layer: 0
   m_Name: VerifyButton
   m_TagString: Untagged
@@ -2308,6 +2361,18 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &998675347
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 998675342}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba5c5b49667967c4cb0211b7f7a77c6e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SummaRace.UI.ButtonSquash
 --- !u!1 &1008528793
 GameObject:
   m_ObjectHideFlags: 0
@@ -2320,6 +2385,7 @@ GameObject:
   - component: {fileID: 1008528796}
   - component: {fileID: 1008528795}
   - component: {fileID: 1008528797}
+  - component: {fileID: 1008528798}
   m_Layer: 0
   m_Name: Piece_0
   m_TagString: Untagged
@@ -2429,6 +2495,18 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &1008528798
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1008528793}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba5c5b49667967c4cb0211b7f7a77c6e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SummaRace.UI.ButtonSquash
 --- !u!1 &1062651758
 GameObject:
   m_ObjectHideFlags: 0
@@ -2441,6 +2519,7 @@ GameObject:
   - component: {fileID: 1062651761}
   - component: {fileID: 1062651760}
   - component: {fileID: 1062651762}
+  - component: {fileID: 1062651763}
   m_Layer: 0
   m_Name: Piece_3
   m_TagString: Untagged
@@ -2550,6 +2629,18 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &1062651763
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1062651758}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba5c5b49667967c4cb0211b7f7a77c6e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SummaRace.UI.ButtonSquash
 --- !u!1 &1111703178
 GameObject:
   m_ObjectHideFlags: 0
@@ -2562,6 +2653,7 @@ GameObject:
   - component: {fileID: 1111703181}
   - component: {fileID: 1111703180}
   - component: {fileID: 1111703182}
+  - component: {fileID: 1111703183}
   m_Layer: 0
   m_Name: Piece_4
   m_TagString: Untagged
@@ -2671,6 +2763,18 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &1111703183
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1111703178}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba5c5b49667967c4cb0211b7f7a77c6e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SummaRace.UI.ButtonSquash
 --- !u!1 &1141490415
 GameObject:
   m_ObjectHideFlags: 0
@@ -3094,6 +3198,7 @@ GameObject:
   - component: {fileID: 1317046299}
   - component: {fileID: 1317046298}
   - component: {fileID: 1317046300}
+  - component: {fileID: 1317046301}
   m_Layer: 0
   m_Name: UndoButton
   m_TagString: Untagged
@@ -3203,6 +3308,18 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &1317046301
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1317046296}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba5c5b49667967c4cb0211b7f7a77c6e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SummaRace.UI.ButtonSquash
 --- !u!1 &1373131894
 GameObject:
   m_ObjectHideFlags: 0
@@ -3900,6 +4017,7 @@ GameObject:
   - component: {fileID: 1778781002}
   - component: {fileID: 1778781001}
   - component: {fileID: 1778781003}
+  - component: {fileID: 1778781004}
   m_Layer: 0
   m_Name: Slot_2
   m_TagString: Untagged
@@ -4010,6 +4128,18 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &1778781004
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1778780999}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba5c5b49667967c4cb0211b7f7a77c6e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SummaRace.UI.ButtonSquash
 --- !u!1 &1790622306
 GameObject:
   m_ObjectHideFlags: 0
@@ -4022,6 +4152,7 @@ GameObject:
   - component: {fileID: 1790622309}
   - component: {fileID: 1790622308}
   - component: {fileID: 1790622310}
+  - component: {fileID: 1790622311}
   m_Layer: 0
   m_Name: Slot_0
   m_TagString: Untagged
@@ -4132,6 +4263,18 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &1790622311
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1790622306}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba5c5b49667967c4cb0211b7f7a77c6e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SummaRace.UI.ButtonSquash
 --- !u!1 &1925490937
 GameObject:
   m_ObjectHideFlags: 0
@@ -4281,6 +4424,7 @@ GameObject:
   - component: {fileID: 1934193174}
   - component: {fileID: 1934193173}
   - component: {fileID: 1934193175}
+  - component: {fileID: 1934193176}
   m_Layer: 0
   m_Name: Slot_3
   m_TagString: Untagged
@@ -4391,6 +4535,18 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &1934193176
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1934193171}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba5c5b49667967c4cb0211b7f7a77c6e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SummaRace.UI.ButtonSquash
 --- !u!1 &1977373061
 GameObject:
   m_ObjectHideFlags: 0

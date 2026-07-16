@@ -1,4 +1,5 @@
 using System.Collections;
+using PrimeTween;
 using SummaRace.Constants;
 using SummaRace.Core;
 using SummaRace.Data;
@@ -59,7 +60,11 @@ namespace SummaRace.Features.Results
 
             for (int i = 0; i < stars; i++)
             {
-                if (starImages[i] != null) starImages[i].color = StarOn;
+                if (starImages[i] != null)
+                {
+                    starImages[i].color = StarOn;
+                    Tween.PunchScale(starImages[i].transform, Vector3.one * 0.45f, 0.4f);
+                }
                 if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxStar);
                 yield return new WaitForSeconds(0.45f);
             }

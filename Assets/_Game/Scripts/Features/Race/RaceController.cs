@@ -1,4 +1,5 @@
 using System.Collections;
+using PrimeTween;
 using SummaRace.Constants;
 using SummaRace.Core;
 using SummaRace.Data;
@@ -374,6 +375,7 @@ namespace SummaRace.Features.Race
             if (feedbackText == null) return;
             feedbackText.text = message;
             feedbackText.color = color;
+            Tween.PunchScale(feedbackText.transform, Vector3.one * 0.3f, 0.35f);
             _feedbackTimer = 1.4f;
         }
 

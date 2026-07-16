@@ -268,6 +268,7 @@ GameObject:
   - component: {fileID: 407531474}
   - component: {fileID: 407531473}
   - component: {fileID: 407531475}
+  - component: {fileID: 407531476}
   m_Layer: 0
   m_Name: NextButton
   m_TagString: Untagged
@@ -377,6 +378,18 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &407531476
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 407531471}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba5c5b49667967c4cb0211b7f7a77c6e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SummaRace.UI.ButtonSquash
 --- !u!1 &468762030
 GameObject:
   m_ObjectHideFlags: 0
@@ -472,6 +485,7 @@ GameObject:
   - component: {fileID: 650583364}
   - component: {fileID: 650583363}
   - component: {fileID: 650583365}
+  - component: {fileID: 650583366}
   m_Layer: 0
   m_Name: OptionC
   m_TagString: Untagged
@@ -581,6 +595,18 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &650583366
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 650583361}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba5c5b49667967c4cb0211b7f7a77c6e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SummaRace.UI.ButtonSquash
 --- !u!1 &939358094
 GameObject:
   m_ObjectHideFlags: 0
@@ -651,6 +677,7 @@ GameObject:
   - component: {fileID: 1101338168}
   - component: {fileID: 1101338170}
   - component: {fileID: 1101338169}
+  - component: {fileID: 1101338171}
   m_Layer: 0
   m_Name: ReadingCard
   m_TagString: Untagged
@@ -691,14 +718,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0.972549, g: 0.9254902, b: 0.6862745, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: e96be3c2e6d907741939a389219ea24f, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 9da3964b6a44e204e8782ddc2950a5ef, type: 3}
   m_Type: 1
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -707,7 +734,7 @@ MonoBehaviour:
   m_FillClockwise: 1
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 0.5
+  m_PixelsPerUnitMultiplier: 0.6
 --- !u!222 &1101338170
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -716,6 +743,19 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1101338167}
   m_CullTransparentMesh: 1
+--- !u!114 &1101338171
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1101338167}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: edbdd97e16ad4ac40b1a5f6fbe3fecd2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SummaRace.UI.PanelIntro
+  delay: 0
 --- !u!1 &1146567247
 GameObject:
   m_ObjectHideFlags: 0
@@ -1081,6 +1121,7 @@ GameObject:
   - component: {fileID: 1483392439}
   - component: {fileID: 1483392438}
   - component: {fileID: 1483392440}
+  - component: {fileID: 1483392441}
   m_Layer: 0
   m_Name: OptionB
   m_TagString: Untagged
@@ -1190,6 +1231,18 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &1483392441
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1483392436}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba5c5b49667967c4cb0211b7f7a77c6e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SummaRace.UI.ButtonSquash
 --- !u!1 &1530908971
 GameObject:
   m_ObjectHideFlags: 0
@@ -1339,6 +1392,7 @@ GameObject:
   - component: {fileID: 1665849059}
   - component: {fileID: 1665849058}
   - component: {fileID: 1665849060}
+  - component: {fileID: 1665849061}
   m_Layer: 0
   m_Name: OptionA
   m_TagString: Untagged
@@ -1448,6 +1502,18 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &1665849061
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1665849056}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba5c5b49667967c4cb0211b7f7a77c6e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SummaRace.UI.ButtonSquash
 --- !u!1 &1890616201
 GameObject:
   m_ObjectHideFlags: 0
@@ -1565,6 +1631,7 @@ GameObject:
   - component: {fileID: 2000385750}
   - component: {fileID: 2000385752}
   - component: {fileID: 2000385751}
+  - component: {fileID: 2000385753}
   m_Layer: 0
   m_Name: QuestionPanel
   m_TagString: Untagged
@@ -1609,14 +1676,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0.96862745, g: 0.94509804, b: 0.87058824, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: e96be3c2e6d907741939a389219ea24f, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 9da3964b6a44e204e8782ddc2950a5ef, type: 3}
   m_Type: 1
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -1625,7 +1692,7 @@ MonoBehaviour:
   m_FillClockwise: 1
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 0.5
+  m_PixelsPerUnitMultiplier: 0.6
 --- !u!222 &2000385752
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -1634,6 +1701,19 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2000385749}
   m_CullTransparentMesh: 1
+--- !u!114 &2000385753
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2000385749}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: edbdd97e16ad4ac40b1a5f6fbe3fecd2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SummaRace.UI.PanelIntro
+  delay: 0
 --- !u!1 &2007911217
 GameObject:
   m_ObjectHideFlags: 0
