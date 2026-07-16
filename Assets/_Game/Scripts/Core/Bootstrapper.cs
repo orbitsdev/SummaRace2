@@ -21,6 +21,8 @@ namespace SummaRace.Core
 
             var core = new GameObject("[Core]");
             DontDestroyOnLoad(core);
+            // Single app-wide listener; scene cameras deliberately have none (audio is all 2D).
+            core.AddComponent<AudioListener>();
             core.AddComponent<GameManager>();
             core.AddComponent<AudioManager>();
             core.AddComponent<SaveManager>();
