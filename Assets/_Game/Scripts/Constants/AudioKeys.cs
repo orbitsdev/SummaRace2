@@ -8,6 +8,9 @@ namespace SummaRace.Constants
     {
         // UI / feedback
         public const string SfxClick = "sfx_click";
+        public const string SfxPress = "sfx_press";           // button pointer-down tap
+        public const string SfxPop = "sfx_pop";               // panel pop-in
+        public const string SfxTransition = "sfx_transition"; // scene change chime
         public const string SfxCorrect = "sfx_correct";
         public const string SfxNotQuite = "sfx_not_quite";
         public const string SfxPageTurn = "sfx_page_turn";
@@ -18,6 +21,9 @@ namespace SummaRace.Constants
         public const string SfxBoost = "sfx_boost";
         public const string SfxWhoosh = "sfx_whoosh";
         public const string SfxCaught = "sfx_caught";
+        public const string SfxFootstepA = "sfx_footstep_a";
+        public const string SfxFootstepB = "sfx_footstep_b";
+        public const string SfxFootstepC = "sfx_footstep_c";
 
         // Arrange
         public const string SfxSlotLock = "sfx_slot_lock";

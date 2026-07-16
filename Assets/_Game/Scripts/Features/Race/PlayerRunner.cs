@@ -64,6 +64,9 @@ namespace SummaRace.Features.Race
 
             if (AudioManager.Instance != null)
                 AudioManager.Instance.PlaySfx(AudioKeys.SfxWhoosh);
+
+            if (RaceController.Instance != null)
+                RaceController.Instance.OnLaneSwitched(direction);
         }
     }
 }

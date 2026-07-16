@@ -1,4 +1,5 @@
 using System.Collections;
+using FirstGearGames.SmoothCameraShaker;
 using PrimeTween;
 using SummaRace.Constants;
 using SummaRace.Core;
@@ -37,6 +38,7 @@ namespace SummaRace.Features.Race
         [SerializeField] private GameObject wrongFxPrefab;
         [SerializeField] private GameObject caughtFxPrefab;
         [SerializeField] private GameObject finishFxPrefab;
+        [SerializeField] private ShakeData caughtShake;
         [SerializeField] private RectTransform dangerFill;
         [SerializeField] private Image vignette;
         [SerializeField] private GameObject briefingPanel;
@@ -110,6 +112,20 @@ namespace SummaRace.Features.Race
 
             // Run cycle keeps pace with the boost/slow so feet don't slide.
             if (_playerAnim != null) _playerAnim.speed = _speedMultiplier;
+
+            // Grass footsteps in time with the run cycle.
+            _footstepTimer -= dt * _speedMultiplier;
+            if (_footstepTimer <= 0f)
+            {
+                _footstepTimer = 0.34f;
+                if (AudioManager.Instance != null)
+                {
+                    _footstepIndex = (_footstepIndex + 1) % 3;
+                    var key = _footstepIndex == 0 ? AudioKeys.SfxFootstepA
+                        : _footstepIndex == 1 ? AudioKeys.SfxFootstepB : AudioKeys.SfxFootstepC;
+                    AudioManager.Instance.PlaySfx(key);
+                }
+            }
 
             // Scroll the world toward the player.
             float speed = _story.mission.playerSpeed * _speedMultiplier;
@@ -216,6 +232,7 @@ namespace SummaRace.Features.Race
             if (caughtPanel != null) caughtPanel.SetActive(true);
             if (_playerAnim != null) _playerAnim.SetTrigger("Stumble");
             if (_player != null) SpawnFx(caughtFxPrefab, _player.transform.position + Vector3.up * 1.6f);
+            if (caughtShake != null) CameraShakerHandler.Shake(caughtShake);
             EventBus.Raise(new PlayerCaught());
 
             yield return new WaitForSeconds(1.5f);
@@ -321,6 +338,15 @@ namespace SummaRace.Features.Race
 
         private Animator _playerAnim;
         private Animator _patrolAnim;
+        private float _footstepTimer;
+        private int _footstepIndex;
+
+        /// <summary>Called by PlayerRunner so the character leans into lane changes.</summary>
+        public void OnLaneSwitched(int direction)
+        {
+            if (_playerAnim != null)
+                _playerAnim.SetTrigger(direction < 0 ? "LeanLeft" : "LeanRight");
+        }
 
         /// <summary>Fences, trees, props and clouds along the track; deterministic so every run of a story looks the same.</summary>
         private void BuildScenery(float length)

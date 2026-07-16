@@ -38,6 +38,7 @@ namespace SummaRace.Core
         {
             _loading = true;
             _tipText.text = GameText.LoadingTips[Random.Range(0, GameText.LoadingTips.Length)];
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxTransition);
 
             yield return Fade(0f, 1f);
 
