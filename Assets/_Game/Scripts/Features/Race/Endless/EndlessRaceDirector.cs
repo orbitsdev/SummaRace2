@@ -52,6 +52,7 @@ namespace SummaRace.Features.Race.Endless
         {
             Instance = this;
             EndlessRaceMode.Active = true;
+            MaskLoadoutFlash(); // before any OnEnable, incl. GameManager -> LoadoutState.Enter()
         }
 
         private void OnDestroy()
@@ -64,6 +65,13 @@ namespace SummaRace.Features.Race.Endless
 
         private IEnumerator Start()
         {
+            // LoadoutState.Enter() (GameManager.OnEnable, which runs after our Awake but
+            // before this coroutine body) unconditionally re-shows TutorialOverlay via
+            // tutorialBlocker.SetActive(!tutorialDone) — true on a fresh save since we
+            // haven't forced tutorialDone yet at that point. Re-mask before anything else
+            // so the two hides collapse into zero visible flash (nothing renders between them).
+            MaskLoadoutFlash();
+
             var ourGm = SummaRace.Core.GameManager.Instance;
             _story = (ourGm != null && ourGm.CurrentStory != null)
                 ? ourGm.CurrentStory
@@ -82,7 +90,7 @@ namespace SummaRace.Features.Race.Endless
             // stays inactive until GameState.Enter -> StartGame -> Begin() activates it,
             // so the instance wait MUST come after this call (waiting first deadlocks).
             yield return new WaitForSeconds(0.75f); // let Loadout.Enter settle
-            var loadout = FindFirstObjectByType<LoadoutState>();
+            var loadout = FindAnyObjectByType<LoadoutState>();
             if (loadout != null && loadout.isActiveAndEnabled) loadout.StartGame();
 
             // Safe to subscribe here: instance is set by Awake on activation, and the first
@@ -92,7 +100,7 @@ namespace SummaRace.Features.Race.Endless
             _subscribed = true;
 
             yield return new WaitForSeconds(0.5f);
-            HideTheirCurrencyHud();
+            HideTheirChrome();
             EnsureSingleAudioListener();
         }
 
@@ -432,23 +440,87 @@ namespace SummaRace.Features.Race.Endless
             _feedbackTimer = 1.4f;
         }
 
-        /// <summary>Their coin/score counters mean nothing here — hide just those texts.</summary>
-        private void HideTheirCurrencyHud()
+        /// <summary>The learner should never see the Trash Dash loadout screen — hide the
+        /// 13 direct-child visual roots of the Loadout canvas on frame one. LoadoutState
+        /// itself (and its GameObject) stays alive — StartGame() is still called on it
+        /// later. Audit-verified: LoadoutState lives directly on the "Loadout" canvas
+        /// GameObject, so its own transform's children ARE the 13 audited elements
+        /// (StartButton, LoadoutGrid, CharZone, ThemeZone, AccessoriesSelector, PowerupZone,
+        /// OpenLeaderboard, StoreButton, MissionButton, SettingButton, SettingPopup,
+        /// MissionPopup, TutorialOverlay) — hiding each also hides everything nested under
+        /// it (Settings' DeleteData/OpenURL links, Missions popup, tutorial FTUE, etc.).
+        /// Must run twice — see the two call sites (Awake + top of Start) for why.</summary>
+        private void MaskLoadoutFlash()
         {
-            var gs = FindFirstObjectByType<GameState>();
-            if (gs == null) return;
-            if (gs.coinText != null) gs.coinText.gameObject.SetActive(false);
-            if (gs.premiumText != null) gs.premiumText.gameObject.SetActive(false);
-            if (gs.scoreText != null) gs.scoreText.gameObject.SetActive(false);
-            if (gs.distanceText != null) gs.distanceText.gameObject.SetActive(false);
-            if (gs.multiplierText != null) gs.multiplierText.gameObject.SetActive(false);
+            var loadout = FindAnyObjectByType<LoadoutState>();
+            if (loadout == null) return;
+            var loadoutRoot = loadout.transform; // never SetActive(false) this one itself
+            for (int i = 0; i < loadoutRoot.childCount; i++)
+                loadoutRoot.GetChild(i).gameObject.SetActive(false);
+        }
+
+        /// <summary>Trash Dash chrome that means nothing in SummaRace's SWBST race: the
+        /// coin/score/distance/multiplier readouts (text, already-existing hide) plus the
+        /// zone badge backgrounds behind them (upgrade — the text-only hide left empty
+        /// floating icons), the powerup bank + inventory slot (never populated here since
+        /// no consumable is ever granted), manual pause (PauseMenu/Resume stays wired —
+        /// the OS focus-loss auto-pause can still open it even with the button gone), the
+        /// pause menu's Exit button (dead-ends into the now-masked Loadout menu), and the
+        /// fake sample-game leaderboard (defense-in-depth; its two opening buttons are
+        /// already unreachable via the Loadout mask + the GameOver-path exemption below).
+        /// Deliberately leaves the whole GameOver path (DeathPopup, its Premium/Ad buttons,
+        /// the GameOver canvas) untouched per controller ruling — Task 2 makes death
+        /// unreachable, and hiding it now would create a blank dead end if it ever fired.
+        /// Handles come from the UI audit.</summary>
+        private void HideTheirChrome()
+        {
+            var gs = FindAnyObjectByType<GameState>();
+            if (gs != null)
+            {
+                if (gs.coinText != null) gs.coinText.gameObject.SetActive(false);
+                if (gs.premiumText != null) gs.premiumText.gameObject.SetActive(false);
+                if (gs.scoreText != null) gs.scoreText.gameObject.SetActive(false);
+                if (gs.distanceText != null) gs.distanceText.gameObject.SetActive(false);
+                if (gs.multiplierText != null) gs.multiplierText.gameObject.SetActive(false);
+
+                // Zone backgrounds survive the text-only hide above (CoinZone/PremiumZone
+                // are the text's direct parent; DistanceZone likewise; ScoreZone is two
+                // levels up via ScoreLabel — audit-verified hierarchy).
+                if (gs.coinText != null && gs.coinText.transform.parent != null)
+                    gs.coinText.transform.parent.gameObject.SetActive(false); // CoinZone
+                if (gs.premiumText != null && gs.premiumText.transform.parent != null)
+                    gs.premiumText.transform.parent.gameObject.SetActive(false); // PremiumZone
+                if (gs.distanceText != null && gs.distanceText.transform.parent != null)
+                    gs.distanceText.transform.parent.gameObject.SetActive(false); // DistanceZone
+                if (gs.scoreText != null && gs.scoreText.transform.parent != null &&
+                    gs.scoreText.transform.parent.parent != null)
+                    gs.scoreText.transform.parent.parent.gameObject.SetActive(false); // ScoreZone
+
+                if (gs.powerupZone != null) gs.powerupZone.gameObject.SetActive(false); // PowerUpBank
+                if (gs.inventoryIcon != null && gs.inventoryIcon.transform.parent != null)
+                    gs.inventoryIcon.transform.parent.gameObject.SetActive(false); // Inventory
+                if (gs.pauseButton != null) gs.pauseButton.gameObject.SetActive(false);
+                if (gs.lifeRectTransform != null) gs.lifeRectTransform.gameObject.SetActive(false); // hearts
+
+                // PauseMenu/Resume must stay reachable for the focus-loss auto-pause; only
+                // its Exit button (-> QuitToLoadout, a dead end now) gets hidden.
+                if (gs.pauseMenu != null)
+                {
+                    var exit = gs.pauseMenu.Find("Exit");
+                    if (exit != null) exit.gameObject.SetActive(false);
+                }
+            }
+
+            var loadout = FindAnyObjectByType<LoadoutState>();
+            if (loadout != null && loadout.leaderboard != null)
+                loadout.leaderboard.gameObject.SetActive(false);
         }
 
         /// <summary>Entered from Boot, two AudioListeners coexist (persistent Core + scene camera).
         /// Keep Core's — it's the only listener the post-race scenes have.</summary>
         private void EnsureSingleAudioListener()
         {
-            var listeners = FindObjectsByType<AudioListener>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            var listeners = FindObjectsByType<AudioListener>(FindObjectsInactive.Exclude);
             if (listeners.Length <= 1) return;
             var keep = System.Array.Find(listeners, l => l.gameObject.scene.name == "DontDestroyOnLoad");
             if (keep == null) keep = listeners[0];
