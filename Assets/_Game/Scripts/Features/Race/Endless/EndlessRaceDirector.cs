@@ -47,6 +47,7 @@ namespace SummaRace.Features.Race.Endless
         private TextMeshProUGUI _bannerText;
         private TextMeshProUGUI _feedbackText;
         private float _feedbackTimer;
+        private GameState _gameState; // cached by HideTheirChrome for the Update() re-hide guard
 
         private void Awake()
         {
@@ -147,6 +148,12 @@ namespace SummaRace.Features.Race.Endless
                 _currentElement++;
                 UpdateBanner();
             }
+
+            // Their Resume() unconditionally re-shows the pause button after a
+            // focus-loss pause cycle — keep it hidden.
+            if (_gameState != null && _gameState.pauseButton != null &&
+                _gameState.pauseButton.gameObject.activeSelf)
+                _gameState.pauseButton.gameObject.SetActive(false);
         }
 
         // ---------- gate spawning ----------
@@ -475,6 +482,7 @@ namespace SummaRace.Features.Race.Endless
         private void HideTheirChrome()
         {
             var gs = FindAnyObjectByType<GameState>();
+            _gameState = gs;
             if (gs != null)
             {
                 if (gs.coinText != null) gs.coinText.gameObject.SetActive(false);
