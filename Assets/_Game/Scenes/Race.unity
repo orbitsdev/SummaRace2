@@ -1085,7 +1085,7 @@ MonoBehaviour:
   feedbackGroup: {fileID: 1328173164}
   feedbackText: {fileID: 889410491}
   playerModelPrefab: {fileID: 4271666566645896117, guid: 0bbfc2d816be92346af6d519af60af94, type: 3}
-  patrolModelPrefab: {fileID: 3597802053881237544, guid: 95ba22d2f3f969840b366c907eee4c74, type: 3}
+  patrolModelPrefab: {fileID: 3625635206231563748, guid: 45320596b6f868745a4e3f5fe7929dbe, type: 3}
   sceneryPrefabs:
   - {fileID: 1490343738201892, guid: 7e0b0adf7ef381644b302ff611ad5bd6, type: 3}
   - {fileID: 1210459693873458, guid: 9c78d16e4711178429930c47d8e89427, type: 3}
