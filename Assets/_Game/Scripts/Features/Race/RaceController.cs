@@ -38,8 +38,29 @@ namespace SummaRace.Features.Race
         [SerializeField] private Texture2D trailTexture;    // tileable dirt speckle (fallback = flat color)
 
         [Header("Road world (Trash Dash art; empty = dirt-trail mode)")]
-        [SerializeField] private GameObject[] roadSegmentPrefabs;  // modeled street pieces laid end to end
-        [SerializeField] private GameObject[] sideDressingPrefabs; // houses etc. lining the street
+        [SerializeField] private GameObject[] roadSegmentPrefabs;   // modeled street pieces laid end to end
+        [SerializeField] private GameObject[] sideDressingPrefabs;  // near corridor walls hugging the sidewalks
+        [SerializeField] private GameObject[] farDressingPrefabs;   // houses/warehouses beyond the walls
+        [SerializeField] private GameObject[] sidewalkPropPrefabs;  // cones/bins ON the sidewalks (never the lanes)
+        [SerializeField] private float curveStrength = 0.005f;      // world bend — Trash Dash's shipped value
+
+        private static readonly int CurveStrengthId = Shader.PropertyToID("_CurveStrength");
+        private bool _curvedWorld;
+
+        /// <summary>World-geometry material: curved unlit in road mode, matte lit otherwise.</summary>
+        private Material WorldMat(Color color)
+        {
+            if (_curvedWorld)
+            {
+                var curved = new Material(Shader.Find("SummaRace/CurvedVertexColor"));
+                curved.SetColor("_BaseColor", color);
+                return curved;
+            }
+            var lit = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+            lit.color = color;
+            lit.SetFloat("_Smoothness", 0f);
+            return lit;
+        }
         [SerializeField] private Sprite worldCardSprite;
         [SerializeField] private TMP_FontAsset worldLabelFont;
 
@@ -372,6 +393,8 @@ namespace SummaRace.Features.Race
             // Road mode: modeled street segments become the track bed; the dirt-trail
             // build below stays as the grey-box/park fallback when nothing is wired.
             bool roadMode = roadSegmentPrefabs != null && roadSegmentPrefabs.Length > 0;
+            _curvedWorld = roadMode;
+            Shader.SetGlobalFloat(CurveStrengthId, roadMode ? curveStrength : 0f);
             if (roadMode)
             {
                 BuildRoadWorld(length);
@@ -445,9 +468,7 @@ namespace SummaRace.Features.Race
             ground.transform.SetParent(_world, false);
             ground.transform.localScale = new Vector3(60f, 0.5f, length + 60f);
             ground.transform.localPosition = new Vector3(0f, -0.30f, length * 0.5f - 20f);
-            var gm = ground.GetComponent<Renderer>().material;
-            gm.color = new Color(0.43f, 0.73f, 0.29f);
-            gm.SetFloat("_Smoothness", 0f);
+            ground.GetComponent<Renderer>().sharedMaterial = WorldMat(new Color(0.43f, 0.73f, 0.29f));
             Destroy(ground.GetComponent<Collider>());
 
             const float segmentLength = 9f; // their street pieces are 9m deep
@@ -472,16 +493,53 @@ namespace SummaRace.Features.Race
                         side > 0f ? 180f : 0f); // face the street from both sides
                     house.name = "Side_" + z;
 
-                    // Yard compounds are wide with off-center pivots — slide each one
-                    // outward until its inner edge clears the street.
-                    var b = new Bounds(house.transform.position, Vector3.zero);
-                    foreach (var r in house.GetComponentsInChildren<Renderer>())
-                        if (r.enabled) b.Encapsulate(r.bounds);
-                    const float clear = 11.5f;
-                    float shift = side < 0f ? Mathf.Min(0f, -clear - b.max.x) : Mathf.Max(0f, clear - b.min.x);
-                    house.transform.localPosition += new Vector3(shift, 0f, 0f);
+                    // Wall/yard pieces are wide with off-center pivots — slide each one
+                    // outward until its inner edge clears the street. 10.5 hugs the
+                    // sidewalk for the Trash Dash alley-corridor feel.
+                    SlideClearOfStreet(house, side, 10.5f);
                 }
             }
+
+            // Far layer: houses/warehouses peeking over the corridor walls.
+            if (farDressingPrefabs != null && farDressingPrefabs.Length > 0)
+            {
+                for (float z = -6f; z < length - 20f; z += 24f)
+                for (int s = 0; s < 2; s++)
+                {
+                    float side = s == 0 ? -1f : 1f;
+                    int pick = Mathf.Abs((int)(z * 2.31f + s * 3f)) % farDressingPrefabs.Length;
+                    if (farDressingPrefabs[pick] == null) continue;
+                    var far = SpawnDressing(farDressingPrefabs[pick],
+                        new Vector3(side * 30f, 0f, z + (side > 0f ? 11f : 0f)),
+                        side > 0f ? 180f : 0f);
+                    far.name = "Far_" + z;
+                    SlideClearOfStreet(far, side, 24f);
+                }
+            }
+
+            // Cones/bins ON the sidewalks — race-course dressing, never on the lanes.
+            if (sidewalkPropPrefabs != null && sidewalkPropPrefabs.Length > 0)
+            {
+                for (float z = 2f; z < length - 25f; z += 13f)
+                {
+                    float side = ((int)(z * 0.531f) % 2 == 0) ? -1f : 1f;
+                    int pick = Mathf.Abs((int)(z * 4.19f)) % sidewalkPropPrefabs.Length;
+                    if (sidewalkPropPrefabs[pick] == null) continue;
+                    var prop = SpawnDressing(sidewalkPropPrefabs[pick],
+                        new Vector3(side * 5.3f, 0f, z), (z * 67f) % 360f);
+                    prop.name = "Walkprop_" + z;
+                }
+            }
+        }
+
+        /// <summary>Pushes a dressing piece outward until its inner renderer edge clears the street.</summary>
+        private static void SlideClearOfStreet(GameObject piece, float side, float clear)
+        {
+            var b = new Bounds(piece.transform.position, Vector3.zero);
+            foreach (var r in piece.GetComponentsInChildren<Renderer>())
+                if (r.enabled) b.Encapsulate(r.bounds);
+            float shift = side < 0f ? Mathf.Min(0f, -clear - b.max.x) : Mathf.Max(0f, clear - b.min.x);
+            piece.transform.localPosition += new Vector3(shift, 0f, 0f);
         }
 
         /// <summary>Instantiates world dressing safely: no colliders, no baked blob-shadow quads.</summary>
@@ -546,9 +604,8 @@ namespace SummaRace.Features.Race
         /// </summary>
         private void BuildCoinLines(float finishZ)
         {
-            var coinMat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-            coinMat.color = new Color(1f, 0.82f, 0.20f);
-            coinMat.SetFloat("_Smoothness", 0.45f);
+            var coinMat = WorldMat(new Color(1f, 0.82f, 0.20f));
+            if (!_curvedWorld) coinMat.SetFloat("_Smoothness", 0.45f);
 
             float spacing = _story.mission.checkpointSpacing;
             for (int gap = 0; gap <= 5; gap++)
@@ -849,9 +906,7 @@ namespace SummaRace.Features.Race
             arch.SetParent(_world, false);
             arch.localPosition = new Vector3(0f, 0f, 8f);
 
-            var woodMat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-            woodMat.color = new Color(0.48f, 0.33f, 0.18f);
-            woodMat.SetFloat("_Smoothness", 0f);
+            var woodMat = WorldMat(new Color(0.48f, 0.33f, 0.18f));
 
             float half = GameRules.LaneWidth * 1.5f + 0.7f;
             for (int s = 0; s < 2; s++)
@@ -896,11 +951,7 @@ namespace SummaRace.Features.Race
             {
                 _flagMats = new Material[5];
                 for (int i = 0; i < 5; i++)
-                {
-                    _flagMats[i] = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-                    _flagMats[i].color = SwbstPalette.ForIndex(i);
-                    _flagMats[i].SetFloat("_Smoothness", 0f);
-                }
+                    _flagMats[i] = WorldMat(SwbstPalette.ForIndex(i));
             }
 
             int flags = 9;
@@ -923,10 +974,8 @@ namespace SummaRace.Features.Race
             var strip = new GameObject("FinishStrip").transform;
             strip.SetParent(_world, false);
 
-            var white = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-            white.color = new Color(0.97f, 0.97f, 0.97f); white.SetFloat("_Smoothness", 0f);
-            var black = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-            black.color = new Color(0.12f, 0.12f, 0.12f); black.SetFloat("_Smoothness", 0f);
+            var white = WorldMat(new Color(0.97f, 0.97f, 0.97f));
+            var black = WorldMat(new Color(0.12f, 0.12f, 0.12f));
 
             float trackWidth = GameRules.LaneWidth * 3f - 0.3f;
             int cols = 12;

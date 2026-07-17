@@ -1130,10 +1130,23 @@ MonoBehaviour:
   - {fileID: 100000, guid: 278d5c6b4a4b61548afccfdb78e4b8a8, type: 3}
   - {fileID: 100000, guid: 44bfb6e7a0a6cd541bb29e99af852562, type: 3}
   sideDressingPrefabs:
+  - {fileID: 1000011153998704, guid: 2f8abb5887b4af046b2f7fe9190c9d1d, type: 3}
+  - {fileID: 1000011257016660, guid: 0e145376c7d52444b97856849e2a7bd2, type: 3}
+  - {fileID: 1000011138244650, guid: 627ea187cfa7b524482f0725ce9ffafe, type: 3}
+  - {fileID: 1000013281422948, guid: 01466a005c28535479de3c39b3304e3f, type: 3}
+  - {fileID: 1000010379647186, guid: 423b9549e9d84034aac50ab7e0459e77, type: 3}
+  - {fileID: 1000013554387178, guid: 6d998870eb4591747a98ab06751e0227, type: 3}
+  farDressingPrefabs:
   - {fileID: 1000014290068172, guid: efcbfaf146228ad40ae6c878d7806d64, type: 3}
   - {fileID: 1000011501633068, guid: 5d6fcbaf51bca6b4594f12ca78b10a69, type: 3}
   - {fileID: 1000011509899756, guid: 544006c54b323e9419926850d7e3fbac, type: 3}
-  - {fileID: 1000010291688486, guid: dcbeb2ef97131d241b111f35d4788477, type: 3}
+  - {fileID: 1000011175313116, guid: 2d4807022e73aa34ab8f01892dbdfe1d, type: 3}
+  - {fileID: 1000013300068254, guid: 391abdb78f486ff4abd13845846e0f05, type: 3}
+  sidewalkPropPrefabs:
+  - {fileID: 1000010256476064, guid: f0070c0f7d7cdcb4eb7176be4a87caa9, type: 3}
+  - {fileID: 1000011638144408, guid: 22facfbe232a90b45b681c638f2e490d, type: 3}
+  - {fileID: 1000013234899880, guid: d9056217b765e1b4893238b9e7ebddbc, type: 3}
+  curveStrength: 0.005
   worldCardSprite: {fileID: 21300000, guid: e96be3c2e6d907741939a389219ea24f, type: 3}
   worldLabelFont: {fileID: 11400000, guid: 2d80ca966f93d3f4baba91251ab4761c, type: 2}
   optionPadFxPrefab: {fileID: 7986504087968017091, guid: 12a56ee4630040c4eb17ae9707ed4cef, type: 3}
@@ -1218,7 +1231,7 @@ Camera:
     height: 1
   near clip plane: 0.3
   far clip plane: 1000
-  field of view: 64
+  field of view: 59
   orthographic: 0
   orthographic size: 5
   m_Depth: 0
@@ -1244,8 +1257,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 501432908}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.11320321, y: 0, z: 0, w: 0.9935719}
-  m_LocalPosition: {x: 0, y: 3.3, z: -5.4}
+  m_LocalRotation: {x: 0.1305262, y: 0, z: 0, w: 0.9914449}
+  m_LocalPosition: {x: 0, y: 4, z: -3}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1265,8 +1278,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SummaRace.Features.Race.RaceChaseCamera
   followShare: 0.75
   positionDamping: 6
-  baseFov: 64
-  boostFov: 74
+  baseFov: 59
+  boostFov: 67
   fovDamping: 4
 --- !u!114 &501432912
 MonoBehaviour:
