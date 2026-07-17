@@ -575,6 +575,8 @@ public class TrackManager : MonoBehaviour
 
     public IEnumerator SpawnCoinAndPowerup(TrackSegment segment)
     {
+        // SummaRace: in SWBST-collection mode the answer gates are the only collectibles.
+        if (SummaRace.Features.Race.Endless.EndlessRaceMode.Active) yield break;
         if (!m_IsTutorial)
         {
             const float increment = 1.5f;
