@@ -130,6 +130,8 @@ namespace SummaRace.Features.Race
             _player.InputEnabled = true;
             SetRunning(true);
             ShowBanner();
+            if (AudioManager.Instance != null)
+                AudioManager.Instance.PlayMusic(AudioKeys.MusicRace); // loops for the whole run
         }
 
         private void Update()
@@ -334,7 +336,11 @@ namespace SummaRace.Features.Race
             if (GameManager.Instance != null) GameManager.Instance.SetRaceResult(result);
             EventBus.Raise(new RaceCompleted { result = result });
 
-            if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxStar);
+            if (AudioManager.Instance != null)
+            {
+                AudioManager.Instance.StopMusic(); // victory sting takes over on Results
+                AudioManager.Instance.PlaySfx(AudioKeys.SfxStar);
+            }
             if (bannerText != null) bannerText.text = "FINISH!";
             if (progressText != null) progressText.text = "5/5";
 

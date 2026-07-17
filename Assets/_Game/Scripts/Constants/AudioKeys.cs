@@ -32,6 +32,7 @@ namespace SummaRace.Constants
 
         // Music
         public const string MusicMenu = "music_menu";
+        public const string MusicRace = "music_race";
         public const string MusicVictory = "music_victory";
     }
 }
