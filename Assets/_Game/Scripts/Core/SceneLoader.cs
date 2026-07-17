@@ -89,17 +89,13 @@ namespace SummaRace.Core
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 999; // always on top
 
-            // Deep-blue gradient backdrop (falls back to flat navy if sprite missing).
+            // Dark radial branding backdrop (20 Logos pack) — same identity as the Boot splash.
             var imageGo = new GameObject("FadeImage");
             imageGo.transform.SetParent(canvasGo.transform, false);
             var image = imageGo.AddComponent<Image>();
-            var gradient = Resources.Load<Sprite>("UI/loading_gradient");
-            if (gradient != null)
-            {
-                image.sprite = gradient;
-                image.transform.localScale = new Vector3(1f, -1f, 1f); // deep at top
-            }
-            image.color = new Color(0.16f, 0.32f, 0.55f);
+            var radial = Resources.Load<Sprite>("UI/bg_logo_radial");
+            if (radial != null) image.sprite = radial;
+            else image.color = new Color(0.09f, 0.11f, 0.17f); // flat fallback matches the radial's tone
             var rect = image.rectTransform;
             rect.anchorMin = Vector2.zero;
             rect.anchorMax = Vector2.one;
