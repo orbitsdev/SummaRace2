@@ -34,6 +34,8 @@ namespace SummaRace.Features.Race
         [SerializeField] private GameObject[] tracksideObstaclePrefabs;
         [SerializeField] private GameObject[] skylinePrefabs;
         [SerializeField] private GameObject fencePrefab;
+        [SerializeField] private GameObject[] cloudPrefabs; // modeled clouds (fallback = sphere puffs)
+        [SerializeField] private Texture2D trailTexture;    // tileable dirt speckle (fallback = flat color)
         [SerializeField] private Sprite worldCardSprite;
         [SerializeField] private TMP_FontAsset worldLabelFont;
 
@@ -367,6 +369,12 @@ namespace SummaRace.Features.Race
             var trailMat = trail.GetComponent<Renderer>().material;
             trailMat.color = new Color(0.76f, 0.60f, 0.38f);
             trailMat.SetFloat("_Smoothness", 0f); // matte dirt — no specular wash-out
+            if (trailTexture != null)
+            {
+                // Speckled ground detail so the trail reads as dirt, not flat vinyl.
+                trailMat.SetTexture("_BaseMap", trailTexture);
+                trailMat.SetTextureScale("_BaseMap", new Vector2(4f, length / 7f));
+            }
             Destroy(trail.GetComponent<Collider>());
 
             Material edgeMat = null;
@@ -588,7 +596,22 @@ namespace SummaRace.Features.Race
         /// <summary>Puffy cartoon clouds: squashed white unlit spheres drifting past with the world.</summary>
         private void BuildClouds(float length)
         {
-            // High, wide, chunky clouds — sky dressing, never window-cluttering blobs.
+            // Modeled cartoon clouds when wired; sphere-puff fallback for grey-box.
+            if (cloudPrefabs != null && cloudPrefabs.Length > 0)
+            {
+                for (float z = 5f; z < length + 40f; z += 26f)
+                {
+                    float side = ((int)(z / 26f) % 2 == 0) ? -1f : 1f;
+                    int pick = Mathf.Abs((int)(z * 2.71f)) % cloudPrefabs.Length;
+                    if (cloudPrefabs[pick] == null) continue;
+                    var c = Instantiate(cloudPrefabs[pick], _world);
+                    c.transform.localPosition = new Vector3(side * (13f + (z * 0.37f) % 12f), 15f + (z * 0.61f) % 6f, z);
+                    c.transform.localRotation = Quaternion.Euler(0f, (z * 31f) % 360f, 0f);
+                    c.transform.localScale = Vector3.one * (1.6f + (z * 0.29f) % 1.2f);
+                }
+                return;
+            }
+
             var cloudMat = new Material(Shader.Find("Universal Render Pipeline/Unlit")) { color = new Color(1f, 1f, 1f, 1f) };
             for (float z = 5f; z < length + 40f; z += 26f)
             {
