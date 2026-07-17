@@ -217,6 +217,11 @@ namespace SummaRace.Features.Race
                         newZ = Mathf.Min(newZ, _checkpoints[_currentElement + 1].position.z - 12f);
                     newZ = Mathf.Max(newZ, 14f); // always respawn comfortably ahead of the player
                     cp.position = new Vector3(cp.position.x, cp.position.y, newZ);
+
+                    // Clear coins the recycled gate would land on — no cards-in-coins overlap.
+                    foreach (var coin in FindObjectsByType<CoinPickup>(FindObjectsSortMode.None))
+                        if (Mathf.Abs(coin.transform.position.z - newZ) < 9f)
+                            Destroy(coin.gameObject);
                 }
             }
 
@@ -301,6 +306,7 @@ namespace SummaRace.Features.Race
             ShowFeedback("Not quite — grab the glowing one!", new Color(1f, 0.78f, 0.35f));
             SpawnFx(wrongFxPrefab, pickup.transform.position);
 
+            if (pickup.padFx != null) Destroy(pickup.padFx); // no orphaned glow ring
             Destroy(pickup.gameObject);
 
             // Highlight the correct pickup: golden card + gentle grow until collected (TDD §11.4).
@@ -394,6 +400,7 @@ namespace SummaRace.Features.Race
             bool roadMode = roadSegmentPrefabs != null && roadSegmentPrefabs.Length > 0;
             _curvedWorld = roadMode;
             Shader.SetGlobalFloat(CurveStrengthId, roadMode ? curveStrength : 0f);
+            CurveDip.Strength = roadMode ? curveStrength : 0f; // uncurved items follow the bend
             if (roadMode)
             {
                 BuildRoadWorld(length);
@@ -989,12 +996,18 @@ namespace SummaRace.Features.Race
                 (correct[i], correct[j]) = (correct[j], correct[i]);
             }
 
+            // Uncurved visuals (sprite cards, TMP, particle pads) live in one group that
+            // CurveDip glues to the bent world; bunting is curved-shader and stays on root.
+            var items = new GameObject("Items").transform;
+            items.SetParent(root, false);
+            items.gameObject.AddComponent<CurveDip>();
+
             for (int lane = 0; lane < 3; lane++)
             {
                 // Invisible trigger volume; the rounded answer card IS the visible pickup.
                 var cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 cube.name = "Option_" + lane;
-                cube.transform.SetParent(root, false);
+                cube.transform.SetParent(items, false);
                 cube.transform.localPosition = new Vector3((lane - 1) * GameRules.LaneWidth, 1.35f, 0f);
                 cube.transform.localScale = new Vector3(1.9f, 1.9f, 0.5f);
                 cube.GetComponent<Renderer>().enabled = false;
@@ -1013,15 +1026,16 @@ namespace SummaRace.Features.Race
                 // Soft golden glow ring on the trail under each card — "this story piece is precious".
                 if (optionPadFxPrefab != null)
                 {
-                    var pad = Instantiate(optionPadFxPrefab, root);
+                    var pad = Instantiate(optionPadFxPrefab, items);
                     pad.transform.localPosition = new Vector3((lane - 1) * GameRules.LaneWidth, 0.12f, 0f);
                     pad.transform.localScale = Vector3.one * 0.26f; // Healing circle is wide; keep rings inside one lane
                     TintFx(pad, StoryGold);
+                    pickup.padFx = pad; // ring dies with its card on a wrong pick
                 }
             }
 
             // SWBST pill floating above the gate, in the element's signature color.
-            BuildWorldCard(root, new Vector3(0f, 3.6f, 0f), Vector3.one,
+            BuildWorldCard(items, new Vector3(0f, 3.6f, 0f), Vector3.one,
                 new Vector2(3.0f, 0.72f), element.type, Color.white, SwbstPalette.ForIndex(elementIndex), 3.4f);
 
             // Festive bunting strung over the gate — recycles with the checkpoint.
@@ -1036,10 +1050,16 @@ namespace SummaRace.Features.Race
 
         private void BuildFinishGate(float z)
         {
+            // Finish visuals are uncurved — CurveDip keeps them glued to the bent road.
+            var finishGroup = new GameObject("FinishGroup").transform;
+            finishGroup.SetParent(_world, false);
+            finishGroup.localPosition = new Vector3(0f, 0f, z);
+            finishGroup.gameObject.AddComponent<CurveDip>();
+
             var gate = GameObject.CreatePrimitive(PrimitiveType.Cube);
             gate.name = "FinishGate";
-            gate.transform.SetParent(_world, false);
-            gate.transform.localPosition = new Vector3(0f, 1.5f, z);
+            gate.transform.SetParent(finishGroup, false);
+            gate.transform.localPosition = new Vector3(0f, 1.5f, 0f);
             gate.transform.localScale = new Vector3(GameRules.LaneWidth * 3f, 3f, 0.5f);
             var rend = gate.GetComponent<Renderer>();
             rend.material.color = new Color(1f, 0.85f, 0.2f, 0.6f);
@@ -1055,8 +1075,8 @@ namespace SummaRace.Features.Race
             // A golden story-gate waiting at the finish — the treasure payoff in view all run.
             if (finishPortalPrefab != null)
             {
-                var portal = Instantiate(finishPortalPrefab, _world);
-                portal.transform.localPosition = new Vector3(0f, 2.1f, z + 3f);
+                var portal = Instantiate(finishPortalPrefab, finishGroup);
+                portal.transform.localPosition = new Vector3(0f, 2.1f, 3f);
                 portal.transform.localScale = Vector3.one * 2.6f;
                 TintFx(portal, StoryGold);
             }

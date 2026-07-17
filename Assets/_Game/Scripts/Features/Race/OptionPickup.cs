@@ -12,6 +12,7 @@ namespace SummaRace.Features.Race
         public int elementIndex;
         public bool isCorrect;
         public bool isFinishGate;
+        public GameObject padFx; // glow ring under this card — dies with it on a wrong pick
 
         private void OnTriggerEnter(Collider other)
         {
