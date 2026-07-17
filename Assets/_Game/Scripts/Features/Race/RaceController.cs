@@ -36,6 +36,10 @@ namespace SummaRace.Features.Race
         [SerializeField] private GameObject fencePrefab;
         [SerializeField] private GameObject[] cloudPrefabs; // modeled clouds (fallback = sphere puffs)
         [SerializeField] private Texture2D trailTexture;    // tileable dirt speckle (fallback = flat color)
+
+        [Header("Road world (Trash Dash art; empty = dirt-trail mode)")]
+        [SerializeField] private GameObject[] roadSegmentPrefabs;  // modeled street pieces laid end to end
+        [SerializeField] private GameObject[] sideDressingPrefabs; // houses etc. lining the street
         [SerializeField] private Sprite worldCardSprite;
         [SerializeField] private TMP_FontAsset worldLabelFont;
 
@@ -365,6 +369,19 @@ namespace SummaRace.Features.Race
             ground.GetComponent<Renderer>().material.color = new Color(0.43f, 0.73f, 0.29f); // grass
             Destroy(ground.GetComponent<Collider>());
 
+            // Road mode: modeled street segments become the track bed; the dirt-trail
+            // build below stays as the grey-box/park fallback when nothing is wired.
+            bool roadMode = roadSegmentPrefabs != null && roadSegmentPrefabs.Length > 0;
+            if (roadMode)
+            {
+                BuildRoadWorld(length);
+                BuildSkyline(length);
+                BuildClouds(length);
+                BuildStartArch();
+                BuildPlayerPatrolAndGates();
+                return;
+            }
+
             // Natural dirt trail across all three lanes (adventure-park look):
             // sandy bed, packed-earth edges, dashed cream lane guides.
             var trail = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -416,7 +433,72 @@ namespace SummaRace.Features.Race
 
             BuildScenery(length);
             BuildStartArch();
+            BuildPlayerPatrolAndGates();
+        }
 
+        /// <summary>Their street pieces laid end to end + houses lining both sides (blob shadows off, colliders stripped).</summary>
+        private void BuildRoadWorld(float length)
+        {
+            // Grass base under everything, wider than the street pieces.
+            var ground = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            ground.name = "GroundWide";
+            ground.transform.SetParent(_world, false);
+            ground.transform.localScale = new Vector3(60f, 0.5f, length + 60f);
+            ground.transform.localPosition = new Vector3(0f, -0.30f, length * 0.5f - 20f);
+            var gm = ground.GetComponent<Renderer>().material;
+            gm.color = new Color(0.43f, 0.73f, 0.29f);
+            gm.SetFloat("_Smoothness", 0f);
+            Destroy(ground.GetComponent<Collider>());
+
+            const float segmentLength = 9f; // their street pieces are 9m deep
+            for (float z = -18f; z < length + 10f; z += segmentLength)
+            {
+                int pick = Mathf.Abs((int)(z * 1.37f)) % roadSegmentPrefabs.Length;
+                if (roadSegmentPrefabs[pick] == null) continue;
+                var seg = SpawnDressing(roadSegmentPrefabs[pick], new Vector3(0f, 0f, z + segmentLength * 0.5f), 0f);
+                seg.name = "Road_" + z;
+            }
+
+            if (sideDressingPrefabs != null && sideDressingPrefabs.Length > 0)
+            {
+                for (float z = -10f; z < length - 20f; z += 19f)
+                for (int s = 0; s < 2; s++)
+                {
+                    float side = s == 0 ? -1f : 1f;
+                    int pick = Mathf.Abs((int)(z * 3.77f + s * 5f)) % sideDressingPrefabs.Length;
+                    if (sideDressingPrefabs[pick] == null) continue;
+                    var house = SpawnDressing(sideDressingPrefabs[pick],
+                        new Vector3(side * 16f, 0f, z + (side > 0f ? 7f : 0f)),
+                        side > 0f ? 180f : 0f); // face the street from both sides
+                    house.name = "Side_" + z;
+
+                    // Yard compounds are wide with off-center pivots — slide each one
+                    // outward until its inner edge clears the street.
+                    var b = new Bounds(house.transform.position, Vector3.zero);
+                    foreach (var r in house.GetComponentsInChildren<Renderer>())
+                        if (r.enabled) b.Encapsulate(r.bounds);
+                    const float clear = 11.5f;
+                    float shift = side < 0f ? Mathf.Min(0f, -clear - b.max.x) : Mathf.Max(0f, clear - b.min.x);
+                    house.transform.localPosition += new Vector3(shift, 0f, 0f);
+                }
+            }
+        }
+
+        /// <summary>Instantiates world dressing safely: no colliders, no baked blob-shadow quads.</summary>
+        private GameObject SpawnDressing(GameObject prefab, Vector3 localPos, float yRot)
+        {
+            var go = Instantiate(prefab, _world);
+            go.transform.localPosition = localPos;
+            go.transform.localRotation = Quaternion.Euler(0f, yRot, 0f);
+            foreach (var c in go.GetComponentsInChildren<Collider>(true)) Destroy(c);
+            foreach (var r in go.GetComponentsInChildren<Renderer>(true))
+                if (r.sharedMaterial != null && r.sharedMaterial.name.Contains("Shadow"))
+                    r.enabled = false;
+            return go;
+        }
+
+        private void BuildPlayerPatrolAndGates()
+        {
             // Player at the origin: physics root + character model (or grey-box capsule).
             var playerGo = new GameObject("Player");
             playerGo.tag = "Player";

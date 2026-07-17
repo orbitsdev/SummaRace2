@@ -1124,6 +1124,16 @@ MonoBehaviour:
   - {fileID: 1000012941456988, guid: e4217d014d522f94bb0a059a38e2cb14, type: 3}
   - {fileID: 1000013540275922, guid: 480053abe3ba0aa4883a1b63c0deee9d, type: 3}
   trailTexture: {fileID: 2800000, guid: ae45ca41ecb36af4489f32332ef3b4bd, type: 3}
+  roadSegmentPrefabs:
+  - {fileID: 100000, guid: 9a26112fdfc12324d8fee247fbeb44e7, type: 3}
+  - {fileID: 100000, guid: 5dc9820c76494354e9e924a6c791efa7, type: 3}
+  - {fileID: 100000, guid: 278d5c6b4a4b61548afccfdb78e4b8a8, type: 3}
+  - {fileID: 100000, guid: 44bfb6e7a0a6cd541bb29e99af852562, type: 3}
+  sideDressingPrefabs:
+  - {fileID: 1000014290068172, guid: efcbfaf146228ad40ae6c878d7806d64, type: 3}
+  - {fileID: 1000011501633068, guid: 5d6fcbaf51bca6b4594f12ca78b10a69, type: 3}
+  - {fileID: 1000011509899756, guid: 544006c54b323e9419926850d7e3fbac, type: 3}
+  - {fileID: 1000010291688486, guid: dcbeb2ef97131d241b111f35d4788477, type: 3}
   worldCardSprite: {fileID: 21300000, guid: e96be3c2e6d907741939a389219ea24f, type: 3}
   worldLabelFont: {fileID: 11400000, guid: 2d80ca966f93d3f4baba91251ab4761c, type: 2}
   optionPadFxPrefab: {fileID: 7986504087968017091, guid: 12a56ee4630040c4eb17ae9707ed4cef, type: 3}
