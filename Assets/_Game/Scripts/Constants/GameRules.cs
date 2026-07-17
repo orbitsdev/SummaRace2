@@ -14,6 +14,10 @@ namespace SummaRace.Constants
         public const float DangerMax = 100f;
         public const float DangerAfterCaught = 50f;
 
+        // Run pacing (Trash Dash-style): the run gently speeds up so the finish feels fast.
+        public const float RaceAccelPerSecond = 0.005f; // +0.5% base speed per second...
+        public const float RaceAccelMaxBonus = 0.25f;   // ...capped at +25%
+
         // Stars (GDD §4.2): 3★ = 5/5 first picks, 2★ = 4/5, 1★ = 3 or fewer
         public const int StarsThreeMin = 5;
         public const int StarsTwoMin = 4;

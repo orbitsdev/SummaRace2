@@ -144,15 +144,18 @@ namespace SummaRace.Features.Race
                 if (_speedEffectTimer <= 0f) _speedMultiplier = 1f;
             }
 
+            // The run gently accelerates over time (Trash Dash pacing) — the finish feels fast.
+            float accel = 1f + Mathf.Min(_runSeconds * GameRules.RaceAccelPerSecond, GameRules.RaceAccelMaxBonus);
+
             // Run cycle keeps pace with the boost/slow so feet don't slide.
-            if (_playerAnim != null) _playerAnim.speed = _speedMultiplier;
+            if (_playerAnim != null) _playerAnim.speed = _speedMultiplier * accel;
 
             // Wind trail only while boosted.
             bool boosting = _speedMultiplier > 1.05f;
             if (_boostTrail != null && _boostTrail.activeSelf != boosting) _boostTrail.SetActive(boosting);
 
             // Grass footsteps in time with the run cycle.
-            _footstepTimer -= dt * _speedMultiplier;
+            _footstepTimer -= dt * _speedMultiplier * accel;
             if (_footstepTimer <= 0f)
             {
                 _footstepTimer = 0.34f;
@@ -166,7 +169,7 @@ namespace SummaRace.Features.Race
             }
 
             // Scroll the world toward the player.
-            float speed = _story.mission.playerSpeed * _speedMultiplier;
+            float speed = _story.mission.playerSpeed * _speedMultiplier * accel;
             _world.position += Vector3.back * speed * dt;
 
             // Danger climbs over time (TDD §11.5).
@@ -434,7 +437,46 @@ namespace SummaRace.Features.Race
                 _checkpoints[i] = BuildCheckpoint(i);
 
             // Finish gate past the last checkpoint.
-            BuildFinishGate(20f + 5 * _story.mission.checkpointSpacing + 15f);
+            float finishZ = 20f + 5 * _story.mission.checkpointSpacing + 15f;
+            BuildFinishGate(finishZ);
+
+            BuildCoinLines(finishZ);
+        }
+
+        /// <summary>
+        /// Center-lane coin trails between the answer gates (Trash Dash micro-reward).
+        /// They also guide the eye back to the middle, where all 3 upcoming cards are visible.
+        /// </summary>
+        private void BuildCoinLines(float finishZ)
+        {
+            var coinMat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+            coinMat.color = new Color(1f, 0.82f, 0.20f);
+            coinMat.SetFloat("_Smoothness", 0.45f);
+
+            float spacing = _story.mission.checkpointSpacing;
+            for (int gap = 0; gap <= 5; gap++)
+            {
+                float from = gap == 0 ? 6f : 20f + (gap - 1) * spacing + 7f;
+                float to = gap == 5 ? finishZ - 8f : 20f + gap * spacing - 9f;
+                for (float z = from; z <= to; z += 2.6f)
+                {
+                    var coin = new GameObject("Coin");
+                    coin.transform.SetParent(_world, false);
+                    coin.transform.localPosition = new Vector3(0f, 1.15f, z);
+
+                    var disc = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                    Destroy(disc.GetComponent<Collider>());
+                    disc.transform.SetParent(coin.transform, false);
+                    disc.transform.localRotation = Quaternion.Euler(90f, 0f, 0f); // face the runner
+                    disc.transform.localScale = new Vector3(0.5f, 0.045f, 0.5f);
+                    disc.GetComponent<Renderer>().sharedMaterial = coinMat;
+
+                    var trigger = coin.AddComponent<SphereCollider>();
+                    trigger.isTrigger = true;
+                    trigger.radius = 0.55f;
+                    coin.AddComponent<CoinPickup>();
+                }
+            }
         }
 
         private int _checkpoints_Length() => 5;

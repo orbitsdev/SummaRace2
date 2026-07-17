@@ -18,6 +18,7 @@ namespace SummaRace.Constants
 
         // Race
         public const string SfxCollect = "sfx_collect";
+        public const string SfxCoin = "sfx_coin";             // coin-line pickup tick
         public const string SfxBoost = "sfx_boost";
         public const string SfxWhoosh = "sfx_whoosh";
         public const string SfxCaught = "sfx_caught";
