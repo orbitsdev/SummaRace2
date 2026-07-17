@@ -1008,21 +1008,21 @@ namespace SummaRace.Features.Race
                 if (correct[lane]) TagAsCorrectOf(elementIndex, cube.transform);
 
                 BuildWorldCard(cube.transform, Vector3.zero, Vector3.one,
-                    new Vector2(1.2f, 0.66f), texts[lane], new Color(0.20f, 0.24f, 0.32f), Color.white, 2f);
+                    new Vector2(1.55f, 0.85f), texts[lane], new Color(0.20f, 0.24f, 0.32f), Color.white, 2.4f);
 
                 // Soft golden glow ring on the trail under each card — "this story piece is precious".
                 if (optionPadFxPrefab != null)
                 {
                     var pad = Instantiate(optionPadFxPrefab, root);
                     pad.transform.localPosition = new Vector3((lane - 1) * GameRules.LaneWidth, 0.12f, 0f);
-                    pad.transform.localScale = Vector3.one * 0.45f; // Healing circle is wide; keep rings lane-sized
+                    pad.transform.localScale = Vector3.one * 0.26f; // Healing circle is wide; keep rings inside one lane
                     TintFx(pad, StoryGold);
                 }
             }
 
             // SWBST pill floating above the gate, in the element's signature color.
             BuildWorldCard(root, new Vector3(0f, 3.6f, 0f), Vector3.one,
-                new Vector2(2.6f, 0.62f), element.type, Color.white, SwbstPalette.ForIndex(elementIndex), 3f);
+                new Vector2(3.0f, 0.72f), element.type, Color.white, SwbstPalette.ForIndex(elementIndex), 3.4f);
 
             // Festive bunting strung over the gate — recycles with the checkpoint.
             BuildBunting(root, 4.6f, GameRules.LaneWidth * 3f + 1.0f, true);
