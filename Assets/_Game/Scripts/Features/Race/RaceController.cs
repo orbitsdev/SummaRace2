@@ -23,6 +23,8 @@ namespace SummaRace.Features.Race
         [Header("HUD")]
         [SerializeField] private GameObject bannerGroup;
         [SerializeField] private TMP_Text bannerText;
+        [SerializeField] private TMP_Text progressText;    // "1/5" pill on the banner
+        [SerializeField] private GameObject feedbackGroup; // pill behind the feedback text
         [SerializeField] private TMP_Text feedbackText;
 
         [Header("World visuals (fallback = grey-box primitives)")]
@@ -34,6 +36,11 @@ namespace SummaRace.Features.Race
         [SerializeField] private GameObject fencePrefab;
         [SerializeField] private Sprite worldCardSprite;
         [SerializeField] private TMP_FontAsset worldLabelFont;
+
+        [Header("Magic FX (Hovl, optional)")]
+        [SerializeField] private GameObject optionPadFxPrefab;    // glowing circle under each answer card
+        [SerializeField] private GameObject collectMagicFxPrefab; // star burst on a correct pick
+        [SerializeField] private GameObject finishPortalPrefab;   // portal waiting at the finish line
 
         [Header("Cartoon FX (optional)")]
         [SerializeField] private GameObject collectFxPrefab;
@@ -182,7 +189,11 @@ namespace SummaRace.Features.Race
             if (_feedbackTimer > 0f)
             {
                 _feedbackTimer -= dt;
-                if (_feedbackTimer <= 0f && feedbackText != null) feedbackText.text = "";
+                if (_feedbackTimer <= 0f)
+                {
+                    if (feedbackText != null) feedbackText.text = "";
+                    if (feedbackGroup != null) feedbackGroup.SetActive(false);
+                }
             }
         }
 
@@ -221,8 +232,10 @@ namespace SummaRace.Features.Race
             _speedMultiplier = 1.5f;
             _speedEffectTimer = GameRules.BoostSeconds;
             _danger = Mathf.Max(0f, _danger - GameRules.DangerRelief);
-            ShowFeedback("You got it! SPEED BOOST!", new Color(0.2f, 0.6f, 0.2f));
+            ShowFeedback("You got it! SPEED BOOST!", new Color(0.55f, 1f, 0.55f));
             SpawnFx(collectFxPrefab, pickup.transform.position);
+            SpawnFx(collectMagicFxPrefab, pickup.transform.position);
+            if (_playerAnim != null) _playerAnim.SetTrigger("Jump"); // celebratory hop
 
             // The collected card celebrates: flies up and pops away.
             var cardT = pickup.transform;
@@ -250,7 +263,7 @@ namespace SummaRace.Features.Race
             _speedMultiplier = 0.6f;
             _speedEffectTimer = GameRules.SlowSeconds;
             _danger = Mathf.Min(GameRules.DangerMax, _danger + GameRules.DangerOnWrong);
-            ShowFeedback("Not quite — grab the glowing one!", new Color(0.75f, 0.45f, 0.05f));
+            ShowFeedback("Not quite — grab the glowing one!", new Color(1f, 0.78f, 0.35f));
             SpawnFx(wrongFxPrefab, pickup.transform.position);
 
             Destroy(pickup.gameObject);
@@ -288,7 +301,9 @@ namespace SummaRace.Features.Race
             _state = State.Running;
         }
 
-        private void Finish()
+        private void Finish() => StartCoroutine(FinishRoutine());
+
+        private IEnumerator FinishRoutine()
         {
             _state = State.Finished;
             _player.InputEnabled = false;
@@ -312,6 +327,10 @@ namespace SummaRace.Features.Race
 
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxStar);
             if (bannerText != null) bannerText.text = "FINISH!";
+            if (progressText != null) progressText.text = "5/5";
+
+            // Victory beat: let the dance and fireworks land before leaving.
+            yield return new WaitForSeconds(2.2f);
             if (SceneLoader.Instance != null) SceneLoader.Instance.Load(SceneNames.Arrange);
         }
 
@@ -513,7 +532,7 @@ namespace SummaRace.Features.Race
                     if (prefab == null) continue;
 
                     var block = Instantiate(prefab, _world);
-                    float lateral = 26f + (z * 0.83f) % 8f;
+                    float lateral = 34f + (z * 0.83f) % 10f; // pushed back: skyline reads as distance, not neighbors
                     block.transform.localPosition = new Vector3(side * lateral, 0f, z);
                     block.transform.localRotation = Quaternion.Euler(0f, side > 0f ? 180f : 0f, 0f);
                 }
@@ -523,24 +542,25 @@ namespace SummaRace.Features.Race
         /// <summary>Puffy cartoon clouds: squashed white unlit spheres drifting past with the world.</summary>
         private void BuildClouds(float length)
         {
-            var cloudMat = new Material(Shader.Find("Universal Render Pipeline/Unlit")) { color = Color.white };
-            for (float z = 5f; z < length + 40f; z += 22f)
+            // High, wide, chunky clouds — sky dressing, never window-cluttering blobs.
+            var cloudMat = new Material(Shader.Find("Universal Render Pipeline/Unlit")) { color = new Color(1f, 1f, 1f, 1f) };
+            for (float z = 5f; z < length + 40f; z += 26f)
             {
-                float side = ((int)(z / 22f) % 2 == 0) ? -1f : 1f;
+                float side = ((int)(z / 26f) % 2 == 0) ? -1f : 1f;
                 var cloud = new GameObject("Cloud").transform;
                 cloud.SetParent(_world, false);
-                cloud.localPosition = new Vector3(side * (8f + (z * 0.37f) % 9f), 11f + (z * 0.61f) % 5f, z);
+                cloud.localPosition = new Vector3(side * (13f + (z * 0.37f) % 12f), 15f + (z * 0.61f) % 6f, z);
 
-                int puffs = 3;
+                int puffs = 5;
                 for (int i = 0; i < puffs; i++)
                 {
                     var puff = GameObject.CreatePrimitive(PrimitiveType.Sphere);
                     Destroy(puff.GetComponent<Collider>());
                     puff.transform.SetParent(cloud, false);
                     float t = i - (puffs - 1) * 0.5f;
-                    puff.transform.localPosition = new Vector3(t * 1.6f, Mathf.Abs(t) * -0.4f, 0f);
-                    float s = 2.4f - Mathf.Abs(t) * 0.7f;
-                    puff.transform.localScale = new Vector3(s, s * 0.62f, s * 0.8f);
+                    puff.transform.localPosition = new Vector3(t * 1.7f, Mathf.Abs(t) * -0.55f, ((i % 2) - 0.5f) * 0.9f);
+                    float s = 3.1f - Mathf.Abs(t) * 0.75f;
+                    puff.transform.localScale = new Vector3(s, s * 0.6f, s * 0.85f);
                     puff.GetComponent<Renderer>().sharedMaterial = cloudMat;
                 }
             }
@@ -645,6 +665,14 @@ namespace SummaRace.Features.Race
 
                 BuildWorldCard(cube.transform, Vector3.zero, Vector3.one,
                     new Vector2(1.2f, 0.66f), texts[lane], new Color(0.20f, 0.24f, 0.32f), Color.white, 2f);
+
+                // Glowing magic pad on the trail under each card — "this is a pickup spot".
+                if (optionPadFxPrefab != null)
+                {
+                    var pad = Instantiate(optionPadFxPrefab, root);
+                    pad.transform.localPosition = new Vector3((lane - 1) * GameRules.LaneWidth, 0.12f, 0f);
+                    pad.transform.localScale = Vector3.one * 0.85f;
+                }
             }
 
             // Small SWBST pill floating above the gate — never blocks the view.
@@ -675,6 +703,14 @@ namespace SummaRace.Features.Race
             var inverse = new Vector3(1f / (GameRules.LaneWidth * 3f), 1f / 3f, 1f);
             BuildWorldCard(gate.transform, new Vector3(0f, 1.2f, 0f), inverse,
                 new Vector2(5f, 1.3f), "FINISH", new Color(0.42f, 0.28f, 0.05f), new Color(1f, 0.83f, 0.25f), 4.5f);
+
+            // A magic portal waiting at the finish — the adventure's payoff in view all run.
+            if (finishPortalPrefab != null)
+            {
+                var portal = Instantiate(finishPortalPrefab, _world);
+                portal.transform.localPosition = new Vector3(0f, 2.1f, z + 3f);
+                portal.transform.localScale = Vector3.one * 2.6f;
+            }
         }
 
         // ---------- HUD ----------
@@ -685,15 +721,22 @@ namespace SummaRace.Features.Race
             if (_currentElement < 5) _correctPickup = _correctOf[_currentElement];
 
             if (bannerGroup != null) bannerGroup.SetActive(true);
+            if (progressText != null)
+                progressText.text = Mathf.Min(_currentElement + 1, 5) + "/5";
             if (bannerText == null) return;
             bannerText.text = _currentElement < 5
-                ? "Collect: " + _story.elements[_currentElement].type + "   (" + (_currentElement + 1) + " of 5)"
+                ? "Collect: " + _story.elements[_currentElement].type
                 : "Run to the FINISH!";
         }
 
         private void ShowFeedback(string message, Color color)
         {
             if (feedbackText == null) return;
+            if (feedbackGroup != null)
+            {
+                feedbackGroup.SetActive(true);
+                Tween.PunchScale(feedbackGroup.transform, Vector3.one * 0.25f, 0.35f);
+            }
             feedbackText.text = message;
             feedbackText.color = color;
             Tween.PunchScale(feedbackText.transform, Vector3.one * 0.3f, 0.35f);
