@@ -18,8 +18,8 @@ RenderSettings:
   m_FogColor: {r: 0.72, g: 0.87, b: 0.97, a: 1}
   m_FogMode: 1
   m_FogDensity: 0.01
-  m_LinearFogStart: 35
-  m_LinearFogEnd: 110
+  m_LinearFogStart: 70
+  m_LinearFogEnd: 260
   m_AmbientSkyColor: {r: 0.212, g: 0.227, b: 0.259, a: 1}
   m_AmbientEquatorColor: {r: 0.114, g: 0.125, b: 0.133, a: 1}
   m_AmbientGroundColor: {r: 0.047, g: 0.043, b: 0.035, a: 1}
@@ -1131,17 +1131,15 @@ MonoBehaviour:
   - {fileID: 100000, guid: 44bfb6e7a0a6cd541bb29e99af852562, type: 3}
   sideDressingPrefabs:
   - {fileID: 1000011153998704, guid: 2f8abb5887b4af046b2f7fe9190c9d1d, type: 3}
-  - {fileID: 1000011257016660, guid: 0e145376c7d52444b97856849e2a7bd2, type: 3}
-  - {fileID: 1000011138244650, guid: 627ea187cfa7b524482f0725ce9ffafe, type: 3}
   - {fileID: 1000013281422948, guid: 01466a005c28535479de3c39b3304e3f, type: 3}
-  - {fileID: 1000010379647186, guid: 423b9549e9d84034aac50ab7e0459e77, type: 3}
-  - {fileID: 1000013554387178, guid: 6d998870eb4591747a98ab06751e0227, type: 3}
-  farDressingPrefabs:
   - {fileID: 1000014290068172, guid: efcbfaf146228ad40ae6c878d7806d64, type: 3}
+  - {fileID: 1000011257016660, guid: 0e145376c7d52444b97856849e2a7bd2, type: 3}
   - {fileID: 1000011501633068, guid: 5d6fcbaf51bca6b4594f12ca78b10a69, type: 3}
+  - {fileID: 1000010379647186, guid: 423b9549e9d84034aac50ab7e0459e77, type: 3}
   - {fileID: 1000011509899756, guid: 544006c54b323e9419926850d7e3fbac, type: 3}
-  - {fileID: 1000011175313116, guid: 2d4807022e73aa34ab8f01892dbdfe1d, type: 3}
-  - {fileID: 1000013300068254, guid: 391abdb78f486ff4abd13845846e0f05, type: 3}
+  - {fileID: 1000011138244650, guid: 627ea187cfa7b524482f0725ce9ffafe, type: 3}
+  - {fileID: 1000010291688486, guid: dcbeb2ef97131d241b111f35d4788477, type: 3}
+  - {fileID: 1000013554387178, guid: 6d998870eb4591747a98ab06751e0227, type: 3}
   sidewalkPropPrefabs:
   - {fileID: 1000010256476064, guid: f0070c0f7d7cdcb4eb7176be4a87caa9, type: 3}
   - {fileID: 1000011638144408, guid: 22facfbe232a90b45b681c638f2e490d, type: 3}

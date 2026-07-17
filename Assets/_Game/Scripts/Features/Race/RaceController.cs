@@ -39,8 +39,7 @@ namespace SummaRace.Features.Race
 
         [Header("Road world (Trash Dash art; empty = dirt-trail mode)")]
         [SerializeField] private GameObject[] roadSegmentPrefabs;   // modeled street pieces laid end to end
-        [SerializeField] private GameObject[] sideDressingPrefabs;  // near corridor walls hugging the sidewalks
-        [SerializeField] private GameObject[] farDressingPrefabs;   // houses/warehouses beyond the walls
+        [SerializeField] private GameObject[] sideDressingPrefabs;  // both-sided corridor sections stacked along z
         [SerializeField] private GameObject[] sidewalkPropPrefabs;  // cones/bins ON the sidewalks (never the lanes)
         [SerializeField] private float curveStrength = 0.005f;      // world bend — Trash Dash's shipped value
 
@@ -398,7 +397,9 @@ namespace SummaRace.Features.Race
             if (roadMode)
             {
                 BuildRoadWorld(length);
-                BuildSkyline(length);
+                // No Cartoon City skyline here: those mats are uncurved URP Lit and
+                // would visually detach from the bent horizon; walls + far houses
+                // already close the view like the reference game.
                 BuildClouds(length);
                 BuildStartArch();
                 BuildPlayerPatrolAndGates();
@@ -480,40 +481,28 @@ namespace SummaRace.Features.Race
                 seg.name = "Road_" + z;
             }
 
+            // Corridor sections: each Trash Dash "zone" prefab spans BOTH sides of the
+            // street (walls/houses + overhead wires) and is meant to stack centered
+            // along z. Step by each piece's own measured depth so sections butt cleanly.
             if (sideDressingPrefabs != null && sideDressingPrefabs.Length > 0)
             {
-                for (float z = -10f; z < length - 20f; z += 19f)
-                for (int s = 0; s < 2; s++)
+                float zCursor = -12f;
+                int n = 0;
+                while (zCursor < length + 6f)
                 {
-                    float side = s == 0 ? -1f : 1f;
-                    int pick = Mathf.Abs((int)(z * 3.77f + s * 5f)) % sideDressingPrefabs.Length;
-                    if (sideDressingPrefabs[pick] == null) continue;
-                    var house = SpawnDressing(sideDressingPrefabs[pick],
-                        new Vector3(side * 16f, 0f, z + (side > 0f ? 7f : 0f)),
-                        side > 0f ? 180f : 0f); // face the street from both sides
-                    house.name = "Side_" + z;
+                    int pick = Mathf.Abs((int)(zCursor * 2.13f) + n * 7) % sideDressingPrefabs.Length;
+                    n++;
+                    var prefab = sideDressingPrefabs[pick];
+                    if (prefab == null) { zCursor += 10f; continue; }
 
-                    // Wall/yard pieces are wide with off-center pivots — slide each one
-                    // outward until its inner edge clears the street. 10.5 hugs the
-                    // sidewalk for the Trash Dash alley-corridor feel.
-                    SlideClearOfStreet(house, side, 10.5f);
-                }
-            }
-
-            // Far layer: houses/warehouses peeking over the corridor walls.
-            if (farDressingPrefabs != null && farDressingPrefabs.Length > 0)
-            {
-                for (float z = -6f; z < length - 20f; z += 24f)
-                for (int s = 0; s < 2; s++)
-                {
-                    float side = s == 0 ? -1f : 1f;
-                    int pick = Mathf.Abs((int)(z * 2.31f + s * 3f)) % farDressingPrefabs.Length;
-                    if (farDressingPrefabs[pick] == null) continue;
-                    var far = SpawnDressing(farDressingPrefabs[pick],
-                        new Vector3(side * 30f, 0f, z + (side > 0f ? 11f : 0f)),
-                        side > 0f ? 180f : 0f);
-                    far.name = "Far_" + z;
-                    SlideClearOfStreet(far, side, 24f);
+                    var section = SpawnDressing(prefab, Vector3.zero, (n % 2 == 0) ? 0f : 180f);
+                    section.name = "Corridor_" + n;
+                    var b = new Bounds(section.transform.position, Vector3.zero);
+                    foreach (var r in section.GetComponentsInChildren<Renderer>())
+                        if (r.enabled) b.Encapsulate(r.bounds);
+                    float depth = Mathf.Max(6f, b.size.z);
+                    section.transform.localPosition = new Vector3(0f, 0f, zCursor - b.min.z);
+                    zCursor += depth;
                 }
             }
 
@@ -530,16 +519,6 @@ namespace SummaRace.Features.Race
                     prop.name = "Walkprop_" + z;
                 }
             }
-        }
-
-        /// <summary>Pushes a dressing piece outward until its inner renderer edge clears the street.</summary>
-        private static void SlideClearOfStreet(GameObject piece, float side, float clear)
-        {
-            var b = new Bounds(piece.transform.position, Vector3.zero);
-            foreach (var r in piece.GetComponentsInChildren<Renderer>())
-                if (r.enabled) b.Encapsulate(r.bounds);
-            float shift = side < 0f ? Mathf.Min(0f, -clear - b.max.x) : Mathf.Max(0f, clear - b.min.x);
-            piece.transform.localPosition += new Vector3(shift, 0f, 0f);
         }
 
         /// <summary>Instantiates world dressing safely: no colliders, no baked blob-shadow quads.</summary>
