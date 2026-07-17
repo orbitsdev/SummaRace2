@@ -13,22 +13,23 @@ MonoBehaviour:
   m_Name: Default-Zones
   m_EditorClassIdentifier: 
   m_GroupName: Default-Zones
-  m_Data:
-    m_SerializedData: []
   m_GUID: 0188ddff47d9b214ba640c0e529e4332
   m_SerializeEntries:
-  - m_GUID: 1094dfec7b4011442b3be72a5e20bf45
-    m_Address: Assets/Bundles/Themes/Default/Urban
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-  - m_GUID: 18779398815228c4ab638e64c5482b51
-    m_Address: Assets/Bundles/Themes/Default/Suburbs
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-  - m_GUID: aa6f0e96a37135d48a40d6821865feda
+  - m_GUID: 10a8c5d5d31c52a45b9bc547af52e96c
     m_Address: Assets/Bundles/Themes/Default/Industrial
     m_ReadOnly: 0
     m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 836dbd45c0244c241b04493762de63f8
+    m_Address: Assets/Bundles/Themes/Default/Urban
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: b05e6e70f8b46e2488cd9395fffb474d
+    m_Address: Assets/Bundles/Themes/Default/Suburbs
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 735e874f947d0e143a6b4e83f8a7283a, type: 2}
   m_SchemaSet:
