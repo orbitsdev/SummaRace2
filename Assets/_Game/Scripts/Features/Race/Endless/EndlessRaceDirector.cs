@@ -77,14 +77,18 @@ namespace SummaRace.Features.Race.Endless
             PlayerData.instance.tutorialDone = true;
             if (PlayerData.instance.ftueLevel < 2) PlayerData.instance.ftueLevel = 2;
 
-            while (TrackManager.instance == null) yield return null;
-            TrackManager.instance.newSegmentCreated += OnNewSegment;
-            _subscribed = true;
-
-            // Jump their Loadout menu straight into the run.
+            // Jump their Loadout menu straight into the run. Their TrackManager GameObject
+            // stays inactive until GameState.Enter -> StartGame -> Begin() activates it,
+            // so the instance wait MUST come after this call (waiting first deadlocks).
             yield return new WaitForSeconds(0.75f); // let Loadout.Enter settle
             var loadout = FindFirstObjectByType<LoadoutState>();
             if (loadout != null && loadout.isActiveAndEnabled) loadout.StartGame();
+
+            // Safe to subscribe here: instance is set by Awake on activation, and the first
+            // newSegmentCreated fires at least a frame later (Addressables instantiation).
+            while (TrackManager.instance == null) yield return null;
+            TrackManager.instance.newSegmentCreated += OnNewSegment;
+            _subscribed = true;
 
             yield return new WaitForSeconds(0.5f);
             HideTheirCurrencyHud();
