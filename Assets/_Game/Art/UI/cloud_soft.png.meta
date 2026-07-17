@@ -1,12 +1,5 @@
 fileFormatVersion: 2
-guid: 4b414943752f2e44090dd874ed46f824
-AssetOrigin:
-  serializedVersion: 1
-  productId: 375832
-  packageName: Hyper Casual UI Pack
-  packageVersion: 1.0
-  assetPath: Assets/Hyper_Casual_UI/Sprites/Panel_Sprites/Level screen pannel.png
-  uploadId: 906102
+guid: b400dfddf8f75cc4a90151e6773e3184
 TextureImporter:
   internalIDToNameTable: []
   externalObjects: {}

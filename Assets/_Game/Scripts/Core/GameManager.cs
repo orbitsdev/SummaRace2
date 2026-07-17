@@ -56,6 +56,13 @@ namespace SummaRace.Core
             return 1;
         }
 
+        /// <summary>Best star count earned on a story — 0 when never completed (or no learner yet).</summary>
+        public int GetBestStars(string storyId)
+        {
+            var progress = CurrentLearner?.progress.Find(p => p.storyId == storyId);
+            return progress != null ? progress.bestStars : 0;
+        }
+
         /// <summary>Updates profile progress; SessionLog write comes with Phase I.</summary>
         public void CompleteStory(int stars)
         {

@@ -8,6 +8,14 @@ namespace SummaRace.Constants
         /// <summary>Subtitle under the game title on the Boot splash.</summary>
         public const string BootTagline = "Read! Race! Summarize!";
 
+        // Story select
+        public const string StorySelectTitle = "Pick a Story";
+        public const string DifficultyEasy = "EASY";
+        public const string DifficultyAverage = "AVERAGE";
+        public const string DifficultyHard = "HARD";
+        public const string LockedLabel = "Locked";
+        public const string LockedHint = "Coming in a later session!";
+
         public const string SummaryHint =
             "Example: Somebody wanted ___, but ___, so ___, then ___.";
 
