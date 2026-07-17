@@ -13,6 +13,7 @@ namespace SummaRace.Core
     {
         [SerializeField] private TMP_Text taglineText;
         [SerializeField] private TMP_Text loadingText;
+        [SerializeField] private UnityEngine.UI.Image splashFill;
 
         private static bool _initialized;
 
@@ -43,8 +44,14 @@ namespace SummaRace.Core
 
         private IEnumerator Start()
         {
-            // Brief splash beat, then into the menu.
-            yield return new WaitForSeconds(GameRules.SplashSeconds);
+            // Brief splash beat (progress bar fills across it), then into the menu.
+            float t = 0f;
+            while (t < GameRules.SplashSeconds)
+            {
+                t += Time.deltaTime;
+                if (splashFill != null) splashFill.fillAmount = Mathf.Clamp01(t / GameRules.SplashSeconds);
+                yield return null;
+            }
             SceneLoader.Instance.Load(SceneNames.MainMenu);
         }
     }

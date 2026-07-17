@@ -29,6 +29,7 @@ namespace SummaRace.Features.Race
         [SerializeField] private GameObject playerModelPrefab;
         [SerializeField] private GameObject patrolModelPrefab;
         [SerializeField] private GameObject[] sceneryPrefabs;
+        [SerializeField] private GameObject[] tracksideObstaclePrefabs;
         [SerializeField] private GameObject[] skylinePrefabs;
         [SerializeField] private GameObject fencePrefab;
         [SerializeField] private Sprite worldCardSprite;
@@ -330,21 +331,47 @@ namespace SummaRace.Features.Race
             ground.GetComponent<Renderer>().material.color = new Color(0.43f, 0.73f, 0.29f); // grass
             Destroy(ground.GetComponent<Collider>());
 
-            var laneColors = new[]
+            // Natural dirt trail across all three lanes (adventure-park look):
+            // sandy bed, packed-earth edges, dashed cream lane guides.
+            var trail = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            trail.name = "Trail";
+            trail.transform.SetParent(_world, false);
+            trail.transform.localScale = new Vector3(GameRules.LaneWidth * 3f - 0.2f, 0.1f, length);
+            trail.transform.localPosition = new Vector3(0f, 0.03f, length * 0.5f - 20f);
+            var trailMat = trail.GetComponent<Renderer>().material;
+            trailMat.color = new Color(0.76f, 0.60f, 0.38f);
+            trailMat.SetFloat("_Smoothness", 0f); // matte dirt — no specular wash-out
+            Destroy(trail.GetComponent<Collider>());
+
+            Material edgeMat = null;
+            for (int s = 0; s < 2; s++)
             {
-                new Color(0.29f, 0.45f, 0.84f), // blue
-                new Color(0.95f, 0.76f, 0.11f), // yellow
-                new Color(0.34f, 0.73f, 0.30f)  // green
-            };
-            for (int lane = 0; lane < 3; lane++)
+                var trailEdge = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                trailEdge.name = "TrailEdge";
+                trailEdge.transform.SetParent(_world, false);
+                trailEdge.transform.localScale = new Vector3(0.45f, 0.12f, length);
+                trailEdge.transform.localPosition = new Vector3(
+                    (s == 0 ? -1f : 1f) * (GameRules.LaneWidth * 1.5f + 0.1f), 0.04f, length * 0.5f - 20f);
+                var er = trailEdge.GetComponent<Renderer>();
+                if (edgeMat == null) { edgeMat = er.material; edgeMat.color = new Color(0.52f, 0.39f, 0.24f); edgeMat.SetFloat("_Smoothness", 0f); }
+                else er.sharedMaterial = edgeMat;
+                Destroy(trailEdge.GetComponent<Collider>());
+            }
+
+            Material guideMat = null;
+            for (int d = 0; d < 2; d++)
+            for (float z = -16f; z < length - 22f; z += 6f)
             {
-                var strip = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                strip.name = "Lane_" + lane;
-                strip.transform.SetParent(_world, false);
-                strip.transform.localScale = new Vector3(GameRules.LaneWidth * 0.9f, 0.1f, length);
-                strip.transform.localPosition = new Vector3((lane - 1) * GameRules.LaneWidth, 0.03f, length * 0.5f - 20f);
-                strip.GetComponent<Renderer>().material.color = laneColors[lane];
-                Destroy(strip.GetComponent<Collider>());
+                var dash = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                dash.name = "LaneGuide";
+                dash.transform.SetParent(_world, false);
+                dash.transform.localScale = new Vector3(0.12f, 0.02f, 1.0f);
+                dash.transform.localPosition = new Vector3(
+                    (d == 0 ? -1f : 1f) * GameRules.LaneWidth * 0.5f, 0.09f, z);
+                var dr = dash.GetComponent<Renderer>();
+                if (guideMat == null) { guideMat = dr.material; guideMat.color = new Color(0.87f, 0.79f, 0.60f); guideMat.SetFloat("_Smoothness", 0f); }
+                else dr.sharedMaterial = guideMat;
+                Destroy(dash.GetComponent<Collider>());
             }
 
             BuildScenery(length);
@@ -417,6 +444,32 @@ namespace SummaRace.Features.Race
                     var f = Instantiate(fencePrefab, _world);
                     f.transform.localPosition = new Vector3(side * (edge - 1.1f), 0f, z);
                     f.transform.localRotation = Quaternion.Euler(0f, 90f, 0f); // fence mesh runs along X
+                }
+            }
+
+            // Rocks, stumps and mushrooms on the trail shoulder (between trail edge
+            // and fence) — adventure dressing only: colliders stripped, lanes stay
+            // clear, and nothing spawns near a checkpoint's answer cards.
+            if (tracksideObstaclePrefabs != null && tracksideObstaclePrefabs.Length > 0)
+            {
+                float spacing = _story.mission.checkpointSpacing;
+                for (float z = 4f; z < length - 30f; z += 9f)
+                {
+                    bool nearCheckpoint = false;
+                    for (int i = 0; i < 5; i++)
+                        if (Mathf.Abs(z - (20f + i * spacing)) < 6f) { nearCheckpoint = true; break; }
+                    if (nearCheckpoint) continue;
+
+                    float side = ((int)(z * 0.731f) % 2 == 0) ? -1f : 1f;
+                    int pick = Mathf.Abs((int)(z * 5.13f)) % tracksideObstaclePrefabs.Length;
+                    var obstacle = tracksideObstaclePrefabs[pick];
+                    if (obstacle == null) continue;
+
+                    var prop = Instantiate(obstacle, _world);
+                    prop.transform.localPosition = new Vector3(side * (edge - 1.35f), 0f, z);
+                    prop.transform.localRotation = Quaternion.Euler(0f, (z * 77f) % 360f, 0f);
+                    prop.transform.localScale = Vector3.one * 2.2f;
+                    foreach (var c in prop.GetComponentsInChildren<Collider>()) Destroy(c);
                 }
             }
 

@@ -19,6 +19,7 @@ namespace SummaRace.Core
 
         private CanvasGroup _fadeGroup;
         private TextMeshProUGUI _tipText;
+        private Image _barFill;
         private bool _loading;
 
         private void Awake()
@@ -44,9 +45,20 @@ namespace SummaRace.Core
                 AudioManager.Instance.PlaySfx(AudioKeys.SfxTransition);
             }
 
+            _barFill.fillAmount = 0f;
             yield return Fade(0f, 1f);
 
+            // Fill tracks real load progress but sweeps at a capped speed so the
+            // bar reads as motion even on near-instant loads.
             var op = SceneManager.LoadSceneAsync(sceneName);
+            op.allowSceneActivation = false;
+            while (_barFill.fillAmount < 0.999f)
+            {
+                float target = op.progress < 0.9f ? op.progress / 0.9f : 1f;
+                _barFill.fillAmount = Mathf.MoveTowards(_barFill.fillAmount, target, Time.unscaledDeltaTime * 2.5f);
+                yield return null;
+            }
+            op.allowSceneActivation = true;
             while (!op.isDone) yield return null;
 
             yield return Fade(1f, 0f);
@@ -127,6 +139,35 @@ namespace SummaRace.Core
             tipRect.anchorMax = new Vector2(0.94f, 0.90f);
             tipRect.offsetMin = Vector2.zero;
             tipRect.offsetMax = Vector2.zero;
+
+            // Gold progress bar under the tip card.
+            var barGo = new GameObject("ProgressBar");
+            barGo.transform.SetParent(canvasGo.transform, false);
+            var barBg = barGo.AddComponent<Image>();
+            var barBgSprite = Resources.Load<Sprite>("UI/bar_bg");
+            if (barBgSprite != null) { barBg.sprite = barBgSprite; barBg.type = Image.Type.Sliced; }
+            else barBg.color = new Color(0.08f, 0.14f, 0.28f, 0.9f);
+            var barRect = barBg.rectTransform;
+            barRect.anchorMin = new Vector2(0.18f, 0.365f);
+            barRect.anchorMax = new Vector2(0.82f, 0.395f);
+            barRect.offsetMin = Vector2.zero;
+            barRect.offsetMax = Vector2.zero;
+
+            var fillGo = new GameObject("Fill");
+            fillGo.transform.SetParent(barGo.transform, false);
+            _barFill = fillGo.AddComponent<Image>();
+            var barFillSprite = Resources.Load<Sprite>("UI/bar_fill");
+            if (barFillSprite != null) _barFill.sprite = barFillSprite;
+            else _barFill.color = new Color(1f, 0.78f, 0.20f);
+            _barFill.type = Image.Type.Filled;
+            _barFill.fillMethod = Image.FillMethod.Horizontal;
+            _barFill.fillOrigin = (int)Image.OriginHorizontal.Left;
+            _barFill.fillAmount = 0f;
+            var fillRect = _barFill.rectTransform;
+            fillRect.anchorMin = Vector2.zero;
+            fillRect.anchorMax = Vector2.one;
+            fillRect.offsetMin = new Vector2(5f, 5f);
+            fillRect.offsetMax = new Vector2(-5f, -5f);
 
             // Small "Loading..." above the card.
             var loadGo = new GameObject("LoadingText");
