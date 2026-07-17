@@ -26,7 +26,7 @@ namespace SummaRace.Features.Race.Endless
         private const float FirstGateDistance = 80f; // clear of their starting safe segments
         private const float FinishGap = 30f;         // FINISH this far after the 5th gate
         private const float MissGrace = 5f;          // metres past a gate before it counts as missed
-        private const float CardY = 1.15f;
+        private const float CardY = 0.5f;
 
         private SummaRace.Data.StoryData _story;
         private float _spawnedDistance;      // cumulative worldLength of spawned segments
@@ -192,6 +192,8 @@ namespace SummaRace.Features.Race.Endless
                 var trigger = card.gameObject.AddComponent<BoxCollider>();
                 trigger.isTrigger = true;
                 trigger.size = new Vector3(cardWidth, 2.2f, 0.5f);
+                // Card sits on the road now — lift the catch volume over the character's body.
+                trigger.center = new Vector3(0f, 0.6f, 0f);
 
                 var pickup = card.gameObject.AddComponent<EndlessOptionPickup>();
                 pickup.elementIndex = elementIndex;
