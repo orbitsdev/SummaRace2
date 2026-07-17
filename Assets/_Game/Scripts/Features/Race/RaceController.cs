@@ -415,6 +415,7 @@ namespace SummaRace.Features.Race
             }
 
             BuildScenery(length);
+            BuildStartArch();
 
             // Player at the origin: physics root + character model (or grey-box capsule).
             var playerGo = new GameObject("Player");
@@ -759,6 +760,108 @@ namespace SummaRace.Features.Race
             tmp.fontSizeMax = maxFontSize;
         }
 
+        /// <summary>Wooden start arch with SWBST bunting — you run under it at GO! (course dressing, F25).</summary>
+        private void BuildStartArch()
+        {
+            var arch = new GameObject("StartArch").transform;
+            arch.SetParent(_world, false);
+            arch.localPosition = new Vector3(0f, 0f, 8f);
+
+            var woodMat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+            woodMat.color = new Color(0.48f, 0.33f, 0.18f);
+            woodMat.SetFloat("_Smoothness", 0f);
+
+            float half = GameRules.LaneWidth * 1.5f + 0.7f;
+            for (int s = 0; s < 2; s++)
+            {
+                var post = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                Destroy(post.GetComponent<Collider>());
+                post.transform.SetParent(arch, false);
+                post.transform.localScale = new Vector3(0.28f, 4.4f, 0.28f);
+                post.transform.localPosition = new Vector3((s == 0 ? -1f : 1f) * half, 2.2f, 0f);
+                post.GetComponent<Renderer>().sharedMaterial = woodMat;
+            }
+            var bar = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            Destroy(bar.GetComponent<Collider>());
+            bar.transform.SetParent(arch, false);
+            bar.transform.localScale = new Vector3(half * 2f + 0.28f, 0.26f, 0.26f);
+            bar.transform.localPosition = new Vector3(0f, 4.4f, 0f);
+            bar.GetComponent<Renderer>().sharedMaterial = woodMat;
+
+            BuildBunting(arch, 4.25f, half * 2f);
+
+            // Gold START card hanging from the bar.
+            BuildWorldCard(arch, new Vector3(0f, 3.6f, 0f), Vector3.one,
+                new Vector2(2.2f, 0.6f), "START", Color.white, new Color(1f, 0.72f, 0.15f), 3f);
+        }
+
+        /// <summary>A string of SWBST-colored flags across the track (shared per-color materials).</summary>
+        private Material[] _flagMats;
+        private void BuildBunting(Transform parent, float y, float width, bool withRope = false)
+        {
+            if (withRope)
+            {
+                var rope = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                Destroy(rope.GetComponent<Collider>());
+                rope.transform.SetParent(parent, false);
+                rope.transform.localScale = new Vector3(width, 0.05f, 0.05f);
+                rope.transform.localPosition = new Vector3(0f, y, 0f);
+                var rr = rope.GetComponent<Renderer>();
+                rr.material.color = new Color(0.92f, 0.88f, 0.78f);
+                rr.material.SetFloat("_Smoothness", 0f);
+            }
+            if (_flagMats == null)
+            {
+                _flagMats = new Material[5];
+                for (int i = 0; i < 5; i++)
+                {
+                    _flagMats[i] = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+                    _flagMats[i].color = SwbstPalette.ForIndex(i);
+                    _flagMats[i].SetFloat("_Smoothness", 0f);
+                }
+            }
+
+            int flags = 9;
+            for (int i = 0; i < flags; i++)
+            {
+                var flag = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                Destroy(flag.GetComponent<Collider>());
+                flag.transform.SetParent(parent, false);
+                float t = (i + 0.5f) / flags - 0.5f;
+                flag.transform.localScale = new Vector3(0.30f, 0.40f, 0.03f);
+                flag.transform.localPosition = new Vector3(t * width, y - 0.28f, 0f);
+                flag.transform.localRotation = Quaternion.Euler(0f, 0f, (i % 2 == 0 ? 6f : -6f));
+                flag.GetComponent<Renderer>().sharedMaterial = _flagMats[i % 5];
+            }
+        }
+
+        /// <summary>Checkered strip on the trail right at the finish line.</summary>
+        private void BuildFinishStrip(float z)
+        {
+            var strip = new GameObject("FinishStrip").transform;
+            strip.SetParent(_world, false);
+
+            var white = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+            white.color = new Color(0.97f, 0.97f, 0.97f); white.SetFloat("_Smoothness", 0f);
+            var black = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+            black.color = new Color(0.12f, 0.12f, 0.12f); black.SetFloat("_Smoothness", 0f);
+
+            float trackWidth = GameRules.LaneWidth * 3f - 0.3f;
+            int cols = 12;
+            float cell = trackWidth / cols;
+            for (int row = 0; row < 2; row++)
+            for (int c = 0; c < cols; c++)
+            {
+                var tile = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                Destroy(tile.GetComponent<Collider>());
+                tile.transform.SetParent(strip, false);
+                tile.transform.localScale = new Vector3(cell, 0.02f, cell);
+                tile.transform.localPosition = new Vector3(
+                    -trackWidth * 0.5f + (c + 0.5f) * cell, 0.10f, z - 1.2f + row * cell);
+                tile.GetComponent<Renderer>().sharedMaterial = (row + c) % 2 == 0 ? white : black;
+            }
+        }
+
         private Transform BuildCheckpoint(int elementIndex)
         {
             var element = _story.elements[elementIndex];
@@ -811,6 +914,9 @@ namespace SummaRace.Features.Race
             BuildWorldCard(root, new Vector3(0f, 3.6f, 0f), Vector3.one,
                 new Vector2(2.6f, 0.62f), element.type, Color.white, SwbstPalette.ForIndex(elementIndex), 3f);
 
+            // Festive bunting strung over the gate — recycles with the checkpoint.
+            BuildBunting(root, 4.6f, GameRules.LaneWidth * 3f + 1.0f, true);
+
             return root;
         }
 
@@ -844,6 +950,8 @@ namespace SummaRace.Features.Race
                 portal.transform.localScale = Vector3.one * 2.6f;
                 TintFx(portal, StoryGold);
             }
+
+            BuildFinishStrip(z);
         }
 
         // ---------- HUD ----------
