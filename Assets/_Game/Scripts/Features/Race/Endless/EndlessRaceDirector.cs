@@ -35,6 +35,7 @@ namespace SummaRace.Features.Race.Endless
         private bool _subscribed;
         private bool _finished;
         private float _runStartTime = -1f;
+        private float _lastWorldDistance;
 
         private int _currentElement;
         private readonly bool[] _firstPickDone = new bool[5];
@@ -92,6 +93,7 @@ namespace SummaRace.Features.Race.Endless
 
             yield return new WaitForSeconds(0.5f);
             HideTheirCurrencyHud();
+            EnsureSingleAudioListener();
         }
 
         private void Update()
@@ -104,6 +106,21 @@ namespace SummaRace.Features.Race.Endless
 
             var track = TrackManager.instance;
             if (track == null || _finished) return;
+
+            // Their death popup's Run Again (or Loadout->RUN!) rebuilds the track from zero
+            // and destroys every gate with its segments — reload the race so the learner
+            // never runs a gate-less road (never a dead end).
+            if (track.worldDistance < _lastWorldDistance - 1f)
+            {
+                _finished = true; // block double-triggering while the load happens
+                if (SummaRace.Core.SceneLoader.Instance != null)
+                    SummaRace.Core.SceneLoader.Instance.Load(SummaRace.Constants.SceneNames.RaceEndless);
+                else
+                    UnityEngine.SceneManagement.SceneManager.LoadScene(SummaRace.Constants.SceneNames.RaceEndless);
+                return;
+            }
+            _lastWorldDistance = track.worldDistance;
+
             if (_runStartTime < 0f && track.isMoving) _runStartTime = Time.time;
 
             // A gate the player ran past without a correct pick resolves as missed.
@@ -115,6 +132,8 @@ namespace SummaRace.Features.Race.Endless
                     _firstPickDone[_currentElement] = true;
                     _firstPickCorrect[_currentElement] = false;
                 }
+                if (_correctCards[_currentElement] != null)
+                    Tween.StopAll(_correctCards[_currentElement]);
                 if (_gateRoots[_currentElement] != null)
                     Destroy(_gateRoots[_currentElement].gameObject);
                 _currentElement++;
@@ -283,14 +302,17 @@ namespace SummaRace.Features.Race.Endless
             // The collected card flies up and pops away; the rest of the gate goes now.
             var cardT = pickup.transform;
             int index = pickup.elementIndex;
-            cardT.SetParent(null, true);
+            var root = _gateRoots[index];
+            // Keep the flying card parented to the segment: a floating-origin recenter
+            // (~every 100m) would teleport a world-space orphan mid-celebration.
+            cardT.SetParent(root != null ? root.parent : null, true);
             var col = pickup.GetComponent<Collider>();
             if (col != null) col.enabled = false;
             Tween.PositionY(cardT, cardT.position.y + 2.2f, 0.45f, Ease.OutQuad);
             Tween.Scale(cardT, Vector3.zero, 0.5f, Ease.InBack)
                 .OnComplete(() => { if (cardT != null) Destroy(cardT.gameObject); });
 
-            if (_gateRoots[index] != null) Destroy(_gateRoots[index].gameObject);
+            if (root != null) Destroy(root.gameObject);
             _gateRoots[index] = null;
 
             _currentElement++;
@@ -418,6 +440,17 @@ namespace SummaRace.Features.Race.Endless
             if (gs.scoreText != null) gs.scoreText.gameObject.SetActive(false);
             if (gs.distanceText != null) gs.distanceText.gameObject.SetActive(false);
             if (gs.multiplierText != null) gs.multiplierText.gameObject.SetActive(false);
+        }
+
+        /// <summary>Entered from Boot, two AudioListeners coexist (Core + scene camera) — keep the camera's.</summary>
+        private void EnsureSingleAudioListener()
+        {
+            var listeners = FindObjectsByType<AudioListener>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            if (listeners.Length <= 1) return;
+            var keep = Camera.main != null ? Camera.main.GetComponent<AudioListener>() : listeners[0];
+            if (keep == null) keep = listeners[0];
+            foreach (var listener in listeners)
+                if (listener != keep) listener.enabled = false;
         }
     }
 }
