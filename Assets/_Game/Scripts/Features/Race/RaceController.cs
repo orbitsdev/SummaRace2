@@ -73,6 +73,7 @@ namespace SummaRace.Features.Race
         public float SpeedMultiplier => _speedMultiplier;
         private float _speedEffectTimer;
         private float _feedbackTimer;
+        private float _menaceTimer; // wrong pick → patrol surges into view for a beat
         private float _runSeconds;
         private int _timesCaught;
         private readonly bool[] _firstPickCorrect = new bool[5];
@@ -92,6 +93,7 @@ namespace SummaRace.Features.Race
             if (briefingPanel != null) briefingPanel.SetActive(true);
             if (caughtPanel != null) caughtPanel.SetActive(false);
             if (bannerGroup != null) bannerGroup.SetActive(false); // shown when the run starts
+            if (dangerFill != null) dangerFill.parent.gameObject.SetActive(false); // meter appears with the countdown
             if (startMissionButton != null)
                 startMissionButton.onClick.AddListener(StartMission);
         }
@@ -108,6 +110,7 @@ namespace SummaRace.Features.Race
         private IEnumerator CountdownRoutine()
         {
             if (bannerGroup != null) bannerGroup.SetActive(true);
+            if (dangerFill != null) dangerFill.parent.gameObject.SetActive(true);
             string[] steps = { "3", "2", "1", "GO!" };
             foreach (var step in steps)
             {
@@ -263,6 +266,7 @@ namespace SummaRace.Features.Race
             _speedMultiplier = 0.6f;
             _speedEffectTimer = GameRules.SlowSeconds;
             _danger = Mathf.Min(GameRules.DangerMax, _danger + GameRules.DangerOnWrong);
+            _menaceTimer = 1.6f; // the patrol visibly closes in — the mistake has a face
             ShowFeedback("Not quite — grab the glowing one!", new Color(1f, 0.78f, 0.35f));
             SpawnFx(wrongFxPrefab, pickup.transform.position);
 
@@ -752,8 +756,12 @@ namespace SummaRace.Features.Race
             // invisible while safe, visibly closing in once danger passes ~2/3 (subway-runner pressure).
             if (_patrol != null)
             {
+                if (_menaceTimer > 0f) _menaceTimer -= Time.deltaTime;
+                // During a menace beat the patrol acts like danger is near-max, so the
+                // learner actually SEES the chaser close in after a wrong pick.
+                float tChase = _menaceTimer > 0f ? Mathf.Max(t, 0.85f) : t;
                 var playerPos = _player.transform.position;
-                float targetZ = playerPos.z - (1.8f + (1f - t) * 11f);
+                float targetZ = playerPos.z - (1.8f + (1f - tChase) * 8.2f);
                 float nx = Mathf.Lerp(_patrol.position.x, playerPos.x, 5f * Time.deltaTime);
                 float nz = Mathf.Lerp(_patrol.position.z, targetZ, 3f * Time.deltaTime);
                 _patrol.position = new Vector3(nx, 0f, nz);

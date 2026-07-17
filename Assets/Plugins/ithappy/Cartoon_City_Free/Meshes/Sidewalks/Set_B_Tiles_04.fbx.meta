@@ -10,11 +10,31 @@ AssetOrigin:
 ModelImporter:
   serializedVersion: 24200
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Asphalt_Dark_Gray
+    second: {fileID: 2100000, guid: b6fddd89f90f47d4fa5764262f84f6a0, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Color
+    second: {fileID: 2100000, guid: f6e69271f7fac004db79def4ca76573b, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Grass
+    second: {fileID: 2100000, guid: dbeb7b6c7b46fd140b9cc53d0dfbfb01, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Tile_1
+    second: {fileID: 2100000, guid: bc55c3d1adbcb0c458f787ae522d6e08, type: 2}
   materials:
     materialImportMode: 2
     materialName: 1
-    materialSearch: 1
+    materialSearch: 2
     materialLocation: 1
   animations:
     legacyGenerateAnimations: 4

@@ -10,11 +10,16 @@ AssetOrigin:
 ModelImporter:
   serializedVersion: 24200
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: scrolling text
+    second: {fileID: 2100000, guid: 565161a1e59776c4eac1f034c667d94e, type: 2}
   materials:
     materialImportMode: 2
     materialName: 1
-    materialSearch: 1
+    materialSearch: 2
     materialLocation: 1
   animations:
     legacyGenerateAnimations: 4
