@@ -58,9 +58,11 @@
 - Consumes: `.superpowers/sdd/ui-audit.md` handles; existing `HideTheirCurrencyHud()`.
 - Produces: `private void HideTheirChrome()` replacing/absorbing `HideTheirCurrencyHud()`; `private void MaskLoadoutFlash()` called from `Awake()`.
 
-- [ ] **Step 1: Read the audit** (`.superpowers/sdd/ui-audit.md`). Build the final hide-list from its KEEP/HIDE table. Baseline expectation (adjust to what the audit actually found — its handles win over this list):
-  - HIDE: pause button (`gs.pauseButton.gameObject`), powerup zone (`gs.powerupZone.gameObject`), life hearts (`gs.lifeRectTransform.gameObject` — meaningless after Task 2), the five currency/score texts (already hidden), any missions/shop/leaderboard/settings buttons the audit names on the Loadout or run HUD.
-  - KEEP: `gs.countdownText` (3-2-1-GO), our `SummaRaceHud`, the death popup handles (they become unreachable in Task 2 — do not hide, so nothing breaks if a hit somehow lands).
+- [ ] **Step 1: Read the audit** (`.superpowers/sdd/ui-audit.md` — complete, ~30 elements across the Loadout/Game/GameOver/Leaderboard canvases under `UICamera`). Build the final hide-list from its KEEP/HIDE table, with these controller rulings applied on top:
+  - HIDE per audit: all 13 direct children of the `Loadout` canvas (the flash mask), StoreButton (both canvases), MissionButton/MissionsButton + MissionPopup, SettingButton + SettingPopup (contains DeleteData and external OpenURL links — offline violation, must go), OpenLeaderboard buttons + Leaderboard canvas root, CoinZone/PremiumZone/ScoreZone/DistanceZone (the icon backgrounds that survived the text-only hide), PowerUpBank, Inventory, `gs.pauseButton`, life hearts (`gs.lifeRectTransform` — meaningless after Task 2), and PauseMenu's Exit button only.
+  - KEEP per audit: CountDown (3-2-1), PauseMenu with its Resume button wired (the OS focus-loss auto-pause still opens it even with the button hidden — Resume must stay clickable), our `SummaRaceHud`.
+  - **Controller ruling overriding the audit on the GameOver path:** do NOT hide the GameOver canvas, the death popup, or its Premium/Ad buttons. Task 2 makes death unreachable, and hiding that canvas would create the near-blank dead end the audit itself warns about if death ever fired anyway. Leave the whole GameOver path untouched as a working fallback.
+  - **Timing per audit:** the Awake-time mask is not enough — `LoadoutState.Enter()` unconditionally re-shows `TutorialOverlay` (`SetActive(!tutorialDone)`, true on a fresh save). Apply the same hide again at the top of the `Start()` coroutine (before the PlayerData wait) — double-hide gives a zero-frame flash.
 
 - [ ] **Step 2: Implement the mask + chrome hiding.** Replace `HideTheirCurrencyHud()` with `HideTheirChrome()` (keep hiding the five texts, add the audit's handles, null-check every one), and add a loadout-flash mask called from `Awake()`:
 
