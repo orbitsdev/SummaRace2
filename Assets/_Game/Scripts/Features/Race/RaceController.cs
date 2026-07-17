@@ -470,14 +470,20 @@ namespace SummaRace.Features.Race
         /// <summary>Their street pieces laid end to end + houses lining both sides (blob shadows off, colliders stripped).</summary>
         private void BuildRoadWorld(float length)
         {
-            // Grass base under everything, wider than the street pieces.
-            var ground = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            ground.name = "GroundWide";
-            ground.transform.SetParent(_world, false);
-            ground.transform.localScale = new Vector3(60f, 0.5f, length + 60f);
-            ground.transform.localPosition = new Vector3(0f, -0.30f, length * 0.5f - 20f);
-            ground.GetComponent<Renderer>().sharedMaterial = WorldMat(new Color(0.43f, 0.73f, 0.29f));
-            Destroy(ground.GetComponent<Collider>());
+            // Grass base in 10m tiles: the curve shader bends VERTICES, so one giant
+            // 8-vertex slab turns into a straight chord that pokes ABOVE the smoothly
+            // curved road meshes and hides them. Tiles match the road tessellation.
+            var groundMat = WorldMat(new Color(0.43f, 0.73f, 0.29f));
+            for (float gz = -30f; gz < length + 40f; gz += 10f)
+            {
+                var tile = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                tile.name = "GroundTile";
+                tile.transform.SetParent(_world, false);
+                tile.transform.localScale = new Vector3(60f, 0.5f, 10f);
+                tile.transform.localPosition = new Vector3(0f, -0.30f, gz + 5f);
+                tile.GetComponent<Renderer>().sharedMaterial = groundMat;
+                Destroy(tile.GetComponent<Collider>());
+            }
 
             const float segmentLength = 9f; // their street pieces are 9m deep
             for (float z = -18f; z < length + 10f; z += segmentLength)
