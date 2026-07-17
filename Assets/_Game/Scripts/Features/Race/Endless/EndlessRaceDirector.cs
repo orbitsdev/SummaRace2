@@ -83,7 +83,7 @@ namespace SummaRace.Features.Race.Endless
 
             // Jump their Loadout menu straight into the run.
             yield return new WaitForSeconds(0.75f); // let Loadout.Enter settle
-            var loadout = Object.FindFirstObjectByType<LoadoutState>();
+            var loadout = FindFirstObjectByType<LoadoutState>();
             if (loadout != null && loadout.isActiveAndEnabled) loadout.StartGame();
 
             yield return new WaitForSeconds(0.5f);
@@ -407,7 +407,7 @@ namespace SummaRace.Features.Race.Endless
         /// <summary>Their coin/score counters mean nothing here — hide just those texts.</summary>
         private void HideTheirCurrencyHud()
         {
-            var gs = Object.FindFirstObjectByType<GameState>();
+            var gs = FindFirstObjectByType<GameState>();
             if (gs == null) return;
             if (gs.coinText != null) gs.coinText.gameObject.SetActive(false);
             if (gs.premiumText != null) gs.premiumText.gameObject.SetActive(false);
