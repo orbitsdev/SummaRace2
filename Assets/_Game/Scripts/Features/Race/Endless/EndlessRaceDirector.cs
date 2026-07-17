@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using PrimeTween;
 using TMPro;
 using UnityEngine;
@@ -9,9 +10,11 @@ namespace SummaRace.Features.Race.Endless
     /// SummaRace's SWBST collection layered onto the Trash Dash endless runner.
     /// Exists only in MainSummaRace.unity. While alive it sets EndlessRaceMode.Active
     /// (suppressing their coins/premium/powerups), skips their Loadout/FTUE, places
-    /// 5 answer gates + a FINISH gate along the generated track, resolves picks,
-    /// then builds a RaceResult and exits to Arrange. Their scripts are untouched
-    /// beyond the one TrackManager guard.
+    /// one answer gate at a time along the generated track (TDD §11.4: sequential
+    /// scheduling — a wrong pick or a missed gate re-offers the glowing correct card
+    /// until the learner physically collects it, so they always leave holding the 5
+    /// correct pieces), resolves picks, then builds a RaceResult and exits to Arrange.
+    /// Their scripts are untouched beyond the one TrackManager guard.
     /// NOTE: their GameManager collides with ours by name — everything of ours is
     /// fully qualified (SummaRace.Core.*), do not add `using SummaRace.Core;`.
     /// </summary>
@@ -26,23 +29,46 @@ namespace SummaRace.Features.Race.Endless
         private const float FirstGateDistance = 80f; // clear of their starting safe segments
         private const float FinishGap = 30f;         // FINISH this far after the 5th gate
         private const float MissGrace = 5f;          // metres past a gate before it counts as missed
+        private const float RepresentGap = 18f;      // metres ahead for a re-presented gold card
+        private const int MaxRepresentMisses = 3;    // consecutive dodges before anti-frustration auto-resolve
         private const float CardY = 0.5f;
+
+        private static readonly System.Reflection.FieldInfo SpeedField =
+            typeof(TrackManager).GetField("m_Speed",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
 
         private SummaRace.Data.StoryData _story;
         private float _spawnedDistance;      // cumulative worldLength of spawned segments
-        private float _nextTargetDistance;
-        private int _gatesPlaced;            // 0..6 (index 5 = finish gate)
         private bool _subscribed;
         private bool _finished;
         private float _runStartTime = -1f;
         private float _lastWorldDistance;
 
-        private int _currentElement;
+        // Every segment ever spawned, so a scheduled distance can be located inside it.
+        // Entries whose segment has been recycled/destroyed are pruned lazily.
+        private readonly List<(TrackSegment seg, float start, float end)> _spans = new();
+
+        // One pending placement at a time — resolved into an active gate by TryPlacePending.
+        private float _pendingGateDistance = -1f;
+        private int _pendingElement;
+        private bool _pendingIsRepresent;
+
+        // One active gate at a time.
+        private Transform _activeGateRoot;
+        private int _activeElement = -1;
+        private bool _activeIsRepresent;
+        private float _activeGateDistance;
+        private int _representCount; // consecutive dodged re-presents of the current element
+
         private readonly bool[] _firstPickDone = new bool[5];
         private readonly bool[] _firstPickCorrect = new bool[5];
-        private readonly Transform[] _gateRoots = new Transform[6];
-        private readonly float[] _gateDistances = new float[6];
-        private readonly Transform[] _correctCards = new Transform[5];
+
+        private float _slowTimer;
+        private float _savedMaxSpeed = -1f;
+
+        // TDD §11.4 danger meter: introduced here at zero effect (no UI, no caught check).
+        // Task 5 activates the consequence; this task only keeps the +/- bookkeeping honest.
+        private float _danger;
 
         private TextMeshProUGUI _bannerText;
         private TextMeshProUGUI _feedbackText;
@@ -78,7 +104,9 @@ namespace SummaRace.Features.Race.Endless
                 ? ourGm.CurrentStory
                 : SummaRace.Data.StoryLoader.Load("s01_easy");
 
-            _nextTargetDistance = FirstGateDistance;
+            _pendingGateDistance = FirstGateDistance;
+            _pendingElement = 0;
+            _pendingIsRepresent = false;
             BuildHud();
             UpdateBanner();
 
@@ -138,22 +166,25 @@ namespace SummaRace.Features.Race.Endless
 
             if (_runStartTime < 0f && track.isMoving) _runStartTime = Time.time;
 
-            // A gate the player ran past without a correct pick resolves as missed.
-            if (_currentElement < 5 && _currentElement < _gatesPlaced &&
-                track.worldDistance > _gateDistances[_currentElement] + MissGrace)
+            // TDD §11.4 slow-on-wrong: public-API clamp, decays back to their own max.
+            if (_slowTimer > 0f)
             {
-                if (!_firstPickDone[_currentElement])
+                _slowTimer -= Time.deltaTime;
+                if (_slowTimer <= 0f && _savedMaxSpeed > 0f)
                 {
-                    _firstPickDone[_currentElement] = true;
-                    _firstPickCorrect[_currentElement] = false;
+                    track.maxSpeed = _savedMaxSpeed;
+                    _savedMaxSpeed = -1f;
                 }
-                if (_correctCards[_currentElement] != null)
-                    Tween.StopAll(_correctCards[_currentElement]);
-                if (_gateRoots[_currentElement] != null)
-                    Destroy(_gateRoots[_currentElement].gameObject);
-                _currentElement++;
-                UpdateBanner();
             }
+
+            // Pass-by: the learner ran past the active gate/re-present without collecting it.
+            if (_activeGateRoot != null && _activeElement < 5 &&
+                track.worldDistance > _activeGateDistance + MissGrace)
+            {
+                HandleMissedActiveGate(track);
+            }
+
+            TryPlacePending();
 
             // Their Resume() unconditionally re-shows the pause button after a
             // focus-loss pause cycle — keep it hidden.
@@ -162,27 +193,80 @@ namespace SummaRace.Features.Race.Endless
                 _gameState.pauseButton.gameObject.SetActive(false);
         }
 
-        // ---------- gate spawning ----------
+        // ---------- gate spawning / scheduling ----------
 
         private void OnNewSegment(TrackSegment segment)
         {
             float segStart = _spawnedDistance;
             float segEnd = segStart + segment.worldLength;
             _spawnedDistance = segEnd;
+            _spans.Add((segment, segStart, segEnd));
 
-            while (_gatesPlaced < 6 &&
-                   _nextTargetDistance >= segStart && _nextTargetDistance < segEnd)
+            TryPlacePending();
+        }
+
+        /// <summary>Resolves the single pending placement (if any) into an active gate as
+        /// soon as a spawned segment covers it. If the covering segment was recycled before
+        /// we got here, or the target is behind the farthest still-alive span, clamp to the
+        /// farthest span's end minus 2 m so the gate is never left unplaceable. If the target
+        /// is still ahead of everything spawned so far, wait for the next segment.</summary>
+        private void TryPlacePending()
+        {
+            for (int i = _spans.Count - 1; i >= 0; i--)
+                if (_spans[i].seg == null) _spans.RemoveAt(i);
+
+            if (_pendingGateDistance < 0f || _activeGateRoot != null || _spans.Count == 0) return;
+
+            TrackSegment farthestSeg = null;
+            float farthestStart = 0f, farthestEnd = float.MinValue;
+            TrackSegment coveringSeg = null;
+            float coveringStart = 0f;
+
+            foreach (var span in _spans)
             {
-                float local = _nextTargetDistance - segStart;
-                if (_gatesPlaced < 5) PlaceAnswerGate(segment, local, _gatesPlaced);
-                else PlaceFinishGate(segment, local);
-
-                _gateDistances[_gatesPlaced] = _nextTargetDistance;
-                _gatesPlaced++;
-                _nextTargetDistance += _gatesPlaced < 5
-                    ? Mathf.Max(25f, _story.mission.checkpointSpacing)
-                    : FinishGap;
+                if (span.end > farthestEnd)
+                {
+                    farthestEnd = span.end;
+                    farthestStart = span.start;
+                    farthestSeg = span.seg;
+                }
+                if (_pendingGateDistance >= span.start && _pendingGateDistance < span.end)
+                {
+                    coveringSeg = span.seg;
+                    coveringStart = span.start;
+                }
             }
+
+            TrackSegment placeSeg;
+            float placeStart, placeDist;
+            if (coveringSeg != null)
+            {
+                placeSeg = coveringSeg;
+                placeStart = coveringStart;
+                placeDist = _pendingGateDistance;
+            }
+            else if (_pendingGateDistance < farthestEnd)
+            {
+                placeSeg = farthestSeg;
+                placeStart = farthestStart;
+                placeDist = farthestEnd - 2f;
+            }
+            else
+            {
+                return; // beyond spawned track — retry on the next segment
+            }
+
+            int element = _pendingElement;
+            bool isRepresent = _pendingIsRepresent;
+            _activeGateDistance = placeDist;
+            _activeElement = element;
+            _activeIsRepresent = isRepresent;
+            _pendingGateDistance = -1f;
+
+            float local = placeDist - placeStart;
+            if (element >= 5) PlaceFinishGate(placeSeg, local);
+            else if (isRepresent) PlaceRepresentGate(placeSeg, local, element);
+            else PlaceAnswerGate(placeSeg, local, element);
         }
 
         private void PlaceAnswerGate(TrackSegment segment, float localDist, int elementIndex)
@@ -194,7 +278,7 @@ namespace SummaRace.Features.Race.Endless
             root.SetParent(segment.transform, true); // dies with the segment on recycle
             root.SetPositionAndRotation(pos, rot);
             root.gameObject.AddComponent<EndlessCurveDip>();
-            _gateRoots[elementIndex] = root;
+            _activeGateRoot = root;
 
             float laneOffset = TrackManager.instance.laneOffset;
             float cardWidth = Mathf.Min(1.55f, laneOffset * 0.95f);
@@ -220,10 +304,46 @@ namespace SummaRace.Features.Race.Endless
                 var pickup = card.gameObject.AddComponent<EndlessOptionPickup>();
                 pickup.elementIndex = elementIndex;
                 pickup.isCorrect = isCorrect;
-                if (isCorrect) _correctCards[elementIndex] = card;
             }
 
             // SWBST pill above the middle card, palette-colored.
+            BuildCard(root, new Vector3(0f, CardY + 1.55f, 0f), new Vector2(3.0f, 0.55f),
+                element.type, Color.white,
+                SummaRace.Constants.SwbstPalette.DeepForIndex(elementIndex), 2.6f);
+        }
+
+        /// <summary>TDD §11.4 re-presentation: ONE gold glowing card, center lane, standing in
+        /// for the whole gate after a wrong pick or a miss. Collecting it resolves the element
+        /// with the normal celebration but no boost and no first-pick change.</summary>
+        private void PlaceRepresentGate(TrackSegment segment, float localDist, int elementIndex)
+        {
+            Vector3 pos; Quaternion rot;
+            segment.GetPointAtInWorldUnit(localDist, out pos, out rot);
+
+            var root = new GameObject("SwbstRepresent_" + elementIndex).transform;
+            root.SetParent(segment.transform, true);
+            root.SetPositionAndRotation(pos, rot);
+            root.gameObject.AddComponent<EndlessCurveDip>();
+            _activeGateRoot = root;
+
+            float laneOffset = TrackManager.instance.laneOffset;
+            float cardWidth = Mathf.Min(1.55f, laneOffset * 0.95f);
+            var element = _story.elements[elementIndex];
+            var goldColor = new Color(1f, 0.85f, 0.35f);
+
+            var card = BuildCard(root, new Vector3(0f, CardY, 0f), new Vector2(cardWidth, 0.85f),
+                element.correct, Color.black, goldColor, 2.4f);
+
+            var trigger = card.gameObject.AddComponent<BoxCollider>();
+            trigger.isTrigger = true;
+            trigger.size = new Vector3(cardWidth, 2.2f, 0.5f);
+            trigger.center = new Vector3(0f, 0.6f, 0f);
+
+            var pickup = card.gameObject.AddComponent<EndlessOptionPickup>();
+            pickup.elementIndex = elementIndex;
+            pickup.isCorrect = true;
+
+            // SWBST pill above the gold card, same as a normal gate.
             BuildCard(root, new Vector3(0f, CardY + 1.55f, 0f), new Vector2(3.0f, 0.55f),
                 element.type, Color.white,
                 SummaRace.Constants.SwbstPalette.DeepForIndex(elementIndex), 2.6f);
@@ -238,7 +358,7 @@ namespace SummaRace.Features.Race.Endless
             root.SetParent(segment.transform, true);
             root.SetPositionAndRotation(pos, rot);
             root.gameObject.AddComponent<EndlessCurveDip>();
-            _gateRoots[5] = root;
+            _activeGateRoot = root;
 
             float laneOffset = TrackManager.instance.laneOffset;
             var card = BuildCard(root, new Vector3(0f, 1.6f, 0f), new Vector2(3.4f, 0.9f),
@@ -298,13 +418,15 @@ namespace SummaRace.Features.Race.Endless
         {
             if (_finished) return;
             if (pickup.isFinishGate) { StartCoroutine(FinishRoutine()); return; }
-            if (pickup.elementIndex != _currentElement) return; // stray hit on a future gate
+            if (pickup.elementIndex != _activeElement) return; // stray hit on an inactive/destroyed gate
 
-            // Only the FIRST pick at each gate counts for stars (GDD §4.2).
-            if (!_firstPickDone[_currentElement])
+            // Only the FIRST pick at each gate counts for stars (GDD §4.2). A re-present
+            // never changes this — it was already recorded false by the pick/miss that
+            // triggered the re-present.
+            if (!_firstPickDone[_activeElement])
             {
-                _firstPickDone[_currentElement] = true;
-                _firstPickCorrect[_currentElement] = pickup.isCorrect;
+                _firstPickDone[_activeElement] = true;
+                _firstPickCorrect[_activeElement] = pickup.isCorrect;
             }
 
             if (pickup.isCorrect) CollectCorrect(pickup);
@@ -319,6 +441,10 @@ namespace SummaRace.Features.Race.Endless
 
         private void CollectCorrect(EndlessOptionPickup pickup)
         {
+            var track = TrackManager.instance;
+            bool wasRepresent = _activeIsRepresent;
+            int element = pickup.elementIndex;
+
             if (SummaRace.Core.AudioManager.Instance != null)
                 SummaRace.Core.AudioManager.Instance.PlaySfx(SummaRace.Constants.AudioKeys.SfxCollect);
 
@@ -326,8 +452,7 @@ namespace SummaRace.Features.Race.Endless
 
             // The collected card flies up and pops away; the rest of the gate goes now.
             var cardT = pickup.transform;
-            int index = pickup.elementIndex;
-            var root = _gateRoots[index];
+            var root = _activeGateRoot;
             // Keep the flying card parented to the segment: a floating-origin recenter
             // (~every 100m) would teleport a world-space orphan mid-celebration.
             cardT.SetParent(root != null ? root.parent : null, true);
@@ -338,31 +463,133 @@ namespace SummaRace.Features.Race.Endless
                 .OnComplete(() => { if (cardT != null) Destroy(cardT.gameObject); });
 
             if (root != null) Destroy(root.gameObject);
-            _gateRoots[index] = null;
 
-            _currentElement++;
-            UpdateBanner();
+            // TDD §11.4: a correct pick always relieves danger a little; the boost bundle
+            // (sfx + speed) is reserved for a first-hit correct pick — collecting a
+            // re-presented gold card still resolves the element, just without the extra reward.
+            _danger = Mathf.Clamp(_danger - SummaRace.Constants.GameRules.DangerRelief,
+                0f, SummaRace.Constants.GameRules.DangerMax);
+
+            if (!wasRepresent && track != null)
+            {
+                if (SummaRace.Core.AudioManager.Instance != null)
+                    SummaRace.Core.AudioManager.Instance.PlaySfx(SummaRace.Constants.AudioKeys.SfxBoost);
+                BoostSpeed(track);
+            }
+
+            if (track != null) AdvanceToNext(track, element);
+            else { _activeGateRoot = null; _activeElement = -1; _activeIsRepresent = false; }
         }
 
         private void HitWrong(EndlessOptionPickup pickup)
         {
+            var track = TrackManager.instance;
             if (SummaRace.Core.AudioManager.Instance != null)
                 SummaRace.Core.AudioManager.Instance.PlaySfx(SummaRace.Constants.AudioKeys.SfxNotQuite);
 
             ShowFeedback("Not quite — the glowing one!", new Color(1f, 0.78f, 0.35f));
 
-            var correct = _correctCards[pickup.elementIndex];
-            Destroy(pickup.gameObject);
+            _danger = Mathf.Clamp(_danger + SummaRace.Constants.GameRules.DangerOnWrong,
+                0f, SummaRace.Constants.GameRules.DangerMax);
 
-            // Teaching moment: the correct card glows gold as it passes.
-            if (correct != null)
+            if (track != null)
             {
-                correct.localScale = Vector3.one * 1.3f;
-                var sr = correct.GetComponentInChildren<SpriteRenderer>();
-                if (sr != null) sr.color = new Color(1f, 0.85f, 0.35f);
-                Tween.PunchScale(correct, Vector3.one * 0.18f, 0.4f);
+                if (_savedMaxSpeed < 0f) _savedMaxSpeed = track.maxSpeed;
+                track.maxSpeed = Mathf.Max(track.minSpeed, track.speed * 0.6f);
+                _slowTimer = SummaRace.Constants.GameRules.SlowSeconds;
             }
-            // The miss-grace check in Update() advances the gate a few metres later.
+
+            int element = pickup.elementIndex;
+            // The WHOLE gate (both distractors + the correct card) goes now — TDD §11.4:
+            // the correct answer comes back on its own as a single glowing re-present.
+            DestroyActiveGate();
+
+            if (track != null) ScheduleRepresent(track, element);
+        }
+
+        /// <summary>A gate or re-present the player ran past without any hit. First-pick is
+        /// recorded false if this is the first miss for the element; either way the correct
+        /// answer comes back as a re-present, up to <see cref="MaxRepresentMisses"/> dodges
+        /// before an anti-frustration auto-resolve moves on.</summary>
+        private void HandleMissedActiveGate(TrackManager track)
+        {
+            int element = _activeElement;
+            if (!_firstPickDone[element])
+            {
+                _firstPickDone[element] = true;
+                _firstPickCorrect[element] = false;
+            }
+
+            bool wasRepresent = _activeIsRepresent;
+            DestroyActiveGate();
+
+            if (wasRepresent)
+            {
+                _representCount++;
+                if (_representCount >= MaxRepresentMisses)
+                {
+                    // Anti-frustration floor: the card is center-lane and glowing, so 3
+                    // dodges means the learner is deliberately avoiding it. Not learner-facing.
+                    Debug.Log("EndlessRaceDirector: element " + element +
+                        " auto-resolved after " + MaxRepresentMisses + " dodged re-presents.");
+                    AdvanceToNext(track, element);
+                    return;
+                }
+            }
+
+            ScheduleRepresent(track, element);
+        }
+
+        private void DestroyActiveGate()
+        {
+            if (_activeGateRoot != null) Destroy(_activeGateRoot.gameObject);
+            _activeGateRoot = null;
+        }
+
+        /// <summary>Element fully resolved (correct first hit, re-present collected, or
+        /// auto-resolved after 3 dodges) — clears the active slot and schedules the next
+        /// answer gate, or FINISH once element 4 is done, through the same pending mechanism.</summary>
+        private void AdvanceToNext(TrackManager track, int completedElement)
+        {
+            _representCount = 0;
+            _activeGateRoot = null;
+            _activeElement = -1;
+            _activeIsRepresent = false;
+
+            int next = completedElement + 1;
+            if (next < 5)
+            {
+                _pendingElement = next;
+                _pendingIsRepresent = false;
+                _pendingGateDistance = track.worldDistance + Mathf.Max(25f, _story.mission.checkpointSpacing);
+            }
+            else
+            {
+                _pendingElement = 5;
+                _pendingIsRepresent = false;
+                _pendingGateDistance = track.worldDistance + FinishGap;
+            }
+
+            UpdateBanner();
+            TryPlacePending();
+        }
+
+        private void ScheduleRepresent(TrackManager track, int element)
+        {
+            _pendingElement = element;
+            _pendingIsRepresent = true;
+            _pendingGateDistance = track.worldDistance + RepresentGap;
+            UpdateBanner();
+            TryPlacePending();
+        }
+
+        private void BoostSpeed(TrackManager track)
+        {
+            // TDD §11.4: correct pick = boost. Their protected m_Speed self-clamps to
+            // maxSpeed in Update, so an over-write is safe; reflection is runtime-only
+            // state — their code stays untouched.
+            if (SpeedField != null)
+                SpeedField.SetValue(track, Mathf.Min(track.maxSpeed, track.speed * 1.35f));
         }
 
         private IEnumerator FinishRoutine()
@@ -441,8 +668,9 @@ namespace SummaRace.Features.Race.Endless
         private void UpdateBanner()
         {
             if (_bannerText == null) return;
-            _bannerText.text = _currentElement < 5
-                ? "Collect: " + _story.elements[_currentElement].type + "  " + (_currentElement + 1) + "/5"
+            int element = _activeGateRoot != null ? _activeElement : _pendingElement;
+            _bannerText.text = element < 5
+                ? "Collect: " + _story.elements[element].type + "  " + (element + 1) + "/5"
                 : "Run to the FINISH!";
         }
 
