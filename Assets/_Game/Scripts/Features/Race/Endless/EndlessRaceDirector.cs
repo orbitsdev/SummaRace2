@@ -444,12 +444,13 @@ namespace SummaRace.Features.Race.Endless
             if (gs.multiplierText != null) gs.multiplierText.gameObject.SetActive(false);
         }
 
-        /// <summary>Entered from Boot, two AudioListeners coexist (Core + scene camera) — keep the camera's.</summary>
+        /// <summary>Entered from Boot, two AudioListeners coexist (persistent Core + scene camera).
+        /// Keep Core's — it's the only listener the post-race scenes have.</summary>
         private void EnsureSingleAudioListener()
         {
             var listeners = FindObjectsByType<AudioListener>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
             if (listeners.Length <= 1) return;
-            var keep = Camera.main != null ? Camera.main.GetComponent<AudioListener>() : listeners[0];
+            var keep = System.Array.Find(listeners, l => l.gameObject.scene.name == "DontDestroyOnLoad");
             if (keep == null) keep = listeners[0];
             foreach (var listener in listeners)
                 if (listener != keep) listener.enabled = false;
