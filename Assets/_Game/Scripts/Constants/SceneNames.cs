@@ -10,6 +10,7 @@ namespace SummaRace.Constants
         public const string StorySelect = "StorySelect";
         public const string Reader = "Reader";
         public const string Race = "Race";
+        public const string RaceEndless = "MainSummaRace"; // experiment: Trash Dash base + SWBST gates
         public const string Arrange = "Arrange";
         public const string Summary = "Summary";
         public const string Results = "Results";
