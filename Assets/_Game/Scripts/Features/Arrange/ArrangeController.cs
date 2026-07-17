@@ -50,12 +50,12 @@ namespace SummaRace.Features.Arrange
 
         private void Start()
         {
-            _story = GameManager.Instance != null ? GameManager.Instance.CurrentStory : null;
+            _story = SummaRace.Core.GameManager.Instance != null ? SummaRace.Core.GameManager.Instance.CurrentStory : null;
             if (_story == null) _story = StoryLoader.Load("s01_easy"); // editor-direct fallback
             if (_story == null) { Debug.LogError("Arrange: no story."); return; }
 
             // Pieces come from the race result when available (same texts either way).
-            var result = GameManager.Instance != null ? GameManager.Instance.LastRaceResult : null;
+            var result = SummaRace.Core.GameManager.Instance != null ? SummaRace.Core.GameManager.Instance.LastRaceResult : null;
             for (int i = 0; i < 5; i++)
                 _pieceTexts[i] = result != null && !string.IsNullOrEmpty(result.collectedPieces[i])
                     ? result.collectedPieces[i]
@@ -184,7 +184,7 @@ namespace SummaRace.Features.Arrange
             {
                 if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxCorrect);
                 SetStatus("Perfect order! Great job!");
-                if (GameManager.Instance != null) GameManager.Instance.SetArrangeResult(_attempts);
+                if (SummaRace.Core.GameManager.Instance != null) SummaRace.Core.GameManager.Instance.SetArrangeResult(_attempts);
                 EventBus.Raise(new ArrangeVerified { correct = true, attemptCount = _attempts });
 
                 yield return new WaitForSeconds(1f);

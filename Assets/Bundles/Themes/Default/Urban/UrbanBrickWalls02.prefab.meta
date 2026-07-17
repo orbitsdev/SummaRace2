@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 3f5e3fdf309711e44b06497a2c5800ff
+timeCreated: 1465824892
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 87901
+  packageName: Endless Runner - Sample Game
+  packageVersion: 1.97.1
+  assetPath: Assets/Bundles/Themes/Default/Urban/UrbanBrickWalls02.prefab
+  uploadId: 518529

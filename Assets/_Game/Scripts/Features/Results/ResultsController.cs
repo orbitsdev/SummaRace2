@@ -34,11 +34,11 @@ namespace SummaRace.Features.Results
 
         private void Start()
         {
-            _story = GameManager.Instance != null ? GameManager.Instance.CurrentStory : null;
+            _story = SummaRace.Core.GameManager.Instance != null ? SummaRace.Core.GameManager.Instance.CurrentStory : null;
             if (_story == null) _story = StoryLoader.Load("s01_easy"); // editor-direct fallback
             if (_story == null) { Debug.LogError("Results: no story."); return; }
 
-            int stars = GameManager.Instance != null ? GameManager.Instance.CalculateStars() : 1;
+            int stars = SummaRace.Core.GameManager.Instance != null ? SummaRace.Core.GameManager.Instance.CalculateStars() : 1;
 
             if (titleText != null) titleText.text = _story.title;
             if (praiseText != null) praiseText.text = "";
@@ -54,7 +54,7 @@ namespace SummaRace.Features.Results
                 nextButton.onClick.AddListener(OnNextMission);
             }
 
-            if (GameManager.Instance != null) GameManager.Instance.CompleteStory(stars);
+            if (SummaRace.Core.GameManager.Instance != null) SummaRace.Core.GameManager.Instance.CompleteStory(stars);
             StartCoroutine(RevealRoutine(stars));
         }
 
@@ -90,7 +90,7 @@ namespace SummaRace.Features.Results
         private IEnumerator RevealTreasure()
         {
             if (treasureRow == null) yield break;
-            var result = GameManager.Instance != null ? GameManager.Instance.LastRaceResult : null;
+            var result = SummaRace.Core.GameManager.Instance != null ? SummaRace.Core.GameManager.Instance.LastRaceResult : null;
 
             for (int i = 0; i < 5; i++)
             {

@@ -73,7 +73,7 @@ namespace SummaRace.Features.StorySelect
         /// <summary>Best-stars row on the Easy card; editor-direct fallback shows silhouettes.</summary>
         private void SetupStars()
         {
-            int best = GameManager.Instance != null ? GameManager.Instance.GetBestStars("s01_easy") : 0;
+            int best = SummaRace.Core.GameManager.Instance != null ? SummaRace.Core.GameManager.Instance.GetBestStars("s01_easy") : 0;
             for (int i = 0; i < starImages.Length; i++)
                 if (starImages[i] != null) starImages[i].color = i < best ? StarOn : StarOff;
         }
@@ -95,9 +95,9 @@ namespace SummaRace.Features.StorySelect
         private void SelectStory(string storyId)
         {
             PlayClick();
-            if (GameManager.Instance != null)
+            if (SummaRace.Core.GameManager.Instance != null)
             {
-                GameManager.Instance.StartStory(storyId);
+                SummaRace.Core.GameManager.Instance.StartStory(storyId);
             }
             else if (SceneLoader.Instance != null)
             {

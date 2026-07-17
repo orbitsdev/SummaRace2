@@ -25,7 +25,7 @@ namespace SummaRace.Features.Summary
 
         private void Start()
         {
-            _story = GameManager.Instance != null ? GameManager.Instance.CurrentStory : null;
+            _story = SummaRace.Core.GameManager.Instance != null ? SummaRace.Core.GameManager.Instance.CurrentStory : null;
             if (_story == null) _story = StoryLoader.Load("s01_easy"); // editor-direct fallback
             if (_story == null) { Debug.LogError("Summary: no story."); return; }
 
@@ -85,7 +85,7 @@ namespace SummaRace.Features.Summary
         private void Accept(string text)
         {
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxCorrect);
-            if (GameManager.Instance != null) GameManager.Instance.LastSummaryText = text;
+            if (SummaRace.Core.GameManager.Instance != null) SummaRace.Core.GameManager.Instance.LastSummaryText = text;
 
             EventBus.Raise(new SummarySubmitted { text = text, nudgeCount = _nudgeCount });
             if (SceneLoader.Instance != null) SceneLoader.Instance.Load(SceneNames.Results);

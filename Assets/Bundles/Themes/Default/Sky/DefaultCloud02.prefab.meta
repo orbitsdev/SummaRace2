@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: bbbf0fe79b2193f4e9d65f50f6fc5c99
+timeCreated: 1465575613
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 87901
+  packageName: Endless Runner - Sample Game
+  packageVersion: 1.97.1
+  assetPath: Assets/Bundles/Themes/Default/Sky/DefaultCloud02.prefab
+  uploadId: 518529

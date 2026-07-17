@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 090a0c91533434540bb3e92355d25742
+timeCreated: 1463568976
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 87901
+  packageName: Endless Runner - Sample Game
+  packageVersion: 1.97.1
+  assetPath: Assets/Bundles/Themes/Default/Suburbs/SuburbsGarage01.prefab
+  uploadId: 518529

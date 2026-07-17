@@ -85,7 +85,7 @@ namespace SummaRace.Features.Race
 
         private void Start()
         {
-            _story = GameManager.Instance != null ? GameManager.Instance.CurrentStory : null;
+            _story = SummaRace.Core.GameManager.Instance != null ? SummaRace.Core.GameManager.Instance.CurrentStory : null;
             if (_story == null) _story = StoryLoader.Load("s01_easy"); // editor-direct fallback
             if (_story == null) { Debug.LogError("Race: no story."); return; }
 
@@ -331,7 +331,7 @@ namespace SummaRace.Features.Race
                 result.firstPickCorrect[i] = _firstPickCorrect[i];
             }
 
-            if (GameManager.Instance != null) GameManager.Instance.SetRaceResult(result);
+            if (SummaRace.Core.GameManager.Instance != null) SummaRace.Core.GameManager.Instance.SetRaceResult(result);
             EventBus.Raise(new RaceCompleted { result = result });
 
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxStar);
