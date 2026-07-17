@@ -1,5 +1,6 @@
 using System.Collections;
 using SummaRace.Constants;
+using TMPro;
 using UnityEngine;
 
 namespace SummaRace.Core
@@ -10,10 +11,16 @@ namespace SummaRace.Core
     /// </summary>
     public class Bootstrapper : MonoBehaviour
     {
+        [SerializeField] private TMP_Text taglineText;
+        [SerializeField] private TMP_Text loadingText;
+
         private static bool _initialized;
 
         private void Awake()
         {
+            if (taglineText != null) taglineText.text = GameText.BootTagline;
+            if (loadingText != null) loadingText.text = GameText.LoadingLabel;
+
             if (_initialized) return;
             _initialized = true;
 
@@ -37,7 +44,7 @@ namespace SummaRace.Core
         private IEnumerator Start()
         {
             // Brief splash beat, then into the menu.
-            yield return new WaitForSeconds(0.5f);
+            yield return new WaitForSeconds(GameRules.SplashSeconds);
             SceneLoader.Instance.Load(SceneNames.MainMenu);
         }
     }

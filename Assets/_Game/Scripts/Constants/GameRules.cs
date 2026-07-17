@@ -25,5 +25,6 @@ namespace SummaRace.Constants
 
         // App
         public const int TargetFrameRate = 60;
+        public const float SplashSeconds = 2f;
     }
 }

@@ -5,6 +5,9 @@ namespace SummaRace.Constants
     {
         public const string TapToStart = "TAP TO START";
 
+        /// <summary>Subtitle under the game title on the Boot splash.</summary>
+        public const string BootTagline = "Read! Race! Summarize!";
+
         public const string SummaryHint =
             "Example: Somebody wanted ___, but ___, so ___, then ___.";
 

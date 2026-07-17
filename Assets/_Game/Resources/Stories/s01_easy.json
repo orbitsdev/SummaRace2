@@ -81,7 +81,7 @@
   ],
   "mission": {
     "playerSpeed": 5.5,
-    "checkpointSpacing": 30,
+    "checkpointSpacing": 45,
     "startingDanger": 0,
     "dangerPerSecond": 1.5
   }
