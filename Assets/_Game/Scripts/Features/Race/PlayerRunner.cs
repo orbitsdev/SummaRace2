@@ -12,11 +12,23 @@ namespace SummaRace.Features.Race
     /// </summary>
     public class PlayerRunner : MonoBehaviour
     {
+        // Visual polish only: the model gently yaws into a lane change and eases back.
+        private const float MaxLeanYaw = 12f;
+        private const float LeanEaseSpeed = 9f;
+
         public bool InputEnabled { get; set; }
 
         private int _currentLane = 1; // 0 = left, 1 = middle, 2 = right
         private float _targetX;
         private Vector2 _touchStart;
+        private Transform _model; // spawned character child (null in grey-box fallback)
+        private float _modelYaw;
+
+        private void Start()
+        {
+            var animator = GetComponentInChildren<Animator>();
+            if (animator != null) _model = animator.transform;
+        }
 
         private void Update()
         {
@@ -27,6 +39,19 @@ namespace SummaRace.Features.Race
             var pos = transform.position;
             pos.x = Mathf.MoveTowards(pos.x, _targetX, speed * Time.deltaTime);
             transform.position = pos;
+
+            LeanIntoLaneChange(pos.x);
+        }
+
+        /// <summary>Turns the model toward where it is heading, easing back to forward on arrival.</summary>
+        private void LeanIntoLaneChange(float currentX)
+        {
+            if (_model == null) return;
+
+            float remaining = _targetX - currentX;
+            float targetYaw = Mathf.Clamp(remaining / GameRules.LaneWidth, -1f, 1f) * MaxLeanYaw;
+            _modelYaw = Mathf.LerpAngle(_modelYaw, targetYaw, LeanEaseSpeed * Time.deltaTime);
+            _model.localRotation = Quaternion.Euler(0f, _modelYaw, 0f);
         }
 
         private void ReadInput()

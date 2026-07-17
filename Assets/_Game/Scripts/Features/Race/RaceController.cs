@@ -37,10 +37,10 @@ namespace SummaRace.Features.Race
         [SerializeField] private Sprite worldCardSprite;
         [SerializeField] private TMP_FontAsset worldLabelFont;
 
-        [Header("Magic FX (Hovl, optional)")]
-        [SerializeField] private GameObject optionPadFxPrefab;    // glowing circle under each answer card
-        [SerializeField] private GameObject collectMagicFxPrefab; // star burst on a correct pick
-        [SerializeField] private GameObject finishPortalPrefab;   // portal waiting at the finish line
+        [Header("Story sparkle FX (Hovl, retinted gold at spawn)")]
+        [SerializeField] private GameObject optionPadFxPrefab;    // golden glow ring under each answer card
+        [SerializeField] private GameObject collectMagicFxPrefab; // gold star burst on a correct pick
+        [SerializeField] private GameObject finishPortalPrefab;   // golden story-gate waiting at the finish line
 
         [Header("Cartoon FX (optional)")]
         [SerializeField] private GameObject collectFxPrefab;
@@ -240,7 +240,7 @@ namespace SummaRace.Features.Race
             _danger = Mathf.Max(0f, _danger - GameRules.DangerRelief);
             ShowFeedback("You got it! SPEED BOOST!", new Color(0.55f, 1f, 0.55f));
             SpawnFx(collectFxPrefab, pickup.transform.position);
-            SpawnFx(collectMagicFxPrefab, pickup.transform.position);
+            TintFx(SpawnFx(collectMagicFxPrefab, pickup.transform.position), StoryGold);
             if (_playerAnim != null) _playerAnim.SetTrigger("Jump"); // celebratory hop
 
             // The collected card celebrates: flies up and pops away.
@@ -631,12 +631,68 @@ namespace SummaRace.Features.Race
             return null;
         }
 
-        private void SpawnFx(GameObject prefab, Vector3 position)
+        private GameObject SpawnFx(GameObject prefab, Vector3 position)
         {
-            if (prefab == null) return;
+            if (prefab == null) return null;
             var fx = Instantiate(prefab, position, Quaternion.identity);
             Destroy(fx, 4f); // CFXR effects self-stop; this just tidies the scene
+            return fx;
         }
+
+        // ---------- story-sparkle tinting (theme: "stories are treasure") ----------
+
+        /// <summary>Warm gold shared by every Hovl FX — sparkle, never sorcery.</summary>
+        private static readonly Color StoryGold = new Color(1f, 0.85f, 0.45f);
+
+        /// <summary>Retints every particle system in an FX instance toward the given color, keeping alphas.</summary>
+        private static void TintFx(GameObject fx, Color tint)
+        {
+            if (fx == null) return;
+            foreach (var ps in fx.GetComponentsInChildren<ParticleSystem>(true))
+            {
+                var main = ps.main;
+                main.startColor = Tinted(main.startColor, tint);
+
+                var col = ps.colorOverLifetime;
+                if (col.enabled) col.color = Tinted(col.color, tint);
+            }
+        }
+
+        private static ParticleSystem.MinMaxGradient Tinted(ParticleSystem.MinMaxGradient g, Color tint)
+        {
+            switch (g.mode)
+            {
+                case ParticleSystemGradientMode.Color:
+                    g.color = WithAlpha(tint, g.color.a);
+                    break;
+                case ParticleSystemGradientMode.TwoColors:
+                    g.colorMin = WithAlpha(tint, g.colorMin.a);
+                    g.colorMax = WithAlpha(tint, g.colorMax.a);
+                    break;
+                case ParticleSystemGradientMode.Gradient:
+                case ParticleSystemGradientMode.RandomColor:
+                    g.gradient = Tinted(g.gradient, tint);
+                    break;
+                case ParticleSystemGradientMode.TwoGradients:
+                    g.gradientMin = Tinted(g.gradientMin, tint);
+                    g.gradientMax = Tinted(g.gradientMax, tint);
+                    break;
+            }
+            return g;
+        }
+
+        private static Gradient Tinted(Gradient source, Color tint)
+        {
+            if (source == null) return null;
+            var colorKeys = source.colorKeys;
+            for (int i = 0; i < colorKeys.Length; i++)
+                colorKeys[i].color = tint;
+            var gradient = new Gradient();
+            gradient.SetKeys(colorKeys, source.alphaKeys);
+            return gradient;
+        }
+
+        private static Color WithAlpha(Color c, float a) => new Color(c.r, c.g, c.b, a);
 
         private void SetRunning(bool running)
         {
@@ -712,12 +768,13 @@ namespace SummaRace.Features.Race
                 BuildWorldCard(cube.transform, Vector3.zero, Vector3.one,
                     new Vector2(1.2f, 0.66f), texts[lane], new Color(0.20f, 0.24f, 0.32f), Color.white, 2f);
 
-                // Glowing magic pad on the trail under each card — "this is a pickup spot".
+                // Soft golden glow ring on the trail under each card — "this story piece is precious".
                 if (optionPadFxPrefab != null)
                 {
                     var pad = Instantiate(optionPadFxPrefab, root);
                     pad.transform.localPosition = new Vector3((lane - 1) * GameRules.LaneWidth, 0.12f, 0f);
-                    pad.transform.localScale = Vector3.one * 0.85f;
+                    pad.transform.localScale = Vector3.one * 0.45f; // Healing circle is wide; keep rings lane-sized
+                    TintFx(pad, StoryGold);
                 }
             }
 
@@ -750,12 +807,13 @@ namespace SummaRace.Features.Race
             BuildWorldCard(gate.transform, new Vector3(0f, 1.2f, 0f), inverse,
                 new Vector2(5f, 1.3f), "FINISH", new Color(0.42f, 0.28f, 0.05f), new Color(1f, 0.83f, 0.25f), 4.5f);
 
-            // A magic portal waiting at the finish — the adventure's payoff in view all run.
+            // A golden story-gate waiting at the finish — the treasure payoff in view all run.
             if (finishPortalPrefab != null)
             {
                 var portal = Instantiate(finishPortalPrefab, _world);
                 portal.transform.localPosition = new Vector3(0f, 2.1f, z + 3f);
                 portal.transform.localScale = Vector3.one * 2.6f;
+                TintFx(portal, StoryGold);
             }
         }
 
