@@ -130,6 +130,12 @@ namespace SummaRace.Features.Race.Endless
             }
             _lastWorldDistance = track.worldDistance;
 
+            // Never punish (GDD D7): obstacle hits still stumble + blink (their
+            // friendly 2s invincibility beat) but can never stack to a game over.
+            var runner = track.characterController;
+            if (runner != null && runner.currentLife < runner.maxLife)
+                runner.currentLife = runner.maxLife;
+
             if (_runStartTime < 0f && track.isMoving) _runStartTime = Time.time;
 
             // A gate the player ran past without a correct pick resolves as missed.
