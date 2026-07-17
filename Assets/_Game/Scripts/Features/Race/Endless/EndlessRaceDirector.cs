@@ -187,6 +187,7 @@ namespace SummaRace.Features.Race.Endless
             var root = new GameObject("SwbstGate_" + elementIndex).transform;
             root.SetParent(segment.transform, true); // dies with the segment on recycle
             root.SetPositionAndRotation(pos, rot);
+            root.gameObject.AddComponent<EndlessCurveDip>();
             _gateRoots[elementIndex] = root;
 
             float laneOffset = TrackManager.instance.laneOffset;
@@ -230,6 +231,7 @@ namespace SummaRace.Features.Race.Endless
             var root = new GameObject("FinishGate").transform;
             root.SetParent(segment.transform, true);
             root.SetPositionAndRotation(pos, rot);
+            root.gameObject.AddComponent<EndlessCurveDip>();
             _gateRoots[5] = root;
 
             float laneOffset = TrackManager.instance.laneOffset;
