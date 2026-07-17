@@ -679,9 +679,9 @@ namespace SummaRace.Features.Race
                 }
             }
 
-            // Small SWBST pill floating above the gate — never blocks the view.
+            // SWBST pill floating above the gate, in the element's signature color.
             BuildWorldCard(root, new Vector3(0f, 3.6f, 0f), Vector3.one,
-                new Vector2(2.6f, 0.62f), element.type, new Color(0.42f, 0.28f, 0.05f), new Color(1f, 0.83f, 0.25f), 3f);
+                new Vector2(2.6f, 0.62f), element.type, Color.white, SwbstPalette.ForIndex(elementIndex), 3f);
 
             return root;
         }

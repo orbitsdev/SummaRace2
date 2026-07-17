@@ -30,8 +30,8 @@ namespace SummaRace.Features.Arrange
         [SerializeField] private Button undoButton;
         [SerializeField] private TMP_Text statusText;
 
-        private static readonly Color SlotEmpty = new Color(0.92f, 0.92f, 0.88f);
         private static readonly Color SlotFilled = new Color(0.96f, 0.87f, 0.70f);
+        private static readonly Color LabelFilled = new Color(0.25f, 0.20f, 0.12f);
         private static readonly Color SlotLocked = new Color(0.55f, 0.85f, 0.45f);
         private static readonly Color SlotWrong = new Color(0.95f, 0.65f, 0.3f);
         private static readonly Color PieceNormal = new Color(0.96f, 0.87f, 0.70f);
@@ -214,15 +214,16 @@ namespace SummaRace.Features.Arrange
         {
             for (int i = 0; i < 5; i++)
             {
+                bool filled = _slotContent[i] >= 0;
                 if (slotLabels[i] != null)
                 {
-                    slotLabels[i].text = _slotContent[i] >= 0
-                        ? _pieceTexts[_slotContent[i]]
-                        : _story.elements[i].type;
-                    slotLabels[i].fontStyle = _slotContent[i] >= 0 ? FontStyles.Normal : FontStyles.Bold;
+                    slotLabels[i].text = filled ? _pieceTexts[_slotContent[i]] : _story.elements[i].type;
+                    slotLabels[i].fontStyle = filled ? FontStyles.Normal : FontStyles.Bold;
+                    // Empty slot wears its SWBST color; a placed piece reads as normal text.
+                    slotLabels[i].color = filled ? LabelFilled : SwbstPalette.DeepForIndex(i);
                 }
                 if (slotButtons[i] != null && !_slotLocked[i])
-                    slotButtons[i].image.color = _slotContent[i] >= 0 ? SlotFilled : SlotEmpty;
+                    slotButtons[i].image.color = filled ? SlotFilled : SwbstPalette.PastelForIndex(i);
 
                 int element = _poolOrder[i];
                 bool placed = IsPlaced(element);

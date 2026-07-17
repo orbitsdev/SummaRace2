@@ -33,7 +33,7 @@ namespace SummaRace.Features.Summary
             {
                 var sb = new System.Text.StringBuilder();
                 for (int i = 0; i < _story.elements.Length; i++)
-                    sb.AppendLine($"{i + 1}. {_story.elements[i].type}: {_story.elements[i].correct}");
+                    sb.AppendLine($"{i + 1}. <color=#{SwbstPalette.HexForIndex(i)}><b>{_story.elements[i].type}</b></color>: {_story.elements[i].correct}");
                 referenceText.text = sb.ToString();
             }
 
