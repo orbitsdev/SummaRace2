@@ -42,7 +42,7 @@ namespace SummaRace.Features.Reader
         private void Start()
         {
             // Survive being opened directly in the editor (TDD §13).
-            _story = GameManager.Instance != null ? GameManager.Instance.CurrentStory : null;
+            _story = SummaRace.Core.GameManager.Instance != null ? SummaRace.Core.GameManager.Instance.CurrentStory : null;
             if (_story == null) _story = StoryLoader.Load("s01_easy");
             if (_story == null)
             {
