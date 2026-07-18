@@ -89,13 +89,13 @@ namespace SummaRace.Core
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 999; // always on top
 
-            // Dark radial branding backdrop (20 Logos pack) — same identity as the Boot splash.
+            // Bright playground-trail backdrop — same identity as the Boot splash.
             var imageGo = new GameObject("FadeImage");
             imageGo.transform.SetParent(canvasGo.transform, false);
             var image = imageGo.AddComponent<Image>();
-            var radial = Resources.Load<Sprite>("UI/bg_logo_radial");
-            if (radial != null) image.sprite = radial;
-            else image.color = new Color(0.09f, 0.11f, 0.17f); // flat fallback matches the radial's tone
+            var splash = Resources.Load<Sprite>("UI/bg_splash");
+            if (splash != null) image.sprite = splash;
+            else image.color = new Color(0.55f, 0.83f, 0.98f); // flat sky fallback matches the art's tone
             var rect = image.rectTransform;
             rect.anchorMin = Vector2.zero;
             rect.anchorMax = Vector2.one;
@@ -172,7 +172,7 @@ namespace SummaRace.Core
             loading.text = GameText.LoadingLabel;
             loading.fontSize = 34;
             loading.alignment = TextAlignmentOptions.Center;
-            loading.color = new Color(1f, 1f, 1f, 0.85f);
+            loading.color = new Color(0.11f, 0.17f, 0.33f, 0.95f); // deep navy — readable on the bright sky
             var loadRect = loading.rectTransform;
             loadRect.anchorMin = new Vector2(0.2f, 0.585f);
             loadRect.anchorMax = new Vector2(0.8f, 0.635f);
