@@ -43,6 +43,28 @@ simple composition that reads clearly at small size. No text, no letters, no wat
 
 ---
 
+## 🎯 StorySelect background
+**Slot:** `Assets/_Game/Resources/UI/bg_storyselect.png`
+**Size:** portrait 1080×1920
+**Note:** a large UI board covers the CENTER of the screen, so keep the middle simple —
+detail lives at the top strip and the bottom/side edges only.
+
+```
+Mobile game level-select screen background, portrait 9:16, glossy 2D cartoon vector style,
+casual kids' mobile game, saturated candy colors (sky blue, emerald green, warm gold), soft
+shiny highlights, chunky rounded shapes, clean bold edges, cheerful and friendly. A bright
+sunny park: blue sky with a few puffy clouds across the TOP, soft rolling green hills and a
+row of round leafy trees along the far horizon, a grassy foreground at the very bottom with
+small flowers, bushes and a tiny golden treasure chest tucked in a bottom corner. The whole
+CENTER of the image is a calm, gently uniform grassy park with no big objects — it will be
+covered by a UI board, so keep it clean and uncluttered there. No text, no letters, no
+characters, no watermark. High resolution, portrait 1080x1920, crisp clean edges.
+```
+**Acceptance:** top has sky+clouds, bottom has a grassy edge with small props, and the MIDDLE
+is calm/empty (a board sits there). Same art family as the menu/splash.
+
+---
+
 ## LATER (Phase G) — remaining 29 story hero images
 Generate only after the researcher approves the "Playground" style. Each uses the same
 square storybook prompt above with the scene swapped for that story. Fill this table as stories are authored:
