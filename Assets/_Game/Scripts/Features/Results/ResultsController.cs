@@ -26,6 +26,10 @@ namespace SummaRace.Features.Results
         [SerializeField] private RectTransform treasureRow;
         [SerializeField] private Sprite chipSprite;
 
+        [Header("Labels (set from GameText)")]
+        [SerializeField] private TMP_Text mainIdeaHeader;
+        [SerializeField] private TMP_Text nextButtonLabel;
+
         // Sprite is already golden — off = dark silhouette, on = full color.
         private static readonly Color StarOff = new Color(0.35f, 0.35f, 0.38f);
         private static readonly Color StarOn = Color.white;
@@ -41,6 +45,8 @@ namespace SummaRace.Features.Results
             int stars = SummaRace.Core.GameManager.Instance != null ? SummaRace.Core.GameManager.Instance.CalculateStars() : 1;
 
             if (titleText != null) titleText.text = _story.title;
+            if (mainIdeaHeader != null) mainIdeaHeader.text = GameText.MainIdeaHeader;
+            if (nextButtonLabel != null) nextButtonLabel.text = GameText.NextMissionLabel;
             if (praiseText != null) praiseText.text = "";
             if (mainIdeaPanel != null) mainIdeaPanel.SetActive(false);
             if (mainIdeaText != null) mainIdeaText.text = _story.mainIdea;

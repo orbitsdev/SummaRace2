@@ -1,0 +1,28 @@
+SCENE: Assets/_Game/Scenes/Results.unity
+Main Camera  <Transform,Camera>
+Canvas  <RectTransform,Canvas,CanvasScaler,GraphicRaycaster>
+  Sky  <RectTransform,CanvasRenderer,Image>
+  Hill  <RectTransform,CanvasRenderer,Image>
+  ResultsPanel  <RectTransform,CanvasRenderer,Image,PanelIntro>
+  TitleBanner  <RectTransform,CanvasRenderer,Image>
+    TrophyIcon  <RectTransform,CanvasRenderer,Image>
+  Title  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+    TEXT="" font=Fredoka-SemiBold SDF
+  Star_0  <RectTransform,CanvasRenderer,Image>
+  Star_1  <RectTransform,CanvasRenderer,Image>
+  Star_2  <RectTransform,CanvasRenderer,Image>
+  PraiseText  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+    TEXT="" font=Nunito-Bold SDF
+  MainIdeaPanel  <RectTransform,CanvasRenderer,Image,PanelIntro>
+    Header  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="Main Idea" font=Fredoka-SemiBold SDF
+    MainIdeaText  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="" font=Nunito-Regular SDF
+  NextButtonFrame  <RectTransform,CanvasRenderer,Image>
+  NextButton  <RectTransform,CanvasRenderer,Image,Button,ButtonSquash>
+    Label  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="NEXT MISSION" font=Fredoka-SemiBold SDF
+  TreasureChest  <RectTransform,CanvasRenderer,Image,UIFloat>
+  TreasureRow  <RectTransform>
+EventSystem  <Transform,EventSystem,InputSystemUIInputModule>
+ResultsController  <Transform,ResultsController>

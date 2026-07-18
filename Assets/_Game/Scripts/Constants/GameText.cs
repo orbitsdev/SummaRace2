@@ -42,6 +42,10 @@ namespace SummaRace.Constants
         /// <summary>Small header above the tip card on the loading overlay.</summary>
         public const string LoadingLabel = "Loading...";
 
+        // Results screen
+        public const string MainIdeaHeader = "Main Idea";
+        public const string NextMissionLabel = "NEXT MISSION";
+
         // Reader narration toggle
         public const string VoiceOn = "VOICE ON";
         public const string VoiceOff = "VOICE OFF";
