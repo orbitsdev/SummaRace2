@@ -1,0 +1,61 @@
+SCENE: Assets/_Game/Scenes/Arrange.unity
+Main Camera  <Transform,Camera>
+Canvas  <RectTransform,Canvas,CanvasScaler,GraphicRaycaster>
+  Sky  <RectTransform,CanvasRenderer,Image>
+  [INACTIVE] Hill  <RectTransform,CanvasRenderer,Image>
+  TeacherAvatar  <RectTransform,CanvasRenderer,Image,PanelIntro>
+  SpeechBubble  <RectTransform,CanvasRenderer,Image,PanelIntro>
+    Title  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="Put the story parts in order!" font=Nunito-Bold SDF
+  StatusText  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+    TEXT="" font=Nunito-Regular SDF
+  Slot_0  <RectTransform,CanvasRenderer,Image,Button,ButtonSquash>
+    Label  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="" font=Nunito-Regular SDF
+    Num  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="1" font=Fredoka-SemiBold SDF
+  Slot_1  <RectTransform,CanvasRenderer,Image,Button,ButtonSquash>
+    Label  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="" font=Nunito-Regular SDF
+    Num  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="2" font=Fredoka-SemiBold SDF
+  Slot_2  <RectTransform,CanvasRenderer,Image,Button,ButtonSquash>
+    Label  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="" font=Nunito-Regular SDF
+    Num  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="3" font=Fredoka-SemiBold SDF
+  Slot_3  <RectTransform,CanvasRenderer,Image,Button,ButtonSquash>
+    Label  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="" font=Nunito-Regular SDF
+    Num  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="4" font=Fredoka-SemiBold SDF
+  Slot_4  <RectTransform,CanvasRenderer,Image,Button,ButtonSquash>
+    Label  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="" font=Nunito-Regular SDF
+    Num  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="5" font=Fredoka-SemiBold SDF
+  Piece_0  <RectTransform,CanvasRenderer,Image,Button,ButtonSquash>
+    Label  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="" font=Nunito-Regular SDF
+  Piece_1  <RectTransform,CanvasRenderer,Image,Button,ButtonSquash>
+    Label  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="" font=Nunito-Regular SDF
+  Piece_2  <RectTransform,CanvasRenderer,Image,Button,ButtonSquash>
+    Label  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="" font=Nunito-Regular SDF
+  Piece_3  <RectTransform,CanvasRenderer,Image,Button,ButtonSquash>
+    Label  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="" font=Nunito-Regular SDF
+  Piece_4  <RectTransform,CanvasRenderer,Image,Button,ButtonSquash>
+    Label  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="" font=Nunito-Regular SDF
+  UndoButtonFrame  <RectTransform,CanvasRenderer,Image>
+  UndoButton  <RectTransform,CanvasRenderer,Image,Button,ButtonSquash>
+    Label  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="UNDO" font=Fredoka-SemiBold SDF
+  VerifyButtonFrame  <RectTransform,CanvasRenderer,Image>
+  VerifyButton  <RectTransform,CanvasRenderer,Image,Button,ButtonSquash>
+    Label  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="VERIFY ORDER" font=Fredoka-SemiBold SDF
+EventSystem  <Transform,EventSystem,InputSystemUIInputModule>
+ArrangeController  <Transform,ArrangeController>

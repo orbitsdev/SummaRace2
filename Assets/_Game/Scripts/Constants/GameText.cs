@@ -63,6 +63,16 @@ namespace SummaRace.Constants
         public static string RaceCollectBanner(string elementType, int number, int total) =>
             $"Collect: {elementType}  {number}/{total}";
 
+        // Arrange screen
+        public const string ArrangeTitle = "Put the story parts in order!";
+        public const string UndoLabel = "UNDO";
+        public const string VerifyLabel = "VERIFY ORDER";
+        public const string ArrangeIntroStatus = "Tap a story part, then tap its place in the order.";
+        public const string ArrangeFillFirst = "Fill every slot first!";
+        public const string ArrangePerfect = "Perfect order! Great job!";
+        public const string ArrangeHintPrefix = "Hint: ";
+        public const string ArrangeAlmost = "Almost! The green ones are locked in — try the others again.";
+
         // SWBST loading tips (SceneLoader shows one at random, GDD §11.5)
         public static readonly string[] LoadingTips =
         {

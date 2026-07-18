@@ -30,6 +30,11 @@ namespace SummaRace.Features.Arrange
         [SerializeField] private Button undoButton;
         [SerializeField] private TMP_Text statusText;
 
+        [Header("Labels (set from GameText)")]
+        [SerializeField] private TMP_Text titleText;
+        [SerializeField] private TMP_Text undoLabel;
+        [SerializeField] private TMP_Text verifyLabel;
+
         private static readonly Color SlotFilled = new Color(0.96f, 0.87f, 0.70f);
         private static readonly Color LabelFilled = new Color(0.25f, 0.20f, 0.12f);
         private static readonly Color SlotLocked = new Color(0.55f, 0.85f, 0.45f);
@@ -81,8 +86,12 @@ namespace SummaRace.Features.Arrange
             if (verifyButton != null) verifyButton.onClick.AddListener(OnVerify);
             if (undoButton != null) undoButton.onClick.AddListener(OnUndo);
 
+            if (titleText != null) titleText.text = GameText.ArrangeTitle;
+            if (undoLabel != null) undoLabel.text = GameText.UndoLabel;
+            if (verifyLabel != null) verifyLabel.text = GameText.VerifyLabel;
+
             RefreshUI();
-            SetStatus("Tap a story part, then tap its place in the order.");
+            SetStatus(GameText.ArrangeIntroStatus);
         }
 
         // ---------- interactions ----------
@@ -140,7 +149,7 @@ namespace SummaRace.Features.Arrange
         {
             if (_busy) return;
             for (int i = 0; i < 5; i++)
-                if (_slotContent[i] < 0) { SetStatus("Fill every slot first!"); return; }
+                if (_slotContent[i] < 0) { SetStatus(GameText.ArrangeFillFirst); return; }
 
             PlayClick();
             _attempts++;
@@ -183,7 +192,7 @@ namespace SummaRace.Features.Arrange
             if (allCorrect)
             {
                 if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxCorrect);
-                SetStatus("Perfect order! Great job!");
+                SetStatus(GameText.ArrangePerfect);
                 if (SummaRace.Core.GameManager.Instance != null) SummaRace.Core.GameManager.Instance.SetArrangeResult(_attempts);
                 EventBus.Raise(new ArrangeVerified { correct = true, attemptCount = _attempts });
 
@@ -194,8 +203,8 @@ namespace SummaRace.Features.Arrange
             {
                 EventBus.Raise(new ArrangeVerified { correct = false, attemptCount = _attempts });
                 SetStatus(hintElement >= 0
-                    ? "Hint: " + GameText.LoadingTips[hintElement]
-                    : "Almost! The green ones are locked in — try the others again.");
+                    ? GameText.ArrangeHintPrefix + GameText.LoadingTips[hintElement]
+                    : GameText.ArrangeAlmost);
             }
 
             _busy = false;
