@@ -84,11 +84,18 @@ flowers, a small river with a little bridge, a treasure chest near the end of th
 Leave the path spots uncluttered for UI level nodes. No text, no numbers, no characters.
 ```
 
-## LATER — Teacher avatar (Ms. Lumi)
-Currently a TEMP crop from mockup 21. Used on Arrange + Summary speech bubbles.
+## ✅ DONE — Teacher avatar (Ms. Lumi)
+**Already generated — do NOT re-generate.** 3 poses exist in `Assets/Art/MsLumi/`:
+- `mslumi_1.png` — waving (cut to transparent → `Resources/UI/mslumi_wave.png`, used in Reader)
+- `mslumi_2.png` — both hands up, cheering (for correct-answer reactions)
+- `mslumi_3.png` — third pose
+Plus `Assets/Art/Avatars/avatar_1..5.png`. Old TEMP crop `teacher_temp.png` is superseded.
+**To add MORE poses** (pointing, thinking, thumbs-up), generate stills in the SAME style on a
+plain WHITE background (Claude cuts white→transparent via edge flood-fill). Do NOT use video —
+sprite poses only (lightweight + offline). Match the existing Ms. Lumi look:
 ```
-Friendly female teacher character portrait, glossy 2D cartoon vector style, casual kids'
-mobile game, warm and encouraging expression, waving or pointing gesture, simple bust
-composition on transparent background. Saturated friendly colors. No text, no watermark.
+Friendly female teacher, tan skin, brown hair in a low bun, sage-green long-sleeve shirt,
+flat 2D cartoon vector style with bold black outlines, warm encouraging smile, [POSE:
+e.g. pointing to the side / thinking with finger on chin / thumbs up], simple waist-up
+composition on a plain solid WHITE background. No text, no watermark.
 ```
-**Size:** square with transparent background (PNG), ~512×512.
