@@ -52,6 +52,17 @@ namespace SummaRace.Constants
         /// <summary>Progress line above the reading card, e.g. "Page 1 / 5".</summary>
         public static string PageProgress(int current, int total) => $"Page {current} / {total}";
 
+        // Race feedback + banner
+        public const string RaceCollectFeedback = "You got it!";
+        public const string RaceWrongFeedback = "Not quite — the glowing one!";
+        public const string RaceFinishBanner = "FINISH!";
+        public const string RaceFinishCard = "FINISH";
+        public const string RaceRunToFinish = "Run to the FINISH!";
+
+        /// <summary>Race HUD banner, e.g. "Collect: SOMEBODY  1/5".</summary>
+        public static string RaceCollectBanner(string elementType, int number, int total) =>
+            $"Collect: {elementType}  {number}/{total}";
+
         // SWBST loading tips (SceneLoader shows one at random, GDD §11.5)
         public static readonly string[] LoadingTips =
         {

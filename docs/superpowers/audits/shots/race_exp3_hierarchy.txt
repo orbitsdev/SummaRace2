@@ -1,0 +1,325 @@
+SCENE: Assets/Scenes/MainSummaRace.unity
+Main Camera  <Transform,Camera,FlareLayer,AudioListener,WorldCurver>
+Directional Light  <Transform,Light>
+GameManager  <Transform,GameManager>
+EventSystem  <Transform,EventSystem,StandaloneInputModule>
+UICamera  <Transform>
+  Loadout  <RectTransform,Canvas,CanvasScaler,GraphicRaycaster,LoadoutState>
+    StartButton  <RectTransform,CanvasRenderer,Image,Button>
+      Text  <RectTransform,CanvasRenderer,Text,Shadow>
+    [INACTIVE] LoadoutGrid  <RectTransform,GridLayoutGroup,ToggleGroup>
+    CharZone  <RectTransform>
+      CharName  <RectTransform,CanvasRenderer,Text,Shadow>
+        CharSelector  <RectTransform>
+          ButtonRight  <RectTransform,CanvasRenderer,Button,AudioSource>
+            Shadow  <RectTransform,CanvasRenderer,Image>
+            Image  <RectTransform,CanvasRenderer,Image>
+          ButtonLeft  <RectTransform,CanvasRenderer,Button,AudioSource>
+            Shadow  <RectTransform,CanvasRenderer,Image>
+            Image  <RectTransform,CanvasRenderer,Image>
+    ThemeZone  <RectTransform>
+      ThemeSelector  <RectTransform>
+        ButtonRight  <RectTransform,CanvasRenderer,Button,AudioSource>
+          Shadow  <RectTransform,CanvasRenderer,Image>
+          Image  <RectTransform,CanvasRenderer,Image>
+        ButtonLeft  <RectTransform,CanvasRenderer,Button,AudioSource>
+          Shadow  <RectTransform,CanvasRenderer,Image>
+          Image  <RectTransform,CanvasRenderer,Image>
+      Image  <RectTransform,CanvasRenderer,Image>
+        ThemeName  <RectTransform,CanvasRenderer,Text>
+    AccessoriesSelector  <RectTransform>
+      ButtonTop  <RectTransform,CanvasRenderer,Button,AudioSource>
+        Shadow  <RectTransform,CanvasRenderer,Image>
+        Image  <RectTransform,CanvasRenderer,Image>
+      ButtonBottom  <RectTransform,CanvasRenderer,Button,AudioSource>
+        Shadow  <RectTransform,CanvasRenderer,Image>
+        Image  <RectTransform,CanvasRenderer,Image>
+      Border  <RectTransform,CanvasRenderer,Image>
+        AccessoryIcon  <RectTransform,CanvasRenderer,Image>
+        AccessoryName  <RectTransform,CanvasRenderer,Text>
+    PowerupZone  <RectTransform,CanvasRenderer,Image>
+      ButtonRight  <RectTransform,CanvasRenderer,Button,AudioSource>
+        Shadow  <RectTransform,CanvasRenderer,Image>
+        Image  <RectTransform,CanvasRenderer,Image>
+      ButtonLeft  <RectTransform,CanvasRenderer,Button,AudioSource>
+        Shadow  <RectTransform,CanvasRenderer,Image>
+        Image  <RectTransform,CanvasRenderer,Image>
+      Image  <RectTransform,CanvasRenderer,Image>
+        Amount  <RectTransform,CanvasRenderer,Text>
+    OpenLeaderboard  <RectTransform,CanvasRenderer,Image,Button,AudioSource>
+      Text  <RectTransform,CanvasRenderer,Text>
+    StoreButton  <RectTransform,CanvasRenderer,Image,Button,LevelLoader,AudioSource>
+      Text  <RectTransform,CanvasRenderer,Text>
+    MissionButton  <RectTransform,CanvasRenderer,Image,Button,LevelLoader,AudioSource>
+      Text  <RectTransform,CanvasRenderer,Text>
+    SettingButton  <RectTransform,CanvasRenderer,Image,Button,LevelLoader,AudioSource>
+      Text  <RectTransform,CanvasRenderer,Text>
+    [INACTIVE] SettingPopup  <RectTransform,CanvasRenderer,Image,SettingPopup>
+      [INACTIVE] Background  <RectTransform,CanvasRenderer,Image>
+        [INACTIVE] Image  <RectTransform,CanvasRenderer,Image>
+        [INACTIVE] CloseButton  <RectTransform,CanvasRenderer,Image,Button>
+        [INACTIVE] Title  <RectTransform,CanvasRenderer,Text,Shadow>
+        [INACTIVE] MasterSlider  <RectTransform,Slider>
+          [INACTIVE] Background  <RectTransform,CanvasRenderer,Image>
+          [INACTIVE] Fill Area  <RectTransform>
+            [INACTIVE] Fill  <RectTransform,CanvasRenderer,Image>
+          [INACTIVE] Handle Slide Area  <RectTransform>
+            [INACTIVE] Handle  <RectTransform,CanvasRenderer,Image>
+          [INACTIVE] Text  <RectTransform,CanvasRenderer,Text>
+        [INACTIVE] MusicSlider  <RectTransform,Slider>
+          [INACTIVE] Background  <RectTransform,CanvasRenderer,Image>
+          [INACTIVE] Fill Area  <RectTransform>
+            [INACTIVE] Fill  <RectTransform,CanvasRenderer,Image>
+          [INACTIVE] Handle Slide Area  <RectTransform>
+            [INACTIVE] Handle  <RectTransform,CanvasRenderer,Image>
+          [INACTIVE] Text  <RectTransform,CanvasRenderer,Text>
+        [INACTIVE] MasterSFXSlider  <RectTransform,Slider>
+          [INACTIVE] Background  <RectTransform,CanvasRenderer,Image>
+          [INACTIVE] Fill Area  <RectTransform>
+            [INACTIVE] Fill  <RectTransform,CanvasRenderer,Image>
+          [INACTIVE] Handle Slide Area  <RectTransform>
+            [INACTIVE] Handle  <RectTransform,CanvasRenderer,Image>
+          [INACTIVE] Text  <RectTransform,CanvasRenderer,Text>
+        [INACTIVE] DeleteData  <RectTransform,CanvasRenderer,Image,Button>
+          [INACTIVE] Text  <RectTransform,CanvasRenderer,Text>
+        [INACTIVE] About  <RectTransform,CanvasRenderer,Image,Button>
+          [INACTIVE] Text  <RectTransform,CanvasRenderer,Text>
+      [INACTIVE] ConfirmPopup  <RectTransform,CanvasRenderer,Image,DataDeleteConfirmation>
+        [INACTIVE] Image  <RectTransform,CanvasRenderer,Image>
+          [INACTIVE] TitleText  <RectTransform,CanvasRenderer,Text>
+          [INACTIVE] QueryText  <RectTransform,CanvasRenderer,Text>
+          [INACTIVE] YESButton  <RectTransform,CanvasRenderer,Image,Button>
+            [INACTIVE] Text  <RectTransform,CanvasRenderer,Text>
+          [INACTIVE] NOButton  <RectTransform,CanvasRenderer,Image,Button>
+            [INACTIVE] Text  <RectTransform,CanvasRenderer,Text>
+      [INACTIVE] AboutPopup  <RectTransform,CanvasRenderer,Image>
+        [INACTIVE] Image  <RectTransform,CanvasRenderer,Image>
+          [INACTIVE] TitleText  <RectTransform,CanvasRenderer,Text,Shadow>
+          [INACTIVE] BackButton  <RectTransform,CanvasRenderer,Image,Button>
+            [INACTIVE] Text  <RectTransform,CanvasRenderer,Text>
+        [INACTIVE] Background  <RectTransform,CanvasRenderer,Image>
+          [INACTIVE] AboutUnityText  <RectTransform,CanvasRenderer,Text>
+            [INACTIVE] VisitUnityButton  <RectTransform,CanvasRenderer,Image,Button,OpenURL>
+              [INACTIVE] Text  <RectTransform,CanvasRenderer,Text,Shadow>
+          [INACTIVE] AboutGameChangerText  <RectTransform,CanvasRenderer,Text>
+            [INACTIVE] VisitGameChangerButton  <RectTransform,CanvasRenderer,Image,Button,OpenURL>
+              [INACTIVE] Text  <RectTransform,CanvasRenderer,Text,Shadow>
+    [INACTIVE] MissionPopup  <RectTransform,CanvasRenderer,Image,MissionUI>
+      [INACTIVE] MissionBackground  <RectTransform,CanvasRenderer,Image>
+        [INACTIVE] Text  <RectTransform,CanvasRenderer,Text,Shadow>
+        [INACTIVE] Divider  <RectTransform,CanvasRenderer,Image>
+        [INACTIVE] MissionsContainer  <RectTransform>
+          [INACTIVE] Scroll View  <RectTransform,ScrollRect,CanvasRenderer>
+            [INACTIVE] Viewport  <RectTransform,Mask,CanvasRenderer,Image>
+              [INACTIVE] Content  <RectTransform,VerticalLayoutGroup,ContentSizeFitter>
+            [INACTIVE] Scrollbar Vertical  <RectTransform,CanvasRenderer,Image,Scrollbar>
+              [INACTIVE] Sliding Area  <RectTransform>
+                [INACTIVE] Handle  <RectTransform,CanvasRenderer,Image>
+        [INACTIVE] CloseButton  <RectTransform,CanvasRenderer,Image,Button,AudioSource>
+    TutorialOverlay  <RectTransform>
+      BlockerTop  <RectTransform,CanvasRenderer,Image>
+      BlockerBottom  <RectTransform,CanvasRenderer,Image>
+      TutorialText  <RectTransform>
+        Image  <RectTransform,CanvasRenderer,Image,Animator>
+        Text  <RectTransform,CanvasRenderer,Text>
+  [INACTIVE] Game  <RectTransform,Canvas,CanvasScaler,GraphicRaycaster,GameState>
+    [INACTIVE] CountDown  <RectTransform,CanvasRenderer,Text,Shadow,AudioSource,CountdownSound>
+    [INACTIVE] WholeUI  <RectTransform>
+      [INACTIVE] ScoreZone  <RectTransform,CanvasRenderer,Image>
+        [INACTIVE] ScoreLabel  <RectTransform,CanvasRenderer,Text,Shadow>
+          [INACTIVE] ScoreText  <RectTransform,CanvasRenderer,Text,Shadow>
+            [INACTIVE] MultiplierText  <RectTransform,CanvasRenderer,Text,Shadow,Outline>
+      [INACTIVE] DistanceZone  <RectTransform,CanvasRenderer,Image>
+        [INACTIVE] DistanceText  <RectTransform,CanvasRenderer,Text,Shadow>
+      [INACTIVE] PowerUpBank  <RectTransform,VerticalLayoutGroup>
+      [INACTIVE] Inventory  <RectTransform,CanvasRenderer,Image,Button,AudioSource>
+        [INACTIVE] IconInventory  <RectTransform,CanvasRenderer,Image,Shadow>
+      [INACTIVE] pauseButton  <RectTransform,CanvasRenderer,Image,Button>
+      [INACTIVE] CoinZone  <RectTransform,CanvasRenderer,Image>
+        [INACTIVE] Image  <RectTransform,CanvasRenderer,Image>
+        [INACTIVE] CoinText  <RectTransform,CanvasRenderer,Text>
+      [INACTIVE] PremiumZone  <RectTransform,CanvasRenderer,Image>
+        [INACTIVE] Image  <RectTransform,CanvasRenderer,Image>
+        [INACTIVE] PremiumText  <RectTransform,CanvasRenderer,Text>
+      [INACTIVE] Life  <RectTransform,CanvasRenderer,Image>
+        [INACTIVE] Image  <RectTransform,CanvasRenderer,Image>
+        [INACTIVE] Image (1)  <RectTransform,CanvasRenderer,Image>
+        [INACTIVE] Image (2)  <RectTransform,CanvasRenderer,Image>
+    [INACTIVE] PauseMenu  <RectTransform,CanvasRenderer,Image>
+      [INACTIVE] Resume  <RectTransform,CanvasRenderer,Image,Button>
+        [INACTIVE] Resume  <RectTransform,CanvasRenderer,Text>
+      [INACTIVE] Exit  <RectTransform,CanvasRenderer,Image,Button>
+        [INACTIVE] Text  <RectTransform,CanvasRenderer,Text>
+      [INACTIVE] Text  <RectTransform,CanvasRenderer,Text,Shadow>
+    [INACTIVE] DeathPopup  <RectTransform,CanvasRenderer,Image>
+      [INACTIVE] Text  <RectTransform,CanvasRenderer,Text,Shadow>
+      [INACTIVE] ButtonLayout  <RectTransform,HorizontalLayoutGroup>
+        [INACTIVE] Premium Button  <RectTransform,CanvasRenderer,Image,Button>
+          [INACTIVE] Image  <RectTransform,CanvasRenderer,Image,Shadow>
+          [INACTIVE] PremiumCost  <RectTransform,CanvasRenderer,Text,Shadow>
+        [INACTIVE] Ad Button  <RectTransform,CanvasRenderer,Image,Button>
+          [INACTIVE] Text  <RectTransform,CanvasRenderer,Text,Shadow>
+      [INACTIVE] GameOver  <RectTransform,CanvasRenderer,Image,Button>
+        [INACTIVE] Text  <RectTransform,CanvasRenderer,Text,Shadow>
+      [INACTIVE] PremiumDisplay  <RectTransform>
+        [INACTIVE] PremiumOwnCount  <RectTransform,CanvasRenderer,Text>
+        [INACTIVE] CurrencyIcon  <RectTransform,CanvasRenderer,Image>
+        [INACTIVE] CurrencyText  <RectTransform,CanvasRenderer,Text>
+        [INACTIVE] CurrencyBG  <RectTransform,CanvasRenderer,Image>
+    [INACTIVE] Tutorials  <RectTransform>
+      [INACTIVE] TutorialSuccessCount  <RectTransform,CanvasRenderer,Text,Shadow>
+      [INACTIVE] SlideTuto  <RectTransform,CanvasRenderer,Image>
+        [INACTIVE] Animation  <RectTransform,CanvasRenderer,Image,Animation>
+        [INACTIVE] Text  <RectTransform,CanvasRenderer,Text>
+      [INACTIVE] UpTuto  <RectTransform,CanvasRenderer,Image>
+        [INACTIVE] Animation  <RectTransform,CanvasRenderer,Image,Animation>
+        [INACTIVE] Text  <RectTransform,CanvasRenderer,Text>
+      [INACTIVE] DownTuto  <RectTransform,CanvasRenderer,Image>
+        [INACTIVE] Animation  <RectTransform,CanvasRenderer,Image,Animation>
+        [INACTIVE] Text  <RectTransform,CanvasRenderer,Text>
+      [INACTIVE] EndTutorial  <RectTransform,CanvasRenderer,Image>
+        [INACTIVE] Text  <RectTransform,CanvasRenderer,Text>
+        [INACTIVE] Button  <RectTransform,CanvasRenderer,Image,Button>
+          [INACTIVE] Text  <RectTransform,CanvasRenderer,Text,Shadow>
+  [INACTIVE] GameOver  <RectTransform,Canvas,CanvasScaler,GraphicRaycaster,GameOverState,CanvasRenderer,Image>
+    [INACTIVE] Text  <RectTransform,CanvasRenderer,Text,Shadow>
+    [INACTIVE] Highscore  <RectTransform,VerticalLayoutGroup,CanvasRenderer,Image,Leaderboard>
+      [INACTIVE] Score  <RectTransform,HorizontalLayoutGroup,LayoutElement,HighscoreUI>
+        [INACTIVE] number  <RectTransform,CanvasRenderer,Text,LayoutElement>
+        [INACTIVE] name  <RectTransform,CanvasRenderer,Text,LayoutElement>
+        [INACTIVE] score  <RectTransform,CanvasRenderer,Text,LayoutElement>
+      [INACTIVE] Score (1)  <RectTransform,HorizontalLayoutGroup,LayoutElement,HighscoreUI>
+        [INACTIVE] number  <RectTransform,CanvasRenderer,Text,LayoutElement>
+        [INACTIVE] name  <RectTransform,CanvasRenderer,Text,LayoutElement>
+        [INACTIVE] score  <RectTransform,CanvasRenderer,Text,LayoutElement>
+      [INACTIVE] Score (2)  <RectTransform,HorizontalLayoutGroup,LayoutElement,HighscoreUI>
+        [INACTIVE] number  <RectTransform,CanvasRenderer,Text,LayoutElement>
+        [INACTIVE] name  <RectTransform,CanvasRenderer,Text,LayoutElement>
+        [INACTIVE] score  <RectTransform,CanvasRenderer,Text,LayoutElement>
+      [INACTIVE] Score (3)  <RectTransform,HorizontalLayoutGroup,LayoutElement,HighscoreUI>
+        [INACTIVE] number  <RectTransform,CanvasRenderer,Text,LayoutElement>
+        [INACTIVE] name  <RectTransform,CanvasRenderer,Text,LayoutElement>
+        [INACTIVE] score  <RectTransform,CanvasRenderer,Text,LayoutElement>
+      [INACTIVE] Score (4)  <RectTransform,HorizontalLayoutGroup,LayoutElement,HighscoreUI>
+        [INACTIVE] number  <RectTransform,CanvasRenderer,Text,LayoutElement>
+        [INACTIVE] name  <RectTransform,CanvasRenderer,Text,LayoutElement>
+        [INACTIVE] score  <RectTransform,CanvasRenderer,Text,LayoutElement>
+      [INACTIVE] PlayerEntry  <RectTransform,HorizontalLayoutGroup,LayoutElement,HighscoreUI,CanvasRenderer,Image>
+        [INACTIVE] number  <RectTransform,CanvasRenderer,Text,LayoutElement>
+        [INACTIVE] InputField  <RectTransform,CanvasRenderer,Image,InputField,LayoutElement>
+          [INACTIVE] Placeholder  <RectTransform,CanvasRenderer,Text>
+          [INACTIVE] Text  <RectTransform,CanvasRenderer,Text>
+        [INACTIVE] score  <RectTransform,CanvasRenderer,Text,LayoutElement>
+    [INACTIVE] OpenLeaderboard  <RectTransform,CanvasRenderer,Image,Button,AudioSource>
+      [INACTIVE] Text  <RectTransform,CanvasRenderer,Text>
+    [INACTIVE] Loadout  <RectTransform,CanvasRenderer,Image,Button,AudioSource>
+      [INACTIVE] Text  <RectTransform,CanvasRenderer,Text>
+    [INACTIVE] RunButton  <RectTransform,CanvasRenderer,Image,Button,AudioSource>
+      [INACTIVE] RunText  <RectTransform,CanvasRenderer,Text,Shadow>
+    [INACTIVE] MissionsButton  <RectTransform,CanvasRenderer,Image,Button,LevelLoader,AudioSource>
+      [INACTIVE] Text  <RectTransform,CanvasRenderer,Text>
+    [INACTIVE] StoreButton  <RectTransform,CanvasRenderer,Image,Button,LevelLoader,AudioSource>
+      [INACTIVE] Text  <RectTransform,CanvasRenderer,Text>
+    [INACTIVE] MissionPopup  <RectTransform,CanvasRenderer,Image,MissionUI>
+      [INACTIVE] MissionBackground  <RectTransform,CanvasRenderer,Image>
+        [INACTIVE] Text  <RectTransform,CanvasRenderer,Text,Shadow>
+        [INACTIVE] Divider  <RectTransform,CanvasRenderer,Image>
+        [INACTIVE] MissionsContainer  <RectTransform>
+          [INACTIVE] Scroll View  <RectTransform,ScrollRect,CanvasRenderer>
+            [INACTIVE] Viewport  <RectTransform,Mask,CanvasRenderer,Image>
+              [INACTIVE] Content  <RectTransform,VerticalLayoutGroup,ContentSizeFitter>
+            [INACTIVE] Scrollbar Vertical  <RectTransform,CanvasRenderer,Image,Scrollbar>
+              [INACTIVE] Sliding Area  <RectTransform>
+                [INACTIVE] Handle  <RectTransform,CanvasRenderer,Image>
+        [INACTIVE] CloseButton  <RectTransform,CanvasRenderer,Image,Button,AudioSource,AudioSource>
+  [INACTIVE] Leaderboard  <RectTransform,Canvas,CanvasScaler,GraphicRaycaster,CanvasRenderer,Leaderboard,Image>
+    [INACTIVE] Background  <RectTransform,CanvasRenderer,Image>
+      [INACTIVE] Dividers  <RectTransform>
+        [INACTIVE] Divider  <RectTransform,CanvasRenderer,Image>
+        [INACTIVE] Divider  <RectTransform,CanvasRenderer,Image>
+        [INACTIVE] Divider  <RectTransform,CanvasRenderer,Image>
+        [INACTIVE] Divider  <RectTransform,CanvasRenderer,Image>
+        [INACTIVE] Divider  <RectTransform,CanvasRenderer,Image>
+      [INACTIVE] Text  <RectTransform,CanvasRenderer,Text,Shadow>
+        [INACTIVE] Image  <RectTransform,CanvasRenderer,Image>
+      [INACTIVE] Display  <RectTransform,VerticalLayoutGroup>
+        [INACTIVE] Score  <RectTransform,HorizontalLayoutGroup,LayoutElement,HighscoreUI>
+          [INACTIVE] Number  <RectTransform,CanvasRenderer,Text,LayoutElement>
+          [INACTIVE] Name  <RectTransform,CanvasRenderer,Text,LayoutElement>
+          [INACTIVE] Score  <RectTransform,CanvasRenderer,Text,LayoutElement>
+        [INACTIVE] Score (1)  <RectTransform,HorizontalLayoutGroup,LayoutElement,HighscoreUI>
+          [INACTIVE] Number  <RectTransform,CanvasRenderer,Text,LayoutElement>
+          [INACTIVE] Name  <RectTransform,CanvasRenderer,Text,LayoutElement>
+          [INACTIVE] Score  <RectTransform,CanvasRenderer,Text,LayoutElement>
+        [INACTIVE] Score (2)  <RectTransform,HorizontalLayoutGroup,LayoutElement,HighscoreUI>
+          [INACTIVE] Number  <RectTransform,CanvasRenderer,Text,LayoutElement>
+          [INACTIVE] Name  <RectTransform,CanvasRenderer,Text,LayoutElement>
+          [INACTIVE] Score  <RectTransform,CanvasRenderer,Text,LayoutElement>
+        [INACTIVE] Score (3)  <RectTransform,HorizontalLayoutGroup,LayoutElement,HighscoreUI>
+          [INACTIVE] Number  <RectTransform,CanvasRenderer,Text,LayoutElement>
+          [INACTIVE] Name  <RectTransform,CanvasRenderer,Text,LayoutElement>
+          [INACTIVE] Score  <RectTransform,CanvasRenderer,Text,LayoutElement>
+        [INACTIVE] Score (4)  <RectTransform,HorizontalLayoutGroup,LayoutElement,HighscoreUI>
+          [INACTIVE] Number  <RectTransform,CanvasRenderer,Text,LayoutElement>
+          [INACTIVE] Name  <RectTransform,CanvasRenderer,Text,LayoutElement>
+          [INACTIVE] Score  <RectTransform,CanvasRenderer,Text,LayoutElement>
+        [INACTIVE] Score (5)  <RectTransform,HorizontalLayoutGroup,LayoutElement,HighscoreUI>
+          [INACTIVE] Number  <RectTransform,CanvasRenderer,Text,LayoutElement>
+          [INACTIVE] Name  <RectTransform,CanvasRenderer,Text,LayoutElement>
+          [INACTIVE] Score  <RectTransform,CanvasRenderer,Text,LayoutElement>
+        [INACTIVE] Score (6)  <RectTransform,HorizontalLayoutGroup,LayoutElement,HighscoreUI>
+          [INACTIVE] Number  <RectTransform,CanvasRenderer,Text,LayoutElement>
+          [INACTIVE] Name  <RectTransform,CanvasRenderer,Text,LayoutElement>
+          [INACTIVE] Score  <RectTransform,CanvasRenderer,Text,LayoutElement>
+        [INACTIVE] Score (7)  <RectTransform,HorizontalLayoutGroup,LayoutElement,HighscoreUI>
+          [INACTIVE] Number  <RectTransform,CanvasRenderer,Text,LayoutElement>
+          [INACTIVE] Name  <RectTransform,CanvasRenderer,Text,LayoutElement>
+          [INACTIVE] Score  <RectTransform,CanvasRenderer,Text,LayoutElement>
+        [INACTIVE] Score (8)  <RectTransform,HorizontalLayoutGroup,LayoutElement,HighscoreUI>
+          [INACTIVE] Number  <RectTransform,CanvasRenderer,Text,LayoutElement>
+          [INACTIVE] Name  <RectTransform,CanvasRenderer,Text,LayoutElement>
+          [INACTIVE] Score  <RectTransform,CanvasRenderer,Text,LayoutElement>
+        [INACTIVE] Score (9)  <RectTransform,HorizontalLayoutGroup,LayoutElement,HighscoreUI>
+          [INACTIVE] Number  <RectTransform,CanvasRenderer,Text,LayoutElement>
+          [INACTIVE] Name  <RectTransform,CanvasRenderer,Text,LayoutElement>
+          [INACTIVE] Score  <RectTransform,CanvasRenderer,Text,LayoutElement>
+        [INACTIVE] PlayerEntry  <RectTransform,HorizontalLayoutGroup,LayoutElement,HighscoreUI>
+          [INACTIVE] Number  <RectTransform,CanvasRenderer,Text,LayoutElement>
+          [INACTIVE] Name  <RectTransform,CanvasRenderer,Text,LayoutElement>
+          [INACTIVE] Score  <RectTransform,CanvasRenderer,Text,LayoutElement>
+      [INACTIVE] Buttons  <RectTransform>
+        [INACTIVE] Prev  <RectTransform,CanvasRenderer,Image,Button,AudioSource>
+          [INACTIVE] Text  <RectTransform,CanvasRenderer,Text>
+        [INACTIVE] Next  <RectTransform,CanvasRenderer,Image,Button,AudioSource>
+          [INACTIVE] Text  <RectTransform,CanvasRenderer,Text>
+        [INACTIVE] Text  <RectTransform,CanvasRenderer,Text>
+        [INACTIVE] InputField  <RectTransform,CanvasRenderer,Image,InputField>
+          [INACTIVE] Placeholder  <RectTransform,CanvasRenderer,Text>
+          [INACTIVE] Text  <RectTransform,CanvasRenderer,Text>
+      [INACTIVE] Button  <RectTransform,CanvasRenderer,Image,Button,AudioSource>
+  LoadingCharPos  <Transform>
+  Background  <Transform,MeshFilter,MeshRenderer>
+    BackgroundCircle  <Transform,MeshFilter,MeshRenderer>
+[INACTIVE] TrackManager  <Transform,TrackManager>
+  [INACTIVE] ParallaxRoot  <Transform>
+[INACTIVE] PlayerPivot  <Transform,CharacterInputController,AudioSource,AudioSource>
+  [INACTIVE] CharacterSlot  <Transform,BoxCollider,Rigidbody,CharacterCollider,AudioSource>
+    [INACTIVE] KOParticle  <Transform,ParticleSystem,ParticleSystemRenderer,Rigidbody,ConstantForce>
+    [INACTIVE] ExtraLifeParticles  <Transform,ParticleSystem,ParticleSystemRenderer>
+    [INACTIVE] MagnetParticles  <Transform,ParticleSystem,ParticleSystemRenderer>
+      [INACTIVE] MagnetSmallParticles  <Transform,ParticleSystem,ParticleSystemRenderer>
+    [INACTIVE] InvincibilityParticles  <Transform,ParticleSystem,ParticleSystemRenderer,Rigidbody,ConstantForce>
+      [INACTIVE] InvincibilityGlow  <Transform,ParticleSystem,ParticleSystemRenderer>
+    [INACTIVE] MultiplierParticles  <Transform,ParticleSystem,ParticleSystemRenderer>
+      [INACTIVE] MultiplierSmallParticles  <Transform,ParticleSystem,ParticleSystemRenderer>
+  [INACTIVE] BlobShadow  <Transform,MeshFilter,MeshRenderer>
+  [INACTIVE] Sky  <Transform,MeshFilter,MeshRenderer>
+[INACTIVE] Explosion  <Transform>
+  [INACTIVE] ParticleSystem  <Transform,ParticleSystem,ParticleSystemRenderer>
+MusicPlayer  <Transform,AudioSource,MusicPlayer>
+  SideStem1  <Transform,AudioSource>
+  SideStem2  <Transform,AudioSource>
+  SideStem3  <Transform,AudioSource>
+  SideStem4  <Transform,AudioSource>
+  SideStem5  <Transform,AudioSource>
+EndlessRaceDirector  <Transform,EndlessRaceDirector>

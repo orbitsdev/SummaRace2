@@ -362,7 +362,7 @@ namespace SummaRace.Features.Race.Endless
 
             float laneOffset = TrackManager.instance.laneOffset;
             var card = BuildCard(root, new Vector3(0f, 1.6f, 0f), new Vector2(3.4f, 0.9f),
-                "FINISH", Color.white, new Color(1f, 0.72f, 0.15f), 3.2f);
+                SummaRace.Constants.GameText.RaceFinishCard, Color.white, new Color(1f, 0.72f, 0.15f), 3.2f);
 
             var trigger = card.gameObject.AddComponent<BoxCollider>();
             trigger.isTrigger = true;
@@ -448,7 +448,7 @@ namespace SummaRace.Features.Race.Endless
             if (SummaRace.Core.AudioManager.Instance != null)
                 SummaRace.Core.AudioManager.Instance.PlaySfx(SummaRace.Constants.AudioKeys.SfxCollect);
 
-            ShowFeedback("You got it!", new Color(0.55f, 1f, 0.55f));
+            ShowFeedback(SummaRace.Constants.GameText.RaceCollectFeedback, new Color(0.55f, 1f, 0.55f));
 
             // The collected card flies up and pops away; the rest of the gate goes now.
             var cardT = pickup.transform;
@@ -487,7 +487,7 @@ namespace SummaRace.Features.Race.Endless
             if (SummaRace.Core.AudioManager.Instance != null)
                 SummaRace.Core.AudioManager.Instance.PlaySfx(SummaRace.Constants.AudioKeys.SfxNotQuite);
 
-            ShowFeedback("Not quite — the glowing one!", new Color(1f, 0.78f, 0.35f));
+            ShowFeedback(SummaRace.Constants.GameText.RaceWrongFeedback, new Color(1f, 0.78f, 0.35f));
 
             _danger = Mathf.Clamp(_danger + SummaRace.Constants.GameRules.DangerOnWrong,
                 0f, SummaRace.Constants.GameRules.DangerMax);
@@ -622,7 +622,7 @@ namespace SummaRace.Features.Race.Endless
 
             if (SummaRace.Core.AudioManager.Instance != null)
                 SummaRace.Core.AudioManager.Instance.PlaySfx(SummaRace.Constants.AudioKeys.SfxStar);
-            if (_bannerText != null) _bannerText.text = "FINISH!";
+            if (_bannerText != null) _bannerText.text = SummaRace.Constants.GameText.RaceFinishBanner;
 
             yield return new WaitForSeconds(2.2f); // victory beat
 
@@ -670,8 +670,8 @@ namespace SummaRace.Features.Race.Endless
             if (_bannerText == null) return;
             int element = _activeGateRoot != null ? _activeElement : _pendingElement;
             _bannerText.text = element < 5
-                ? "Collect: " + _story.elements[element].type + "  " + (element + 1) + "/5"
-                : "Run to the FINISH!";
+                ? SummaRace.Constants.GameText.RaceCollectBanner(_story.elements[element].type, element + 1, 5)
+                : SummaRace.Constants.GameText.RaceRunToFinish;
         }
 
         private void ShowFeedback(string message, Color color)
