@@ -44,6 +44,11 @@ namespace SummaRace.Core
 
         private IEnumerator Start()
         {
+            // One frame in, the lockup's PanelIntro pops — give it its sound.
+            yield return null;
+            if (AudioManager.Instance != null)
+                AudioManager.Instance.PlaySfx(AudioKeys.SfxPop);
+
             // Brief splash beat (progress bar fills across it), then into the menu.
             float t = 0f;
             while (t < GameRules.SplashSeconds)

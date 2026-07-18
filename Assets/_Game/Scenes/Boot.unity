@@ -221,6 +221,7 @@ GameObject:
   - component: {fileID: 101981819}
   - component: {fileID: 101981821}
   - component: {fileID: 101981820}
+  - component: {fileID: 101981822}
   m_Layer: 0
   m_Name: Sparkle_1
   m_TagString: Untagged
@@ -285,6 +286,21 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 101981818}
   m_CullTransparentMesh: 1
+--- !u!114 &101981822
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 101981818}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7ad88dbbe5eeac944808a42716886dd0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SummaRace.UI.UITwinkle
+  speed: 2.2
+  alphaMin: 0.35
+  scaleAmount: 0.12
 --- !u!1 &115944759
 GameObject:
   m_ObjectHideFlags: 0
@@ -647,6 +663,7 @@ GameObject:
   - component: {fileID: 174574445}
   - component: {fileID: 174574447}
   - component: {fileID: 174574446}
+  - component: {fileID: 174574448}
   m_Layer: 0
   m_Name: Sparkle_2
   m_TagString: Untagged
@@ -711,6 +728,21 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 174574444}
   m_CullTransparentMesh: 1
+--- !u!114 &174574448
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 174574444}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7ad88dbbe5eeac944808a42716886dd0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SummaRace.UI.UITwinkle
+  speed: 2.2
+  alphaMin: 0.35
+  scaleAmount: 0.12
 --- !u!1 &461770895
 GameObject:
   m_ObjectHideFlags: 0
@@ -1171,6 +1203,7 @@ GameObject:
   - component: {fileID: 753065185}
   - component: {fileID: 753065187}
   - component: {fileID: 753065186}
+  - component: {fileID: 753065188}
   m_Layer: 0
   m_Name: Sparkle_0
   m_TagString: Untagged
@@ -1235,6 +1268,21 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 753065184}
   m_CullTransparentMesh: 1
+--- !u!114 &753065188
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 753065184}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7ad88dbbe5eeac944808a42716886dd0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SummaRace.UI.UITwinkle
+  speed: 2.2
+  alphaMin: 0.35
+  scaleAmount: 0.12
 --- !u!1 &792219564
 GameObject:
   m_ObjectHideFlags: 0
