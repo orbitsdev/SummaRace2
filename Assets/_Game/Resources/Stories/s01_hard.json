@@ -1,0 +1,88 @@
+{
+  "id": "s01_hard",
+  "session": 1,
+  "difficulty": "hard",
+  "title": "The Animal Assignment",
+  "heroImage": "Stories/Art/s01_hard",
+  "mainIdea": "Being human is special because people can learn, communicate, and achieve great things.",
+  "pages": [
+    {
+      "text": "Jayden's teacher asked the class to write about an animal they wanted to be.",
+      "narration": "Stories/Narration/s01_hard_p1",
+      "question": {
+        "text": "Who is the main character in the story?",
+        "options": ["Mr. Trevino", "Jayden", "Landon"],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Jayden researched many animals, including a fox, cougar, dolphin, koala, giraffe, and bull.",
+      "narration": "Stories/Narration/s01_hard_p2",
+      "question": {
+        "text": "What did Jayden need to do?",
+        "options": ["Pick an animal for his assignment", "Visit a zoo", "Draw an animal"],
+        "correctIndex": 0
+      }
+    },
+    {
+      "text": "Each animal had something he liked, but each also had something he did not want.",
+      "narration": "Stories/Narration/s01_hard_p3",
+      "question": {
+        "text": "What problem did Jayden face?",
+        "options": ["He forgot the assignment", "He could not decide which animal to choose", "He lost his notebook"],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Jayden worried because he still could not decide. He continued researching and thinking carefully.",
+      "narration": "Stories/Narration/s01_hard_p4",
+      "question": {
+        "text": "What did Jayden do to solve his problem?",
+        "options": ["He asked someone else to choose", "He ignored the assignment", "He kept researching and thinking"],
+        "correctIndex": 2
+      }
+    },
+    {
+      "text": "Finally, he chose to write about being a human because humans can learn, communicate, and create amazing things.",
+      "narration": "Stories/Narration/s01_hard_p5",
+      "question": {
+        "text": "What happened in the end?",
+        "options": ["Jayden chose to be a dolphin", "Jayden chose to be a human", "Jayden did not finish the assignment"],
+        "correctIndex": 1
+      }
+    }
+  ],
+  "elements": [
+    {
+      "type": "SOMEBODY",
+      "correct": "Jayden",
+      "distractors": ["Mr. Trevino", "Landon"]
+    },
+    {
+      "type": "WANTED",
+      "correct": "To choose an animal for his assignment",
+      "distractors": ["To visit a zoo", "To draw an animal"]
+    },
+    {
+      "type": "BUT",
+      "correct": "Every animal he researched had disadvantages",
+      "distractors": ["He forgot the assignment", "He lost his notebook"]
+    },
+    {
+      "type": "SO",
+      "correct": "He kept researching and thinking carefully",
+      "distractors": ["He asked someone else to choose", "He ignored the assignment"]
+    },
+    {
+      "type": "THEN",
+      "correct": "He chose to stay human",
+      "distractors": ["He chose to be a dolphin", "He did not finish the assignment"]
+    }
+  ],
+  "mission": {
+    "playerSpeed": 6.5,
+    "checkpointSpacing": 45,
+    "startingDanger": 0,
+    "dangerPerSecond": 2.5
+  }
+}

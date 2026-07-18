@@ -1,0 +1,88 @@
+{
+  "id": "s01_average",
+  "session": 1,
+  "difficulty": "average",
+  "title": "The Day the Crayons Quit",
+  "heroImage": "Stories/Art/s01_average",
+  "mainIdea": "Different people have different needs, and listening to them can help solve problems.",
+  "pages": [
+    {
+      "text": "Duncan wanted to color. When he opened his crayon box, he found letters instead of crayons.",
+      "narration": "Stories/Narration/s01_average_p1",
+      "question": {
+        "text": "Who is the main character in the story?",
+        "options": ["Beige Crayon", "Duncan", "Blue Crayon"],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "The crayons said they were tired and wanted changes.",
+      "narration": "Stories/Narration/s01_average_p2",
+      "question": {
+        "text": "What did Duncan want to do?",
+        "options": ["Throw away the crayons", "Buy new crayons", "Color with his crayons"],
+        "correctIndex": 2
+      }
+    },
+    {
+      "text": "Beige was tired of being ignored. Black wanted to color more than outlines.",
+      "narration": "Stories/Narration/s01_average_p3",
+      "question": {
+        "text": "What problem did the crayons have?",
+        "options": ["They were broken", "They were unhappy with their jobs", "They were lost"],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Blue was tired from coloring water. Orange and Yellow argued about who was the true color of the sun.",
+      "narration": "Stories/Narration/s01_average_p4",
+      "question": {
+        "text": "What did Duncan learn from the letters?",
+        "options": ["The crayons had different complaints", "The crayons wanted new boxes", "The crayons wanted to leave school"],
+        "correctIndex": 0
+      }
+    },
+    {
+      "text": "Duncan needed to find a way to make all the crayons happy so they would color again.",
+      "narration": "Stories/Narration/s01_average_p5",
+      "question": {
+        "text": "What happened at the end?",
+        "options": ["Duncan threw away the crayons", "Duncan tried to help the crayons so they could color again", "The crayons disappeared"],
+        "correctIndex": 1
+      }
+    }
+  ],
+  "elements": [
+    {
+      "type": "SOMEBODY",
+      "correct": "Duncan",
+      "distractors": ["Beige Crayon", "Blue Crayon"]
+    },
+    {
+      "type": "WANTED",
+      "correct": "To color with his crayons",
+      "distractors": ["To throw the crayons away", "To buy new crayons"]
+    },
+    {
+      "type": "BUT",
+      "correct": "The crayons quit because they were unhappy",
+      "distractors": ["The crayons were broken", "The crayons were lost"]
+    },
+    {
+      "type": "SO",
+      "correct": "Duncan listened to their complaints",
+      "distractors": ["Duncan threw the crayons away", "Duncan ignored the letters"]
+    },
+    {
+      "type": "THEN",
+      "correct": "He tried to make them happy so they could color again",
+      "distractors": ["The crayons disappeared", "Duncan gave up coloring"]
+    }
+  ],
+  "mission": {
+    "playerSpeed": 6.0,
+    "checkpointSpacing": 45,
+    "startingDanger": 0,
+    "dangerPerSecond": 2.0
+  }
+}
