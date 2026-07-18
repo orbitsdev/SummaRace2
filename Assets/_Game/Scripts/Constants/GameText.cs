@@ -5,8 +5,10 @@ namespace SummaRace.Constants
     {
         public const string TapToStart = "TAP TO START";
 
-        /// <summary>Subtitle under the game title on the Boot splash.</summary>
-        public const string BootTagline = "Read! Race! Summarize!";
+        /// <summary>Subtitle under the game title on the Boot splash (TMP rich text —
+        /// one playful color per word; shown on Boot and MainMenu).</summary>
+        public const string BootTagline =
+            "<color=#E84855>Read!</color> <color=#1F8A3B>Race!</color> <color=#7B4FD8>Summarize!</color>";
 
         // Story select
         public const string StorySelectTitle = "Pick a Story";

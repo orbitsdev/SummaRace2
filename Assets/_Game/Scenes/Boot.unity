@@ -904,10 +904,10 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Read! Race! Summarize!
+  m_text: <color=#E84855>Read!</color> <color=#1F8A3B>Race!</color> <color=#7B4FD8>Summarize!</color>
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 274a6a94c05170c499d70c25618bfad6, type: 2}
-  m_sharedMaterial: {fileID: 4035542287115202717, guid: 274a6a94c05170c499d70c25618bfad6,
+  m_fontAsset: {fileID: 11400000, guid: 2d80ca966f93d3f4baba91251ab4761c, type: 2}
+  m_sharedMaterial: {fileID: -3740141390931714523, guid: 2d80ca966f93d3f4baba91251ab4761c,
     type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
@@ -1102,7 +1102,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.01, y: -0.04}
   m_AnchorMax: {x: 0.99, y: 0.55}
-  m_AnchoredPosition: {x: 3, y: 91}
+  m_AnchoredPosition: {x: 3, y: 78}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &792219566
@@ -1391,7 +1391,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.07, y: 0.5}
   m_AnchorMax: {x: 0.93, y: 1.02}
-  m_AnchoredPosition: {x: 2, y: -56}
+  m_AnchoredPosition: {x: 1, y: -39}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1039263568
