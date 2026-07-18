@@ -26,6 +26,29 @@ So: lock the style with ONE great "The Playground" hero, get owner/researcher si
 
 ---
 
+## 🎯 Story CARD illustrations (per prototype screen 3 — the finalized StorySelect)
+Each difficulty card IS a landscape story scene with the title + SELECT overlaid. One per story.
+**Slot:** `Assets/_Game/Resources/Stories/Art/<id>.png` (e.g. `s01_easy.png`, `s01_average.png`, `s01_hard.png`)
+**Size:** landscape ~3:2 (e.g. 1200×800). Keep characters LEFT/CENTER, RIGHT third calm for the title.
+
+**Template:**
+```
+Wide landscape children's storybook scene, 3:2 aspect, glossy 2D cartoon vector style,
+casual kids' mobile game art, saturated candy colors, soft shiny highlights, bold clean
+outlines, warm and friendly. Scene: [SCENE]. Composition: keep the characters and action
+on the LEFT and CENTER; keep the RIGHT third calmer/simpler (soft background) so a story
+title can be placed over it. No text, no letters, no watermark. High resolution, landscape.
+```
+
+**Day 1 scenes** (from the researcher's docx):
+| id | title | [SCENE] |
+|---|---|---|
+| s01_easy | The Playground | two young girls at a sunny playground; one girl stands looking a little upset, the other sits on a swing holding on; swing set, green grass, trees, warm afternoon light |
+| s01_average | The Day the Crayons Quit | a young boy at a desk looking surprised, opening a crayon box with little folded letters popping out instead of crayons; colorful crayons scattered around, cozy bright room |
+| s01_hard | The Animal Assignment | a boy at a school desk thinking hard with his hand on his chin, small floating thought-bubble pictures of animals around his head (fox, dolphin, giraffe); notebook and pencil, bright classroom |
+
+Days 2-10: scenes come from `Documentation/stories_extracted.txt` (30 stories total, Phase G).
+
 ## 🎯 NEXT: Story hero image — "The Playground" (s01_easy)
 **Slot:** `Assets/_Game/Resources/Stories/Art/s01_easy.png` (replaces the current TEMP white crop)
 **Size:** square, ~1024×1024 (it sits in a card, roughly square)
