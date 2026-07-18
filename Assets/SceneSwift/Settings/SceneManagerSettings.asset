@@ -14,7 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp-firstpass::SceneSwift.SceneManagerSettings
   _favorites: []
   _recent:
+  - Assets/Scenes/MainSummaRace.unity
   - Assets/_Game/Scenes/Boot.unity
+  - Assets/TextMesh Pro/Examples & Extras/Scenes/02 - Multi-line TextMesh Pro.unity
   _groups: []
   _sceneColors: []
   _startupScenePath: 
