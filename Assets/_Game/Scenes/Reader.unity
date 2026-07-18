@@ -728,6 +728,7 @@ MonoBehaviour:
   - {fileID: 1329242883}
   - {fileID: 1530908974}
   feedbackText: {fileID: 2007911221}
+  teacherGroup: {fileID: 1532069982}
 --- !u!4 &939358096
 Transform:
   m_ObjectHideFlags: 0
@@ -1697,6 +1698,7 @@ GameObject:
   - component: {fileID: 1532069979}
   - component: {fileID: 1532069978}
   - component: {fileID: 1532069981}
+  - component: {fileID: 1532069982}
   m_Layer: 0
   m_Name: Teacher
   m_TagString: Untagged
@@ -1790,6 +1792,18 @@ MonoBehaviour:
   idleSprite: {fileID: 21300000, guid: 73e37743208c1bd498cd44cb99e5bdec, type: 3}
   cheerSprite: {fileID: 21300000, guid: 7cf1cded82a509e4bb36eab11c0c88bb, type: 3}
   cheerSeconds: 1.6
+--- !u!225 &1532069982
+CanvasGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1532069976}
+  m_Enabled: 1
+  m_Alpha: 1
+  m_Interactable: 1
+  m_BlocksRaycasts: 1
+  m_IgnoreParentGroups: 0
 --- !u!1 &1665849056
 GameObject:
   m_ObjectHideFlags: 0

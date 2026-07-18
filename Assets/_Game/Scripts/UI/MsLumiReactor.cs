@@ -19,11 +19,13 @@ namespace SummaRace.UI
         [SerializeField] private float cheerSeconds = 1.6f;
 
         private Image _image;
+        private CanvasGroup _group;
         private Coroutine _routine;
 
         private void Awake()
         {
             _image = GetComponent<Image>();
+            _group = GetComponent<CanvasGroup>();
             if (idleSprite != null) _image.sprite = idleSprite;
         }
 
@@ -40,6 +42,7 @@ namespace SummaRace.UI
         private IEnumerator Cheer()
         {
             if (cheerSprite != null) _image.sprite = cheerSprite;
+            if (_group != null) _group.alpha = 1f; // pop back in (she was hidden for the question)
             Tween.PunchScale(transform, Vector3.one * 0.18f, 0.5f);
             yield return new WaitForSeconds(cheerSeconds);
             if (idleSprite != null) _image.sprite = idleSprite;

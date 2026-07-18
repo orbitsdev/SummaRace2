@@ -31,6 +31,12 @@ namespace SummaRace.Features.Reader
         [SerializeField] private TMP_Text[] optionLabels = new TMP_Text[3];
         [SerializeField] private TMP_Text feedbackText;
 
+        [Header("Reading buddy")]
+        // Ms. Lumi hides during the question so the learner focuses on the answers,
+        // then pops back in cheering on a correct pick (see MsLumiReactor). CanvasGroup
+        // (not SetActive) so her event listener stays alive while she's invisible.
+        [SerializeField] private CanvasGroup teacherGroup;
+
         private static readonly Color OptionNormal = new Color(0.96f, 0.87f, 0.70f); // warm tan
         private static readonly Color OptionCorrect = new Color(0.55f, 0.85f, 0.45f); // friendly green
 
@@ -75,6 +81,7 @@ namespace SummaRace.Features.Reader
                 progressText.text = GameText.PageProgress(index + 1, _story.pages.Length);
 
             if (questionPanel != null) questionPanel.SetActive(false);
+            if (teacherGroup != null) teacherGroup.alpha = 1f; // buddy is back for reading
             if (nextButton != null) nextButton.gameObject.SetActive(true);
             if (nextButtonLabel != null) nextButtonLabel.text = GameText.NextLabel;
 
@@ -136,6 +143,7 @@ namespace SummaRace.Features.Reader
         {
             _questionShown = true;
             if (questionPanel != null) questionPanel.SetActive(true);
+            if (teacherGroup != null) teacherGroup.alpha = 0f; // hide the buddy — focus on the answers
             if (nextButton != null) nextButton.gameObject.SetActive(false);
             if (feedbackText != null) feedbackText.text = "";
 
