@@ -1,0 +1,26 @@
+SCENE: Assets/_Game/Scenes/Boot.unity
+Main Camera  <Transform,Camera>
+SplashCanvas  <RectTransform,Canvas,CanvasScaler>
+  Sky  <RectTransform,CanvasRenderer,Image>
+  BG  <RectTransform,CanvasRenderer,Image>
+  [INACTIVE] Hill  <RectTransform,CanvasRenderer,Image>
+  LogoLockup  <RectTransform,UIFloat,PanelIntro>
+    SUMMA_Depth  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="SUMMA" font=Fredoka-SemiBold SDF
+    SUMMA  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="SUMMA" font=Fredoka-SemiBold SDF
+    RACE!_Depth  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="RACE!" font=Fredoka-SemiBold SDF
+    RACE!  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="RACE!" font=Fredoka-SemiBold SDF
+    Sparkle_0  <RectTransform,CanvasRenderer,Image>
+    Sparkle_1  <RectTransform,CanvasRenderer,Image>
+    Sparkle_2  <RectTransform,CanvasRenderer,Image>
+  Tagline  <RectTransform,CanvasRenderer,TextMeshProUGUI,PanelIntro>
+    TEXT="Read! Race! Summarize!" font=Nunito-Bold SDF
+  LoadingText  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+    TEXT="Loading..." font=Nunito-Regular SDF
+  Crown  <RectTransform,CanvasRenderer,Image,UIFloat,PanelIntro>
+  SplashBar  <RectTransform,CanvasRenderer,Image>
+    Fill  <RectTransform,CanvasRenderer,Image>
+Bootstrapper  <Transform,Bootstrapper>
