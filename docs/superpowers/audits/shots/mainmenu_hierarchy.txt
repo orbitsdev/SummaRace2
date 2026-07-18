@@ -1,0 +1,28 @@
+SCENE: Assets/_Game/Scenes/MainMenu.unity
+Main Camera  <Transform,Camera>
+Canvas  <RectTransform,Canvas,CanvasScaler,GraphicRaycaster>
+  Sky  <RectTransform,CanvasRenderer,Image>
+  BG  <RectTransform,CanvasRenderer,Image>
+  LogoLockup  <RectTransform,UIFloat,PanelIntro>
+    SUMMA_Depth  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="SUMMA" font=Fredoka-SemiBold SDF
+    SUMMA  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="SUMMA" font=Fredoka-SemiBold SDF
+    RACE!_Depth  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="RACE!" font=Fredoka-SemiBold SDF
+    RACE!  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="RACE!" font=Fredoka-SemiBold SDF
+    Sparkle_0  <RectTransform,CanvasRenderer,Image>
+    Sparkle_1  <RectTransform,CanvasRenderer,Image>
+    Sparkle_2  <RectTransform,CanvasRenderer,Image>
+  Subtitle  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+    TEXT="Read, Run, and Summarize!" font=Nunito-Bold SDF
+  StartButtonFrame  <RectTransform,CanvasRenderer,Image>
+  StartButton  <RectTransform,CanvasRenderer,Image,Button,PanelIntro,ButtonSquash>
+    Label  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="TAP TO START" font=Fredoka-SemiBold SDF
+  Crown  <RectTransform,CanvasRenderer,Image,UIFloat>
+  DecorCoins  <RectTransform,CanvasRenderer,Image,UIFloat>
+  DecorGems  <RectTransform,CanvasRenderer,Image,UIFloat>
+EventSystem  <Transform,EventSystem,InputSystemUIInputModule>
+MainMenuController  <Transform,MainMenuController>

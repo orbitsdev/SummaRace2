@@ -1,5 +1,6 @@
 using SummaRace.Constants;
 using SummaRace.Core;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -9,9 +10,14 @@ namespace SummaRace.Features.MainMenu
     public class MainMenuController : MonoBehaviour
     {
         [SerializeField] private Button startButton;
+        [SerializeField] private TMP_Text startLabel;
+        [SerializeField] private TMP_Text subtitleText;
 
         private void Start()
         {
+            if (startLabel != null) startLabel.text = GameText.TapToStart;
+            if (subtitleText != null) subtitleText.text = GameText.BootTagline;
+
             // Survive being opened directly in the editor for testing (TDD §13).
             if (AudioManager.Instance != null)
                 AudioManager.Instance.PlayMusic(AudioKeys.MusicMenu);
