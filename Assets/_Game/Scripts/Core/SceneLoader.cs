@@ -20,6 +20,9 @@ namespace SummaRace.Core
         private CanvasGroup _fadeGroup;
         private TextMeshProUGUI _tipText;
         private Image _barFill;
+        private GameObject _tipCard;
+        private GameObject _barRoot;
+        private GameObject _loadingLabel;
         private bool _loading;
 
         private void Awake()
@@ -29,36 +32,45 @@ namespace SummaRace.Core
             BuildFadeCanvas();
         }
 
-        public void Load(string sceneName)
+        /// <summary>Change scene with the tip-card loading overlay. Pass showTips=false for a
+        /// plain quiet fade (used Boot→MainMenu so the splash never doubles as two loading pages).</summary>
+        public void Load(string sceneName, bool showTips = true)
         {
             if (_loading) return;
-            StartCoroutine(LoadRoutine(sceneName));
+            StartCoroutine(LoadRoutine(sceneName, showTips));
         }
 
-        private IEnumerator LoadRoutine(string sceneName)
+        private IEnumerator LoadRoutine(string sceneName, bool showTips)
         {
             _loading = true;
+            if (_tipCard != null) _tipCard.SetActive(showTips);
+            if (_barRoot != null) _barRoot.SetActive(showTips);
+            if (_loadingLabel != null) _loadingLabel.SetActive(showTips);
             _tipText.text = GameText.LoadingTips[Random.Range(0, GameText.LoadingTips.Length)];
             if (AudioManager.Instance != null)
             {
                 AudioManager.Instance.StopNarration(); // voice never bleeds into the next scene
-                AudioManager.Instance.PlaySfx(AudioKeys.SfxTransition);
+                if (showTips) AudioManager.Instance.PlaySfx(AudioKeys.SfxTransition);
             }
 
             _barFill.fillAmount = 0f;
             yield return Fade(0f, 1f);
 
             // Fill tracks real load progress but sweeps at a capped speed so the
-            // bar reads as motion even on near-instant loads.
+            // bar reads as motion even on near-instant loads. Tip-less fades skip
+            // the sweep — nothing visible is animating, so don't hold the load.
             var op = SceneManager.LoadSceneAsync(sceneName);
-            op.allowSceneActivation = false;
-            while (_barFill.fillAmount < 0.999f)
+            if (showTips)
             {
-                float target = op.progress < 0.9f ? op.progress / 0.9f : 1f;
-                _barFill.fillAmount = Mathf.MoveTowards(_barFill.fillAmount, target, Time.unscaledDeltaTime * 2.5f);
-                yield return null;
+                op.allowSceneActivation = false;
+                while (_barFill.fillAmount < 0.999f)
+                {
+                    float target = op.progress < 0.9f ? op.progress / 0.9f : 1f;
+                    _barFill.fillAmount = Mathf.MoveTowards(_barFill.fillAmount, target, Time.unscaledDeltaTime * 2.5f);
+                    yield return null;
+                }
+                op.allowSceneActivation = true;
             }
-            op.allowSceneActivation = true;
             while (!op.isDone) yield return null;
 
             yield return Fade(1f, 0f);
@@ -104,6 +116,7 @@ namespace SummaRace.Core
 
             // Gold-bordered card holding the SWBST tip.
             var cardGo = new GameObject("TipCard");
+            _tipCard = cardGo;
             cardGo.transform.SetParent(canvasGo.transform, false);
             var card = cardGo.AddComponent<Image>();
             var goldPanel = Resources.Load<Sprite>("UI/panel_gold");
@@ -138,6 +151,7 @@ namespace SummaRace.Core
 
             // Gold progress bar under the tip card.
             var barGo = new GameObject("ProgressBar");
+            _barRoot = barGo;
             barGo.transform.SetParent(canvasGo.transform, false);
             var barBg = barGo.AddComponent<Image>();
             var barBgSprite = Resources.Load<Sprite>("UI/bar_bg");
@@ -167,6 +181,7 @@ namespace SummaRace.Core
 
             // Small "Loading..." above the card.
             var loadGo = new GameObject("LoadingText");
+            _loadingLabel = loadGo;
             loadGo.transform.SetParent(canvasGo.transform, false);
             var loading = loadGo.AddComponent<TextMeshProUGUI>();
             loading.text = GameText.LoadingLabel;

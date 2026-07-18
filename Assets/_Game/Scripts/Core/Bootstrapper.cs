@@ -44,12 +44,14 @@ namespace SummaRace.Core
 
         private IEnumerator Start()
         {
-            // One frame in, the lockup's PanelIntro pops — give it its sound.
+            // One frame in, the lockup's PanelIntro pops — one twinkly sting is the
+            // splash's only sound (the menu music takes over in MainMenu).
             yield return null;
             if (AudioManager.Instance != null)
-                AudioManager.Instance.PlaySfx(AudioKeys.SfxPop);
+                AudioManager.Instance.PlaySfx(AudioKeys.SfxStar);
 
-            // Brief splash beat (progress bar fills across it), then into the menu.
+            // Brief splash beat, then a quiet tip-less fade into the menu — the
+            // splash IS the startup loading screen (no second loading page).
             float t = 0f;
             while (t < GameRules.SplashSeconds)
             {
@@ -57,7 +59,7 @@ namespace SummaRace.Core
                 if (splashFill != null) splashFill.fillAmount = Mathf.Clamp01(t / GameRules.SplashSeconds);
                 yield return null;
             }
-            SceneLoader.Instance.Load(SceneNames.MainMenu);
+            SceneLoader.Instance.Load(SceneNames.MainMenu, false);
         }
     }
 }
