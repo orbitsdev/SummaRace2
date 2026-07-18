@@ -1,0 +1,33 @@
+SCENE: Assets/_Game/Scenes/Reader.unity
+Main Camera  <Transform,Camera>
+Canvas  <RectTransform,Canvas,CanvasScaler,GraphicRaycaster>
+  Sky  <RectTransform,CanvasRenderer,Image>
+  [INACTIVE] Hill  <RectTransform,CanvasRenderer,Image>
+  ProgressText  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+    TEXT="Page 1 / 5" font=Fredoka-SemiBold SDF
+  ReadingCard  <RectTransform,CanvasRenderer,Image,PanelIntro>
+    PageText  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="" font=Nunito-Regular SDF
+  NextButtonFrame  <RectTransform,CanvasRenderer,Image>
+  NextButton  <RectTransform,CanvasRenderer,Image,Button,ButtonSquash>
+    Label  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="NEXT" font=Fredoka-SemiBold SDF
+  [INACTIVE] QuestionPanel  <RectTransform,CanvasRenderer,Image,PanelIntro>
+    [INACTIVE] QuestionText  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="" font=Nunito-Bold SDF
+    [INACTIVE] OptionA  <RectTransform,CanvasRenderer,Image,Button,ButtonSquash>
+      [INACTIVE] Label  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+        TEXT="" font=Nunito-Regular SDF
+    [INACTIVE] OptionB  <RectTransform,CanvasRenderer,Image,Button,ButtonSquash>
+      [INACTIVE] Label  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+        TEXT="" font=Nunito-Regular SDF
+    [INACTIVE] OptionC  <RectTransform,CanvasRenderer,Image,Button,ButtonSquash>
+      [INACTIVE] Label  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+        TEXT="" font=Nunito-Regular SDF
+    [INACTIVE] FeedbackText  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="" font=Nunito-Bold SDF
+  VoiceButton  <RectTransform,CanvasRenderer,Image,Button,ButtonSquash>
+    Label  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="VOICE ON" font=Fredoka-SemiBold SDF
+EventSystem  <Transform,EventSystem,InputSystemUIInputModule>
+ReaderController  <Transform,ReaderController>

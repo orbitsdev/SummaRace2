@@ -72,11 +72,11 @@ namespace SummaRace.Features.Reader
             var page = _story.pages[index];
             if (pageText != null) pageText.text = page.text;
             if (progressText != null)
-                progressText.text = $"Page {index + 1} / {_story.pages.Length}";
+                progressText.text = GameText.PageProgress(index + 1, _story.pages.Length);
 
             if (questionPanel != null) questionPanel.SetActive(false);
             if (nextButton != null) nextButton.gameObject.SetActive(true);
-            if (nextButtonLabel != null) nextButtonLabel.text = "NEXT";
+            if (nextButtonLabel != null) nextButtonLabel.text = GameText.NextLabel;
 
             if (index > 0 && AudioManager.Instance != null)
                 AudioManager.Instance.PlaySfx(AudioKeys.SfxPageTurn);
@@ -170,7 +170,7 @@ namespace SummaRace.Features.Reader
                 AudioManager.Instance.PlaySfx(correct ? AudioKeys.SfxCorrect : AudioKeys.SfxNotQuite);
 
             if (feedbackText != null)
-                feedbackText.text = correct ? "Great job!" : "Not quite — the green one is the answer!";
+                feedbackText.text = correct ? GameText.ReaderCorrectFeedback : GameText.ReaderWrongFeedback;
 
             EventBus.Raise(new PageAnswered
             {
@@ -181,7 +181,7 @@ namespace SummaRace.Features.Reader
 
             if (nextButton != null) nextButton.gameObject.SetActive(true);
             if (nextButtonLabel != null)
-                nextButtonLabel.text = _pageIndex == _story.pages.Length - 1 ? "START RACE!" : "NEXT PAGE";
+                nextButtonLabel.text = _pageIndex == _story.pages.Length - 1 ? GameText.StartRaceLabel : GameText.NextPageLabel;
         }
 
         private void Advance()

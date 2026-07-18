@@ -42,6 +42,16 @@ namespace SummaRace.Constants
         public const string VoiceOn = "VOICE ON";
         public const string VoiceOff = "VOICE OFF";
 
+        // Reader page flow
+        public const string NextLabel = "NEXT";
+        public const string NextPageLabel = "NEXT PAGE";
+        public const string StartRaceLabel = "START RACE!";
+        public const string ReaderCorrectFeedback = "Great job!";
+        public const string ReaderWrongFeedback = "Not quite — the green one is the answer!";
+
+        /// <summary>Progress line above the reading card, e.g. "Page 1 / 5".</summary>
+        public static string PageProgress(int current, int total) => $"Page {current} / {total}";
+
         // SWBST loading tips (SceneLoader shows one at random, GDD §11.5)
         public static readonly string[] LoadingTips =
         {
