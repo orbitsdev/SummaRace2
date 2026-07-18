@@ -9,7 +9,7 @@ namespace SummaRace.UI
     public class PanelIntro : MonoBehaviour
     {
         [SerializeField] private float delay;
-        [SerializeField] private bool playSound = true;
+        [SerializeField] private bool playSound = false; // pop is silent by default (owner removed sfx_pop)
 
         private Vector3 _baseScale;
         private bool _cached;

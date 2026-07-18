@@ -1385,7 +1385,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SummaRace.UI.PanelIntro
   delay: 0
-  playSound: 1
+  playSound: 0
 --- !u!114 &522979503
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2947,7 +2947,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SummaRace.UI.PanelIntro
   delay: 0.05
-  playSound: 1
+  playSound: 0
 --- !u!1 &1378458409
 GameObject:
   m_ObjectHideFlags: 0
