@@ -2201,7 +2201,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SummaRace.UI.PanelIntro
   delay: 0
-  playSound: 1
+  playSound: 0
 --- !u!114 &2072058183
 MonoBehaviour:
   m_ObjectHideFlags: 0
