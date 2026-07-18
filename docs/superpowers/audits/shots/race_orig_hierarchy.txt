@@ -1,0 +1,51 @@
+SCENE: Assets/_Game/Scenes/Race.unity
+Main Camera  <Transform,Camera,RaceChaseCamera,CameraShaker,UniversalAdditionalCameraData>
+Directional Light  <Transform,Light,UniversalAdditionalLightData>
+HUD  <RectTransform,Canvas,CanvasScaler,GraphicRaycaster>
+  Vignette  <RectTransform,CanvasRenderer,Image>
+  [INACTIVE] BannerBG  <RectTransform,CanvasRenderer,Image>
+    [INACTIVE] Banner  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="" font=Fredoka-SemiBold SDF
+    [INACTIVE] StarIcon  <RectTransform,CanvasRenderer,Image>
+    [INACTIVE] ProgressPill  <RectTransform,CanvasRenderer,Image>
+      [INACTIVE] Text  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+        TEXT="1/5" font=Nunito-Bold SDF
+  DangerBarBg  <RectTransform,CanvasRenderer,Image>
+    DangerFill  <RectTransform,CanvasRenderer,Image>
+    DangerIcon  <RectTransform,CanvasRenderer,Image>
+  [INACTIVE] FeedbackPill  <RectTransform,CanvasRenderer,Image>
+    [INACTIVE] Feedback  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="" font=Fredoka-SemiBold SDF
+  [INACTIVE] CaughtPanel  <RectTransform,CanvasRenderer,Image,PanelIntro>
+    [INACTIVE] Text  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="Tag! The patrol caught up.\nKeep running - you can do it!" font=Nunito-Bold SDF
+  BriefingPanel  <RectTransform,CanvasRenderer,Image,PanelIntro>
+    StartMissionButtonFrame  <RectTransform,CanvasRenderer,Image>
+    StartMissionButton  <RectTransform,CanvasRenderer,Image,Button,ButtonSquash>
+      [INACTIVE] Label  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+        TEXT="Start Mission" font=Fredoka-SemiBold SDF
+    TitlePill  <RectTransform,CanvasRenderer,Image>
+      Title  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+        TEXT="PATROL IS COMING!" font=Fredoka-SemiBold SDF
+    BodyCard  <RectTransform,CanvasRenderer,Image>
+      Body  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+        TEXT="Run and collect the correct\nS.W.B.S.T parts of the story.\n\n- Move with SWIPE (or A / D keys)\n- Run into the right answer!\n- Correct items make you sprint away!\n- Wrong items slow you down.\n\nDon't let the patrol catch you!" font=Nunito-Regular SDF
+    SwbstRow  <RectTransform>
+      Chip_S0  <RectTransform,CanvasRenderer,Image>
+        L  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+          TEXT="S" font=Nunito-Bold SDF
+      Chip_W1  <RectTransform,CanvasRenderer,Image>
+        L  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+          TEXT="W" font=Nunito-Bold SDF
+      Chip_B2  <RectTransform,CanvasRenderer,Image>
+        L  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+          TEXT="B" font=Nunito-Bold SDF
+      Chip_S3  <RectTransform,CanvasRenderer,Image>
+        L  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+          TEXT="S" font=Nunito-Bold SDF
+      Chip_T4  <RectTransform,CanvasRenderer,Image>
+        L  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+          TEXT="T" font=Nunito-Bold SDF
+EventSystem  <Transform,EventSystem,InputSystemUIInputModule>
+RaceController  <Transform,RaceController>
+PostFX  <Transform,Volume>
