@@ -43,6 +43,26 @@ simple composition that reads clearly at small size. No text, no letters, no wat
 
 ---
 
+## 🎯 Reader / activity background (cozy classroom)
+**Slot:** `Assets/_Game/Resources/UI/bg_classroom.png`
+**Size:** portrait 1080×1920
+**Used by:** Reader (and optionally Arrange/Summary). Ms. Lumi + the story card sit in the
+center, so keep the MIDDLE calm/empty; detail on the upper walls + bottom floor only.
+
+```
+Mobile game background, portrait 9:16, glossy 2D cartoon vector style, casual kids'
+mobile game, saturated warm candy colors, soft shiny highlights, chunky rounded shapes,
+clean bold edges, cheerful and cozy. A bright cheerful CLASSROOM / story-time corner:
+soft pastel wall in the upper two thirds with a sunny window showing blue sky and a
+tree outside, a colorful alphabet or picture banner high on the wall, a shelf of
+rounded colorful books in a corner, a warm wooden floor across the bottom with a soft
+round rug. The whole CENTER of the image stays calm and uncluttered — a story card and
+a teacher character will sit there. No people, no text, no letters, no watermark.
+High resolution, portrait 1080x1920, crisp clean edges.
+```
+**Acceptance:** cozy classroom, calm empty center for the card + teacher, warm and inviting,
+same art family as the menu/splash.
+
 ## 🎯 StorySelect background
 **Slot:** `Assets/_Game/Resources/UI/bg_storyselect.png`
 **Size:** portrait 1080×1920
