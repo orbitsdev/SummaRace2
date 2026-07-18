@@ -20,6 +20,11 @@ namespace SummaRace.Features.Summary
         [SerializeField] private Button submitButton;
         [SerializeField] private TMP_Text nudgeText;
 
+        [Header("Labels (set from GameText)")]
+        [SerializeField] private TMP_Text titleText;
+        [SerializeField] private TMP_Text placeholderText;
+        [SerializeField] private TMP_Text submitLabel;
+
         private StoryData _story;
         private int _nudgeCount;
 
@@ -37,6 +42,9 @@ namespace SummaRace.Features.Summary
                 referenceText.text = sb.ToString();
             }
 
+            if (titleText != null) titleText.text = GameText.SummaryTitle;
+            if (placeholderText != null) placeholderText.text = GameText.SummaryPlaceholder;
+            if (submitLabel != null) submitLabel.text = GameText.SubmitLabel;
             if (hintText != null) hintText.text = GameText.SummaryHint;
             if (nudgeText != null) nudgeText.text = "";
             if (summaryInput != null) summaryInput.characterLimit = GameRules.SummaryMaxChars;

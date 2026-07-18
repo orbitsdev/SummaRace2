@@ -1,0 +1,28 @@
+SCENE: Assets/_Game/Scenes/Summary.unity
+Main Camera  <Transform,Camera>
+Canvas  <RectTransform,Canvas,CanvasScaler,GraphicRaycaster>
+  Sky  <RectTransform,CanvasRenderer,Image>
+  [INACTIVE] Hill  <RectTransform,CanvasRenderer,Image>
+  TeacherAvatar  <RectTransform,CanvasRenderer,Image,PanelIntro>
+  SpeechBubble  <RectTransform,CanvasRenderer,Image,PanelIntro>
+    Title  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="Write your summary!" font=Nunito-Bold SDF
+  ReferenceCard  <RectTransform,CanvasRenderer,Image,PanelIntro>
+    ReferenceText  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="" font=Nunito-Regular SDF
+  HintText  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+    TEXT="" font=Nunito-Regular SDF
+  SummaryInput  <RectTransform,CanvasRenderer,Image,TMP_InputField,PanelIntro>
+    Text Area  <RectTransform,RectMask2D>
+      Placeholder  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+        TEXT="Type your one-sentence summary here..." font=Nunito-Regular SDF
+      Text  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+        TEXT="​" font=Nunito-Regular SDF
+  NudgeText  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+    TEXT="" font=Nunito-Bold SDF
+  SubmitButtonFrame  <RectTransform,CanvasRenderer,Image>
+  SubmitButton  <RectTransform,CanvasRenderer,Image,Button,ButtonSquash>
+    Label  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="SUBMIT" font=Fredoka-SemiBold SDF
+EventSystem  <Transform,EventSystem,InputSystemUIInputModule>
+SummaryController  <Transform,SummaryController>

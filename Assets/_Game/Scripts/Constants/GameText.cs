@@ -19,6 +19,10 @@ namespace SummaRace.Constants
         public const string SummaryHint =
             "Example: Somebody wanted ___, but ___, so ___, then ___.";
 
+        public const string SummaryTitle = "Write your summary!";
+        public const string SummaryPlaceholder = "Type your one-sentence summary here...";
+        public const string SubmitLabel = "SUBMIT";
+
         // Gentle nudges shown when a summary needs another try (GDD §4.5)
         public static readonly string[] SummaryNudges =
         {
