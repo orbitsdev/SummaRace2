@@ -1,0 +1,46 @@
+SCENE: Assets/_Game/Scenes/StorySelect.unity
+Main Camera  <Transform,Camera>
+Canvas  <RectTransform,Canvas,CanvasScaler,GraphicRaycaster>
+  Sky  <RectTransform,CanvasRenderer,Image>
+  Cloud_2  <RectTransform,CanvasRenderer,Image,UIFloat>
+  Cloud_1  <RectTransform,CanvasRenderer,Image,UIFloat>
+  Cloud_0  <RectTransform,CanvasRenderer,Image,UIFloat>
+  BackButton  <RectTransform,CanvasRenderer,Image,Button,ButtonSquash>
+    [INACTIVE] Label  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="BACK" font=Fredoka-SemiBold SDF
+  TitleBanner  <RectTransform,CanvasRenderer,Image,PanelIntro,UIFloat>
+    Title  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+      TEXT="Pick a Story" font=Fredoka-SemiBold SDF
+  LevelPanel  <RectTransform,CanvasRenderer,Image,PanelIntro>
+    EasyCard  <RectTransform,CanvasRenderer,Image,Button,PanelIntro,ButtonSquash>
+      Hero  <RectTransform,CanvasRenderer,Image>
+      Label  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+        TEXT="EASY\nThe Playground" font=Fredoka-SemiBold SDF
+      EasyChip  <RectTransform,CanvasRenderer,Image>
+        Text  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+          TEXT="EASY" font=Fredoka-SemiBold SDF
+      StarRow  <RectTransform>
+        Star_0  <RectTransform,CanvasRenderer,Image>
+        Star_1  <RectTransform,CanvasRenderer,Image>
+        Star_2  <RectTransform,CanvasRenderer,Image>
+      PlayVisual  <RectTransform,CanvasRenderer,Image>
+    AverageCard  <RectTransform,CanvasRenderer,Image,Button,PanelIntro,ButtonSquash>
+      Chip  <RectTransform,CanvasRenderer,Image>
+        Text  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+          TEXT="" font=Fredoka-SemiBold SDF
+      Lock  <RectTransform,CanvasRenderer,Image>
+      LockedLabel  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+        TEXT="" font=Fredoka-SemiBold SDF
+      HintLabel  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+        TEXT="" font=Nunito-Bold SDF
+    HardCard  <RectTransform,CanvasRenderer,Image,Button,PanelIntro,ButtonSquash>
+      Chip  <RectTransform,CanvasRenderer,Image>
+        Text  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+          TEXT="" font=Fredoka-SemiBold SDF
+      Lock  <RectTransform,CanvasRenderer,Image>
+      LockedLabel  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+        TEXT="" font=Fredoka-SemiBold SDF
+      HintLabel  <RectTransform,CanvasRenderer,TextMeshProUGUI>
+        TEXT="" font=Nunito-Bold SDF
+EventSystem  <Transform,EventSystem,InputSystemUIInputModule>
+StorySelectController  <Transform,StorySelectController>
