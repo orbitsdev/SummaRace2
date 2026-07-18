@@ -44,12 +44,7 @@ namespace SummaRace.Core
 
         private IEnumerator Start()
         {
-            // One frame in, the lockup's PanelIntro pops — one twinkly sting is the
-            // splash's only sound (the menu music takes over in MainMenu).
-            yield return null;
-            if (AudioManager.Instance != null)
-                AudioManager.Instance.PlaySfx(AudioKeys.SfxStar);
-
+            // Sound comes from the lockup's own PanelIntro pop — nothing extra here.
             // Brief splash beat, then a quiet tip-less fade into the menu — the
             // splash IS the startup loading screen (no second loading page).
             float t = 0f;
