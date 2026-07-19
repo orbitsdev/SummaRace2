@@ -1,3 +1,4 @@
+using PrimeTween;
 using SummaRace.Constants;
 using SummaRace.Core;
 using SummaRace.Data;
@@ -38,6 +39,9 @@ namespace SummaRace.Features.Reader
         // then pops back in cheering on a correct pick (see MsLumiReactor). CanvasGroup
         // (not SetActive) so her event listener stays alive while she's invisible.
         [SerializeField] private CanvasGroup teacherGroup;
+
+        private const float OptionFanSeconds = 0.28f;  // per-option pop-in
+        private const float OptionFanStagger = 0.06f;  // gap between options
 
         private static readonly Color OptionNormal = new Color(0.96f, 0.94f, 1.00f); // light pill (high contrast on the gold card)
         private static readonly Color OptionCorrect = new Color(0.55f, 0.85f, 0.45f); // friendly green
@@ -87,7 +91,14 @@ namespace SummaRace.Features.Reader
             if (progressText != null)
                 progressText.text = GameText.PageProgress(index + 1, _story.pages.Length);
             if (progressFill != null)
-                progressFill.fillAmount = (index + 1) / (float)_story.pages.Length;
+            {
+                // Sweep to the new page rather than snapping — the bar is the learner's
+                // sense of "how much story is left", so the movement is worth showing.
+                float target = (index + 1) / (float)_story.pages.Length;
+                Tween.StopAll(onTarget: progressFill);
+                Tween.Custom(progressFill, progressFill.fillAmount, target, 0.4f,
+                    (bar, v) => bar.fillAmount = v, Ease.OutQuad);
+            }
 
             if (questionPanel != null) questionPanel.SetActive(false);
             if (teacherGroup != null) teacherGroup.alpha = 1f; // buddy is back for reading
@@ -164,6 +175,15 @@ namespace SummaRace.Features.Reader
                 optionButtons[i].interactable = true;
                 optionButtons[i].image.color = OptionNormal;
                 if (optionLabels[i] != null) optionLabels[i].text = question.options[i];
+
+                // Fan the options in one after another so the page reads top-to-bottom
+                // instead of arriving all at once. ButtonSquash cached scale 1 in Awake,
+                // so returning to Vector3.one keeps press-squash correct.
+                var option = optionButtons[i].transform;
+                Tween.StopAll(onTarget: option);
+                option.localScale = Vector3.one * 0.9f;
+                Tween.Scale(option, Vector3.one, OptionFanSeconds, Ease.OutBack,
+                    startDelay: OptionFanStagger * i);
             }
         }
 
@@ -181,7 +201,11 @@ namespace SummaRace.Features.Reader
                 if (optionButtons[i] == null) continue;
                 optionButtons[i].interactable = false;
                 if (i == question.correctIndex)
+                {
                     optionButtons[i].image.color = OptionCorrect;
+                    // The "you got it" beat — the flattest moment in the scene until now.
+                    Tween.PunchScale(optionButtons[i].transform, Vector3.one * 0.12f, 0.45f);
+                }
             }
 
             if (AudioManager.Instance != null)
@@ -191,6 +215,13 @@ namespace SummaRace.Features.Reader
             {
                 feedbackText.text = correct ? Praise.Generic() : GameText.ReaderWrongFeedback;
                 feedbackText.color = correct ? FeedbackCorrect : FeedbackNotQuite;
+
+                // Pop it in, matching the race's feedback pill (F16) — the Reader was
+                // the one scene where feedback just silently appeared.
+                var fb = feedbackText.transform;
+                Tween.StopAll(onTarget: fb);
+                fb.localScale = Vector3.one * 0.7f;
+                Tween.Scale(fb, Vector3.one, 0.35f, Ease.OutBack);
             }
 
             EventBus.Raise(new PageAnswered
