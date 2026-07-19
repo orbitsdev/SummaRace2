@@ -15,8 +15,10 @@ namespace SummaRace.Features.Reader
     public class ReaderController : MonoBehaviour
     {
         [Header("Page")]
+        [SerializeField] private GameObject readingCard; // hidden during the question so it becomes its own bright page (prototype screens 4→5)
         [SerializeField] private TMP_Text pageText;
         [SerializeField] private TMP_Text progressText;
+        [SerializeField] private Image progressFill; // fills as the learner moves through the pages
         [SerializeField] private Button nextButton;
         [SerializeField] private TMP_Text nextButtonLabel;
 
@@ -78,9 +80,12 @@ namespace SummaRace.Features.Reader
             _questionAnswered = false;
 
             var page = _story.pages[index];
+            if (readingCard != null) readingCard.SetActive(true);
             if (pageText != null) pageText.text = page.text;
             if (progressText != null)
                 progressText.text = GameText.PageProgress(index + 1, _story.pages.Length);
+            if (progressFill != null)
+                progressFill.fillAmount = (index + 1) / (float)_story.pages.Length;
 
             if (questionPanel != null) questionPanel.SetActive(false);
             if (teacherGroup != null) teacherGroup.alpha = 1f; // buddy is back for reading
@@ -144,6 +149,7 @@ namespace SummaRace.Features.Reader
         private void ShowQuestion(QuestionData question)
         {
             _questionShown = true;
+            if (readingCard != null) readingCard.SetActive(false); // story gives way to its own question page
             if (questionPanel != null) questionPanel.SetActive(true);
             if (teacherGroup != null) teacherGroup.alpha = 0f; // hide the buddy — focus on the answers
             if (nextButton != null) nextButton.gameObject.SetActive(false);
