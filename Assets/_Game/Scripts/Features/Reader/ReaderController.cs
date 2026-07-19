@@ -37,8 +37,10 @@ namespace SummaRace.Features.Reader
         // (not SetActive) so her event listener stays alive while she's invisible.
         [SerializeField] private CanvasGroup teacherGroup;
 
-        private static readonly Color OptionNormal = new Color(0.96f, 0.87f, 0.70f); // warm tan
+        private static readonly Color OptionNormal = new Color(0.96f, 0.94f, 1.00f); // light pill (high contrast on the gold card)
         private static readonly Color OptionCorrect = new Color(0.55f, 0.85f, 0.45f); // friendly green
+        private static readonly Color FeedbackCorrect = new Color(0.20f, 0.55f, 0.25f); // green
+        private static readonly Color FeedbackNotQuite = new Color(0.85f, 0.50f, 0.15f); // warm orange, never harsh
 
         private StoryData _story;
         private int _pageIndex;
@@ -178,7 +180,10 @@ namespace SummaRace.Features.Reader
                 AudioManager.Instance.PlaySfx(correct ? AudioKeys.SfxCorrect : AudioKeys.SfxNotQuite);
 
             if (feedbackText != null)
+            {
                 feedbackText.text = correct ? GameText.ReaderCorrectFeedback : GameText.ReaderWrongFeedback;
+                feedbackText.color = correct ? FeedbackCorrect : FeedbackNotQuite;
+            }
 
             EventBus.Raise(new PageAnswered
             {
