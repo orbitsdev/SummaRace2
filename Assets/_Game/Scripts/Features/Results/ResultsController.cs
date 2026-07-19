@@ -81,7 +81,7 @@ namespace SummaRace.Features.Results
 
             yield return RevealTreasure();
 
-            if (praiseText != null) praiseText.text = GameText.PraiseByStars[stars];
+            if (praiseText != null) praiseText.text = SummaRace.Core.Praise.ForStars(stars);
             if (AudioManager.Instance != null) AudioManager.Instance.PlayMusic(AudioKeys.MusicVictory, false);
 
             yield return new WaitForSeconds(0.8f);

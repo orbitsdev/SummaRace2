@@ -448,7 +448,7 @@ namespace SummaRace.Features.Race.Endless
             if (SummaRace.Core.AudioManager.Instance != null)
                 SummaRace.Core.AudioManager.Instance.PlaySfx(SummaRace.Constants.AudioKeys.SfxCollect);
 
-            ShowFeedback(SummaRace.Constants.GameText.RaceCollectFeedback, new Color(0.55f, 1f, 0.55f));
+            ShowFeedback(SummaRace.Core.Praise.ForRace(element), new Color(0.55f, 1f, 0.55f));
 
             // The collected card flies up and pops away; the rest of the gate goes now.
             var cardT = pickup.transform;

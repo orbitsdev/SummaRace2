@@ -192,7 +192,7 @@ namespace SummaRace.Features.Arrange
             if (allCorrect)
             {
                 if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxCorrect);
-                SetStatus(GameText.ArrangePerfect);
+                SetStatus(SummaRace.Core.Praise.ArrangePerfect());
                 if (SummaRace.Core.GameManager.Instance != null) SummaRace.Core.GameManager.Instance.SetArrangeResult(_attempts);
                 EventBus.Raise(new ArrangeVerified { correct = true, attemptCount = _attempts });
 

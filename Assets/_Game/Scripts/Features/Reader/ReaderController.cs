@@ -60,6 +60,8 @@ namespace SummaRace.Features.Reader
                 return;
             }
 
+            Praise.ResetRun(); // new story — restart the praise cadence
+
             if (nextButton != null) nextButton.onClick.AddListener(OnNext);
             if (voiceButton != null) voiceButton.onClick.AddListener(ToggleNarration);
             RefreshVoiceButton();
@@ -187,7 +189,7 @@ namespace SummaRace.Features.Reader
 
             if (feedbackText != null)
             {
-                feedbackText.text = correct ? GameText.ReaderCorrectFeedback : GameText.ReaderWrongFeedback;
+                feedbackText.text = correct ? Praise.Generic() : GameText.ReaderWrongFeedback;
                 feedbackText.color = correct ? FeedbackCorrect : FeedbackNotQuite;
             }
 
