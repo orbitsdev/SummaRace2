@@ -130,6 +130,18 @@ namespace SummaRace.Constants
         /// processing question's choices as "A. / B. / C.", so the Reader matches it.</summary>
         public static readonly string[] OptionLetters = { "A.", "B.", "C." };
 
+        // Race briefing — the "get ready" beat between the Reader and the run.
+        public const string RaceBriefingTitle = "Your Mission";
+        public const string RaceStartLabel = "START!";
+
+        /// <summary>Briefing body. Names the story so the learner knows the run is
+        /// about what they just read.</summary>
+        public static string RaceBriefingBody(string storyTitle) =>
+            $"Collect the 5 story parts of\n\"{storyTitle}\" in order.\n\nSwipe or tap left and right to move!";
+
+        /// <summary>3-2-1-GO! steps. Last entry is treated as the "go" beat.</summary>
+        public static readonly string[] RaceCountdown = { "3", "2", "1", "GO!" };
+
         // Race feedback + banner
         public const string RaceWrongFeedback = "Not quite — the glowing one!";
         public const string RaceFinishBanner = "FINISH!";

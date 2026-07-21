@@ -73,6 +73,13 @@ namespace SummaRace.Features.Race.Endless
         private TextMeshProUGUI _bannerText;
         private TextMeshProUGUI _feedbackText;
         private float _feedbackTimer;
+
+        // Briefing gate: the world is held still until the learner taps START and the
+        // 3-2-1-GO! lands. _briefingDismissed blocks a double tap; _runReleased is what
+        // Update() checks, so the track stays stopped through the countdown too.
+        private GameObject _briefingRoot;
+        private bool _briefingDismissed;
+        private bool _runReleased;
         private GameState _gameState; // cached by HideTheirChrome for the Update() re-hide guard
 
         private void Awake()
@@ -109,6 +116,10 @@ namespace SummaRace.Features.Race.Endless
             _pendingIsRepresent = false;
             BuildHud();
             UpdateBanner();
+            // Up before their Loadout/track boot so the learner never sees the spin-up:
+            // the scrim doubles as the mask for it (the old MaskLoadoutFlash only hides
+            // their canvas children, not the frames where the track is assembling).
+            BuildBriefing();
 
             // Skip their FTUE/tutorial run.
             while (PlayerData.instance == null) yield return null;
@@ -143,6 +154,15 @@ namespace SummaRace.Features.Race.Endless
 
             var track = TrackManager.instance;
             if (track == null || _finished) return;
+
+            // Hold the world at the start line until the countdown finishes. Re-asserted
+            // every frame rather than stopped once, because their StartGame -> WaitToStart
+            // coroutine sets isMoving on its own schedule after we would have stopped it.
+            if (!_runReleased)
+            {
+                if (track.isMoving) track.StopMove();
+                return;
+            }
 
             // Their death popup's Run Again (or Loadout->RUN!) rebuilds the track from zero
             // and destroys every gate with its segments — reload the race so the learner
@@ -647,6 +667,130 @@ namespace SummaRace.Features.Race.Endless
 
             _bannerText = MakeHudText(canvasGo.transform, new Vector2(0.5f, 1f), new Vector2(0f, -140f), 64f);
             _feedbackText = MakeHudText(canvasGo.transform, new Vector2(0.5f, 0.5f), new Vector2(0f, 220f), 56f);
+        }
+
+        /// <summary>
+        /// The "get ready" beat between the last Reader question and the run — the
+        /// endless race had none, so the learner was dropped straight into a moving
+        /// world (Race.unity's RaceController has had this since Phase E; this is the
+        /// same idea rebuilt in code, since MainSummaRace is a copy of their scene).
+        /// </summary>
+        private void BuildBriefing()
+        {
+            var canvasGo = new GameObject("SummaRaceBriefing");
+            canvasGo.transform.SetParent(transform, false);
+            var canvas = canvasGo.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = 60; // above our HUD (40) and anything of theirs
+            var scaler = canvasGo.AddComponent<UnityEngine.UI.CanvasScaler>();
+            scaler.uiScaleMode = UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1080f, 1920f);
+            canvasGo.AddComponent<UnityEngine.UI.GraphicRaycaster>();
+            _briefingRoot = canvasGo;
+
+            var scrim = new GameObject("Scrim");
+            scrim.transform.SetParent(canvasGo.transform, false);
+            var scrimImg = scrim.AddComponent<UnityEngine.UI.Image>();
+            scrimImg.color = new Color(0.04f, 0.10f, 0.16f, 0.93f);
+            var srt = scrimImg.rectTransform;
+            srt.anchorMin = Vector2.zero; srt.anchorMax = Vector2.one;
+            srt.offsetMin = Vector2.zero; srt.offsetMax = Vector2.zero;
+
+            var title = MakeHudText(canvasGo.transform, new Vector2(0.5f, 0.80f), Vector2.zero, 92f);
+            title.text = SummaRace.Constants.GameText.RaceBriefingTitle;
+            title.color = new Color(1f, 0.84f, 0.35f);
+            title.fontStyle = FontStyles.Bold;
+
+            var body = MakeHudText(canvasGo.transform, new Vector2(0.5f, 0.60f), Vector2.zero, 46f);
+            body.text = SummaRace.Constants.GameText.RaceBriefingBody(_story.title);
+            body.color = new Color(0.93f, 0.96f, 1f);
+            body.rectTransform.sizeDelta = new Vector2(880f, 340f);
+
+            // The five parts, in the colours they will wear on the gates (F18 palette),
+            // so the run's cards are already familiar when the first one arrives.
+            var row = new GameObject("Chips", typeof(RectTransform));
+            row.transform.SetParent(canvasGo.transform, false);
+            var rowRt = (RectTransform)row.transform;
+            rowRt.anchorMin = rowRt.anchorMax = rowRt.pivot = new Vector2(0.5f, 0.42f);
+            rowRt.sizeDelta = new Vector2(900f, 140f);
+            for (int i = 0; i < 5 && i < _story.elements.Length; i++)
+                MakeChip(rowRt, i, _story.elements[i].type);
+
+            var button = new GameObject("StartButton");
+            button.transform.SetParent(canvasGo.transform, false);
+            var btnImg = button.AddComponent<UnityEngine.UI.Image>();
+            btnImg.sprite = worldCardSprite;
+            if (worldCardSprite != null) btnImg.type = UnityEngine.UI.Image.Type.Sliced;
+            btnImg.color = new Color(0.30f, 0.75f, 0.35f);
+            var brt = btnImg.rectTransform;
+            brt.anchorMin = brt.anchorMax = brt.pivot = new Vector2(0.5f, 0.20f);
+            brt.sizeDelta = new Vector2(520f, 170f);
+            var btn = button.AddComponent<UnityEngine.UI.Button>();
+            btn.targetGraphic = btnImg;
+            btn.onClick.AddListener(DismissBriefing);
+
+            var btnLabel = MakeHudText(button.transform, new Vector2(0.5f, 0.5f), Vector2.zero, 62f);
+            btnLabel.text = SummaRace.Constants.GameText.RaceStartLabel;
+            btnLabel.color = Color.white;
+            btnLabel.fontStyle = FontStyles.Bold;
+            btnLabel.rectTransform.sizeDelta = new Vector2(500f, 150f);
+
+            Tween.Scale(button.transform, Vector3.one, 0.35f, Ease.OutBack, startDelay: 0.15f);
+            button.transform.localScale = Vector3.one * 0.8f;
+        }
+
+        private void MakeChip(RectTransform row, int index, string type)
+        {
+            var chip = new GameObject("Chip_" + index);
+            chip.transform.SetParent(row, false);
+            var img = chip.AddComponent<UnityEngine.UI.Image>();
+            img.sprite = worldCardSprite;
+            if (worldCardSprite != null) img.type = UnityEngine.UI.Image.Type.Sliced;
+            img.color = SummaRace.Constants.SwbstPalette.ForIndex(index);
+            var rt = img.rectTransform;
+            rt.anchorMin = new Vector2(index * 0.2f + 0.02f, 0f);
+            rt.anchorMax = new Vector2((index + 1) * 0.2f - 0.02f, 1f);
+            rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
+
+            var letter = MakeHudText(chip.transform, new Vector2(0.5f, 0.5f), Vector2.zero, 58f);
+            letter.text = string.IsNullOrEmpty(type) ? "?" : type.Substring(0, 1);
+            letter.color = Color.white;
+            letter.fontStyle = FontStyles.Bold;
+            letter.rectTransform.sizeDelta = new Vector2(150f, 140f);
+        }
+
+        private void DismissBriefing()
+        {
+            if (_briefingDismissed) return;
+            _briefingDismissed = true;
+            if (SummaRace.Core.AudioManager.Instance != null)
+                SummaRace.Core.AudioManager.Instance.PlaySfx(SummaRace.Constants.AudioKeys.SfxClick);
+            if (_briefingRoot != null) _briefingRoot.SetActive(false);
+            StartCoroutine(CountdownRoutine());
+        }
+
+        /// <summary>3-2-1-GO! on the HUD banner, then the world is released.</summary>
+        private IEnumerator CountdownRoutine()
+        {
+            var steps = SummaRace.Constants.GameText.RaceCountdown;
+            for (int i = 0; i < steps.Length; i++)
+            {
+                bool isGo = i == steps.Length - 1;
+                if (_bannerText != null)
+                {
+                    _bannerText.text = steps[i];
+                    Tween.PunchScale(_bannerText.transform, Vector3.one * 0.45f, 0.3f);
+                }
+                if (SummaRace.Core.AudioManager.Instance != null)
+                    SummaRace.Core.AudioManager.Instance.PlaySfx(isGo
+                        ? SummaRace.Constants.AudioKeys.SfxBoost
+                        : SummaRace.Constants.AudioKeys.SfxPop);
+                yield return new WaitForSeconds(isGo ? 0.45f : 0.7f);
+            }
+
+            _runReleased = true; // set before StartMove so Update() cannot re-stop it
+            if (TrackManager.instance != null) TrackManager.instance.StartMove(false);
+            UpdateBanner();
         }
 
         private TextMeshProUGUI MakeHudText(Transform parent, Vector2 anchor, Vector2 offset, float size)
