@@ -376,7 +376,7 @@ namespace SummaRace.Features.Race
 
             // Victory beat: let the dance and fireworks land before leaving.
             yield return new WaitForSeconds(2.2f);
-            if (SceneLoader.Instance != null) SceneLoader.Instance.Load(SceneNames.Arrange);
+            SceneLoader.Go(SceneNames.Arrange);
         }
 
         // ---------- world building (grey-box, TDD §11.7) ----------

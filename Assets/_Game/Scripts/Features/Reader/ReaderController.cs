@@ -252,8 +252,7 @@ namespace SummaRace.Features.Reader
             }
 
             EventBus.Raise(new ReadingCompleted());
-            if (SceneLoader.Instance != null)
-                SceneLoader.Instance.Load(SceneNames.RaceEndless); // experiment: Trash Dash base race
+            SceneLoader.Go(SceneNames.RaceEndless); // experiment: Trash Dash base race
         }
     }
 }

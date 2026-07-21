@@ -52,8 +52,7 @@ namespace SummaRace.Features.StorySelect
                 backButton.onClick.AddListener(() =>
                 {
                     PlayClick();
-                    if (SceneLoader.Instance != null)
-                        SceneLoader.Instance.Load(SceneNames.MainMenu);
+                    SceneLoader.Go(SceneNames.MainMenu);
                 });
         }
 
@@ -99,9 +98,9 @@ namespace SummaRace.Features.StorySelect
             {
                 SummaRace.Core.GameManager.Instance.StartStory(storyId);
             }
-            else if (SceneLoader.Instance != null)
+            else // no GameManager: scene played directly in-editor (TDD 13)
             {
-                SceneLoader.Instance.Load(SceneNames.Reader);
+                SceneLoader.Go(SceneNames.Reader);
             }
         }
 

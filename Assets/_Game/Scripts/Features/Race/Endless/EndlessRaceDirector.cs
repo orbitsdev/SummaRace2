@@ -170,10 +170,7 @@ namespace SummaRace.Features.Race.Endless
             if (track.worldDistance < _lastWorldDistance - 1f)
             {
                 _finished = true; // block double-triggering while the load happens
-                if (SummaRace.Core.SceneLoader.Instance != null)
-                    SummaRace.Core.SceneLoader.Instance.Load(SummaRace.Constants.SceneNames.RaceEndless);
-                else
-                    UnityEngine.SceneManagement.SceneManager.LoadScene(SummaRace.Constants.SceneNames.RaceEndless);
+                SummaRace.Core.SceneLoader.Go(SummaRace.Constants.SceneNames.RaceEndless);
                 return;
             }
             _lastWorldDistance = track.worldDistance;
@@ -646,10 +643,7 @@ namespace SummaRace.Features.Race.Endless
 
             yield return new WaitForSeconds(2.2f); // victory beat
 
-            if (SummaRace.Core.SceneLoader.Instance != null)
-                SummaRace.Core.SceneLoader.Instance.Load(SummaRace.Constants.SceneNames.Arrange);
-            else // editor-direct play fallback (TDD §13)
-                UnityEngine.SceneManagement.SceneManager.LoadScene(SummaRace.Constants.SceneNames.Arrange);
+            SummaRace.Core.SceneLoader.Go(SummaRace.Constants.SceneNames.Arrange);
         }
 
         // ---------- HUD ----------

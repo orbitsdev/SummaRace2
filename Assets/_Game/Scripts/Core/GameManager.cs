@@ -32,14 +32,14 @@ namespace SummaRace.Core
             {
                 // Friendly fail — never a crash, never a dead end (GDD §11.6).
                 Debug.LogWarning($"GameManager: story '{storyId}' failed to load; returning to StorySelect.");
-                SceneLoader.Instance.Load(SceneNames.StorySelect);
+                SceneLoader.Go(SceneNames.StorySelect);
                 return;
             }
 
             CurrentStory = story;
             LastRaceResult = null;
             EventBus.Raise(new StoryStarted { storyId = storyId });
-            SceneLoader.Instance.Load(SceneNames.Reader);
+            SceneLoader.Go(SceneNames.Reader);
         }
 
         public void SetRaceResult(RaceResult result) => LastRaceResult = result;

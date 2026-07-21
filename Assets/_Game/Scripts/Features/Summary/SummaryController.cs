@@ -96,7 +96,7 @@ namespace SummaRace.Features.Summary
             if (SummaRace.Core.GameManager.Instance != null) SummaRace.Core.GameManager.Instance.LastSummaryText = text;
 
             EventBus.Raise(new SummarySubmitted { text = text, nudgeCount = _nudgeCount });
-            if (SceneLoader.Instance != null) SceneLoader.Instance.Load(SceneNames.Results);
+            SceneLoader.Go(SceneNames.Results);
         }
     }
 }

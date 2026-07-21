@@ -32,6 +32,20 @@ namespace SummaRace.Core
             BuildFadeCanvas();
         }
 
+        /// <summary>
+        /// The way features change scenes. Uses the loading overlay when the app booted
+        /// normally, and falls back to a plain load when a scene is played directly in the
+        /// editor (TDD §13) — Boot never ran there, so <see cref="Instance"/> is null.
+        /// Call sites used to write `if (Instance != null) Instance.Load(...)` with no else,
+        /// which turned every scene's exit button into a silent dead end in editor-direct
+        /// play. Never raw-call SceneManager.LoadScene from a feature.
+        /// </summary>
+        public static void Go(string sceneName, bool showTips = true)
+        {
+            if (Instance != null) Instance.Load(sceneName, showTips);
+            else SceneManager.LoadScene(sceneName);
+        }
+
         /// <summary>Change scene with the tip-card loading overlay. Pass showTips=false for a
         /// plain quiet fade (used Boot→MainMenu so the splash never doubles as two loading pages).</summary>
         public void Load(string sceneName, bool showTips = true)

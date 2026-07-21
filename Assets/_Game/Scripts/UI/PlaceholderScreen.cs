@@ -20,8 +20,7 @@ namespace SummaRace.UI
                 {
                     if (AudioManager.Instance != null)
                         AudioManager.Instance.PlaySfx(AudioKeys.SfxClick);
-                    if (SceneLoader.Instance != null)
-                        SceneLoader.Instance.Load(SceneNames.MainMenu);
+                    SceneLoader.Go(SceneNames.MainMenu);
                 });
         }
     }

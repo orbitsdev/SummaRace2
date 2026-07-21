@@ -197,7 +197,7 @@ namespace SummaRace.Features.Arrange
                 EventBus.Raise(new ArrangeVerified { correct = true, attemptCount = _attempts });
 
                 yield return new WaitForSeconds(1f);
-                if (SceneLoader.Instance != null) SceneLoader.Instance.Load(SceneNames.Summary);
+                SceneLoader.Go(SceneNames.Summary);
             }
             else
             {
