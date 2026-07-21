@@ -69,3 +69,11 @@ crashlytics-build.properties
 
 # Local packages cache
 /[Pp]ackages/*/[Cc]hangelog.md.meta
+
+# Unity crash-recovery autosaves (stale copies of real scenes)
+/Assets/_Recovery/
+/Assets/_Recovery.meta
+
+# Xbox GDK package auto-generated asset (never shipped from this project)
+/Assets/Resources/GDKEditionAutoGen/
+/Assets/Resources/GDKEditionAutoGen.meta
