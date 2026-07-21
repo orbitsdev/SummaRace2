@@ -25,6 +25,7 @@ namespace SummaRace.Features.Race.Endless
         [Header("Visuals (null = grey-box fallback)")]
         [SerializeField] private Sprite worldCardSprite;       // Hyper_Casual_UI rounded rect
         [SerializeField] private TMP_FontAsset worldLabelFont; // Fredoka-SemiBold SDF
+        [SerializeField] private GameObject patrolPrefab;      // _Game/Prefabs/PatrolCop (or PatrolCharacter)
 
         private const float FirstGateDistance = 80f; // clear of their starting safe segments
         private const float FinishGap = 30f;         // FINISH this far after the 5th gate
@@ -66,9 +67,15 @@ namespace SummaRace.Features.Race.Endless
         private float _slowTimer;
         private float _savedMaxSpeed = -1f;
 
-        // TDD §11.4 danger meter: introduced here at zero effect (no UI, no caught check).
-        // Task 5 activates the consequence; this task only keeps the +/- bookkeeping honest.
+        // TDD §11.4 danger meter. It now drives the patrol: danger climbs on its own
+        // (story mission.dangerPerSecond), jumps on a wrong pick and drops on a correct
+        // one, and the patrol's distance is read straight off it. It still never ends
+        // the run — the chaser is pressure the learner can SEE, never a fail state
+        // (GDD D7, and RaceResult.timesCaught stays 0).
         private float _danger;
+        private Transform _patrol;
+        private Animator _patrolAnim;
+        private float _menaceTimer;
 
         private TextMeshProUGUI _bannerText;
         private TextMeshProUGUI _feedbackText;
@@ -138,6 +145,7 @@ namespace SummaRace.Features.Race.Endless
             while (TrackManager.instance == null) yield return null;
             TrackManager.instance.newSegmentCreated += OnNewSegment;
             _subscribed = true;
+            SpawnPatrol();
 
             yield return new WaitForSeconds(0.5f);
             HideTheirChrome();
@@ -182,6 +190,13 @@ namespace SummaRace.Features.Race.Endless
                 runner.currentLife = runner.maxLife;
 
             if (_runStartTime < 0f && track.isMoving) _runStartTime = Time.time;
+
+            // Baseline pressure: danger climbs on its own so the patrol is always
+            // creeping in, and collecting correctly is what pushes it back.
+            if (!_finished)
+                _danger = Mathf.Clamp(_danger + _story.mission.dangerPerSecond * Time.deltaTime,
+                    0f, SummaRace.Constants.GameRules.DangerMax);
+            UpdatePatrol(track);
 
             // TDD §11.4 slow-on-wrong: public-API clamp, decays back to their own max.
             if (_slowTimer > 0f)
@@ -508,6 +523,8 @@ namespace SummaRace.Features.Race.Endless
 
             _danger = Mathf.Clamp(_danger + SummaRace.Constants.GameRules.DangerOnWrong,
                 0f, SummaRace.Constants.GameRules.DangerMax);
+            // Surge the chaser into view for a beat — the visible half of "not quite".
+            _menaceTimer = SummaRace.Constants.GameRules.PatrolMenaceSeconds;
 
             if (track != null)
             {
@@ -624,7 +641,8 @@ namespace SummaRace.Features.Race.Endless
 
             var result = new SummaRace.Core.RaceResult
             {
-                timesCaught = 0, // no patrol in the endless experiment
+                // The patrol looms but never catches (GDD D7) — stars must not depend on it.
+                timesCaught = 0,
                 runSeconds = _runStartTime < 0f ? 0f : Time.time - _runStartTime
             };
             for (int i = 0; i < 5; i++)
@@ -661,6 +679,87 @@ namespace SummaRace.Features.Race.Endless
 
             _bannerText = MakeHudText(canvasGo.transform, new Vector2(0.5f, 1f), new Vector2(0f, -140f), 64f);
             _feedbackText = MakeHudText(canvasGo.transform, new Vector2(0.5f, 0.5f), new Vector2(0f, 220f), 56f);
+        }
+
+        /// <summary>
+        /// The chaser. Not parented to anything: the track uses a floating origin that
+        /// recenters roughly every 100m, so a world-space follower would be left behind.
+        /// Its position is recomputed from the runner's CURRENT transform every frame,
+        /// which is recenter-proof.
+        /// </summary>
+        private void SpawnPatrol()
+        {
+            var runner = TrackManager.instance != null ? TrackManager.instance.characterController : null;
+            if (runner == null) return;
+
+            GameObject go;
+            if (patrolPrefab != null)
+            {
+                go = Instantiate(patrolPrefab);
+            }
+            else
+            {
+                // Grey-box fallback so the race still reads correctly with nothing wired.
+                go = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+                go.name = "Patrol (greybox)";
+                var col = go.GetComponent<Collider>();
+                if (col != null) Destroy(col); // never collides — it is pressure, not an obstacle
+                var rend = go.GetComponent<Renderer>();
+                if (rend != null) rend.material.color = new Color(0.25f, 0.35f, 0.85f);
+            }
+
+            _patrol = go.transform;
+            _patrolAnim = go.GetComponentInChildren<Animator>();
+            if (_patrolAnim != null) _patrolAnim.SetBool("Running", true);
+
+            // Start it far back and out of sight; UpdatePatrol eases it in from there.
+            var p = runner.transform.position;
+            _patrol.position = new Vector3(p.x, p.y, p.z - 30f);
+            _patrol.rotation = Quaternion.identity; // faces down the road, same as the runner
+            go.SetActive(_runReleased);
+        }
+
+        /// <summary>
+        /// Distance is read off the danger meter. The visible band is derived from the
+        /// LIVE camera rather than hard-coded: their camera sits a few metres behind the
+        /// runner, so anything further back than that is off-screen. At max danger the
+        /// patrol sits just in front of the camera and LOOMS; at zero danger it is well
+        /// behind it and unseen. (The old park race hard-coded 1.8-12.8m for the same
+        /// effect and had to be re-tuned when the camera moved — F12/F30.)
+        /// </summary>
+        private void UpdatePatrol(TrackManager track)
+        {
+            if (_patrol == null || track == null) return;
+            var runner = track.characterController;
+            if (runner == null) return;
+
+            if (!_patrol.gameObject.activeSelf)
+            {
+                if (!_runReleased) return;
+                _patrol.gameObject.SetActive(true);
+            }
+
+            if (_menaceTimer > 0f) _menaceTimer -= Time.deltaTime;
+
+            float t = _danger / SummaRace.Constants.GameRules.DangerMax;
+            // A wrong pick makes it act near-max for a beat, so the learner actually SEES
+            // the consequence instead of only feeling the 1.5s slow.
+            if (_menaceTimer > 0f) t = Mathf.Max(t, SummaRace.Constants.GameRules.PatrolMenaceDanger);
+
+            var playerPos = runner.transform.position;
+            var cam = Camera.main;
+            float camBack = cam != null
+                ? Mathf.Max(1.5f, playerPos.z - cam.transform.position.z)
+                : 3f; // sane default if the camera is mid-swap
+            float near = Mathf.Max(1.2f, camBack - SummaRace.Constants.GameRules.PatrolCloseInFront);
+            float far = camBack + SummaRace.Constants.GameRules.PatrolFarBehindCamera;
+
+            float targetZ = playerPos.z - Mathf.Lerp(far, near, t);
+            float nx = Mathf.Lerp(_patrol.position.x, playerPos.x,
+                SummaRace.Constants.GameRules.PatrolFollowX * Time.deltaTime);
+            float nz = Mathf.Lerp(_patrol.position.z, targetZ,
+                SummaRace.Constants.GameRules.PatrolFollowZ * Time.deltaTime);
+            _patrol.position = new Vector3(nx, playerPos.y, nz);
         }
 
         /// <summary>
