@@ -62,6 +62,18 @@ SummaRace is an **offline Android reading game** (Unity 6 / URP 17.4.0, portrait
 
 Post-MVP scenes NameEntry/SessionMap/TeacherMenu/Settings exist as named scenes but are empty/placeholder by design. SampleScene deleted (GDD D18 done).
 
+### ⚠️ If EXP3 (Trash Dash race) is ever promoted toward a study build
+
+The branch `experiment/endless-override-2` **never ships as-is**. Decontamination so far is *one* guard (`TrackManager.SpawnCoinAndPowerup` early-outs on `EndlessRaceMode.Active`, killing coins/powerups/premium). Everything else of theirs is **hidden, not removed** — audited 2026-07-21 in `MainSummaRace`:
+
+- **Banned packages still in `Packages/manifest.json`**: `com.unity.ads`, `com.unity.analytics`, `com.unity.purchasing`, `com.unity.microsoft.gdk(.tools)`. Their *script* paths are compiled out (`UNITY_PURCHASING`/`UNITY_ANALYTICS` undefined) **but the purchasing package still auto-initializes at runtime** — that's the `IStoreService.Connect` console errors. `UNITY_SOCIAL` **is** defined for Android. `main`'s manifest is clean — keep it that way.
+- **Reachable-if-a-hide-misses**: `LoadoutState` (active) with shop/settings/leaderboard children hidden by `HideTheirChrome()`; `LevelLoader` on StoreButton loads the Shop scene; **`OpenURL` opens unity.com** (breaks 100%-offline); `DataDeleteConfirmation` wipes the save.
+- **`GameOverState`/`Leaderboard`/`HighscoreUI`** exist and are blocked *only* by our per-frame `currentLife = maxLife` restore.
+- **Their `MusicPlayer` is active and is the race music** (DontDestroyOnLoad; we stop its sources in `FinishRoutine` so it doesn't bleed into Arrange). Our `AudioManager` music is unused in this scene.
+- Score/multiplier/mission bookkeeping still ticks in `TrackManager`, invisible.
+
+Promotion = delete the packages, strip the Loadout/Shop/GameOver/leaderboard objects from the scene, and re-audit — not just hide more.
+
 **Known flags:**
 - `s01_easy.json` page-split/questions/distractors were AI-authored — the researcher's source doc (`Documentation/STORIES FOR SESSION 1-10 ….docx`) gives Day 1 **EASY** only a passage + main idea, while Day 1 AVERAGE/HARD get the full `5 PAGES:` + `Processing Question` treatment. Sign-off before the study build is still the right call (GDD D6), but as a formality: the authored questions follow the researcher's own pattern faithfully. **Do not "fix" them to be comprehension-shaped** — an earlier pass (2026-07-21) argued that and was wrong. The researcher's own processing questions are deliberately SWBST-shaped ("Who is the main character?" = Somebody, "What did Duncan want to do?" = Wanted, "What problem did the crayons have?" = But, …). The Reader **pre-teaches** the five slots with the text on screen; the Race asks the same five with the text gone. That is the support-removal ladder working — Read = scaffold → Race = unsupported recall → Arrange = sequence → Summary = produce — not redundancy. Same pattern applies to the Phase G stories. The source doc also writes options as `A. / B. / C.`, which is the case for adding letter prefixes in the Reader.
 - `Resources/Stories/Art/s01_easy.png` is a **TEMP hero image** cropped from Mockups/3.png — replace when the researcher locks the 30-image style (Phase G). No image-gen provider keys are configured in MCP (`generate_image` needs fal.ai/OpenRouter key if wanted).
