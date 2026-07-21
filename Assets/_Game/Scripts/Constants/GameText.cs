@@ -134,6 +134,10 @@ namespace SummaRace.Constants
         public const string RaceBriefingTitle = "Your Mission";
         public const string RaceStartLabel = "START!";
 
+        /// <summary>Shown on the START button while the race world is still assembling —
+        /// tapping through before then would reveal the runner-kit menus underneath.</summary>
+        public const string RaceBriefingWait = "Getting ready...";
+
         /// <summary>Briefing body. Names the story so the learner knows the run is
         /// about what they just read.</summary>
         public static string RaceBriefingBody(string storyTitle) =>

@@ -87,6 +87,12 @@ namespace SummaRace.Features.Race.Endless
         private GameObject _briefingRoot;
         private bool _briefingDismissed;
         private bool _runReleased;
+        // START stays locked until Start() has finished hiding their Loadout/HUD. The
+        // briefing goes up on frame one but HideTheirChrome runs ~1.25s later, so a fast
+        // tap used to pull the scrim away and expose the runner-kit menus underneath.
+        private bool _bootReady;
+        private UnityEngine.UI.Button _startButton;
+        private TextMeshProUGUI _startLabel;
         private GameState _gameState; // cached by HideTheirChrome for the Update() re-hide guard
 
         private void Awake()
@@ -146,10 +152,14 @@ namespace SummaRace.Features.Race.Endless
             TrackManager.instance.newSegmentCreated += OnNewSegment;
             _subscribed = true;
             SpawnPatrol();
+            // PC: WASD alongside the arrow keys their controller already binds.
+            if (GetComponent<EndlessKeyboardInput>() == null)
+                gameObject.AddComponent<EndlessKeyboardInput>();
 
             yield return new WaitForSeconds(0.5f);
             HideTheirChrome();
             EnsureSingleAudioListener();
+            MarkBriefingReady(); // only now is it safe to take the scrim away
         }
 
         private void Update()
@@ -781,33 +791,72 @@ namespace SummaRace.Features.Race.Endless
             canvasGo.AddComponent<UnityEngine.UI.GraphicRaycaster>();
             _briefingRoot = canvasGo;
 
-            var scrim = new GameObject("Scrim");
+            // Opaque backdrop on OUR art, not a grey scrim: this screen is the learner's
+            // first frame of the race, and behind it sits the runner kit's loadout menu.
+            // bg_splash is the same backdrop as Boot and the loading overlay, so the race
+            // arrives looking like the rest of the game.
+            var scrim = new GameObject("Backdrop");
             scrim.transform.SetParent(canvasGo.transform, false);
             var scrimImg = scrim.AddComponent<UnityEngine.UI.Image>();
-            scrimImg.color = new Color(0.04f, 0.10f, 0.16f, 0.93f);
+            var bg = Resources.Load<Sprite>("UI/bg_splash");
+            if (bg != null) { scrimImg.sprite = bg; scrimImg.color = Color.white; }
+            else scrimImg.color = new Color(0.55f, 0.83f, 0.98f);
             var srt = scrimImg.rectTransform;
             srt.anchorMin = Vector2.zero; srt.anchorMax = Vector2.one;
             srt.offsetMin = Vector2.zero; srt.offsetMax = Vector2.zero;
 
-            var title = MakeHudText(canvasGo.transform, new Vector2(0.5f, 0.80f), Vector2.zero, 92f);
+            // Gold-bordered mission card, same panel the loading tips use.
+            var card = new GameObject("MissionCard");
+            card.transform.SetParent(canvasGo.transform, false);
+            var cardImg = card.AddComponent<UnityEngine.UI.Image>();
+            var gold = Resources.Load<Sprite>("UI/panel_gold");
+            if (gold != null)
+            {
+                cardImg.sprite = gold;
+                cardImg.type = UnityEngine.UI.Image.Type.Sliced;
+                cardImg.pixelsPerUnitMultiplier = 0.6f;
+            }
+            else cardImg.color = new Color(0.98f, 0.93f, 0.80f);
+            var crt = cardImg.rectTransform;
+            crt.anchorMin = new Vector2(0.06f, 0.34f);
+            crt.anchorMax = new Vector2(0.94f, 0.84f);
+            crt.offsetMin = Vector2.zero; crt.offsetMax = Vector2.zero;
+
+            var title = MakeHudText(card.transform, new Vector2(0.5f, 0.86f), Vector2.zero, 84f);
             title.text = SummaRace.Constants.GameText.RaceBriefingTitle;
-            title.color = new Color(1f, 0.84f, 0.35f);
+            title.color = new Color(0.42f, 0.26f, 0.05f); // warm brown, readable on cream
             title.fontStyle = FontStyles.Bold;
 
-            var body = MakeHudText(canvasGo.transform, new Vector2(0.5f, 0.60f), Vector2.zero, 46f);
+            var body = MakeHudText(card.transform, new Vector2(0.5f, 0.56f), Vector2.zero, 42f);
             body.text = SummaRace.Constants.GameText.RaceBriefingBody(_story.title);
-            body.color = new Color(0.93f, 0.96f, 1f);
-            body.rectTransform.sizeDelta = new Vector2(880f, 340f);
+            body.color = new Color(0.35f, 0.25f, 0.10f);
+            body.rectTransform.sizeDelta = new Vector2(760f, 300f);
 
             // The five parts, in the colours they will wear on the gates (F18 palette),
             // so the run's cards are already familiar when the first one arrives.
             var row = new GameObject("Chips", typeof(RectTransform));
-            row.transform.SetParent(canvasGo.transform, false);
+            row.transform.SetParent(card.transform, false);
             var rowRt = (RectTransform)row.transform;
-            rowRt.anchorMin = rowRt.anchorMax = rowRt.pivot = new Vector2(0.5f, 0.42f);
-            rowRt.sizeDelta = new Vector2(900f, 140f);
+            rowRt.anchorMin = rowRt.anchorMax = rowRt.pivot = new Vector2(0.5f, 0.20f);
+            rowRt.sizeDelta = new Vector2(760f, 130f);
             for (int i = 0; i < 5 && i < _story.elements.Length; i++)
                 MakeChip(rowRt, i, _story.elements[i].type);
+
+            // Ms. Lumi gives the mission — she is the app's voice everywhere else.
+            var lumi = Resources.Load<Sprite>("UI/mslumi_wave");
+            if (lumi != null)
+            {
+                var teacher = new GameObject("MsLumi");
+                teacher.transform.SetParent(canvasGo.transform, false);
+                var timg = teacher.AddComponent<UnityEngine.UI.Image>();
+                timg.sprite = lumi;
+                timg.preserveAspect = true;
+                var trt = timg.rectTransform;
+                // Clear of the START button, which is centred and 520 wide (x 0.26-0.74).
+                trt.anchorMin = new Vector2(0.01f, 0.04f);
+                trt.anchorMax = new Vector2(0.24f, 0.28f);
+                trt.offsetMin = Vector2.zero; trt.offsetMax = Vector2.zero;
+            }
 
             var button = new GameObject("StartButton");
             button.transform.SetParent(canvasGo.transform, false);
@@ -816,20 +865,35 @@ namespace SummaRace.Features.Race.Endless
             if (worldCardSprite != null) btnImg.type = UnityEngine.UI.Image.Type.Sliced;
             btnImg.color = new Color(0.30f, 0.75f, 0.35f);
             var brt = btnImg.rectTransform;
-            brt.anchorMin = brt.anchorMax = brt.pivot = new Vector2(0.5f, 0.20f);
+            brt.anchorMin = brt.anchorMax = brt.pivot = new Vector2(0.5f, 0.18f);
             brt.sizeDelta = new Vector2(520f, 170f);
-            var btn = button.AddComponent<UnityEngine.UI.Button>();
-            btn.targetGraphic = btnImg;
-            btn.onClick.AddListener(DismissBriefing);
+            _startButton = button.AddComponent<UnityEngine.UI.Button>();
+            _startButton.targetGraphic = btnImg;
+            _startButton.onClick.AddListener(DismissBriefing);
+            _startButton.interactable = false; // until the world is built — see MarkBriefingReady
 
-            var btnLabel = MakeHudText(button.transform, new Vector2(0.5f, 0.5f), Vector2.zero, 62f);
-            btnLabel.text = SummaRace.Constants.GameText.RaceStartLabel;
-            btnLabel.color = Color.white;
-            btnLabel.fontStyle = FontStyles.Bold;
-            btnLabel.rectTransform.sizeDelta = new Vector2(500f, 150f);
+            _startLabel = MakeHudText(button.transform, new Vector2(0.5f, 0.5f), Vector2.zero, 54f);
+            _startLabel.text = SummaRace.Constants.GameText.RaceBriefingWait;
+            _startLabel.color = Color.white;
+            _startLabel.fontStyle = FontStyles.Bold;
+            _startLabel.rectTransform.sizeDelta = new Vector2(500f, 150f);
 
-            Tween.Scale(button.transform, Vector3.one, 0.35f, Ease.OutBack, startDelay: 0.15f);
-            button.transform.localScale = Vector3.one * 0.8f;
+            card.transform.localScale = Vector3.one * 0.85f;
+            Tween.Scale(card.transform, Vector3.one, 0.4f, Ease.OutBack);
+        }
+
+        /// <summary>Their Loadout/HUD is hidden and the track exists — the learner may now
+        /// dismiss the briefing without seeing the runner kit's menus behind it.</summary>
+        private void MarkBriefingReady()
+        {
+            _bootReady = true;
+            if (_startLabel != null) _startLabel.text = SummaRace.Constants.GameText.RaceStartLabel;
+            if (_startButton != null)
+            {
+                _startButton.interactable = true;
+                _startLabel.fontSize = 62f;
+                Tween.PunchScale(_startButton.transform, Vector3.one * 0.14f, 0.45f);
+            }
         }
 
         private void MakeChip(RectTransform row, int index, string type)
@@ -854,7 +918,7 @@ namespace SummaRace.Features.Race.Endless
 
         private void DismissBriefing()
         {
-            if (_briefingDismissed) return;
+            if (_briefingDismissed || !_bootReady) return;
             _briefingDismissed = true;
             if (SummaRace.Core.AudioManager.Instance != null)
                 SummaRace.Core.AudioManager.Instance.PlaySfx(SummaRace.Constants.AudioKeys.SfxClick);
