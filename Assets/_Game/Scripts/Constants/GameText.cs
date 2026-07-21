@@ -122,6 +122,14 @@ namespace SummaRace.Constants
         /// <summary>Progress line above the reading card, e.g. "Page 1 / 5".</summary>
         public static string PageProgress(int current, int total) => $"Page {current} / {total}";
 
+        /// <summary>Same badge during the page's question — the learner is no longer
+        /// on the page, so it would read as stale.</summary>
+        public static string QuestionProgress(int current, int total) => $"Question {current} / {total}";
+
+        /// <summary>Answer-option prefixes. The researcher's source doc writes every
+        /// processing question's choices as "A. / B. / C.", so the Reader matches it.</summary>
+        public static readonly string[] OptionLetters = { "A.", "B.", "C." };
+
         // Race feedback + banner
         public const string RaceWrongFeedback = "Not quite — the glowing one!";
         public const string RaceFinishBanner = "FINISH!";

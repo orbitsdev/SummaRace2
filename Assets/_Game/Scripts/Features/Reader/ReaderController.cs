@@ -163,6 +163,8 @@ namespace SummaRace.Features.Reader
         {
             _questionShown = true;
             if (readingCard != null) readingCard.SetActive(false); // story gives way to its own question page
+            if (progressText != null)
+                progressText.text = GameText.QuestionProgress(_pageIndex + 1, _story.pages.Length);
             if (questionPanel != null) questionPanel.SetActive(true);
             if (teacherGroup != null) teacherGroup.alpha = 0f; // hide the buddy — focus on the answers
             if (nextButton != null) nextButton.gameObject.SetActive(false);
@@ -174,7 +176,12 @@ namespace SummaRace.Features.Reader
                 if (optionButtons[i] == null) continue;
                 optionButtons[i].interactable = true;
                 optionButtons[i].image.color = OptionNormal;
-                if (optionLabels[i] != null) optionLabels[i].text = question.options[i];
+                if (optionLabels[i] != null)
+                    optionLabels[i].text = i < GameText.OptionLetters.Length
+                        // <indent> hangs the letter to the left so a wrapped second
+                        // line starts under the text, not under the "C.".
+                        ? GameText.OptionLetters[i] + "<indent=9%>" + question.options[i] + "</indent>"
+                        : question.options[i];
 
                 // Fan the options in one after another so the page reads top-to-bottom
                 // instead of arriving all at once. ButtonSquash cached scale 1 in Awake,
