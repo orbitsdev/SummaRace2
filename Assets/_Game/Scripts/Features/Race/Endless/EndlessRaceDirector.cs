@@ -24,6 +24,8 @@ namespace SummaRace.Features.Race.Endless
 
         [Header("Visuals (null = grey-box fallback)")]
         [SerializeField] private Sprite worldCardSprite;       // Hyper_Casual_UI rounded rect
+        [SerializeField] private Sprite goldPillSprite;        // kit yellow pill — briefing title banner
+        [SerializeField] private Sprite greenPillSprite;       // kit glossy green pill — START button
         [SerializeField] private TMP_FontAsset worldLabelFont; // Fredoka-SemiBold SDF
         [SerializeField] private GameObject patrolPrefab;      // _Game/Prefabs/PatrolCop (or PatrolCharacter)
 
@@ -822,9 +824,22 @@ namespace SummaRace.Features.Race.Endless
             crt.anchorMax = new Vector2(0.94f, 0.84f);
             crt.offsetMin = Vector2.zero; crt.offsetMax = Vector2.zero;
 
-            var title = MakeHudText(card.transform, new Vector2(0.5f, 0.86f), Vector2.zero, 84f);
+            // Gold banner pill overlapping the card's top edge — the game's title language
+            // (StorySelect banner, race HUD, old briefing all speak it).
+            var titlePill = new GameObject("TitlePill");
+            titlePill.transform.SetParent(card.transform, false);
+            var tpImg = titlePill.AddComponent<UnityEngine.UI.Image>();
+            tpImg.sprite = goldPillSprite != null ? goldPillSprite : worldCardSprite;
+            if (tpImg.sprite != null) tpImg.type = UnityEngine.UI.Image.Type.Sliced;
+            if (goldPillSprite == null) tpImg.color = new Color(1f, 0.78f, 0.16f);
+            var tpRt = tpImg.rectTransform;
+            tpRt.anchorMin = new Vector2(0.09f, 0.915f);
+            tpRt.anchorMax = new Vector2(0.91f, 1.045f);
+            tpRt.offsetMin = Vector2.zero; tpRt.offsetMax = Vector2.zero;
+
+            var title = MakeHudText(titlePill.transform, new Vector2(0.5f, 0.5f), Vector2.zero, 74f);
             title.text = SummaRace.Constants.GameText.RaceBriefingTitle;
-            title.color = new Color(0.42f, 0.26f, 0.05f); // warm brown, readable on cream
+            title.color = new Color(0.32f, 0.19f, 0.02f); // deep brown on gold
             title.fontStyle = FontStyles.Bold;
 
             var body = MakeHudText(card.transform, new Vector2(0.5f, 0.56f), Vector2.zero, 42f);
@@ -856,14 +871,46 @@ namespace SummaRace.Features.Race.Endless
                 trt.anchorMin = new Vector2(0.01f, 0.04f);
                 trt.anchorMax = new Vector2(0.24f, 0.28f);
                 trt.offsetMin = Vector2.zero; trt.offsetMax = Vector2.zero;
+                teacher.transform.localScale = Vector3.one * 0.7f;
+                Tween.Scale(teacher.transform, Vector3.one, 0.35f, Ease.OutBack, startDelay: 0.30f);
+
+                // Her cheer, in a little white bubble above her.
+                var bubble = new GameObject("LumiBubble");
+                bubble.transform.SetParent(canvasGo.transform, false);
+                var bImg = bubble.AddComponent<UnityEngine.UI.Image>();
+                bImg.sprite = worldCardSprite;
+                if (worldCardSprite != null) bImg.type = UnityEngine.UI.Image.Type.Sliced;
+                bImg.color = new Color(1f, 1f, 1f, 0.97f);
+                var bRt = bImg.rectTransform;
+                bRt.anchorMin = new Vector2(0.03f, 0.29f);
+                bRt.anchorMax = new Vector2(0.40f, 0.345f);
+                bRt.offsetMin = Vector2.zero; bRt.offsetMax = Vector2.zero;
+                var bubbleText = MakeHudText(bubble.transform, new Vector2(0.5f, 0.5f), Vector2.zero, 40f);
+                bubbleText.text = SummaRace.Constants.GameText.RaceBriefingLumi;
+                bubbleText.color = new Color(0.35f, 0.25f, 0.10f);
+                bubbleText.fontStyle = FontStyles.Bold;
+                bubbleText.rectTransform.sizeDelta = new Vector2(380f, 90f);
+                bubble.transform.localScale = Vector3.zero;
+                Tween.Scale(bubble.transform, Vector3.one, 0.3f, Ease.OutBack, startDelay: 0.55f);
             }
+
+            // Dark-green ring behind the glossy pill — the game's CTA treatment.
+            var ring = new GameObject("StartRing");
+            ring.transform.SetParent(canvasGo.transform, false);
+            var ringImg = ring.AddComponent<UnityEngine.UI.Image>();
+            ringImg.sprite = greenPillSprite != null ? greenPillSprite : worldCardSprite;
+            if (ringImg.sprite != null) ringImg.type = UnityEngine.UI.Image.Type.Sliced;
+            ringImg.color = new Color(0.10f, 0.30f, 0.14f);
+            var ringRt = ringImg.rectTransform;
+            ringRt.anchorMin = ringRt.anchorMax = ringRt.pivot = new Vector2(0.5f, 0.18f);
+            ringRt.sizeDelta = new Vector2(548f, 196f);
 
             var button = new GameObject("StartButton");
             button.transform.SetParent(canvasGo.transform, false);
             var btnImg = button.AddComponent<UnityEngine.UI.Image>();
-            btnImg.sprite = worldCardSprite;
-            if (worldCardSprite != null) btnImg.type = UnityEngine.UI.Image.Type.Sliced;
-            btnImg.color = new Color(0.30f, 0.75f, 0.35f);
+            btnImg.sprite = greenPillSprite != null ? greenPillSprite : worldCardSprite;
+            if (btnImg.sprite != null) btnImg.type = UnityEngine.UI.Image.Type.Sliced;
+            btnImg.color = greenPillSprite != null ? Color.white : new Color(0.30f, 0.75f, 0.35f);
             var brt = btnImg.rectTransform;
             brt.anchorMin = brt.anchorMax = brt.pivot = new Vector2(0.5f, 0.18f);
             brt.sizeDelta = new Vector2(520f, 170f);
@@ -914,6 +961,10 @@ namespace SummaRace.Features.Race.Endless
             letter.color = Color.white;
             letter.fontStyle = FontStyles.Bold;
             letter.rectTransform.sizeDelta = new Vector2(150f, 140f);
+
+            // The five parts introduce themselves one by one.
+            chip.transform.localScale = Vector3.zero;
+            Tween.Scale(chip.transform, Vector3.one, 0.25f, Ease.OutBack, startDelay: 0.35f + index * 0.09f);
         }
 
         private void DismissBriefing()
@@ -930,6 +981,7 @@ namespace SummaRace.Features.Race.Endless
         private IEnumerator CountdownRoutine()
         {
             var steps = SummaRace.Constants.GameText.RaceCountdown;
+            var hud = transform.Find("SummaRaceHud");
             for (int i = 0; i < steps.Length; i++)
             {
                 bool isGo = i == steps.Length - 1;
@@ -937,6 +989,19 @@ namespace SummaRace.Features.Race.Endless
                 {
                     _bannerText.text = steps[i];
                     Tween.PunchScale(_bannerText.transform, Vector3.one * 0.45f, 0.3f);
+                }
+
+                // Big center-screen number, runner-game style.
+                if (hud != null)
+                {
+                    var big = MakeHudText(hud, new Vector2(0.5f, 0.55f), Vector2.zero, isGo ? 230f : 320f);
+                    big.text = steps[i];
+                    big.color = new Color(1f, 0.83f, 0.20f);
+                    big.fontStyle = FontStyles.Bold;
+                    big.rectTransform.sizeDelta = new Vector2(1000f, 420f);
+                    big.transform.localScale = Vector3.one * 1.6f;
+                    Tween.Scale(big.transform, Vector3.one, 0.25f, Ease.OutBack);
+                    Destroy(big.gameObject, isGo ? 0.5f : 0.72f);
                 }
                 if (SummaRace.Core.AudioManager.Instance != null)
                     SummaRace.Core.AudioManager.Instance.PlaySfx(isGo

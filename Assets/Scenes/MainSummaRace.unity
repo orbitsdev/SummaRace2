@@ -8496,6 +8496,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SummaRace.Features.Race.Endless.EndlessRaceDirector
   worldCardSprite: {fileID: 21300000, guid: e96be3c2e6d907741939a389219ea24f, type: 3}
+  goldPillSprite: {fileID: 21300000, guid: d2e523bc64be10d48b7eb7ef3129808a, type: 3}
+  greenPillSprite: {fileID: 21300000, guid: 3772024f21af6034fab8ded6c81c815a, type: 3}
   worldLabelFont: {fileID: 11400000, guid: 2d80ca966f93d3f4baba91251ab4761c, type: 2}
   patrolPrefab: {fileID: 3625635206231563748, guid: 45320596b6f868745a4e3f5fe7929dbe,
     type: 3}

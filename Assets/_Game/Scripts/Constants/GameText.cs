@@ -18,6 +18,9 @@ namespace SummaRace.Constants
         public const string LockedLabel = "Locked";
         public const string LockedHint = "Coming in a later session!";
 
+        /// <summary>Ms. Lumi's cheer on the race mission briefing.</summary>
+        public const string RaceBriefingLumi = "Ready, runner?";
+
         public const string SummaryHint =
             "Example: Somebody wanted ___, but ___, so ___, then ___.";
 
