@@ -28,6 +28,11 @@ namespace SummaRace.Features.Race.Endless
         [SerializeField] private Sprite greenPillSprite;       // kit glossy green pill — START button
         [SerializeField] private TMP_FontAsset worldLabelFont; // Fredoka-SemiBold SDF
         [SerializeField] private GameObject patrolPrefab;      // _Game/Prefabs/PatrolCop (or PatrolCharacter)
+        [SerializeField] private GameObject collectSparkleFxPrefab; // Hovl Star hit — sparkle on a correct pick (TDD §11.4)
+
+        // Warm gold the collect sparkle is retinted to, matching the story-treasure look.
+        private static readonly Color StoryGold = new Color(1f, 0.85f, 0.45f);
+        private UnityEngine.UI.Image _vignette; // amber screen-edge danger vignette (TDD §11.5)
 
         private const float FirstGateDistance = 80f; // clear of their starting safe segments
         private const float FinishGap = 30f;         // FINISH this far after the 5th gate
@@ -492,6 +497,9 @@ namespace SummaRace.Features.Race.Endless
             if (SummaRace.Core.AudioManager.Instance != null)
                 SummaRace.Core.AudioManager.Instance.PlaySfx(SummaRace.Constants.AudioKeys.SfxCollect);
 
+            // Sparkle VFX at the collected card (TDD §11.4) — the visible "you got it".
+            SpawnCollectSparkle(pickup.transform.position);
+
             ShowFeedback(SummaRace.Core.Praise.ForRace(element), new Color(0.55f, 1f, 0.55f));
 
             // The collected card flies up and pops away; the rest of the gate goes now.
@@ -689,8 +697,51 @@ namespace SummaRace.Features.Race.Endless
             scaler.uiScaleMode = UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1080f, 1920f);
 
+            // Amber danger vignette (TDD §11.5): darkest at the screen edges, clear in the
+            // middle, alpha driven by danger in UpdatePatrol. Drawn behind the text.
+            var vgo = new GameObject("DangerVignette");
+            vgo.transform.SetParent(canvasGo.transform, false);
+            _vignette = vgo.AddComponent<UnityEngine.UI.Image>();
+            _vignette.sprite = MakeVignetteSprite();
+            _vignette.raycastTarget = false;
+            _vignette.color = new Color(1f, 0.42f, 0.05f, 0f); // amber, invisible until danger rises
+            var vrt = _vignette.rectTransform;
+            vrt.anchorMin = Vector2.zero; vrt.anchorMax = Vector2.one;
+            vrt.offsetMin = Vector2.zero; vrt.offsetMax = Vector2.zero;
+
             _bannerText = MakeHudText(canvasGo.transform, new Vector2(0.5f, 1f), new Vector2(0f, -140f), 64f);
             _feedbackText = MakeHudText(canvasGo.transform, new Vector2(0.5f, 0.5f), new Vector2(0f, 220f), 56f);
+        }
+
+        /// <summary>Radial-alpha sprite: transparent centre, opaque edges — a soft vignette frame.</summary>
+        private static Sprite MakeVignetteSprite()
+        {
+            const int S = 128;
+            var tex = new Texture2D(S, S, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
+            var c = (S - 1) * 0.5f;
+            for (int y = 0; y < S; y++)
+            for (int x = 0; x < S; x++)
+            {
+                float d = Mathf.Sqrt((x - c) * (x - c) + (y - c) * (y - c)) / c; // 0 centre → ~1.41 corner
+                float a = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((d - 0.55f) / 0.45f)); // clear inside 0.55r
+                tex.SetPixel(x, y, new Color(1f, 1f, 1f, a));
+            }
+            tex.Apply();
+            return Sprite.Create(tex, new Rect(0, 0, S, S), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect);
+        }
+
+        /// <summary>Spawns the collect sparkle, retinted warm gold, and auto-cleans it.</summary>
+        private void SpawnCollectSparkle(Vector3 worldPos)
+        {
+            if (collectSparkleFxPrefab == null) return;
+            var fx = Instantiate(collectSparkleFxPrefab, worldPos, Quaternion.identity);
+            foreach (var ps in fx.GetComponentsInChildren<ParticleSystem>(true))
+            {
+                var main = ps.main;
+                var col = main.startColor.color;
+                main.startColor = new Color(StoryGold.r, StoryGold.g, StoryGold.b, col.a);
+            }
+            Destroy(fx, 2f);
         }
 
         /// <summary>
@@ -757,6 +808,14 @@ namespace SummaRace.Features.Race.Endless
             // A wrong pick makes it act near-max for a beat, so the learner actually SEES
             // the consequence instead of only feeling the 1.5s slow.
             if (_menaceTimer > 0f) t = Mathf.Max(t, SummaRace.Constants.GameRules.PatrolMenaceDanger);
+
+            // Amber vignette intensifies with the same danger the patrol reads (TDD §11.5).
+            if (_vignette != null)
+            {
+                var vc = _vignette.color;
+                vc.a = Mathf.Lerp(vc.a, t * 0.35f, 6f * Time.deltaTime);
+                _vignette.color = vc;
+            }
 
             var playerPos = runner.transform.position;
             var cam = Camera.main;

@@ -8501,6 +8501,8 @@ MonoBehaviour:
   worldLabelFont: {fileID: 11400000, guid: 2d80ca966f93d3f4baba91251ab4761c, type: 2}
   patrolPrefab: {fileID: 3625635206231563748, guid: 45320596b6f868745a4e3f5fe7929dbe,
     type: 3}
+  collectSparkleFxPrefab: {fileID: 4535006216103734310, guid: 98c4704d0fd7211449bcf5c451095a60,
+    type: 3}
 --- !u!4 &828021390
 Transform:
   m_ObjectHideFlags: 0
