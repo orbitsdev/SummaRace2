@@ -946,6 +946,7 @@ PlayerSettings:
     Hub: 0
     Purchasing: 0
     UNet: 0
+    Unity Ads: 0
     Unity_Ads: 0
   luminIcon:
     m_Name: 
@@ -972,7 +973,7 @@ PlayerSettings:
   cloudProjectId: 8a757f03-ccb5-4205-b5d4-a2ff0f678613
   framebufferDepthMemorylessMode: 0
   qualitySettingsNames: []
-  projectName: 
+  projectName: SummaRace2
   organizationId: orbinobrian0506
   cloudEnabled: 0
   legacyClampBlendShapeWeights: 1
