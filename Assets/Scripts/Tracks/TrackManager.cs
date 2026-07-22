@@ -548,6 +548,10 @@ public class TrackManager : MonoBehaviour
 
     public void SpawnObstacle(TrackSegment segment)
     {
+        // SummaRace: in the learning race the ONLY obstacle is a wrong answer (GDD).
+        // No barriers/bins to crash into — that also retires the Hit-stagger path.
+        if (SummaRace.Features.Race.Endless.EndlessRaceMode.Active) return;
+
         if (segment.possibleObstacles.Length != 0)
         {
             for (int i = 0; i < segment.obstaclePositions.Length; ++i)
