@@ -281,12 +281,13 @@ public class GameState : AState
 
 	void OnApplicationPause(bool pauseStatus)
 	{
-		if (pauseStatus) Pause();
+		// SummaRace: silent pause (no menu) — the director resumes on focus regain.
+		if (pauseStatus) Pause(!SummaRace.Features.Race.Endless.EndlessRaceMode.Active);
 	}
 
     void OnApplicationFocus(bool focusStatus)
     {
-        if (!focusStatus) Pause();
+        if (!focusStatus) Pause(!SummaRace.Features.Race.Endless.EndlessRaceMode.Active);
     }
 
     public void Pause(bool displayMenu = true)

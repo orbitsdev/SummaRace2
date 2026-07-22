@@ -967,6 +967,22 @@ namespace SummaRace.Features.Race.Endless
             Tween.Scale(chip.transform, Vector3.one, 0.25f, Ease.OutBack, startDelay: 0.35f + index * 0.09f);
         }
 
+        /// <summary>
+        /// Their GameState pauses silently on focus loss (guarded Pause(false) — no menu,
+        /// no Quit-to-Loadout dead end). We own the resume: unfreeze time/audio and, if
+        /// the run was already released, set the world moving again.
+        /// </summary>
+        private void OnApplicationFocus(bool focus)
+        {
+            if (!focus || !EndlessRaceMode.Active) return;
+            if (Time.timeScale != 0f) return; // nothing was paused
+
+            Time.timeScale = 1f;
+            AudioListener.pause = false;
+            if (_runReleased && TrackManager.instance != null)
+                TrackManager.instance.StartMove(false);
+        }
+
         private void DismissBriefing()
         {
             if (_briefingDismissed || !_bootReady) return;
