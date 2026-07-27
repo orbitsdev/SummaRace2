@@ -196,6 +196,7 @@ namespace SummaRace.Features.Race.Endless
             if (!_runReleased)
             {
                 if (track.isMoving) track.StopMove();
+                HoldRunnerIdle(track); // stand in Idle through briefing + countdown
                 return;
             }
 
@@ -1301,9 +1302,44 @@ namespace SummaRace.Features.Race.Endless
                 yield return new WaitForSeconds(isGo ? 0.45f : 0.7f);
             }
 
-            _runReleased = true; // set before StartMove so Update() cannot re-stop it
-            if (TrackManager.instance != null) TrackManager.instance.StartMove(false);
+            _runReleased = true; // set before StartMove so Update()/LateUpdate() stop holding idle
+            if (TrackManager.instance != null)
+            {
+                StartRunnerRun(TrackManager.instance); // Idle -> Run in one clean step, exactly on GO!
+                TrackManager.instance.StartMove(false);
+            }
             UpdateBanner();
+        }
+
+        /// <summary>Holds the runner in its Idle state ("Start") through the briefing + countdown.
+        /// Called from BOTH Update and LateUpdate so it is the final word each frame: their
+        /// WaitToStart coroutine flips the character to run on its own timer, and re-asserting
+        /// idle after that (guarded by IsName so idle isn't restarted) is what removes the
+        /// "run-back" blip. Null-safe for grey-box / mid-boot frames.</summary>
+        private void HoldRunnerIdle(TrackManager track)
+        {
+            var runner = track != null ? track.characterController : null;
+            if (runner == null || runner.character == null || runner.character.animator == null) return;
+            var anim = runner.character.animator;
+            if (!anim.GetCurrentAnimatorStateInfo(0).IsName("Start")) anim.Play("Start");
+            anim.SetBool("Moving", false);
+        }
+
+        /// <summary>Idle -> Run in one clean step on GO! (their default state is runStart).</summary>
+        private void StartRunnerRun(TrackManager track)
+        {
+            var runner = track != null ? track.characterController : null;
+            if (runner == null || runner.character == null || runner.character.animator == null) return;
+            var anim = runner.character.animator;
+            anim.SetBool("Moving", true);
+            anim.Play("runStart");
+        }
+
+        private void LateUpdate()
+        {
+            if (_runReleased) return;
+            var track = TrackManager.instance;
+            if (track != null) HoldRunnerIdle(track); // final word each frame -> no run/idle blip
         }
 
         private TextMeshProUGUI MakeHudText(Transform parent, Vector2 anchor, Vector2 offset, float size)
