@@ -7,24 +7,18 @@ namespace SummaRace.Constants
         public const int MaxLanes = 3;
         public const float LaneWidth = 2.5f;
         public const float LaneSwitchSeconds = 0.15f;
-        public const float BoostSeconds = 2f;
+        public const float BoostSeconds = 3f;   // correct pick = ~3s speed burst (owner's reward beat)
         public const float SlowSeconds = 1.5f;
 
         // Patrol chaser (visual pressure only — it never catches, GDD D7).
-        // The camera sits a few metres behind the runner, so the patrol is only on
-        // screen inside a narrow band; these are measured from the live camera at
-        // runtime rather than hard-coded to a world z (see EndlessRaceDirector).
-        public const float PatrolMenaceSeconds = 1.6f;  // after a wrong pick it closes in this long
-        public const float PatrolMenaceDanger = 0.85f;  // ...acting as if danger were this high
-        // Measured against the race camera (0,4,-3) pitched 15 deg with a 58.7 fov, runner
-        // at z=+3 — so the camera is 6m back and 4m up, and its view cone bottoms out
-        // 44.4 deg below horizontal. A chaser closer than ~4.1m in front of the camera
-        // drops out of frame BELOW it; further than ~2.2m behind it is off-screen entirely.
-        // 4.5 puts the whole patrol in the bottom of the frame at max danger.
-        public const float PatrolCloseInFront = 4.5f;   // metres in front of the camera at max danger
-        public const float PatrolFarBehindCamera = 3f;  // metres behind the camera at zero danger
+        // Subway-Surfers model: hidden during a clean run, rushes into view close behind on a
+        // wrong pick (the "bump") for PatrolMenaceSeconds, then recedes. Placed as a GAP behind
+        // the LIVE player each frame (see EndlessRaceDirector.UpdatePatrol) — recenter-proof.
+        public const float PatrolMenaceSeconds = 2f;    // after a wrong pick the cop is on-screen this long
+        public const float PatrolHiddenBehind = 3f;     // rest gap = camBack + this (behind camera = hidden)
+        public const float PatrolSurgeGap = 1.8f;       // bump gap = this far behind the player (close, on-screen)
+        public const float PatrolGapFollow = 6f;        // how fast the cop rushes in / slides back out
         public const float PatrolFollowX = 5f;          // lane-match smoothing
-        public const float PatrolFollowZ = 3f;          // closing/receding smoothing
         public const float DangerOnWrong = 10f;
         public const float DangerRelief = 15f;   // danger -= on correct pickup
         public const float DangerMax = 100f;
@@ -34,10 +28,12 @@ namespace SummaRace.Constants
         public const float RaceAccelPerSecond = 0.005f; // +0.5% base speed per second...
         public const float RaceAccelMaxBonus = 0.25f;   // ...capped at +25%
 
-        // Minimum thinking time between answer gates. The gate distance is derived from
-        // this against the run's top speed, so at any speed the learner gets AT LEAST this
-        // long to read the three cards and choose (endless race; tuned per playtest).
+        // Thinking time between answer gates. The gate distance is derived from this against
+        // the run's top speed, then clamped, so every item has enough runway to appear and be
+        // read/collected (endless race; tuned per playtest). Run speed itself is left alone.
         public const float RaceSecondsPerGate = 12f;
+        public const float RaceMinGateGap = 150f; // never shorter than this (always room to appear)
+        public const float RaceMaxGateGap = 400f; // never absurdly long
 
         // Stars (GDD §4.2): 3★ = 5/5 first picks, 2★ = 4/5, 1★ = 3 or fewer
         public const int StarsThreeMin = 5;

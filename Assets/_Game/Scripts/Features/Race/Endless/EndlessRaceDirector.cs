@@ -85,6 +85,8 @@ namespace SummaRace.Features.Race.Endless
         private float _menaceTimer;
         private float _patrolGroundY;      // fixed run-height captured on activation
         private bool _patrolGrounded;      // has _patrolGroundY been captured yet
+        private float _patrolGap = 30f;    // smoothed metres the cop trails behind the player
+        private float _boostTimer;         // sustained speed boost after a correct pick
 
         private TextMeshProUGUI _bannerText;
         private TextMeshProUGUI _feedbackText;
@@ -230,6 +232,15 @@ namespace SummaRace.Features.Race.Endless
                     track.maxSpeed = _savedMaxSpeed;
                     _savedMaxSpeed = -1f;
                 }
+            }
+
+            // Correct-pick reward: hold the runner at top speed for the boost window so the
+            // "getting faster" burst is sustained (their protected m_Speed self-clamps to
+            // maxSpeed each frame, so writing it is safe — reflection, their code untouched).
+            if (_boostTimer > 0f)
+            {
+                _boostTimer -= Time.deltaTime;
+                if (SpeedField != null) SpeedField.SetValue(track, track.maxSpeed);
             }
 
             // Pass-by: the learner ran past the active gate/re-present without collecting it.
@@ -533,6 +544,9 @@ namespace SummaRace.Features.Race.Endless
                 if (SummaRace.Core.AudioManager.Instance != null)
                     SummaRace.Core.AudioManager.Instance.PlaySfx(SummaRace.Constants.AudioKeys.SfxBoost);
                 BoostSpeed(track);
+                // Sustain the burst so "getting faster" is clearly felt (owner's reward beat):
+                // Update() holds the runner at top speed for this window.
+                _boostTimer = SummaRace.Constants.GameRules.BoostSeconds;
             }
 
             if (track != null) AdvanceToNext(track, element);
@@ -641,7 +655,9 @@ namespace SummaRace.Features.Race.Endless
         private float NextGateGap(TrackManager track)
         {
             float bySpeed = SummaRace.Constants.GameRules.RaceSecondsPerGate * track.maxSpeed;
-            return Mathf.Max(_story.mission.checkpointSpacing, bySpeed);
+            float floor = Mathf.Max(_story.mission.checkpointSpacing,
+                SummaRace.Constants.GameRules.RaceMinGateGap);
+            return Mathf.Clamp(bySpeed, floor, SummaRace.Constants.GameRules.RaceMaxGateGap);
         }
 
         private void ScheduleRepresent(TrackManager track, int element)
@@ -775,6 +791,7 @@ namespace SummaRace.Features.Race.Endless
             if (patrolPrefab != null)
             {
                 go = Instantiate(patrolPrefab);
+                HideCopAccessories(go);
             }
             else
             {
@@ -794,17 +811,30 @@ namespace SummaRace.Features.Race.Endless
             // Start it far back and out of sight; UpdatePatrol eases it in from there.
             var p = runner.transform.position;
             _patrol.position = new Vector3(p.x, p.y, p.z - 30f);
+            _patrolGap = 30f;
             _patrol.rotation = Quaternion.identity; // faces down the road, same as the runner
             go.SetActive(_runReleased);
         }
 
+        /// <summary>Hides the BitGem cop's weapons and its two detached hand props. The
+        /// rifle + doughnut are STATIC children of the root (not skinned, not bone-parented),
+        /// so the animated skeleton runs ~1.4m ahead of them and they float behind the body;
+        /// the holstered gun rides the thigh bone. An armed cop chasing a Grade-4 kid is also
+        /// tonally wrong (GDD D7). Null-safe: a renamed/missing child is simply skipped.</summary>
+        private static void HideCopAccessories(GameObject cop)
+        {
+            string[] hide = { "rifle", "holster_w_gun", "doughnut" };
+            foreach (var t in cop.GetComponentsInChildren<Transform>(true))
+                for (int i = 0; i < hide.Length; i++)
+                    if (t.name == hide[i]) { t.gameObject.SetActive(false); break; }
+        }
+
         /// <summary>
-        /// Distance is read off the danger meter. The visible band is derived from the
-        /// LIVE camera rather than hard-coded: their camera sits a few metres behind the
-        /// runner, so anything further back than that is off-screen. At max danger the
-        /// patrol sits just in front of the camera and LOOMS; at zero danger it is well
-        /// behind it and unseen. (The old park race hard-coded 1.8-12.8m for the same
-        /// effect and had to be re-tuned when the camera moved — F12/F30.)
+        /// Subway-Surfers "appear only on a bump" chaser. The cop stays hidden behind the
+        /// camera during a clean run; a wrong pick sets _menaceTimer, and while that runs the
+        /// cop rushes into view close behind the kid, then recedes off screen again. It never
+        /// catches (GDD D7). Position is a GAP behind the LIVE player each frame (not a lerp of
+        /// world-Z toward a target), so a floating-origin recenter is absorbed with no stall.
         /// </summary>
         private void UpdatePatrol(TrackManager track)
         {
@@ -828,36 +858,34 @@ namespace SummaRace.Features.Race.Endless
                 _patrolGrounded = true;
             }
 
-            if (_menaceTimer > 0f) _menaceTimer -= Time.deltaTime;
-
-            float t = _danger / SummaRace.Constants.GameRules.DangerMax;
-            // A wrong pick makes it act near-max for a beat, so the learner actually SEES
-            // the consequence instead of only feeling the 1.5s slow.
-            if (_menaceTimer > 0f) t = Mathf.Max(t, SummaRace.Constants.GameRules.PatrolMenaceDanger);
-
-            // Amber vignette intensifies with the same danger the patrol reads (TDD §11.5).
-            if (_vignette != null)
-            {
-                var vc = _vignette.color;
-                vc.a = Mathf.Lerp(vc.a, t * 0.35f, 6f * Time.deltaTime);
-                _vignette.color = vc;
-            }
+            bool surging = _menaceTimer > 0f;
+            if (surging) _menaceTimer -= Time.deltaTime;
 
             var playerPos = runner.transform.position;
             var cam = Camera.main;
             float camBack = cam != null
                 ? Mathf.Max(1.5f, playerPos.z - cam.transform.position.z)
-                : 3f; // sane default if the camera is mid-swap
-            float near = Mathf.Max(1.2f, camBack - SummaRace.Constants.GameRules.PatrolCloseInFront);
-            float far = camBack + SummaRace.Constants.GameRules.PatrolFarBehindCamera;
+                : 5f; // sane default if the camera is mid-swap
 
-            float targetZ = playerPos.z - Mathf.Lerp(far, near, t);
+            // Two states, keyed on the bump — hidden behind the camera vs. close & on-screen.
+            float hiddenGap = camBack + SummaRace.Constants.GameRules.PatrolHiddenBehind;
+            float surgeGap = SummaRace.Constants.GameRules.PatrolSurgeGap;
+            float targetGap = surging ? surgeGap : hiddenGap;
+            _patrolGap = Mathf.Lerp(_patrolGap, targetGap,
+                SummaRace.Constants.GameRules.PatrolGapFollow * Time.deltaTime);
+
             float nx = Mathf.Lerp(_patrol.position.x, playerPos.x,
                 SummaRace.Constants.GameRules.PatrolFollowX * Time.deltaTime);
-            float nz = Mathf.Lerp(_patrol.position.z, targetZ,
-                SummaRace.Constants.GameRules.PatrolFollowZ * Time.deltaTime);
             float groundY = _patrolGrounded ? _patrolGroundY : playerPos.y;
-            _patrol.position = new Vector3(nx, groundY, nz);
+            _patrol.position = new Vector3(nx, groundY, playerPos.z - _patrolGap);
+
+            // Amber vignette rides the surge, not the (now cop-independent) danger meter.
+            if (_vignette != null)
+            {
+                var vc = _vignette.color;
+                vc.a = Mathf.Lerp(vc.a, surging ? 0.35f : 0f, 6f * Time.deltaTime);
+                _vignette.color = vc;
+            }
         }
 
         /// <summary>
