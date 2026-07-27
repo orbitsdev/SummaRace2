@@ -1364,17 +1364,18 @@ namespace SummaRace.Features.Race.Endless
                     : SummaRace.Constants.AudioKeys.SfxPop);
         }
 
-        /// <summary>Positions the (character-parented) camera on a high-front orbit that circles
-        /// toward behind the kid and descends as p goes 0..1 — a cinematic pre-race sweep. The GO!
-        /// swoop then lerps from wherever this ends to the exact chase pose.</summary>
+        /// <summary>Low SIDE tracking dolly (like filming a passing train): the camera holds to
+        /// one side of the kid at a low height and slides from front-side to back-side as p goes
+        /// 0..1. Staying beside him inside the alley keeps the opposite wall + street as a real
+        /// backdrop (an orbit to the front/high-above pointed at the unbuilt track/skybox). The
+        /// GO! swoop then lerps from wherever this ends to the exact chase pose.</summary>
         private void OrbitStartCamera(Camera cam, float p)
         {
-            float theta = Mathf.Lerp(150f, 35f, p); // 150 deg = front, 0 = behind
-            float h = Mathf.Lerp(10f, 6f, p);       // high -> lower
-            float r = Mathf.Lerp(9f, 6f, p);        // far -> nearer
-            Vector3 horiz = Quaternion.Euler(0f, theta, 0f) * new Vector3(0f, 0f, -r);
-            Vector3 localPos = new Vector3(horiz.x, h, horiz.z);
-            Vector3 dir = new Vector3(0f, 1.2f, 0f) - localPos; // look at the kid's torso (pivot-local)
+            const float side = 3.5f;                // metres to the (right) side — inside the corridor
+            float h = Mathf.Lerp(2.4f, 3.4f, p);    // low, gentle rise
+            float z = Mathf.Lerp(3.0f, -3.5f, p);   // dolly past: front-side -> back-side
+            Vector3 localPos = new Vector3(side, h, z);
+            Vector3 dir = new Vector3(0f, 1.2f, 0f) - localPos; // look across at the kid's torso
             cam.transform.localPosition = localPos;
             if (dir.sqrMagnitude > 0.0001f)
                 cam.transform.localRotation = Quaternion.LookRotation(dir, Vector3.up);
