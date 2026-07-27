@@ -1364,18 +1364,18 @@ namespace SummaRace.Features.Race.Endless
                     : SummaRace.Constants.AudioKeys.SfxPop);
         }
 
-        /// <summary>Low SIDE tracking dolly (like filming a passing train): the camera holds to
-        /// one side of the kid at a low height and slides from front-side to back-side as p goes
-        /// 0..1. Staying beside him inside the alley keeps the opposite wall + street as a real
-        /// backdrop (an orbit to the front/high-above pointed at the unbuilt track/skybox). The
-        /// GO! swoop then lerps from wherever this ends to the exact chase pose.</summary>
+        /// <summary>Cinematic pre-race sweep that ALWAYS looks forward down the corridor. The
+        /// world is only built ahead of the kid, so any angle pointing sideways/back/up shows the
+        /// skybox (the blue "no background"). Staying behind him and facing forward keeps the alley
+        /// filling the frame. Arcs from a low behind-left angle up into (near) the chase pose as p
+        /// goes 0..1; the GO! swoop then locks onto the exact chase pose.</summary>
         private void OrbitStartCamera(Camera cam, float p)
         {
-            const float side = 3.5f;                // metres to the (right) side — inside the corridor
-            float h = Mathf.Lerp(2.4f, 3.4f, p);    // low, gentle rise
-            float z = Mathf.Lerp(3.0f, -3.5f, p);   // dolly past: front-side -> back-side
-            Vector3 localPos = new Vector3(side, h, z);
-            Vector3 dir = new Vector3(0f, 1.2f, 0f) - localPos; // look across at the kid's torso
+            float x = Mathf.Lerp(-3.2f, 0f, p);   // behind-left -> centred
+            float y = Mathf.Lerp(1.8f, 4f, p);    // low -> chase height
+            float z = Mathf.Lerp(-3.4f, -5f, p);  // close behind -> chase distance
+            Vector3 localPos = new Vector3(x, y, z);
+            Vector3 dir = new Vector3(0f, 1.2f, 4f) - localPos; // look forward, down the corridor
             cam.transform.localPosition = localPos;
             if (dir.sqrMagnitude > 0.0001f)
                 cam.transform.localRotation = Quaternion.LookRotation(dir, Vector3.up);
