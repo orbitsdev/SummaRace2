@@ -86,6 +86,7 @@ namespace SummaRace.Features.Race.Endless
         private float _patrolGroundY;      // fixed run-height captured on activation
         private bool _patrolGrounded;      // has _patrolGroundY been captured yet
         private float _patrolGap = 30f;    // smoothed metres the cop trails behind the player
+        private float _patrolGapVel;       // SmoothDamp velocity for the gap
         private float _boostTimer;         // sustained speed boost after a correct pick
 
         private TextMeshProUGUI _bannerText;
@@ -248,6 +249,10 @@ namespace SummaRace.Features.Race.Endless
                 _boostTimer -= Time.deltaTime;
                 if (SpeedField != null) SpeedField.SetValue(track, track.maxSpeed);
             }
+
+            // Keep the run animation's stride matched to the ground speed (no foot-sliding):
+            // their code only speed-syncs jump/slide, never the run loop.
+            SyncRunAnimSpeed(track);
 
             // Pass-by: the learner ran past the active gate/re-present without collecting it.
             if (_activeGateRoot != null && _activeElement < 5 &&
@@ -998,8 +1003,9 @@ namespace SummaRace.Features.Race.Endless
             float hiddenGap = camBack + SummaRace.Constants.GameRules.PatrolHiddenBehind;
             float surgeGap = SummaRace.Constants.GameRules.PatrolSurgeGap;
             float targetGap = surging ? surgeGap : hiddenGap;
-            _patrolGap = Mathf.Lerp(_patrolGap, targetGap,
-                SummaRace.Constants.GameRules.PatrolGapFollow * Time.deltaTime);
+            // SmoothDamp eases the cop in on a bump and back out after — natural, not snappy.
+            _patrolGap = Mathf.SmoothDamp(_patrolGap, targetGap, ref _patrolGapVel,
+                SummaRace.Constants.GameRules.PatrolGapSmoothTime);
 
             float nx = Mathf.Lerp(_patrol.position.x, playerPos.x,
                 SummaRace.Constants.GameRules.PatrolFollowX * Time.deltaTime);
@@ -1276,13 +1282,36 @@ namespace SummaRace.Features.Race.Endless
             UpdateBanner();
         }
 
-        /// <summary>Drives the Trash Dash character's "Moving" bool (idle vs run loop)
+        /// <summary>Holds the runner in Idle during the countdown, or sets it running on GO.
+        /// Their controller's DEFAULT state is "runStart" (Running) and the idle motion lives in
+        /// a state called "Start" with NO transition back to it on Moving=false (idle is only
+        /// their pre-game state). So the "Moving" bool alone can't show idle — we play the state
         /// directly. Null-safe for grey-box / mid-boot frames.</summary>
         private void SetRunnerMoving(TrackManager track, bool moving)
         {
             var runner = track != null ? track.characterController : null;
-            if (runner != null && runner.character != null && runner.character.animator != null)
-                runner.character.animator.SetBool("Moving", moving);
+            if (runner == null || runner.character == null || runner.character.animator == null) return;
+            var anim = runner.character.animator;
+            anim.SetBool("Moving", moving);
+            if (moving)
+            {
+                anim.Play("runStart");
+            }
+            else if (!anim.GetCurrentAnimatorStateInfo(0).IsName("Start"))
+            {
+                anim.Play("Start"); // the idle state; guarded so idle loops instead of restarting each frame
+            }
+        }
+
+        /// <summary>Scales the run clip so the kid's stride keeps pace with the ground (no
+        /// foot-sliding). Only affects the run states (runStart/runLoop carry the RunSpeed
+        /// speed-parameter); jump/slide keep their own JumpSpeed sync.</summary>
+        private void SyncRunAnimSpeed(TrackManager track)
+        {
+            var runner = track != null ? track.characterController : null;
+            if (runner == null || runner.character == null || runner.character.animator == null) return;
+            float mult = Mathf.Clamp(track.speed / SummaRace.Constants.GameRules.RunAnimSpeedRef, 0.6f, 2.2f);
+            runner.character.animator.SetFloat("RunSpeed", mult);
         }
 
         private TextMeshProUGUI MakeHudText(Transform parent, Vector2 anchor, Vector2 offset, float size)

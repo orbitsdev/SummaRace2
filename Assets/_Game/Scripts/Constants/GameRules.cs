@@ -17,7 +17,7 @@ namespace SummaRace.Constants
         public const float PatrolMenaceSeconds = 2f;    // after a wrong pick the cop is on-screen this long
         public const float PatrolHiddenBehind = 3f;     // rest gap = camBack + this (behind camera = hidden)
         public const float PatrolSurgeGap = 1.8f;       // bump gap = this far behind the player (close, on-screen)
-        public const float PatrolGapFollow = 6f;        // how fast the cop rushes in / slides back out
+        public const float PatrolGapSmoothTime = 0.4f;  // SmoothDamp time — eases the cop in/out (natural, not snappy)
         public const float PatrolFollowX = 5f;          // lane-match smoothing
         public const float DangerOnWrong = 10f;
         public const float DangerRelief = 15f;   // danger -= on correct pickup
@@ -34,6 +34,11 @@ namespace SummaRace.Constants
         public const float RaceSecondsPerGate = 12f;
         public const float RaceMinGateGap = 150f; // never shorter than this (always room to appear)
         public const float RaceMaxGateGap = 400f; // never absurdly long
+
+        // Run-clip stride sync: the kid's run animation is played at track.speed / this, so the
+        // feet keep pace with the ground instead of sliding (tune so the stride looks planted at
+        // a typical run speed). Clamped in code.
+        public const float RunAnimSpeedRef = 16f;
 
         // Stars (GDD §4.2): 3★ = 5/5 first picks, 2★ = 4/5, 1★ = 3 or fewer
         public const int StarsThreeMin = 5;
