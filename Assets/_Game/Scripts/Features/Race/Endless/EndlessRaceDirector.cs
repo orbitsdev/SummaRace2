@@ -672,12 +672,12 @@ namespace SummaRace.Features.Race.Endless
             if (track != null)
             {
                 track.StopMove();
-                // Victory: the kid breaks into the funny dance for the finish beat.
+                // Stand idle for the finish beat (no dance — idle is enough).
                 var runner = track.characterController;
                 if (runner != null && runner.character != null && runner.character.animator != null)
                 {
                     runner.character.animator.SetBool("Moving", false);
-                    runner.character.animator.Play("Dance");
+                    runner.character.animator.Play("Start");
                 }
             }
 
@@ -1381,17 +1381,17 @@ namespace SummaRace.Features.Race.Endless
                 cam.transform.localRotation = Quaternion.LookRotation(dir, Vector3.up);
         }
 
-        /// <summary>Holds the runner in the funny Dance through the briefing + countdown (the
-        /// pre-race cinematic). Called from BOTH Update and LateUpdate so it is the final word each
-        /// frame: their WaitToStart flips the character to run on its own timer, and re-asserting
-        /// the dance after that (guarded by IsName so it loops, not restarts) removes the run-back
-        /// blip. Null-safe for grey-box / mid-boot frames.</summary>
+        /// <summary>Holds the runner in Idle ("Start") through the briefing + countdown (the
+        /// cinematic camera is the star; idle is enough). Called from BOTH Update and LateUpdate
+        /// so it is the final word each frame: their WaitToStart flips the character to run on its
+        /// own timer, and re-asserting idle after that (guarded by IsName so it loops, not
+        /// restarts) removes the run-back blip. Null-safe for grey-box / mid-boot frames.</summary>
         private void HoldRunnerPreRace(TrackManager track)
         {
             var runner = track != null ? track.characterController : null;
             if (runner == null || runner.character == null || runner.character.animator == null) return;
             var anim = runner.character.animator;
-            if (!anim.GetCurrentAnimatorStateInfo(0).IsName("Dance")) anim.Play("Dance");
+            if (!anim.GetCurrentAnimatorStateInfo(0).IsName("Start")) anim.Play("Start");
             anim.SetBool("Moving", false);
         }
 
