@@ -83,6 +83,8 @@ namespace SummaRace.Features.Race.Endless
         private Transform _patrol;
         private Animator _patrolAnim;
         private float _menaceTimer;
+        private float _patrolGroundY;      // fixed run-height captured on activation
+        private bool _patrolGrounded;      // has _patrolGroundY been captured yet
 
         private TextMeshProUGUI _bannerText;
         private TextMeshProUGUI _feedbackText;
@@ -186,6 +188,10 @@ namespace SummaRace.Features.Race.Endless
             if (!_runReleased)
             {
                 if (track.isMoving) track.StopMove();
+                // StopMove only halts the track — it never touches the character's
+                // animator, so the runner would play its run loop in place during the
+                // countdown. Hold it in Idle (their "Moving" bool) until GO!.
+                SetRunnerMoving(track, false);
                 return;
             }
 
@@ -615,7 +621,7 @@ namespace SummaRace.Features.Race.Endless
             {
                 _pendingElement = next;
                 _pendingIsRepresent = false;
-                _pendingGateDistance = track.worldDistance + Mathf.Max(25f, _story.mission.checkpointSpacing);
+                _pendingGateDistance = track.worldDistance + NextGateGap(track);
             }
             else
             {
@@ -626,6 +632,16 @@ namespace SummaRace.Features.Race.Endless
 
             UpdateBanner();
             TryPlacePending();
+        }
+
+        /// <summary>Metres to the next answer gate. Derived from <see cref="SummaRace.Constants.GameRules.RaceSecondsPerGate"/>
+        /// against the run's top speed so the learner always gets at least that long to read
+        /// and choose (the run never exceeds maxSpeed, so real time is >= the target). The
+        /// story's checkpointSpacing stays a hard floor.</summary>
+        private float NextGateGap(TrackManager track)
+        {
+            float bySpeed = SummaRace.Constants.GameRules.RaceSecondsPerGate * track.maxSpeed;
+            return Mathf.Max(_story.mission.checkpointSpacing, bySpeed);
         }
 
         private void ScheduleRepresent(TrackManager track, int element)
@@ -800,6 +816,16 @@ namespace SummaRace.Features.Race.Endless
             {
                 if (!_runReleased) return;
                 _patrol.gameObject.SetActive(true);
+                // Set Running only now: a bool set on an Animator whose GameObject was
+                // inactive at spawn is reset to its default (false) when the object enables,
+                // so the cop stood still. Setting it post-activation makes the run loop play.
+                if (_patrolAnim != null) _patrolAnim.SetBool("Running", true);
+                // Lock the cop to the runner's ground height once, so it no longer floats:
+                // following playerPos.y live made it rise with the runner's jumps / any
+                // character y-offset. The road is flat and recentres only in X/Z, so a
+                // captured constant is stable for the whole run.
+                _patrolGroundY = runner.transform.position.y;
+                _patrolGrounded = true;
             }
 
             if (_menaceTimer > 0f) _menaceTimer -= Time.deltaTime;
@@ -830,7 +856,8 @@ namespace SummaRace.Features.Race.Endless
                 SummaRace.Constants.GameRules.PatrolFollowX * Time.deltaTime);
             float nz = Mathf.Lerp(_patrol.position.z, targetZ,
                 SummaRace.Constants.GameRules.PatrolFollowZ * Time.deltaTime);
-            _patrol.position = new Vector3(nx, playerPos.y, nz);
+            float groundY = _patrolGrounded ? _patrolGroundY : playerPos.y;
+            _patrol.position = new Vector3(nx, groundY, nz);
         }
 
         /// <summary>
@@ -1086,8 +1113,21 @@ namespace SummaRace.Features.Race.Endless
             }
 
             _runReleased = true; // set before StartMove so Update() cannot re-stop it
-            if (TrackManager.instance != null) TrackManager.instance.StartMove(false);
+            if (TrackManager.instance != null)
+            {
+                TrackManager.instance.StartMove(false);
+                SetRunnerMoving(TrackManager.instance, true); // Idle -> Running exactly on GO!
+            }
             UpdateBanner();
+        }
+
+        /// <summary>Drives the Trash Dash character's "Moving" bool (idle vs run loop)
+        /// directly. Null-safe for grey-box / mid-boot frames.</summary>
+        private void SetRunnerMoving(TrackManager track, bool moving)
+        {
+            var runner = track != null ? track.characterController : null;
+            if (runner != null && runner.character != null && runner.character.animator != null)
+                runner.character.animator.SetBool("Moving", moving);
         }
 
         private TextMeshProUGUI MakeHudText(Transform parent, Vector2 anchor, Vector2 offset, float size)

@@ -34,6 +34,11 @@ namespace SummaRace.Constants
         public const float RaceAccelPerSecond = 0.005f; // +0.5% base speed per second...
         public const float RaceAccelMaxBonus = 0.25f;   // ...capped at +25%
 
+        // Minimum thinking time between answer gates. The gate distance is derived from
+        // this against the run's top speed, so at any speed the learner gets AT LEAST this
+        // long to read the three cards and choose (endless race; tuned per playtest).
+        public const float RaceSecondsPerGate = 12f;
+
         // Stars (GDD §4.2): 3★ = 5/5 first picks, 2★ = 4/5, 1★ = 3 or fewer
         public const int StarsThreeMin = 5;
         public const int StarsTwoMin = 4;
