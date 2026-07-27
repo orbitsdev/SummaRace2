@@ -92,6 +92,12 @@ namespace SummaRace.Features.Race.Endless
         private TextMeshProUGUI _feedbackText;
         private float _feedbackTimer;
 
+        // Persistent SWBST inventory tracker (top strip): 5 slots, current pulses, collected
+        // fill in-order. Teaches the framework and answers "what to collect next" (F40).
+        private readonly UnityEngine.UI.Image[] _slotBg = new UnityEngine.UI.Image[5];
+        private readonly TextMeshProUGUI[] _slotLabel = new TextMeshProUGUI[5];
+        private readonly RectTransform[] _slotRect = new RectTransform[5];
+
         // Briefing gate: the world is held still until the learner taps START and the
         // 3-2-1-GO! lands. _briefingDismissed blocks a double tap; _runReleased is what
         // Update() checks, so the track stays stopped through the countdown too.
@@ -371,11 +377,7 @@ namespace SummaRace.Features.Race.Endless
                 pickup.elementIndex = elementIndex;
                 pickup.isCorrect = isCorrect;
             }
-
-            // SWBST pill above the middle card, palette-colored.
-            BuildCard(root, new Vector3(0f, CardY + 1.55f, 0f), new Vector2(3.0f, 0.55f),
-                element.type, Color.white,
-                SummaRace.Constants.SwbstPalette.DeepForIndex(elementIndex), 2.6f);
+            // No in-world type pill: the top SWBST tracker now shows the current element (F40).
         }
 
         /// <summary>TDD §11.4 re-presentation: ONE gold glowing card, center lane, standing in
@@ -408,11 +410,7 @@ namespace SummaRace.Features.Race.Endless
             var pickup = card.gameObject.AddComponent<EndlessOptionPickup>();
             pickup.elementIndex = elementIndex;
             pickup.isCorrect = true;
-
-            // SWBST pill above the gold card, same as a normal gate.
-            BuildCard(root, new Vector3(0f, CardY + 1.55f, 0f), new Vector2(3.0f, 0.55f),
-                element.type, Color.white,
-                SummaRace.Constants.SwbstPalette.DeepForIndex(elementIndex), 2.6f);
+            // No in-world type pill: the top SWBST tracker shows the current element (F40).
         }
 
         private void PlaceFinishGate(TrackSegment segment, float localDist)
@@ -516,6 +514,8 @@ namespace SummaRace.Features.Race.Endless
 
             // Sparkle VFX at the collected card (TDD §11.4) — the visible "you got it".
             SpawnCollectSparkle(pickup.transform.position);
+            // The word lifts off and flies up into its SWBST slot (F40 collect-to-inventory).
+            FlyCollectedToSlot(element, pickup.transform.position);
 
             ShowFeedback(SummaRace.Core.Praise.ForRace(element), new Color(0.55f, 1f, 0.55f));
 
@@ -547,6 +547,9 @@ namespace SummaRace.Features.Race.Endless
                 // Sustain the burst so "getting faster" is clearly felt (owner's reward beat):
                 // Update() holds the runner at top speed for this window.
                 _boostTimer = SummaRace.Constants.GameRules.BoostSeconds;
+                // Celebration hop as they grab the card (their public Jump; no obstacles to
+                // land badly on, so it reads as pure joy). F37 item 1 / F40 item 4.
+                if (track.characterController != null) track.characterController.Jump();
             }
 
             if (track != null) AdvanceToNext(track, element);
@@ -741,8 +744,132 @@ namespace SummaRace.Features.Race.Endless
             vrt.anchorMin = Vector2.zero; vrt.anchorMax = Vector2.one;
             vrt.offsetMin = Vector2.zero; vrt.offsetMax = Vector2.zero;
 
-            _bannerText = MakeHudText(canvasGo.transform, new Vector2(0.5f, 1f), new Vector2(0f, -140f), 64f);
+            BuildTracker(canvasGo.transform);
+            _bannerText = MakeHudText(canvasGo.transform, new Vector2(0.5f, 1f), new Vector2(0f, -300f), 64f);
             _feedbackText = MakeHudText(canvasGo.transform, new Vector2(0.5f, 0.5f), new Vector2(0f, 220f), 56f);
+        }
+
+        /// <summary>The 5-slot SWBST inventory strip across the top. Slot state (upcoming /
+        /// current / collected) is set by RefreshTracker; a collected pick flies into its slot
+        /// (FlyCollectedToSlot). Grey-box safe: tinted quads when worldCardSprite is unwired.</summary>
+        private void BuildTracker(Transform parent)
+        {
+            var row = new GameObject("SwbstTracker");
+            row.transform.SetParent(parent, false);
+            var rrt = row.AddComponent<RectTransform>();
+            rrt.anchorMin = rrt.anchorMax = new Vector2(0.5f, 1f);
+            rrt.pivot = new Vector2(0.5f, 1f);
+            rrt.anchoredPosition = new Vector2(0f, -40f);
+            rrt.sizeDelta = new Vector2(1040f, 160f);
+
+            const float slotW = 196f, slotH = 150f, gap = 14f;
+            float total = 5f * slotW + 4f * gap;
+            float startX = -total * 0.5f + slotW * 0.5f;
+
+            for (int i = 0; i < 5; i++)
+            {
+                var slot = new GameObject("Slot_" + i);
+                slot.transform.SetParent(row.transform, false);
+                var img = slot.AddComponent<UnityEngine.UI.Image>();
+                if (worldCardSprite != null) { img.sprite = worldCardSprite; img.type = UnityEngine.UI.Image.Type.Sliced; }
+                img.raycastTarget = false;
+                var rt = img.rectTransform;
+                rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+                rt.pivot = new Vector2(0.5f, 0.5f);
+                rt.sizeDelta = new Vector2(slotW, slotH);
+                rt.anchoredPosition = new Vector2(startX + i * (slotW + gap), 0f);
+                _slotBg[i] = img;
+                _slotRect[i] = rt;
+
+                var lblGo = new GameObject("Label");
+                lblGo.transform.SetParent(slot.transform, false);
+                var lbl = lblGo.AddComponent<TextMeshProUGUI>();
+                if (worldLabelFont != null) lbl.font = worldLabelFont;
+                lbl.alignment = TextAlignmentOptions.Center;
+                lbl.fontStyle = FontStyles.Bold;
+                lbl.enableAutoSizing = true;
+                lbl.fontSizeMin = 24f;
+                lbl.fontSizeMax = 72f;
+                var lrt = lbl.rectTransform;
+                lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one;
+                lrt.offsetMin = new Vector2(8f, 6f); lrt.offsetMax = new Vector2(-8f, -6f);
+                _slotLabel[i] = lbl;
+            }
+        }
+
+        /// <summary>Repaints the SWBST slots. Elements resolve in order, so slot i is collected
+        /// once the current target has passed it; the current target pulses; the rest are dim.</summary>
+        private void RefreshTracker()
+        {
+            if (_story == null || _slotBg[0] == null) return;
+            int current = _activeGateRoot != null ? _activeElement : _pendingElement;
+
+            for (int i = 0; i < 5; i++)
+            {
+                if (_slotBg[i] == null) continue;
+                string type = _story.elements[i].type;
+                bool collected = i < current;
+                bool isCurrent = i == current;
+
+                _slotBg[i].color = collected
+                    ? SummaRace.Constants.SwbstPalette.ForIndex(i)
+                    : SummaRace.Constants.SwbstPalette.PastelForIndex(i);
+
+                var lbl = _slotLabel[i];
+                if (collected)
+                {
+                    // Show the collected word (short types fit; long ones wrap/shrink via autosize).
+                    lbl.text = _story.elements[i].correct;
+                    lbl.color = Color.white;
+                }
+                else
+                {
+                    lbl.text = string.IsNullOrEmpty(type) ? "?" : type.Substring(0, 1).ToUpper();
+                    lbl.color = isCurrent ? Color.white : SummaRace.Constants.SwbstPalette.DeepForIndex(i);
+                }
+
+                // Only the current target scales up + glows a touch; others sit at rest.
+                float target = isCurrent ? 1.12f : 1f;
+                _slotRect[i].localScale = Vector3.Lerp(_slotRect[i].localScale, Vector3.one * target, 1f);
+                if (isCurrent) Tween.PunchScale(_slotRect[i], Vector3.one * 0.1f, 0.4f);
+            }
+        }
+
+        /// <summary>Collected word lifts off the card and flies up into its SWBST slot — the
+        /// "into the inventory" beat (F40). A screen-space token so it lands exactly on the slot.</summary>
+        private void FlyCollectedToSlot(int element, Vector3 worldPos)
+        {
+            if (element < 0 || element >= 5 || _slotRect[element] == null) return;
+            var hud = transform.Find("SummaRaceHud");
+            if (hud == null) return;
+
+            var cam = Camera.main;
+            Vector3 startScreen = cam != null ? cam.WorldToScreenPoint(worldPos) : _slotRect[element].position;
+            startScreen.z = 0f;
+
+            var tokenGo = new GameObject("CollectToken");
+            tokenGo.transform.SetParent(hud, false);
+            var tmp = tokenGo.AddComponent<TextMeshProUGUI>();
+            if (worldLabelFont != null) tmp.font = worldLabelFont;
+            tmp.text = _story.elements[element].correct;
+            tmp.fontSize = 60f;
+            tmp.alignment = TextAlignmentOptions.Center;
+            tmp.fontStyle = FontStyles.Bold;
+            tmp.color = Color.white;
+            tmp.raycastTarget = false;
+            tmp.rectTransform.sizeDelta = new Vector2(420f, 130f);
+            tmp.rectTransform.position = startScreen;
+
+            Vector3 slotPos = _slotRect[element].position; slotPos.z = 0f;
+            tokenGo.transform.localScale = Vector3.one * 0.5f;
+            Tween.Scale(tokenGo.transform, Vector3.one * 1.25f, 0.28f, Ease.OutBack);
+            Tween.Position(tokenGo.transform, slotPos, 0.45f, Ease.InQuad, startDelay: 0.42f);
+            Tween.Scale(tokenGo.transform, Vector3.one * 0.4f, 0.45f, Ease.InQuad, startDelay: 0.42f)
+                .OnComplete(() =>
+                {
+                    if (tokenGo != null) Destroy(tokenGo);
+                    if (_slotRect[element] != null) Tween.PunchScale(_slotRect[element], Vector3.one * 0.25f, 0.35f);
+                });
         }
 
         /// <summary>Radial-alpha sprite: transparent centre, opaque edges — a soft vignette frame.</summary>
@@ -1176,11 +1303,11 @@ namespace SummaRace.Features.Race.Endless
 
         private void UpdateBanner()
         {
+            RefreshTracker(); // the SWBST strip now shows "what to collect / what's collected"
             if (_bannerText == null) return;
             int element = _activeGateRoot != null ? _activeElement : _pendingElement;
-            _bannerText.text = element < 5
-                ? SummaRace.Constants.GameText.RaceCollectBanner(_story.elements[element].type, element + 1, 5)
-                : SummaRace.Constants.GameText.RaceRunToFinish;
+            // The tracker owns the per-element prompt; the banner only calls the final dash.
+            _bannerText.text = element >= 5 ? SummaRace.Constants.GameText.RaceRunToFinish : "";
         }
 
         private void ShowFeedback(string message, Color color)
