@@ -196,7 +196,8 @@ namespace SummaRace.Features.Race.Endless
             if (!_runReleased)
             {
                 if (track.isMoving) track.StopMove();
-                HoldRunnerPreRace(track); // funny dance through briefing + countdown
+                // Idle-hold is done in LateUpdate (it must be the final word before the frame
+                // renders — their WaitToStart coroutine flips to run AFTER Update).
                 return;
             }
 
@@ -1391,7 +1392,14 @@ namespace SummaRace.Features.Race.Endless
             var runner = track != null ? track.characterController : null;
             if (runner == null || runner.character == null || runner.character.animator == null) return;
             var anim = runner.character.animator;
-            if (!anim.GetCurrentAnimatorStateInfo(0).IsName("Start")) anim.Play("Start");
+            if (!anim.GetCurrentAnimatorStateInfo(0).IsName("Start"))
+            {
+                // Their WaitToStart fires StartRunning (flip to run) once on its own timer; if that
+                // lands in the visible countdown it shows for one frame ("run-back"). Re-assert idle
+                // AND force an immediate re-evaluation so THIS frame renders idle, not the run pose.
+                anim.Play("Start");
+                anim.Update(0f);
+            }
             anim.SetBool("Moving", false);
         }
 
