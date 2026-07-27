@@ -196,7 +196,7 @@ namespace SummaRace.Features.Race.Endless
             if (!_runReleased)
             {
                 if (track.isMoving) track.StopMove();
-                HoldRunnerIdle(track); // stand in Idle through briefing + countdown
+                HoldRunnerPreRace(track); // funny dance through briefing + countdown
                 return;
             }
 
@@ -669,7 +669,17 @@ namespace SummaRace.Features.Race.Endless
             _finished = true;
 
             var track = TrackManager.instance;
-            if (track != null) track.StopMove();
+            if (track != null)
+            {
+                track.StopMove();
+                // Victory: the kid breaks into the funny dance for the finish beat.
+                var runner = track.characterController;
+                if (runner != null && runner.character != null && runner.character.animator != null)
+                {
+                    runner.character.animator.SetBool("Moving", false);
+                    runner.character.animator.Play("Dance");
+                }
+            }
 
             // Their music is DontDestroyOnLoad — silence it before Arrange.
             var mp = MusicPlayer.instance;
@@ -1269,59 +1279,118 @@ namespace SummaRace.Features.Race.Endless
             StartCoroutine(CountdownRoutine());
         }
 
-        /// <summary>3-2-1-GO! on the HUD banner, then the world is released.</summary>
+        /// <summary>3-2-1-GO! with a cinematic camera: while the kid does his funny dance the
+        /// camera orbits him from a high front angle, descending, then on GO! it swoops smoothly
+        /// into the normal chase pose as the world releases.</summary>
         private IEnumerator CountdownRoutine()
         {
             var steps = SummaRace.Constants.GameText.RaceCountdown;
             var hud = transform.Find("SummaRaceHud");
-            for (int i = 0; i < steps.Length; i++)
-            {
-                bool isGo = i == steps.Length - 1;
-                if (_bannerText != null)
-                {
-                    _bannerText.text = steps[i];
-                    Tween.PunchScale(_bannerText.transform, Vector3.one * 0.45f, 0.3f);
-                }
+            var cam = Camera.main;
 
-                // Big center-screen number, runner-game style.
-                if (hud != null)
+            // The resting gameplay pose the swing must settle back onto (camera is parented).
+            Vector3 gpPos = cam != null ? cam.transform.localPosition : Vector3.zero;
+            Quaternion gpRot = cam != null ? cam.transform.localRotation : Quaternion.identity;
+
+            const float stepTime = 0.7f, goTime = 0.6f;
+            int n = steps.Length;
+            float orbitDur = Mathf.Max(0.01f, (n - 1) * stepTime); // the 3-2-1 window (before GO!)
+
+            // 3-2-1 with the orbit.
+            float elapsed = 0f; int shown = -1;
+            Vector3 orbitEndPos = gpPos; Quaternion orbitEndRot = gpRot;
+            while (elapsed < orbitDur)
+            {
+                int idx = Mathf.Min(n - 2, (int)(elapsed / stepTime));
+                if (idx != shown) { shown = idx; ShowBigCount(hud, steps[idx], false); }
+                if (cam != null)
                 {
-                    var big = MakeHudText(hud, new Vector2(0.5f, 0.55f), Vector2.zero, isGo ? 230f : 320f);
-                    big.text = steps[i];
-                    big.color = new Color(1f, 0.83f, 0.20f);
-                    big.fontStyle = FontStyles.Bold;
-                    big.rectTransform.sizeDelta = new Vector2(1000f, 420f);
-                    big.transform.localScale = Vector3.one * 1.6f;
-                    Tween.Scale(big.transform, Vector3.one, 0.25f, Ease.OutBack);
-                    Destroy(big.gameObject, isGo ? 0.5f : 0.72f);
+                    OrbitStartCamera(cam, elapsed / orbitDur);
+                    orbitEndPos = cam.transform.localPosition;
+                    orbitEndRot = cam.transform.localRotation;
                 }
-                if (SummaRace.Core.AudioManager.Instance != null)
-                    SummaRace.Core.AudioManager.Instance.PlaySfx(isGo
-                        ? SummaRace.Constants.AudioKeys.SfxBoost
-                        : SummaRace.Constants.AudioKeys.SfxPop);
-                yield return new WaitForSeconds(isGo ? 0.45f : 0.7f);
+                elapsed += Time.deltaTime;
+                yield return null;
             }
 
-            _runReleased = true; // set before StartMove so Update()/LateUpdate() stop holding idle
+            // GO! — release the world, kid switches to run, banner reads GO!.
+            ShowBigCount(hud, steps[n - 1], true);
+            _runReleased = true; // Update()/LateUpdate() stop holding the pre-race dance
             if (TrackManager.instance != null)
             {
-                StartRunnerRun(TrackManager.instance); // Idle -> Run in one clean step, exactly on GO!
+                StartRunnerRun(TrackManager.instance);
                 TrackManager.instance.StartMove(false);
             }
             UpdateBanner();
+
+            // Swoop the camera from the orbit back onto the exact chase pose.
+            float t = 0f;
+            while (t < goTime)
+            {
+                if (cam != null)
+                {
+                    float e = Mathf.SmoothStep(0f, 1f, t / goTime);
+                    cam.transform.localPosition = Vector3.Lerp(orbitEndPos, gpPos, e);
+                    cam.transform.localRotation = Quaternion.Slerp(orbitEndRot, gpRot, e);
+                }
+                t += Time.deltaTime;
+                yield return null;
+            }
+            if (cam != null) { cam.transform.localPosition = gpPos; cam.transform.localRotation = gpRot; }
         }
 
-        /// <summary>Holds the runner in its Idle state ("Start") through the briefing + countdown.
-        /// Called from BOTH Update and LateUpdate so it is the final word each frame: their
-        /// WaitToStart coroutine flips the character to run on its own timer, and re-asserting
-        /// idle after that (guarded by IsName so idle isn't restarted) is what removes the
-        /// "run-back" blip. Null-safe for grey-box / mid-boot frames.</summary>
-        private void HoldRunnerIdle(TrackManager track)
+        /// <summary>One 3-2-1 (or GO!) beat: banner + big center number + tick sfx.</summary>
+        private void ShowBigCount(Transform hud, string text, bool isGo)
+        {
+            if (_bannerText != null)
+            {
+                _bannerText.text = text;
+                Tween.PunchScale(_bannerText.transform, Vector3.one * 0.45f, 0.3f);
+            }
+            if (hud != null)
+            {
+                var big = MakeHudText(hud, new Vector2(0.5f, 0.55f), Vector2.zero, isGo ? 230f : 320f);
+                big.text = text;
+                big.color = new Color(1f, 0.83f, 0.20f);
+                big.fontStyle = FontStyles.Bold;
+                big.rectTransform.sizeDelta = new Vector2(1000f, 420f);
+                big.transform.localScale = Vector3.one * 1.6f;
+                Tween.Scale(big.transform, Vector3.one, 0.25f, Ease.OutBack);
+                Destroy(big.gameObject, isGo ? 0.6f : 0.72f);
+            }
+            if (SummaRace.Core.AudioManager.Instance != null)
+                SummaRace.Core.AudioManager.Instance.PlaySfx(isGo
+                    ? SummaRace.Constants.AudioKeys.SfxBoost
+                    : SummaRace.Constants.AudioKeys.SfxPop);
+        }
+
+        /// <summary>Positions the (character-parented) camera on a high-front orbit that circles
+        /// toward behind the kid and descends as p goes 0..1 — a cinematic pre-race sweep. The GO!
+        /// swoop then lerps from wherever this ends to the exact chase pose.</summary>
+        private void OrbitStartCamera(Camera cam, float p)
+        {
+            float theta = Mathf.Lerp(150f, 35f, p); // 150 deg = front, 0 = behind
+            float h = Mathf.Lerp(10f, 6f, p);       // high -> lower
+            float r = Mathf.Lerp(9f, 6f, p);        // far -> nearer
+            Vector3 horiz = Quaternion.Euler(0f, theta, 0f) * new Vector3(0f, 0f, -r);
+            Vector3 localPos = new Vector3(horiz.x, h, horiz.z);
+            Vector3 dir = new Vector3(0f, 1.2f, 0f) - localPos; // look at the kid's torso (pivot-local)
+            cam.transform.localPosition = localPos;
+            if (dir.sqrMagnitude > 0.0001f)
+                cam.transform.localRotation = Quaternion.LookRotation(dir, Vector3.up);
+        }
+
+        /// <summary>Holds the runner in the funny Dance through the briefing + countdown (the
+        /// pre-race cinematic). Called from BOTH Update and LateUpdate so it is the final word each
+        /// frame: their WaitToStart flips the character to run on its own timer, and re-asserting
+        /// the dance after that (guarded by IsName so it loops, not restarts) removes the run-back
+        /// blip. Null-safe for grey-box / mid-boot frames.</summary>
+        private void HoldRunnerPreRace(TrackManager track)
         {
             var runner = track != null ? track.characterController : null;
             if (runner == null || runner.character == null || runner.character.animator == null) return;
             var anim = runner.character.animator;
-            if (!anim.GetCurrentAnimatorStateInfo(0).IsName("Start")) anim.Play("Start");
+            if (!anim.GetCurrentAnimatorStateInfo(0).IsName("Dance")) anim.Play("Dance");
             anim.SetBool("Moving", false);
         }
 
@@ -1339,7 +1408,7 @@ namespace SummaRace.Features.Race.Endless
         {
             if (_runReleased) return;
             var track = TrackManager.instance;
-            if (track != null) HoldRunnerIdle(track); // final word each frame -> no run/idle blip
+            if (track != null) HoldRunnerPreRace(track); // final word each frame -> no run-back blip
         }
 
         private TextMeshProUGUI MakeHudText(Transform parent, Vector2 anchor, Vector2 offset, float size)
