@@ -7,7 +7,7 @@ namespace SummaRace.Constants
         public const int MaxLanes = 3;
         public const float LaneWidth = 2.5f;
         public const float LaneSwitchSeconds = 0.15f;
-        public const float BoostSeconds = 3f;   // correct pick = ~3s speed burst (owner's reward beat)
+        public const float BoostSeconds = 2f;
         public const float SlowSeconds = 1.5f;
 
         // Patrol chaser (visual pressure only — it never catches, GDD D7).
@@ -34,11 +34,6 @@ namespace SummaRace.Constants
         public const float RaceSecondsPerGate = 12f;
         public const float RaceMinGateGap = 150f; // never shorter than this (always room to appear)
         public const float RaceMaxGateGap = 400f; // never absurdly long
-
-        // Run-clip stride sync: the kid's run animation is played at track.speed / this, so the
-        // feet keep pace with the ground instead of sliding (tune so the stride looks planted at
-        // a typical run speed). Clamped in code.
-        public const float RunAnimSpeedRef = 16f;
 
         // Stars (GDD §4.2): 3★ = 5/5 first picks, 2★ = 4/5, 1★ = 3 or fewer
         public const int StarsThreeMin = 5;

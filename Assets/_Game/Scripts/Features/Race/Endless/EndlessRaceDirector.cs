@@ -87,7 +87,6 @@ namespace SummaRace.Features.Race.Endless
         private bool _patrolGrounded;      // has _patrolGroundY been captured yet
         private float _patrolGap = 30f;    // smoothed metres the cop trails behind the player
         private float _patrolGapVel;       // SmoothDamp velocity for the gap
-        private float _boostTimer;         // sustained speed boost after a correct pick
 
         private TextMeshProUGUI _bannerText;
         private TextMeshProUGUI _feedbackText;
@@ -197,10 +196,6 @@ namespace SummaRace.Features.Race.Endless
             if (!_runReleased)
             {
                 if (track.isMoving) track.StopMove();
-                // StopMove only halts the track — it never touches the character's
-                // animator, so the runner would play its run loop in place during the
-                // countdown. Hold it in Idle (their "Moving" bool) until GO!.
-                SetRunnerMoving(track, false);
                 return;
             }
 
@@ -240,19 +235,6 @@ namespace SummaRace.Features.Race.Endless
                     _savedMaxSpeed = -1f;
                 }
             }
-
-            // Correct-pick reward: hold the runner at top speed for the boost window so the
-            // "getting faster" burst is sustained (their protected m_Speed self-clamps to
-            // maxSpeed each frame, so writing it is safe — reflection, their code untouched).
-            if (_boostTimer > 0f)
-            {
-                _boostTimer -= Time.deltaTime;
-                if (SpeedField != null) SpeedField.SetValue(track, track.maxSpeed);
-            }
-
-            // Keep the run animation's stride matched to the ground speed (no foot-sliding):
-            // their code only speed-syncs jump/slide, never the run loop.
-            SyncRunAnimSpeed(track);
 
             // Pass-by: the learner ran past the active gate/re-present without collecting it.
             if (_activeGateRoot != null && _activeElement < 5 &&
@@ -548,13 +530,7 @@ namespace SummaRace.Features.Race.Endless
             {
                 if (SummaRace.Core.AudioManager.Instance != null)
                     SummaRace.Core.AudioManager.Instance.PlaySfx(SummaRace.Constants.AudioKeys.SfxBoost);
-                BoostSpeed(track);
-                // Sustain the burst so "getting faster" is clearly felt (owner's reward beat):
-                // Update() holds the runner at top speed for this window.
-                _boostTimer = SummaRace.Constants.GameRules.BoostSeconds;
-                // Celebration hop as they grab the card (their public Jump; no obstacles to
-                // land badly on, so it reads as pure joy). F37 item 1 / F40 item 4.
-                if (track.characterController != null) track.characterController.Jump();
+                BoostSpeed(track); // original one-shot nudge, same as Trash Dash
             }
 
             if (track != null) AdvanceToNext(track, element);
@@ -754,9 +730,9 @@ namespace SummaRace.Features.Race.Endless
             _feedbackText = MakeHudText(canvasGo.transform, new Vector2(0.5f, 0.5f), new Vector2(0f, 220f), 56f);
         }
 
-        /// <summary>The 5-slot SWBST inventory strip across the top. Slot state (upcoming /
-        /// current / collected) is set by RefreshTracker; a collected pick flies into its slot
-        /// (FlyCollectedToSlot). Grey-box safe: tinted quads when worldCardSprite is unwired.</summary>
+        /// <summary>The 5-slot SWBST inventory strip across the top, styled as wooden plaques on
+        /// a wooden board. Slot state (empty "?" / current pulsing / collected word) is set by
+        /// RefreshTracker; a collected pick flies into its slot (FlyCollectedToSlot).</summary>
         private void BuildTracker(Transform parent)
         {
             var row = new GameObject("SwbstTracker");
@@ -764,10 +740,23 @@ namespace SummaRace.Features.Race.Endless
             var rrt = row.AddComponent<RectTransform>();
             rrt.anchorMin = rrt.anchorMax = new Vector2(0.5f, 1f);
             rrt.pivot = new Vector2(0.5f, 1f);
-            rrt.anchoredPosition = new Vector2(0f, -40f);
-            rrt.sizeDelta = new Vector2(1040f, 160f);
+            rrt.anchoredPosition = new Vector2(0f, -36f);
+            rrt.sizeDelta = new Vector2(1052f, 168f);
 
-            const float slotW = 196f, slotH = 150f, gap = 14f;
+            var wood = WoodPlaqueSprite();
+
+            // Wooden backing board behind the five slots (darker tint = the frame/board).
+            var board = new GameObject("Board");
+            board.transform.SetParent(row.transform, false);
+            var bimg = board.AddComponent<UnityEngine.UI.Image>();
+            bimg.sprite = wood; bimg.type = UnityEngine.UI.Image.Type.Sliced;
+            bimg.color = new Color(0.34f, 0.22f, 0.11f);
+            bimg.raycastTarget = false;
+            var brt = bimg.rectTransform;
+            brt.anchorMin = Vector2.zero; brt.anchorMax = Vector2.one;
+            brt.offsetMin = Vector2.zero; brt.offsetMax = Vector2.zero;
+
+            const float slotW = 190f, slotH = 132f, gap = 16f;
             float total = 5f * slotW + 4f * gap;
             float startX = -total * 0.5f + slotW * 0.5f;
 
@@ -776,7 +765,7 @@ namespace SummaRace.Features.Race.Endless
                 var slot = new GameObject("Slot_" + i);
                 slot.transform.SetParent(row.transform, false);
                 var img = slot.AddComponent<UnityEngine.UI.Image>();
-                if (worldCardSprite != null) { img.sprite = worldCardSprite; img.type = UnityEngine.UI.Image.Type.Sliced; }
+                img.sprite = wood; img.type = UnityEngine.UI.Image.Type.Sliced;
                 img.raycastTarget = false;
                 var rt = img.rectTransform;
                 rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
@@ -793,17 +782,20 @@ namespace SummaRace.Features.Race.Endless
                 lbl.alignment = TextAlignmentOptions.Center;
                 lbl.fontStyle = FontStyles.Bold;
                 lbl.enableAutoSizing = true;
-                lbl.fontSizeMin = 24f;
-                lbl.fontSizeMax = 72f;
+                lbl.fontSizeMin = 22f;
+                lbl.fontSizeMax = 70f;
+                lbl.raycastTarget = false;
                 var lrt = lbl.rectTransform;
                 lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one;
-                lrt.offsetMin = new Vector2(8f, 6f); lrt.offsetMax = new Vector2(-8f, -6f);
+                lrt.offsetMin = new Vector2(10f, 8f); lrt.offsetMax = new Vector2(-10f, -8f);
                 _slotLabel[i] = lbl;
             }
         }
 
-        /// <summary>Repaints the SWBST slots. Elements resolve in order, so slot i is collected
-        /// once the current target has passed it; the current target pulses; the rest are dim.</summary>
+        /// <summary>Repaints the SWBST slots. Elements resolve in order: slot i is collected once
+        /// the current target has passed it. Empty slots show a faded "?" (something to collect),
+        /// the current target is a vivid SWBST-coloured plaque that pulses, collected slots turn
+        /// their SWBST colour and show the word.</summary>
         private void RefreshTracker()
         {
             if (_story == null || _slotBg[0] == null) return;
@@ -812,32 +804,68 @@ namespace SummaRace.Features.Race.Endless
             for (int i = 0; i < 5; i++)
             {
                 if (_slotBg[i] == null) continue;
-                string type = _story.elements[i].type;
-                bool collected = i < current;
-                bool isCurrent = i == current;
-
-                _slotBg[i].color = collected
-                    ? SummaRace.Constants.SwbstPalette.ForIndex(i)
-                    : SummaRace.Constants.SwbstPalette.PastelForIndex(i);
-
                 var lbl = _slotLabel[i];
-                if (collected)
+                string type = _story.elements[i].type;
+                string letter = string.IsNullOrEmpty(type) ? "?" : type.Substring(0, 1).ToUpper();
+
+                if (i < current) // collected
                 {
-                    // Show the collected word (short types fit; long ones wrap/shrink via autosize).
+                    _slotBg[i].color = SummaRace.Constants.SwbstPalette.ForIndex(i);
                     lbl.text = _story.elements[i].correct;
                     lbl.color = Color.white;
+                    _slotRect[i].localScale = Vector3.one;
                 }
-                else
+                else if (i == current) // current target — vivid + pulse
                 {
-                    lbl.text = string.IsNullOrEmpty(type) ? "?" : type.Substring(0, 1).ToUpper();
-                    lbl.color = isCurrent ? Color.white : SummaRace.Constants.SwbstPalette.DeepForIndex(i);
+                    _slotBg[i].color = Color.Lerp(SummaRace.Constants.SwbstPalette.ForIndex(i), Color.white, 0.12f);
+                    lbl.text = letter;
+                    lbl.color = Color.white;
+                    _slotRect[i].localScale = Vector3.one * 1.12f;
+                    Tween.PunchScale(_slotRect[i], Vector3.one * 0.1f, 0.45f);
                 }
-
-                // Only the current target scales up + glows a touch; others sit at rest.
-                float target = isCurrent ? 1.12f : 1f;
-                _slotRect[i].localScale = Vector3.Lerp(_slotRect[i].localScale, Vector3.one * target, 1f);
-                if (isCurrent) Tween.PunchScale(_slotRect[i], Vector3.one * 0.1f, 0.4f);
+                else // upcoming / empty — natural wood + faded "?"
+                {
+                    _slotBg[i].color = new Color(0.62f, 0.44f, 0.25f);
+                    lbl.text = "?";
+                    lbl.color = new Color(1f, 0.96f, 0.85f, 0.5f);
+                    _slotRect[i].localScale = Vector3.one;
+                }
             }
+        }
+
+        /// <summary>Light beveled wooden plaque (tintable, 9-sliced). Generated once: a warm
+        /// cream base with a raised frame, a recessed centre, and subtle grain — so tinting it
+        /// with an SWBST colour reads as a coloured wooden block.</summary>
+        private static Sprite _woodPlaque;
+        private static Sprite WoodPlaqueSprite()
+        {
+            if (_woodPlaque != null) return _woodPlaque;
+            const int S = 100, R = 22, FRAME = 10;
+            var tex = new Texture2D(S, S, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
+            float half = S * 0.5f;
+            for (int y = 0; y < S; y++)
+            for (int x = 0; x < S; x++)
+            {
+                float px = x - (S - 1) * 0.5f, py = y - (S - 1) * 0.5f;
+                float qx = Mathf.Abs(px) - (half - R);
+                float qy = Mathf.Abs(py) - (half - R);
+                float outside = Mathf.Sqrt(Mathf.Max(qx, 0f) * Mathf.Max(qx, 0f) + Mathf.Max(qy, 0f) * Mathf.Max(qy, 0f));
+                float dist = outside + Mathf.Min(Mathf.Max(qx, qy), 0f) - R; // <=0 inside
+                float depth = -dist;
+                if (depth <= 0f) { tex.SetPixel(x, y, new Color(0f, 0f, 0f, 0f)); continue; }
+
+                float grain = (Mathf.PerlinNoise(x * 0.12f, y * 0.5f) - 0.5f) * 0.10f;
+                float lum;
+                if (depth < FRAME) lum = 0.86f + (FRAME - depth) / FRAME * 0.10f; // raised bright frame
+                else lum = 0.66f + (y / (float)S) * 0.10f;                        // recessed centre, top a touch darker
+                lum = Mathf.Clamp01(lum + grain);
+                // warm cream tint so an SWBST colour multiply still shows through
+                tex.SetPixel(x, y, new Color(lum, lum * 0.93f, lum * 0.80f, 1f));
+            }
+            tex.Apply();
+            _woodPlaque = Sprite.Create(tex, new Rect(0, 0, S, S), new Vector2(0.5f, 0.5f), 100f, 0,
+                SpriteMeshType.FullRect, new Vector4(R, R, R, R));
+            return _woodPlaque;
         }
 
         /// <summary>Collected word lifts off the card and flies up into its SWBST slot — the
@@ -1274,44 +1302,8 @@ namespace SummaRace.Features.Race.Endless
             }
 
             _runReleased = true; // set before StartMove so Update() cannot re-stop it
-            if (TrackManager.instance != null)
-            {
-                TrackManager.instance.StartMove(false);
-                SetRunnerMoving(TrackManager.instance, true); // Idle -> Running exactly on GO!
-            }
+            if (TrackManager.instance != null) TrackManager.instance.StartMove(false);
             UpdateBanner();
-        }
-
-        /// <summary>Holds the runner in Idle during the countdown, or sets it running on GO.
-        /// Their controller's DEFAULT state is "runStart" (Running) and the idle motion lives in
-        /// a state called "Start" with NO transition back to it on Moving=false (idle is only
-        /// their pre-game state). So the "Moving" bool alone can't show idle — we play the state
-        /// directly. Null-safe for grey-box / mid-boot frames.</summary>
-        private void SetRunnerMoving(TrackManager track, bool moving)
-        {
-            var runner = track != null ? track.characterController : null;
-            if (runner == null || runner.character == null || runner.character.animator == null) return;
-            var anim = runner.character.animator;
-            anim.SetBool("Moving", moving);
-            if (moving)
-            {
-                anim.Play("runStart");
-            }
-            else if (!anim.GetCurrentAnimatorStateInfo(0).IsName("Start"))
-            {
-                anim.Play("Start"); // the idle state; guarded so idle loops instead of restarting each frame
-            }
-        }
-
-        /// <summary>Scales the run clip so the kid's stride keeps pace with the ground (no
-        /// foot-sliding). Only affects the run states (runStart/runLoop carry the RunSpeed
-        /// speed-parameter); jump/slide keep their own JumpSpeed sync.</summary>
-        private void SyncRunAnimSpeed(TrackManager track)
-        {
-            var runner = track != null ? track.characterController : null;
-            if (runner == null || runner.character == null || runner.character.animator == null) return;
-            float mult = Mathf.Clamp(track.speed / SummaRace.Constants.GameRules.RunAnimSpeedRef, 0.6f, 2.2f);
-            runner.character.animator.SetFloat("RunSpeed", mult);
         }
 
         private TextMeshProUGUI MakeHudText(Transform parent, Vector2 anchor, Vector2 offset, float size)
