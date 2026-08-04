@@ -48,7 +48,9 @@ namespace SummaRace.Constants
         public const string DifficultyAverage = "AVERAGE";
         public const string DifficultyHard = "HARD";
         public const string LockedLabel = "Locked";
-        public const string LockedHint = "Coming in a later session!";
+        /// <summary>Story Select locks are by DIFFICULTY within the current session, not by
+        /// session, so the hint must point at the story above rather than a later day.</summary>
+        public const string LockedHint = "Finish the story above first!";
 
         /// <summary>Ms. Lumi's cheer on the race mission briefing.</summary>
         public const string RaceBriefingLumi = "Ready, runner?";
