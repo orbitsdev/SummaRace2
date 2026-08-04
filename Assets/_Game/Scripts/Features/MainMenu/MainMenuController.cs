@@ -31,7 +31,8 @@ namespace SummaRace.Features.MainMenu
             if (AudioManager.Instance != null)
                 AudioManager.Instance.PlaySfx(AudioKeys.SfxClick);
 
-            SceneLoader.Go(SceneNames.StorySelect);
+            // Into the session map, so the learner picks a mission before a story (GDD §3.1).
+            SceneLoader.Go(SceneNames.SessionMap);
         }
     }
 }

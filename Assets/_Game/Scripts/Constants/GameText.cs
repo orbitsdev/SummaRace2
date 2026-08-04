@@ -10,6 +10,12 @@ namespace SummaRace.Constants
         public const string BootTagline =
             "<color=#E84855>Read!</color> <color=#1F8A3B>Race!</color> <color=#7B4FD8>Summarize!</color>";
 
+        // Session map
+        public const string SessionMapTitle = "Choose a Mission";
+        /// <summary>Sessions open one at a time via the teacher's PIN (GDD §8.3), so the
+        /// locked state has to read as "not yet", never as the learner's fault.</summary>
+        public const string SessionLockedHint = "Your teacher opens the next mission!";
+
         // Story select
         public const string StorySelectTitle = "Pick a Story";
         public const string DifficultyEasy = "EASY";
