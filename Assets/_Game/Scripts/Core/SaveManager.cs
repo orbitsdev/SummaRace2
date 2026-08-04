@@ -87,6 +87,54 @@ namespace SummaRace.Core
             }
         }
 
+        /// <summary>
+        /// Combines every learner's log into one timestamped file at the root of
+        /// persistentDataPath and returns its full path, so the researcher can pull a single
+        /// file per device over USB. Returns null when there is nothing to export.
+        /// </summary>
+        public string ExportLogs()
+        {
+            try
+            {
+                var dir = PathFor(PrefKeys.LogsFolder);
+                if (!Directory.Exists(dir)) return null;
+
+                var files = Directory.GetFiles(dir, "*.jsonl");
+                if (files.Length == 0) return null;
+
+                var name = string.Format("export_{0:yyyyMMdd_HHmm}.jsonl", DateTime.Now);
+                var target = PathFor(name);
+                using (var writer = new StreamWriter(target, false))
+                    foreach (var file in files)
+                        foreach (var line in File.ReadAllLines(file))
+                            if (!string.IsNullOrWhiteSpace(line)) writer.WriteLine(line);
+
+                return target;
+            }
+            catch (Exception e)
+            {
+                EventBus.Raise(new SaveFailed { reason = "export: " + e.Message });
+                return null;
+            }
+        }
+
+        /// <summary>Post-study wipe: removes profiles and all logs (GDD §9.4).</summary>
+        public void DeleteAllData()
+        {
+            try
+            {
+                var profiles = PathFor(PrefKeys.ProfilesFile);
+                if (File.Exists(profiles)) File.Delete(profiles);
+
+                var dir = PathFor(PrefKeys.LogsFolder);
+                if (Directory.Exists(dir)) Directory.Delete(dir, true);
+            }
+            catch (Exception e)
+            {
+                EventBus.Raise(new SaveFailed { reason = "delete: " + e.Message });
+            }
+        }
+
         private void TryWrite(string file, string json)
         {
             try

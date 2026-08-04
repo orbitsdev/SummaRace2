@@ -21,6 +21,8 @@ namespace SummaRace.Data
         public string id;               // guid
         public string displayName;      // name or alias
         public int avatarIndex;         // 0..3
+        /// <summary>False until the learner sets their own name at Name Entry.</summary>
+        public bool named;
         public int unlockedSession = 1; // teacher raises this
         public List<StoryProgress> progress = new List<StoryProgress>();
     }
