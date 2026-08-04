@@ -1,3 +1,4 @@
+using System;
 using SummaRace.Constants;
 using SummaRace.Core;
 using SummaRace.Data;
@@ -5,48 +6,63 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
+// Trash Dash ships its own GameManager in the global namespace, and a type in an enclosing
+// namespace outranks a using-directive — so bare "GameManager" binds to theirs. An alias
+// named GameManager is illegal for the same reason (CS0576), hence the namespace alias.
+using Core = SummaRace.Core;
+
 namespace SummaRace.Features.StorySelect
 {
     /// <summary>
     /// Pick Easy/Average/Hard within the current session (TDD §9.4).
-    /// MVP: only Easy ("The Playground") is playable; the others show locked.
+    /// Every card is built from its story JSON, so all 30 stories are reachable through
+    /// this one screen. Stories unlock in difficulty order within a session (GDD §3.1).
     /// </summary>
     public class StorySelectController : MonoBehaviour
     {
-        [SerializeField] private Button easyButton;
-        [SerializeField] private Button averageButton;
-        [SerializeField] private Button hardButton;
+        /// <summary>
+        /// One difficulty card. Every reference is optional and null-checked, so a card that
+        /// is only partly dressed still works instead of throwing.
+        /// </summary>
+        [Serializable]
+        private class DifficultyCard
+        {
+            public Button button;
+            public Image heroImage;
+            public TMP_Text titleText;
+            public TMP_Text chipText;
+            public Image lockIcon;
+            public TMP_Text lockedLabel;
+            public TMP_Text lockedHint;
+            public Image[] stars;
+        }
+
+        [Tooltip("Easy, Average, Hard — in unlock order.")]
+        [SerializeField] private DifficultyCard[] cards = new DifficultyCard[3];
         [SerializeField] private Button backButton;
-
-        [Header("Easy card content")]
-        [SerializeField] private Image easyHeroImage;
-        [SerializeField] private TMP_Text easyLabel;
-
-        [Header("Select-level dressing (F22)")]
         [SerializeField] private TMP_Text titleText;
-        [SerializeField] private Image[] starImages = new Image[3];
-        [SerializeField] private TMP_Text easyChipText;
-        [SerializeField] private TMP_Text averageChipText;
-        [SerializeField] private TMP_Text hardChipText;
-        [SerializeField] private TMP_Text[] lockedLabels = new TMP_Text[2];
-        [SerializeField] private TMP_Text[] lockedHints = new TMP_Text[2];
 
-        // Same silhouette trick as ResultsController: sprite is golden, off = dark.
+        // Same silhouette trick as ResultsController: the sprite is golden, so "off" is dark.
         private static readonly Color StarOff = new Color(0.20f, 0.28f, 0.32f);
         private static readonly Color StarOn = Color.white;
+        private static readonly Color CardLocked = new Color(0.62f, 0.66f, 0.70f);
 
         private void Start()
         {
-            if (easyButton != null)
-                easyButton.onClick.AddListener(() => SelectStory("s01_easy"));
+            if (titleText != null) titleText.text = GameText.StorySelectTitle;
 
-            SetupTexts();
-            SetupStars();
-            SetupEasyCard();
+            int session = Core.GameManager.Instance != null ? Core.GameManager.Instance.SelectedSession : 1;
 
-            // Locked for the MVP slice — gentle feedback only, never a dead end.
-            SetupLocked(averageButton);
-            SetupLocked(hardButton);
+            // Easy is always open; each later difficulty waits on the one before it.
+            bool unlocked = true;
+            int count = Mathf.Min(cards.Length, StoryIds.Difficulties.Length);
+            for (int i = 0; i < count; i++)
+            {
+                string difficulty = StoryIds.Difficulties[i];
+                string storyId = StoryIds.For(session, difficulty);
+                SetupCard(cards[i], difficulty, storyId, StoryLoader.Load(storyId), unlocked);
+                unlocked = unlocked && IsCleared(storyId);
+            }
 
             if (backButton != null)
                 backButton.onClick.AddListener(() =>
@@ -56,62 +72,107 @@ namespace SummaRace.Features.StorySelect
                 });
         }
 
-        /// <summary>All learner-facing strings come from GameText (GDD §7.4).</summary>
-        private void SetupTexts()
+        private void SetupCard(DifficultyCard card, string difficulty, string storyId,
+                               StoryData story, bool unlocked)
         {
-            if (titleText != null) titleText.text = GameText.StorySelectTitle;
-            if (easyChipText != null) easyChipText.text = GameText.DifficultyEasy;
-            if (averageChipText != null) averageChipText.text = GameText.DifficultyAverage;
-            if (hardChipText != null) hardChipText.text = GameText.DifficultyHard;
-            foreach (var label in lockedLabels)
-                if (label != null) label.text = GameText.LockedLabel;
-            foreach (var hint in lockedHints)
-                if (hint != null) hint.text = GameText.LockedHint;
+            if (card == null) return;
+
+            if (card.chipText != null) card.chipText.text = DifficultyLabel(difficulty);
+
+            // A story that fails to load must never present itself as playable.
+            bool playable = unlocked && story != null;
+
+            if (card.titleText != null && story != null) card.titleText.text = story.title;
+
+            // Hero art is optional: a story with no illustration yet falls back to the
+            // title-only card rather than showing a broken image (TDD §9.4).
+            if (card.heroImage != null)
+            {
+                var sprite = story == null || string.IsNullOrEmpty(story.heroImage)
+                    ? null
+                    : Resources.Load<Sprite>(story.heroImage);
+                if (sprite != null) card.heroImage.sprite = sprite;
+                card.heroImage.gameObject.SetActive(sprite != null);
+            }
+
+            if (card.lockIcon != null) card.lockIcon.gameObject.SetActive(!playable);
+            if (card.lockedLabel != null)
+            {
+                card.lockedLabel.text = GameText.LockedLabel;
+                card.lockedLabel.gameObject.SetActive(!playable);
+            }
+            if (card.lockedHint != null)
+            {
+                card.lockedHint.text = GameText.LockedHint;
+                card.lockedHint.gameObject.SetActive(!playable);
+            }
+
+            int best = playable && Core.GameManager.Instance != null
+                ? Core.GameManager.Instance.GetBestStars(storyId)
+                : 0;
+            if (card.stars != null)
+                for (int i = 0; i < card.stars.Length; i++)
+                    if (card.stars[i] != null) card.stars[i].color = i < best ? StarOn : StarOff;
+
+            if (card.button == null) return;
+
+            var background = card.button.GetComponent<Image>();
+            if (background != null) background.color = playable ? Color.white : CardLocked;
+
+            card.button.onClick.RemoveAllListeners();
+            if (playable)
+            {
+                string id = storyId;   // capture per card, not per loop
+                card.button.onClick.AddListener(() => SelectStory(id));
+            }
+            else
+            {
+                // Locked is a friendly nudge, never a scold and never a dead end (GDD D7).
+                card.button.onClick.AddListener(PlayLockedNudge);
+            }
         }
 
-        /// <summary>Best-stars row on the Easy card; editor-direct fallback shows silhouettes.</summary>
-        private void SetupStars()
+        /// <summary>
+        /// A story counts as cleared once it has been completed. With no learner profile —
+        /// playing this scene directly, or before Phase I creates profiles — every story
+        /// stays reachable so all 30 remain testable.
+        /// </summary>
+        private static bool IsCleared(string storyId)
         {
-            int best = SummaRace.Core.GameManager.Instance != null ? SummaRace.Core.GameManager.Instance.GetBestStars("s01_easy") : 0;
-            for (int i = 0; i < starImages.Length; i++)
-                if (starImages[i] != null) starImages[i].color = i < best ? StarOn : StarOff;
+            var learner = Core.GameManager.Instance != null ? Core.GameManager.Instance.CurrentLearner : null;
+            if (learner == null) return true;
+
+            var progress = learner.progress.Find(p => p.storyId == storyId);
+            return progress != null && progress.completed;
         }
 
-        /// <summary>Hero image + title come from story data; missing art falls back to the title-only card (TDD §9.4).</summary>
-        private void SetupEasyCard()
+        private static string DifficultyLabel(string difficulty)
         {
-            var story = StoryLoader.Load("s01_easy");
-            if (story == null) return;
-
-            if (easyLabel != null) easyLabel.text = story.title;
-
-            if (easyHeroImage == null) return;
-            var sprite = string.IsNullOrEmpty(story.heroImage) ? null : Resources.Load<Sprite>(story.heroImage);
-            if (sprite != null) easyHeroImage.sprite = sprite;
-            easyHeroImage.gameObject.SetActive(sprite != null);
+            switch (difficulty)
+            {
+                case "easy": return GameText.DifficultyEasy;
+                case "average": return GameText.DifficultyAverage;
+                default: return GameText.DifficultyHard;
+            }
         }
 
-        private void SelectStory(string storyId)
+        private static void SelectStory(string storyId)
         {
             PlayClick();
-            if (SummaRace.Core.GameManager.Instance != null)
+            if (Core.GameManager.Instance != null)
             {
-                SummaRace.Core.GameManager.Instance.StartStory(storyId);
+                Core.GameManager.Instance.StartStory(storyId);
             }
-            else // no GameManager: scene played directly in-editor (TDD 13)
+            else // no GameManager: scene played directly in-editor (TDD §13)
             {
                 SceneLoader.Go(SceneNames.Reader);
             }
         }
 
-        private static void SetupLocked(Button button)
+        private static void PlayLockedNudge()
         {
-            if (button == null) return;
-            button.onClick.AddListener(() =>
-            {
-                if (AudioManager.Instance != null)
-                    AudioManager.Instance.PlaySfx(AudioKeys.SfxSlotWiggle);
-            });
+            if (AudioManager.Instance != null)
+                AudioManager.Instance.PlaySfx(AudioKeys.SfxSlotWiggle);
         }
 
         private static void PlayClick()

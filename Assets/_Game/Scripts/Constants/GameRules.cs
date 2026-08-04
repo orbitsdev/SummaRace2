@@ -44,6 +44,9 @@ namespace SummaRace.Constants
         public const int SummaryMaxChars = 200;
         public const int SummaryMaxNudges = 2;
 
+        // Content (GDD §3.1): 10 sessions x 3 difficulties = 30 stories.
+        public const int SessionCount = 10;
+
         // App
         public const int TargetFrameRate = 60;
         public const float SplashSeconds = 2f;

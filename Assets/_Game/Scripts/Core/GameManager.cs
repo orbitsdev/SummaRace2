@@ -14,6 +14,15 @@ namespace SummaRace.Core
 
         public StoryData CurrentStory { get; private set; }
         public LearnerProfile CurrentLearner { get; set; }
+
+        private int _selectedSession = 1;
+
+        /// <summary>Which session's three stories Story Select shows. Session Map sets it.</summary>
+        public int SelectedSession
+        {
+            get => _selectedSession;
+            set => _selectedSession = Mathf.Clamp(value, 1, GameRules.SessionCount);
+        }
         public RaceResult LastRaceResult { get; private set; }
         public int LastArrangeAttempts { get; private set; }
         public string LastSummaryText { get; set; }
