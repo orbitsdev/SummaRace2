@@ -14,6 +14,10 @@ namespace SummaRace.Features.Race.Endless
     ///
     /// Arrows are deliberately NOT handled here: their script still owns those, and
     /// binding both would fire twice for one press and skip two lanes.
+    ///
+    /// Only A/D are bound. W (jump) and S (slide) were removed once obstacle spawning was
+    /// guarded out — with no barriers to clear, they only fired stray animations, including
+    /// in the middle of reading a question.
     /// </summary>
     public class EndlessKeyboardInput : MonoBehaviour
     {
@@ -32,8 +36,6 @@ namespace SummaRace.Features.Race.Endless
 
             if (keyboard.aKey.wasPressedThisFrame) _runner.ChangeLane(-1);
             else if (keyboard.dKey.wasPressedThisFrame) _runner.ChangeLane(1);
-            else if (keyboard.wKey.wasPressedThisFrame) _runner.Jump();
-            else if (keyboard.sKey.wasPressedThisFrame) _runner.Slide();
         }
     }
 }

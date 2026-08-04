@@ -145,6 +145,9 @@ namespace SummaRace.Features.Race.Endless
             // races look alike (RaceWorlds / AssetGeneration README §1-2).
             SummaRace.Features.Race.RaceWorlds.Apply(_story.world, _story.difficulty);
 
+            SilenceOurMenuMusic();
+            DeduplicateTheirMusicPlayer();
+
             _pendingGateDistance = FirstGateDistance;
             _pendingElement = 0;
             _pendingIsRepresent = false;
@@ -658,6 +661,30 @@ namespace SummaRace.Features.Race.Endless
         /// against the run's top speed so the learner always gets at least that long to read
         /// and choose (the run never exceeds maxSpeed, so real time is >= the target). The
         /// story's checkpointSpacing stays a hard floor.</summary>
+        /// <summary>
+        /// The menu music follows us in from MainMenu and keeps looping under their race
+        /// track, so two pieces of music play at once. Their MusicPlayer owns audio in this
+        /// scene (it is the race music), so ours stands down here.
+        /// </summary>
+        private static void SilenceOurMenuMusic()
+        {
+            if (SummaRace.Core.AudioManager.Instance != null)
+                SummaRace.Core.AudioManager.Instance.StopMusic();
+        }
+
+        /// <summary>
+        /// Their MusicPlayer is DontDestroyOnLoad with no singleton guard, so re-entering the
+        /// race stacks another full six-stem set on top of the last one — by the third story
+        /// of a session it is a wall of noise. Keep the first, drop the rest.
+        /// </summary>
+        private static void DeduplicateTheirMusicPlayer()
+        {
+            var players = UnityEngine.Object.FindObjectsByType<MusicPlayer>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 1; i < players.Length; i++)
+                Destroy(players[i].gameObject);
+        }
+
         private float NextGateGap(TrackManager track)
         {
             float bySpeed = SummaRace.Constants.GameRules.RaceSecondsPerGate

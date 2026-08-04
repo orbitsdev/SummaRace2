@@ -144,11 +144,64 @@ namespace SummaRace.Features.Race
             var cam = Camera.main;
             if (cam != null && RenderSettings.skybox == null)
             {
-                // No skybox material in this scene, so the camera's clear colour IS the sky.
+                // No skybox material, but the track spawns its own Sky MESH which draws over
+                // this, so the clear colour only shows where that mesh does not reach.
                 cam.clearFlags = CameraClearFlags.SolidColor;
                 cam.backgroundColor = w.sky;
             }
+
+            ApplyGrade(w);
         }
+
+        /// <summary>
+        /// The track's art is <b>unlit</b> — 158 renderers on Unlit/CurvedUnlit, plus an unlit
+        /// sky mesh — so sun colour, intensity and ambient change nothing on screen. Without
+        /// this, every world rendered as the same bright afternoon and only the numbers
+        /// differed. A global colour grade is the one lever that reaches unlit geometry.
+        /// </summary>
+        private static void ApplyGrade(World w)
+        {
+            var host = GameObject.Find(GradeObjectName);
+            if (host == null)
+            {
+                host = new GameObject(GradeObjectName);
+                var v = host.AddComponent<UnityEngine.Rendering.Volume>();
+                v.isGlobal = true;
+                v.priority = 100f;                 // above anything the track sets up
+                v.profile = ScriptableObject.CreateInstance<UnityEngine.Rendering.VolumeProfile>();
+            }
+
+            var volume = host.GetComponent<UnityEngine.Rendering.Volume>();
+            UnityEngine.Rendering.Universal.ColorAdjustments grade;
+            if (!volume.profile.TryGet(out grade))
+                grade = volume.profile.Add<UnityEngine.Rendering.Universal.ColorAdjustments>(true);
+
+            // Brightness follows the world's sun: 1.0 is neutral, so a 0.45-sun night sits
+            // about an stop and a bit down. Clamped so no world goes black or blows out.
+            grade.postExposure.overrideState = true;
+            grade.postExposure.value = Mathf.Clamp(Mathf.Log(Mathf.Max(w.sunIntensity, 0.05f), 2f),
+                                                   -1.6f, 0.4f);
+
+            // Hue comes from the sky, kept well short of full strength so the art stays readable.
+            grade.colorFilter.overrideState = true;
+            grade.colorFilter.value = Color.Lerp(Color.white, w.sky, 0.5f);
+
+            grade.saturation.overrideState = true;
+            grade.saturation.value = w.sunIntensity < 0.7f ? -12f : 0f;   // night reads calmer
+
+            var cam = Camera.main;
+            if (cam != null)
+            {
+                // GetComponent returns null here — their camera has no URP data component, and
+                // without one URP renders no post-processing at all, so the grade above would
+                // silently do nothing. The extension creates it if missing.
+                var data = UnityEngine.Rendering.Universal.CameraExtensions
+                    .GetUniversalAdditionalCameraData(cam);
+                if (data != null) data.renderPostProcessing = true;
+            }
+        }
+
+        private const string GradeObjectName = "[RaceWorldGrade]";
 
         private static Light _sun;
 
