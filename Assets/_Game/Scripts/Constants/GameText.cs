@@ -13,6 +13,26 @@ namespace SummaRace.Constants
         /// <summary>Name a profile starts with before Name Entry sets a real one.</summary>
         public const string DefaultLearnerName = "Runner";
 
+        // Name entry
+        public const string NameEntryTitle = "What's your name?";
+        public const string NameEntryHint = "Type your name";
+        public const string NameEntryPickAvatar = "Pick your runner";
+        public const string NameEntryConfirm = "LET'S GO!";
+
+        // Teacher menu (adults only — plain on purpose)
+        public const string TeacherTitle = "Teacher";
+        public const string TeacherEnterPin = "Enter PIN";
+        public const string TeacherSetPin = "Set a PIN (4+ digits)";
+        public const string TeacherWrongPin = "That PIN didn't match.";
+        public const string TeacherPinTooShort = "Use at least 4 digits.";
+        public const string TeacherUnlockNext = "Unlock next session";
+        public const string TeacherExport = "Export logs";
+        public const string TeacherDelete = "Delete all data";
+        public const string TeacherDeleteConfirm = "Tap again to confirm";
+        public const string TeacherDeleted = "All learner data deleted.";
+        public const string TeacherNothingToExport = "No logs to export yet.";
+        public const string TeacherAllUnlocked = "All 10 sessions are already open.";
+
         // Session map
         public const string SessionMapTitle = "Choose a Mission";
         /// <summary>Sessions open one at a time via the teacher's PIN (GDD §8.3), so the
