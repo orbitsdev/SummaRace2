@@ -150,12 +150,20 @@ namespace SummaRace.Features.Race
             }
         }
 
+        private static Light _sun;
+
+        /// <summary>Cached so the re-apply below costs nothing per frame.</summary>
         private static Light FindSun()
         {
+            if (_sun != null) return _sun;
+
             var lights = Object.FindObjectsByType<Light>(FindObjectsInactive.Exclude);
             for (int i = 0; i < lights.Length; i++)
-                if (lights[i].type == LightType.Directional) return lights[i];
-            return null;
+                if (lights[i].type == LightType.Directional) { _sun = lights[i]; break; }
+            return _sun;
         }
+
+        /// <summary>Drops the cached sun when leaving a race, so the next one re-finds its own.</summary>
+        public static void Forget() => _sun = null;
     }
 }

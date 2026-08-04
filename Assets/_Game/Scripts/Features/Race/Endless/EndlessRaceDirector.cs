@@ -199,6 +199,12 @@ namespace SummaRace.Features.Race.Endless
             // coroutine sets isMoving on its own schedule after we would have stopped it.
             if (!_runReleased)
             {
+                // Their theme system writes RenderSettings.fogColor when the track's theme
+                // loads, which lands AFTER our world is applied and repainted a night world's
+                // fog near-white. Re-assert until the run starts, by which point their theme
+                // has settled. Cheap: a handful of global property sets with a cached sun.
+                SummaRace.Features.Race.RaceWorlds.Apply(_story.world, _story.difficulty);
+
                 if (track.isMoving) track.StopMove();
                 // Idle-hold is done in LateUpdate (it must be the final word before the frame
                 // renders — their WaitToStart coroutine flips to run AFTER Update).
