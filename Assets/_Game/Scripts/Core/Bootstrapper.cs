@@ -35,9 +35,13 @@ namespace SummaRace.Core
             core.AddComponent<AudioManager>();
             core.AddComponent<SaveManager>();
             core.AddComponent<SceneLoader>();
+            core.AddComponent<SessionLogService>();
 
             var settings = core.GetComponent<SaveManager>().LoadSettings();
             core.GetComponent<AudioManager>().SetVolumes(settings);
+
+            // Activate a learner before any scene can read progress or write a log.
+            core.GetComponent<GameManager>().InitProfiles();
 
             EventBus.Raise(new AppReady());
         }

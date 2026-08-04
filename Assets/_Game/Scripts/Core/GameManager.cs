@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using SummaRace.Constants;
 using SummaRace.Data;
 using UnityEngine;
@@ -14,6 +16,8 @@ namespace SummaRace.Core
 
         public StoryData CurrentStory { get; private set; }
         public LearnerProfile CurrentLearner { get; set; }
+
+        private readonly List<LearnerProfile> _profiles = new();
 
         private int _selectedSession = 1;
 
@@ -72,7 +76,52 @@ namespace SummaRace.Core
             return progress != null ? progress.bestStars : 0;
         }
 
-        /// <summary>Updates profile progress; SessionLog write comes with Phase I.</summary>
+        /// <summary>Has this story been finished before? Drives replay logging and unlocks.</summary>
+        public bool IsCompleted(string storyId)
+        {
+            var progress = CurrentLearner?.progress.Find(p => p.storyId == storyId);
+            return progress != null && progress.completed;
+        }
+
+        /// <summary>
+        /// Loads the saved learners and activates one, creating a first profile when the device
+        /// has none so progress always has somewhere to persist. Name Entry lets the learner set
+        /// their real name and avatar on that same profile.
+        /// </summary>
+        public void InitProfiles()
+        {
+            _profiles.Clear();
+            if (SaveManager.Instance != null)
+                _profiles.AddRange(SaveManager.Instance.LoadProfiles());
+
+            if (_profiles.Count == 0)
+            {
+                _profiles.Add(new LearnerProfile
+                {
+                    id = Guid.NewGuid().ToString(),
+                    displayName = GameText.DefaultLearnerName,
+                });
+                PersistProfiles();
+            }
+
+            CurrentLearner = _profiles[0];
+        }
+
+        /// <summary>Adds a learner created at Name Entry, activates it, and saves.</summary>
+        public void RegisterLearner(LearnerProfile learner)
+        {
+            if (learner == null) return;
+            if (!_profiles.Contains(learner)) _profiles.Add(learner);
+            CurrentLearner = learner;
+            PersistProfiles();
+        }
+
+        public void PersistProfiles()
+        {
+            if (SaveManager.Instance != null) SaveManager.Instance.SaveProfiles(_profiles);
+        }
+
+        /// <summary>Updates profile progress and writes it to disk.</summary>
         public void CompleteStory(int stars)
         {
             if (CurrentStory == null) return;
@@ -86,7 +135,8 @@ namespace SummaRace.Core
                     CurrentLearner.progress.Add(progress);
                 }
                 progress.completed = true;
-                if (stars > progress.bestStars) progress.bestStars = stars;
+                if (stars > progress.bestStars) progress.bestStars = stars;   // never decreases
+                PersistProfiles();
             }
 
             EventBus.Raise(new StoryCompleted { storyId = CurrentStory.id, stars = stars });
