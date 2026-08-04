@@ -654,10 +654,22 @@ namespace SummaRace.Features.Race.Endless
         /// story's checkpointSpacing stays a hard floor.</summary>
         private float NextGateGap(TrackManager track)
         {
-            float bySpeed = SummaRace.Constants.GameRules.RaceSecondsPerGate * track.maxSpeed;
+            float bySpeed = SummaRace.Constants.GameRules.RaceSecondsPerGate
+                * DifficultyGateTime() * track.maxSpeed;
             float floor = Mathf.Max(_story.mission.checkpointSpacing,
                 SummaRace.Constants.GameRules.RaceMinGateGap);
             return Mathf.Clamp(bySpeed, floor, SummaRace.Constants.GameRules.RaceMaxGateGap);
+        }
+
+        /// <summary>Easy gets more runway to read a card, hard gets less.</summary>
+        private float DifficultyGateTime()
+        {
+            switch (_story.difficulty)
+            {
+                case "easy": return SummaRace.Constants.GameRules.GateTimeEasy;
+                case "hard": return SummaRace.Constants.GameRules.GateTimeHard;
+                default: return SummaRace.Constants.GameRules.GateTimeAverage;
+            }
         }
 
         private void ScheduleRepresent(TrackManager track, int element)

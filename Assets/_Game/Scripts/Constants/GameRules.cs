@@ -32,6 +32,16 @@ namespace SummaRace.Constants
         // the run's top speed, then clamped, so every item has enough runway to appear and be
         // read/collected (endless race; tuned per playtest). Run speed itself is left alone.
         public const float RaceSecondsPerGate = 12f;
+
+        // Difficulty in a reading game is how long you get to read before choosing, so the
+        // thinking time above is scaled per difficulty. This is the ONLY thing that made
+        // easy/average/hard differ beyond the chaser's climb rate: the story's playerSpeed and
+        // startingDanger are not read on the endless race path, and its checkpointSpacing (45)
+        // is always beaten by RaceMinGateGap (150). The results stay inside the clamped
+        // [RaceMinGateGap, RaceMaxGateGap] band, so no setting can make a card unreadable.
+        public const float GateTimeEasy = 1.25f;
+        public const float GateTimeAverage = 1f;
+        public const float GateTimeHard = 0.8f;
         public const float RaceMinGateGap = 150f; // never shorter than this (always room to appear)
         public const float RaceMaxGateGap = 400f; // never absurdly long
 
