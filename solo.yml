@@ -1,0 +1,11 @@
+# Visit https://soloterm.com to learn more
+name: SummaRace2
+icon: null
+processes:
+  Watch:
+    command: dotnet watch run
+    working_dir: null
+    auto_start: true
+    auto_restart: true
+    restart_when_changed: []
+    env: {}
