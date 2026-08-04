@@ -349,14 +349,24 @@ namespace SummaRace.Features.Race.Endless
             float cardWidth = Mathf.Min(1.55f, laneOffset * 0.95f);
             var element = _story.elements[elementIndex];
 
-            // Varied but deterministic correct-lane placement: 1,0,2,1,0.
-            int correctLane = (elementIndex * 2 + 1) % 3;
+            // Shuffle the correct answer and its two distractors across the three lanes.
+            // This used to be a fixed 1,0,2,1,0 pattern, identical for every story and every
+            // run, which let a learner score 5/5 by position without reading a card. The race
+            // is a measure (raceFirstPickCorrect is logged research data), so position must
+            // carry no information. Same Fisher-Yates the legacy RaceController used.
+            string[] texts = { element.correct, element.distractors[0], element.distractors[1] };
+            bool[] correctFlags = { true, false, false };
+            for (int i = 2; i > 0; i--)
+            {
+                int j = UnityEngine.Random.Range(0, i + 1);
+                var tmpText = texts[i]; texts[i] = texts[j]; texts[j] = tmpText;
+                var tmpFlag = correctFlags[i]; correctFlags[i] = correctFlags[j]; correctFlags[j] = tmpFlag;
+            }
 
-            int d = 0;
             for (int lane = 0; lane < 3; lane++)
             {
-                bool isCorrect = lane == correctLane;
-                string text = isCorrect ? element.correct : element.distractors[d++];
+                bool isCorrect = correctFlags[lane];
+                string text = texts[lane];
                 var card = BuildCard(root, new Vector3((lane - 1) * laneOffset, CardY, 0f),
                     new Vector2(cardWidth, 0.85f), text, Color.black, Color.white, 2.4f);
 
