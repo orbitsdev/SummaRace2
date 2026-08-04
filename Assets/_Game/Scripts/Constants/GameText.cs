@@ -40,6 +40,7 @@ namespace SummaRace.Constants
         /// <summary>Sessions open one at a time via the teacher's PIN (GDD §8.3), so the
         /// locked state has to read as "not yet", never as the learner's fault.</summary>
         public const string SessionLockedHint = "Your teacher opens the next mission!";
+        public const string SessionCompleteCheer = "Mission complete! All three stories done!";
 
         // Story select
         public const string StorySelectTitle = "Pick a Story";

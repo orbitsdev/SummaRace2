@@ -1,4 +1,6 @@
 using System;
+using System.Collections;
+using PrimeTween;
 using SummaRace.Constants;
 using SummaRace.Core;
 using SummaRace.Data;
@@ -63,6 +65,44 @@ namespace SummaRace.Features.SessionMap
                     PlayClick();
                     SceneLoader.Go(SceneNames.MainMenu);
                 });
+
+            // Consumed, so finishing a session celebrates once and a later visit stays quiet.
+            int justFinished = Core.GameManager.Instance != null
+                ? Core.GameManager.Instance.ConsumeJustCompletedSession()
+                : 0;
+            if (justFinished > 0) StartCoroutine(CelebrateSession(justFinished));
+        }
+
+        /// <summary>
+        /// A short "that day is done" beat on the stop just finished. Deliberately under three
+        /// seconds — a 55-minute classroom session must never wait on a celebration (GDD §6).
+        /// </summary>
+        private IEnumerator CelebrateSession(int session)
+        {
+            int index = session - 1;
+            if (index < 0 || index >= stops.Length || stops[index] == null) yield break;
+
+            var stop = stops[index].button != null ? stops[index].button.transform : null;
+            if (stop == null) yield break;
+
+            if (lockedHintText != null) lockedHintText.text = GameText.SessionCompleteCheer;
+
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxStar);
+
+            // Punch the stop, then light its three stars in turn.
+            Tween.PunchScale(stop, Vector3.one * 0.35f, 0.5f);
+            yield return new WaitForSeconds(0.35f);
+
+            var stars = stops[index].stars;
+            if (stars != null)
+                for (int i = 0; i < stars.Length; i++)
+                {
+                    if (stars[i] == null) continue;
+                    stars[i].color = StarOn;
+                    Tween.PunchScale(stars[i].transform, Vector3.one * 0.5f, 0.35f);
+                    if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxCoin);
+                    yield return new WaitForSeconds(0.22f);
+                }
         }
 
         private void SetupStop(SessionStop stop, int session, int unlockedSession)

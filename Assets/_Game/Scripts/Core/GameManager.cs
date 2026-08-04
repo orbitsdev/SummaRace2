@@ -83,6 +83,27 @@ namespace SummaRace.Core
             return progress != null && progress.completed;
         }
 
+        /// <summary>All three difficulties of a session finished (GDD §3.1).</summary>
+        public bool IsSessionComplete(int session)
+        {
+            for (int i = 0; i < StoryIds.Difficulties.Length; i++)
+                if (!IsCompleted(StoryIds.For(session, i))) return false;
+            return true;
+        }
+
+        /// <summary>
+        /// Set when the third story of a session lands, read once by the Session Map so the
+        /// celebration plays on arrival and never repeats on a later visit.
+        /// </summary>
+        private int _justCompletedSession;
+
+        public int ConsumeJustCompletedSession()
+        {
+            int session = _justCompletedSession;
+            _justCompletedSession = 0;
+            return session;
+        }
+
         /// <summary>
         /// Loads the saved learners and activates one, creating a first profile when the device
         /// has none so progress always has somewhere to persist. Name Entry lets the learner set
@@ -137,6 +158,10 @@ namespace SummaRace.Core
                 progress.completed = true;
                 if (stars > progress.bestStars) progress.bestStars = stars;   // never decreases
                 PersistProfiles();
+
+                // Was that the third story of the session? The Session Map celebrates it.
+                if (IsSessionComplete(CurrentStory.session))
+                    _justCompletedSession = CurrentStory.session;
             }
 
             EventBus.Raise(new StoryCompleted { storyId = CurrentStory.id, stars = stars });

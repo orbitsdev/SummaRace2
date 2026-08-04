@@ -138,7 +138,15 @@ namespace SummaRace.Features.Results
         private void OnNextMission()
         {
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxClick);
-            SceneLoader.Go(SceneNames.StorySelect);
+
+            // Mid-session there are still stories to pick, so go back to the three cards.
+            // After the third one, the session is done — return to the map, which celebrates
+            // it on arrival (GDD §3.1).
+            var gm = SummaRace.Core.GameManager.Instance;
+            bool sessionDone = gm != null && gm.CurrentStory != null
+                && gm.IsSessionComplete(gm.CurrentStory.session);
+
+            SceneLoader.Go(sessionDone ? SceneNames.SessionMap : SceneNames.StorySelect);
         }
     }
 }
