@@ -6,23 +6,14 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Scenes/Start.unity
-    guid: 66b8e0d49d006dd4cb32d8b0fa444728
-  - enabled: 1
-    path: Assets/Scenes/Main.unity
-    guid: 678d462d33ebdd7419400a9476bf6759
-  - enabled: 1
-    path: Assets/Scenes/Shop.unity
-    guid: c81bf86fb95a26446ae42f499fcbc766
+    path: Assets/_Game/Scenes/Boot.unity
+    guid: d5297128bdd7a164ba22866d01debc8d
   - enabled: 1
     path: Assets/Scenes/MainSummaRace.unity
     guid: 8efbd2debf69571428e5a02b0877830e
   - enabled: 1
     path: Assets/_Game/Scenes/Arrange.unity
     guid: 259654320454d4d40a3d2d5ee0f350e6
-  - enabled: 1
-    path: Assets/_Game/Scenes/Boot.unity
-    guid: d5297128bdd7a164ba22866d01debc8d
   - enabled: 1
     path: Assets/_Game/Scenes/MainMenu.unity
     guid: b20c5094e89134740a954cd9a998906e
