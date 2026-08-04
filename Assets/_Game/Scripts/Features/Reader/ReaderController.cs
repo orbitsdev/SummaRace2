@@ -51,6 +51,15 @@ namespace SummaRace.Features.Reader
         private StoryData _story;
         private int _pageIndex;
         private bool _questionAnswered;
+
+        /// <summary>
+        /// Which story option each on-screen slot shows: <c>_displayOrder[slot] = option index</c>.
+        /// The source content is badly position-biased — B is the correct answer on 64% of the
+        /// 150 questions and C on only 4% — so presenting options in file order lets a learner
+        /// beat the instrument by always tapping B. Shuffling per page removes that, and mapping
+        /// back through this array keeps the logged choice comparable across learners.
+        /// </summary>
+        private readonly int[] _displayOrder = new int[3];
         private bool _questionShown;
 
         private void Start()
@@ -171,17 +180,22 @@ namespace SummaRace.Features.Reader
             if (feedbackText != null) feedbackText.text = "";
 
             if (questionText != null) questionText.text = question.text;
+
+            ShuffleDisplayOrder(question.options.Length);
+
             for (int i = 0; i < optionButtons.Length; i++)
             {
                 if (optionButtons[i] == null) continue;
                 optionButtons[i].interactable = true;
                 optionButtons[i].image.color = OptionNormal;
+
+                string optionText = question.options[_displayOrder[i]];
                 if (optionLabels[i] != null)
                     optionLabels[i].text = i < GameText.OptionLetters.Length
                         // <indent> hangs the letter to the left so a wrapped second
                         // line starts under the text, not under the "C.".
-                        ? GameText.OptionLetters[i] + "<indent=9%>" + question.options[i] + "</indent>"
-                        : question.options[i];
+                        ? GameText.OptionLetters[i] + "<indent=9%>" + optionText + "</indent>"
+                        : optionText;
 
                 // Fan the options in one after another so the page reads top-to-bottom
                 // instead of arriving all at once. ButtonSquash cached scale 1 in Awake,
@@ -194,12 +208,30 @@ namespace SummaRace.Features.Reader
             }
         }
 
-        private void OnAnswer(int chosenIndex)
+        /// <summary>Fisher-Yates over the on-screen slots, reshuffled for every question.</summary>
+        private void ShuffleDisplayOrder(int optionCount)
+        {
+            int n = Mathf.Min(optionCount, _displayOrder.Length);
+            for (int i = 0; i < _displayOrder.Length; i++) _displayOrder[i] = i < n ? i : 0;
+
+            for (int i = n - 1; i > 0; i--)
+            {
+                int j = UnityEngine.Random.Range(0, i + 1);
+                (_displayOrder[i], _displayOrder[j]) = (_displayOrder[j], _displayOrder[i]);
+            }
+        }
+
+        /// <param name="slot">Which button was tapped, NOT which option it holds.</param>
+        private void OnAnswer(int slot)
         {
             if (_questionAnswered) return;
             _questionAnswered = true;
 
             var question = _story.pages[_pageIndex].question;
+
+            // Map the tapped slot back to the story's own option index, so the logged choice
+            // means the same thing for every learner regardless of how their page was shuffled.
+            int chosenIndex = _displayOrder[Mathf.Clamp(slot, 0, _displayOrder.Length - 1)];
             bool correct = chosenIndex == question.correctIndex;
 
             // Always reveal the correct answer; never block (GDD §4.3).
@@ -207,7 +239,7 @@ namespace SummaRace.Features.Reader
             {
                 if (optionButtons[i] == null) continue;
                 optionButtons[i].interactable = false;
-                if (i == question.correctIndex)
+                if (_displayOrder[i] == question.correctIndex)
                 {
                     optionButtons[i].image.color = OptionCorrect;
                     // The "you got it" beat — the flattest moment in the scene until now.

@@ -152,7 +152,7 @@ namespace SummaRace.Features.Race
 
         private static Light FindSun()
         {
-            var lights = Object.FindObjectsByType<Light>(FindObjectsSortMode.None);
+            var lights = Object.FindObjectsByType<Light>(FindObjectsInactive.Exclude);
             for (int i = 0; i < lights.Length; i++)
                 if (lights[i].type == LightType.Directional) return lights[i];
             return null;
