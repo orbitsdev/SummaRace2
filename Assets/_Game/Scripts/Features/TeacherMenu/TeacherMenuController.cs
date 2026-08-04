@@ -23,6 +23,7 @@ namespace SummaRace.Features.TeacherMenu
         [SerializeField] private TMP_InputField pinInput;
         [SerializeField] private Button submitButton;
         [SerializeField] private TMP_Text promptText;
+        [SerializeField] private TMP_Text submitLabel;
         [SerializeField] private TMP_Text statusText;
 
         [Header("Actions")]
@@ -46,6 +47,7 @@ namespace SummaRace.Features.TeacherMenu
             if (unlockLabel != null) unlockLabel.text = GameText.TeacherUnlockNext;
             if (exportLabel != null) exportLabel.text = GameText.TeacherExport;
             if (deleteLabel != null) deleteLabel.text = GameText.TeacherDelete;
+            if (submitLabel != null) submitLabel.text = GameText.TeacherSubmit;
 
             if (pinInput != null)
             {

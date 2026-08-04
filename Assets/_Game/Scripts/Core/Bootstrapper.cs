@@ -58,7 +58,11 @@ namespace SummaRace.Core
                 if (splashFill != null) splashFill.fillAmount = Mathf.Clamp01(t / GameRules.SplashSeconds);
                 yield return null;
             }
-            SceneLoader.Instance.Load(SceneNames.MainMenu, false);
+            // First run on a device goes to Name Entry once, so every exported log line is
+            // attributable; afterwards the learner is already named and it is skipped.
+            var learner = GameManager.Instance != null ? GameManager.Instance.CurrentLearner : null;
+            bool needsName = learner != null && !learner.named;
+            SceneLoader.Instance.Load(needsName ? SceneNames.NameEntry : SceneNames.MainMenu, false);
         }
     }
 }

@@ -13,6 +13,9 @@ namespace SummaRace.Features.MainMenu
         [SerializeField] private TMP_Text startLabel;
         [SerializeField] private TMP_Text subtitleText;
 
+        [Tooltip("Small, out-of-the-way adult entry point — everything behind it is PIN-gated.")]
+        [SerializeField] private Button teacherButton;
+
         private void Start()
         {
             if (startLabel != null) startLabel.text = GameText.TapToStart;
@@ -24,6 +27,14 @@ namespace SummaRace.Features.MainMenu
 
             if (startButton != null)
                 startButton.onClick.AddListener(OnStartTapped);
+
+            if (teacherButton != null)
+                teacherButton.onClick.AddListener(() =>
+                {
+                    if (AudioManager.Instance != null)
+                        AudioManager.Instance.PlaySfx(AudioKeys.SfxClick);
+                    SceneLoader.Go(SceneNames.TeacherMenu);
+                });
         }
 
         private void OnStartTapped()

@@ -22,6 +22,8 @@ namespace SummaRace.Constants
         // Teacher menu (adults only — plain on purpose)
         public const string TeacherTitle = "Teacher";
         public const string TeacherEnterPin = "Enter PIN";
+        /// <summary>Button under the PIN box — must not repeat the prompt above it.</summary>
+        public const string TeacherSubmit = "OK";
         public const string TeacherSetPin = "Set a PIN (4+ digits)";
         public const string TeacherWrongPin = "That PIN didn't match.";
         public const string TeacherPinTooShort = "Use at least 4 digits.";
