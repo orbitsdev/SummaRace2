@@ -92,7 +92,7 @@
     },
     {
       "type": "BUT",
-      "correct": "She became hungry during the day and missed eating snacks",
+      "correct": "She became hungry and could not eat until sunset",
       "distractors": [
         "She forgot to eat breakfast",
         "She lost her gifts"
@@ -100,7 +100,7 @@
     },
     {
       "type": "SO",
-      "correct": "She continued fasting and followed the Ramadan practices",
+      "correct": "She kept fasting and followed Ramadan traditions",
       "distractors": [
         "She stopped fasting",
         "She skipped school"
@@ -108,7 +108,7 @@
     },
     {
       "type": "THEN",
-      "correct": "She celebrated Eid al-Fitr and felt proud of completing her first fast",
+      "correct": "She celebrated Eid al-Fitr, proud of her first fast",
       "distractors": [
         "She gave up fasting before Ramadan ended",
         "She celebrated without finishing her first fast"

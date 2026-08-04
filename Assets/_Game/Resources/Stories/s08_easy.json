@@ -66,7 +66,7 @@
         "text": "What happened in the end?",
         "options": [
           "The refrigerator did not work",
-          "The family's food stayed fresh, but Doris worried about Charlie",
+          "The food stayed fresh, but Doris felt sad",
           "Charlie bought the refrigerator"
         ],
         "correctIndex": 1
@@ -92,7 +92,7 @@
     },
     {
       "type": "BUT",
-      "correct": "The icebox could not keep enough ice during the hot summer",
+      "correct": "The icebox could not keep ice in the hot summer",
       "distractors": [
         "The ice man stopped coming to their street",
         "The kitchen was too cold for the food"
@@ -108,7 +108,7 @@
     },
     {
       "type": "THEN",
-      "correct": "Their food stayed fresh, though Doris worried about the ice man's future",
+      "correct": "Their food stayed fresh, though Doris felt sad",
       "distractors": [
         "Their food spoiled even with the refrigerator",
         "Their family kept using the old icebox"

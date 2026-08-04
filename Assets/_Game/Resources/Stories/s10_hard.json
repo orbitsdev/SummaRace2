@@ -92,7 +92,7 @@
     },
     {
       "type": "BUT",
-      "correct": "They faced dangerous situations during conflicts and emergencies",
+      "correct": "They faced danger during wars and emergencies",
       "distractors": [
         "They had no homes",
         "They could not find food"
@@ -108,7 +108,7 @@
     },
     {
       "type": "THEN",
-      "correct": "They were honored with the Dickin Medal for their service",
+      "correct": "They were honored with the Dickin Medal",
       "distractors": [
         "They were forgotten after the war ended",
         "They were never given any award"

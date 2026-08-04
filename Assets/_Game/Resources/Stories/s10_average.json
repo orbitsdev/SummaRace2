@@ -92,7 +92,7 @@
     },
     {
       "type": "BUT",
-      "correct": "Many soldiers and families suffered during and after the Civil War",
+      "correct": "Many soldiers and families suffered in the Civil War",
       "distractors": [
         "Many hospitals refused to accept her help",
         "Many families moved away before the war"
@@ -100,7 +100,7 @@
     },
     {
       "type": "SO",
-      "correct": "She gathered supplies, cared for soldiers, and searched for missing people",
+      "correct": "She gathered supplies and cared for soldiers",
       "distractors": [
         "She waited at home until the war ended",
         "She wrote letters instead of helping soldiers"
@@ -108,7 +108,7 @@
     },
     {
       "type": "THEN",
-      "correct": "She founded the American Red Cross and became a respected hero",
+      "correct": "She founded the American Red Cross",
       "distractors": [
         "She stopped helping people after the war",
         "She joined the army as a soldier"

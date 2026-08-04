@@ -84,7 +84,7 @@
     },
     {
       "type": "WANTED",
-      "correct": "To find safety and rebuild their lives after the flood",
+      "correct": "To find safety and rebuild their lives",
       "distractors": [
         "To buy a wagon",
         "To move to another country"
@@ -108,7 +108,7 @@
     },
     {
       "type": "THEN",
-      "correct": "They discovered that their bad luck led to good outcomes",
+      "correct": "They learned their bad luck led to good things",
       "distractors": [
         "They stayed unlucky for the whole journey",
         "They never learned why things went wrong"

@@ -76,7 +76,7 @@
   "elements": [
     {
       "type": "SOMEBODY",
-      "correct": "People who visit AgitAgueda and other festivals in Portugal",
+      "correct": "People who visit AgitAgueda and other festivals",
       "distractors": [
         "Farmers who work in the countryside",
         "Sailors who travel along the coast"
@@ -92,7 +92,7 @@
     },
     {
       "type": "BUT",
-      "correct": "There are many different festivals and attractions to explore",
+      "correct": "There are many festivals and attractions to explore",
       "distractors": [
         "There is very little to see in Portugal",
         "There are no festivals during the summer"
@@ -100,7 +100,7 @@
     },
     {
       "type": "SO",
-      "correct": "They visited AgitAgueda and experienced its unique events and landmarks",
+      "correct": "They visited AgitAgueda and its famous landmarks",
       "distractors": [
         "They stayed inside their hotel the whole time",
         "They avoided the local traditions and food"
@@ -108,7 +108,7 @@
     },
     {
       "type": "THEN",
-      "correct": "They discovered Portugal's rich traditions and festival culture",
+      "correct": "They discovered Portugal's rich festival traditions",
       "distractors": [
         "They left without learning anything new",
         "They decided never to return to Portugal"

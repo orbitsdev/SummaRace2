@@ -100,7 +100,7 @@
     },
     {
       "type": "SO",
-      "correct": "Marusia worked with the talking hedgehog to find the magical flower",
+      "correct": "Marusia and the hedgehog found the magical flower",
       "distractors": [
         "Marusia tried to fight Baba Yaga alone",
         "Marusia hid in the forest until morning"
@@ -108,7 +108,7 @@
     },
     {
       "type": "THEN",
-      "correct": "Baba Yaga released them, and Marusia and Dmitri returned home safely",
+      "correct": "Marusia and Dmitri were set free and returned home",
       "distractors": [
         "Marusia stayed trapped inside the house forever",
         "Baba Yaga kept the hedgehog as a servant"

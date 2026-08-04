@@ -92,7 +92,7 @@
     },
     {
       "type": "BUT",
-      "correct": "Life in the past was very different from their futuristic world",
+      "correct": "Life in the past was nothing like their world",
       "distractors": [
         "Life in the past seemed exactly the same",
         "Life without Mindcaps was easy to imagine"
@@ -100,7 +100,7 @@
     },
     {
       "type": "SO",
-      "correct": "Grandfather shared stories and memories from his childhood",
+      "correct": "Grandfather shared memories from his childhood",
       "distractors": [
         "Flying a spaceship",
         "Riding a Plugger"
@@ -108,7 +108,7 @@
     },
     {
       "type": "THEN",
-      "correct": "The children gained a new appreciation for life in the past",
+      "correct": "The children gained new respect for the past",
       "distractors": [
         "The children decided the old days sounded boring",
         "The children forgot everything Grandfather told them"

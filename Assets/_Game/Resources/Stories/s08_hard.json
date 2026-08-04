@@ -108,7 +108,7 @@
     },
     {
       "type": "THEN",
-      "correct": "His legs stretched out, and he learned a lesson about greed",
+      "correct": "His legs stretched out, and he learned about greed",
       "distractors": [
         "His legs stayed short and he ate everything",
         "His friends never noticed what he had done"

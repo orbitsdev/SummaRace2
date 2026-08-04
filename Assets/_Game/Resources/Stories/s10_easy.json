@@ -92,7 +92,7 @@
     },
     {
       "type": "BUT",
-      "correct": "Different natural forces create different kinds of waves",
+      "correct": "Different forces create different kinds of waves",
       "distractors": [
         "Only the wind can create ocean waves",
         "Waves always stay exactly the same size"
@@ -100,7 +100,7 @@
     },
     {
       "type": "SO",
-      "correct": "Waves form through wind, storms, earthquakes, and gravity",
+      "correct": "Waves form from wind, storms, and earthquakes",
       "distractors": [
         "Waves form only when boats pass by",
         "Waves form when clouds touch the water"

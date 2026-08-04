@@ -92,7 +92,7 @@
     },
     {
       "type": "BUT",
-      "correct": "She was nervous about making mistakes during the recital",
+      "correct": "She was nervous about making mistakes on stage",
       "distractors": [
         "She forgot her costume",
         "She missed the recital"
@@ -100,7 +100,7 @@
     },
     {
       "type": "SO",
-      "correct": "She practiced everywhere and stayed confident during her performance",
+      "correct": "She practiced everywhere and stayed confident",
       "distractors": [
         "She stopped dancing",
         "She left the stage"
@@ -108,7 +108,7 @@
     },
     {
       "type": "THEN",
-      "correct": "She finished the recital successfully and felt proud of herself",
+      "correct": "She finished the recital and felt proud",
       "distractors": [
         "She quit dancing before her solo",
         "She forgot her whole routine on stage"

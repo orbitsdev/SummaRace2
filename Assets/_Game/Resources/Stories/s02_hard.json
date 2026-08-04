@@ -92,7 +92,7 @@
     },
     {
       "type": "BUT",
-      "correct": "His selfish actions made his friends hungry and upset",
+      "correct": "His selfishness left his friends hungry and upset",
       "distractors": [
         "His friends took all of the food",
         "His shell was too heavy to carry"
@@ -100,7 +100,7 @@
     },
     {
       "type": "SO",
-      "correct": "He moved to another ditch and later helped his friends",
+      "correct": "He moved to a new ditch and later helped his friends",
       "distractors": [
         "He stayed and kept the food",
         "He raced the other snails again"

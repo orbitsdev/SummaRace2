@@ -92,7 +92,7 @@
     },
     {
       "type": "BUT",
-      "correct": "Skateboarding requires balance, practice, and safety skills",
+      "correct": "Skateboarding requires balance and practice",
       "distractors": [
         "Finding food",
         "Building a skateboard"
@@ -100,7 +100,7 @@
     },
     {
       "type": "SO",
-      "correct": "The beginner learned the basic movements step by step",
+      "correct": "The beginner learned the basic moves step by step",
       "distractors": [
         "Watches television",
         "Buys a new skateboard every day"
