@@ -16,7 +16,7 @@ STORIES = r"C:\Users\User\Documents\2026\GAME\SummaRace2\Assets\_Game\Resources\
 def main():
     ov = json.load(open(os.path.join(HERE, "overrides.json"), encoding="utf-8"))
     errors = []
-    n_el = n_pg = 0
+    n_el = n_pg = n_opt = 0
 
     for sid, spec in ov.items():
         if sid.startswith("_"):
@@ -50,12 +50,29 @@ def main():
                 d["pages"][idx]["text"] = change["text"]
             n_pg += 1
 
+        # Reader question options, replaced one index at a time so correctIndex
+        # keeps pointing at the same answer.
+        for pno, change in spec.get("questions", {}).items():
+            idx = int(pno) - 1
+            if not 0 <= idx < len(d["pages"]):
+                errors.append("%s: no page %s" % (sid, pno))
+                continue
+            options = d["pages"][idx]["question"]["options"]
+            for oi, text in change.get("options", {}).items():
+                oi = int(oi)
+                if not 0 <= oi < len(options):
+                    errors.append("%s p%s: no option %d" % (sid, pno, oi))
+                    continue
+                options[oi] = text
+                n_opt += 1
+
         with open(path, "w", encoding="utf-8", newline="\n") as f:
             json.dump(d, f, ensure_ascii=False, indent=2)
             f.write("\n")
 
     print("element sets updated: %d" % n_el)
     print("page texts fixed    : %d" % n_pg)
+    print("question options    : %d" % n_opt)
     if errors:
         print("\nERRORS:")
         for e in errors:

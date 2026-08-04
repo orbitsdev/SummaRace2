@@ -21,6 +21,12 @@ GOLD = {"s01_easy", "s01_average", "s01_hard"}   # hand-checked, leave alone
 PRONOUNS = {"he", "she", "they", "it"}
 MAX_CARD_WORDS = 12
 
+# Race answer cards are a fixed 1.55 x 0.85 world units with font autosize capped
+# at 2.4 (F30), and the learner reads them while running. The only stories ever
+# playtested are s01_*, whose longest option is 53 characters, so 52 is "no wider
+# than a card we know is readable". Every option is a card, correct or not.
+MAX_CARD_CHARS = 52
+
 
 def words(s):
     return len(s.split())
@@ -45,10 +51,16 @@ def flags(correct, distractors):
 
     cw = words(correct)
     dw = [words(d) for d in distractors]
-    if cw > max(dw) + 5:
+    # Either direction is a tell: the odd one out is odd whether it is the long
+    # option or the short one.
+    if cw > max(dw) + 5 or cw < min(dw) - 5:
         out.append("length-tell(%d vs %s)" % (cw, dw))
     if cw > MAX_CARD_WORDS:
         out.append("too-long-for-card(%d)" % cw)
+
+    over = [len(s) for s in [correct] + list(distractors) if len(s) > MAX_CARD_CHARS]
+    if over:
+        out.append("over-card-budget(%s > %d)" % (", ".join(str(n) for n in over), MAX_CARD_CHARS))
     return out
 
 
