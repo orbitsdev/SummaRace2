@@ -11,6 +11,7 @@ namespace SummaRace.Data
         public string difficulty;      // "easy" | "average" | "hard"
         public string title;
         public string heroImage;       // Resources path, no extension
+        public string world;           // race environment recipe, one per session (RaceWorlds)
         public string mainIdea;
         public PageData[] pages;       // 1..5
         public ElementData[] elements; // exactly 5, S-W-B-S-T order

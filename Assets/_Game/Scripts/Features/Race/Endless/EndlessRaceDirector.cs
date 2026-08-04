@@ -141,6 +141,10 @@ namespace SummaRace.Features.Race.Endless
                 ? ourGm.CurrentStory
                 : SummaRace.Data.StoryLoader.Load("s01_easy");
 
+            // One visual recipe per session day, shifted by difficulty, so no two of the 30
+            // races look alike (RaceWorlds / AssetGeneration README §1-2).
+            SummaRace.Features.Race.RaceWorlds.Apply(_story.world, _story.difficulty);
+
             _pendingGateDistance = FirstGateDistance;
             _pendingElement = 0;
             _pendingIsRepresent = false;

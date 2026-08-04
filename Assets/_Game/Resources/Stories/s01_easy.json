@@ -4,6 +4,7 @@
   "difficulty": "easy",
   "title": "The Playground",
   "heroImage": "Stories/Art/s01_easy",
+  "world": "morning_suburbs",
   "mainIdea": "Molly solved a problem with her friend Bella at the playground by using an \"I message\" to express her feelings so they could properly take turns on the swing.",
   "pages": [
     {
@@ -11,7 +12,11 @@
       "narration": "Stories/Narration/s01_easy_p1",
       "question": {
         "text": "Who is the story about?",
-        "options": ["Molly and her friend Bella", "The teacher", "A boy named Duncan"],
+        "options": [
+          "Molly and her friend Bella",
+          "The teacher",
+          "A boy named Duncan"
+        ],
         "correctIndex": 0
       }
     },
@@ -20,7 +25,11 @@
       "narration": "Stories/Narration/s01_easy_p2",
       "question": {
         "text": "What did Molly want?",
-        "options": ["To go home early", "A new toy", "A turn on the swing"],
+        "options": [
+          "To go home early",
+          "A new toy",
+          "A turn on the swing"
+        ],
         "correctIndex": 2
       }
     },
@@ -29,7 +38,11 @@
       "narration": "Stories/Narration/s01_easy_p3",
       "question": {
         "text": "What was Molly's problem?",
-        "options": ["It started to rain", "Bella would not give her a turn", "She lost her lunchbox"],
+        "options": [
+          "It started to rain",
+          "Bella would not give her a turn",
+          "She lost her lunchbox"
+        ],
         "correctIndex": 1
       }
     },
@@ -38,7 +51,11 @@
       "narration": "Stories/Narration/s01_easy_p4",
       "question": {
         "text": "What did Molly decide to do?",
-        "options": ["Use an \"I message\" to share her feelings", "Tell the teacher right away", "Take the swing while Bella wasn't looking"],
+        "options": [
+          "Use an \"I message\" to share her feelings",
+          "Tell the teacher right away",
+          "Take the swing while Bella wasn't looking"
+        ],
         "correctIndex": 0
       }
     },
@@ -47,7 +64,11 @@
       "narration": "Stories/Narration/s01_easy_p5",
       "question": {
         "text": "How did the story end?",
-        "options": ["Bella stayed on the swing all day", "The teacher solved the problem", "Bella got off and Molly had her turn"],
+        "options": [
+          "Bella stayed on the swing all day",
+          "The teacher solved the problem",
+          "Bella got off and Molly had her turn"
+        ],
         "correctIndex": 2
       }
     }
@@ -56,27 +77,42 @@
     {
       "type": "SOMEBODY",
       "correct": "Molly",
-      "distractors": ["Bella", "The teacher"]
+      "distractors": [
+        "Bella",
+        "The teacher"
+      ]
     },
     {
       "type": "WANTED",
       "correct": "She wanted a turn on the swing",
-      "distractors": ["She wanted to go home early", "She wanted a brand new swing"]
+      "distractors": [
+        "She wanted to go home early",
+        "She wanted a brand new swing"
+      ]
     },
     {
       "type": "BUT",
       "correct": "Bella would not get off the swing",
-      "distractors": ["It started to rain", "The swing was broken"]
+      "distractors": [
+        "It started to rain",
+        "The swing was broken"
+      ]
     },
     {
       "type": "SO",
       "correct": "Molly used an \"I message\" to tell Bella how she felt",
-      "distractors": ["Molly told the teacher right away", "Molly walked away and gave up"]
+      "distractors": [
+        "Molly told the teacher right away",
+        "Molly walked away and gave up"
+      ]
     },
     {
       "type": "THEN",
       "correct": "Bella got off and Molly happily took her turn",
-      "distractors": ["Molly went home feeling sad", "The teacher gave them a new swing"]
+      "distractors": [
+        "Molly went home feeling sad",
+        "The teacher gave them a new swing"
+      ]
     }
   ],
   "mission": {

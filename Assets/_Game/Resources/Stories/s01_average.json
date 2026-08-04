@@ -4,6 +4,7 @@
   "difficulty": "average",
   "title": "The Day the Crayons Quit",
   "heroImage": "Stories/Art/s01_average",
+  "world": "morning_suburbs",
   "mainIdea": "Different people have different needs, and listening to them can help solve problems.",
   "pages": [
     {
@@ -11,7 +12,11 @@
       "narration": "Stories/Narration/s01_average_p1",
       "question": {
         "text": "Who is the main character in the story?",
-        "options": ["Beige Crayon", "Duncan", "Blue Crayon"],
+        "options": [
+          "Beige Crayon",
+          "Duncan",
+          "Blue Crayon"
+        ],
         "correctIndex": 1
       }
     },
@@ -20,7 +25,11 @@
       "narration": "Stories/Narration/s01_average_p2",
       "question": {
         "text": "What did Duncan want to do?",
-        "options": ["Throw away the crayons", "Buy new crayons", "Color with his crayons"],
+        "options": [
+          "Throw away the crayons",
+          "Buy new crayons",
+          "Color with his crayons"
+        ],
         "correctIndex": 2
       }
     },
@@ -29,7 +38,11 @@
       "narration": "Stories/Narration/s01_average_p3",
       "question": {
         "text": "What problem did the crayons have?",
-        "options": ["They were broken", "They were unhappy with their jobs", "They were lost"],
+        "options": [
+          "They were broken",
+          "They were unhappy with their jobs",
+          "They were lost"
+        ],
         "correctIndex": 1
       }
     },
@@ -38,7 +51,11 @@
       "narration": "Stories/Narration/s01_average_p4",
       "question": {
         "text": "What did Duncan learn from the letters?",
-        "options": ["The crayons had different complaints", "The crayons wanted new boxes", "The crayons wanted to leave school"],
+        "options": [
+          "The crayons had different complaints",
+          "The crayons wanted new boxes",
+          "The crayons wanted to leave school"
+        ],
         "correctIndex": 0
       }
     },
@@ -47,7 +64,11 @@
       "narration": "Stories/Narration/s01_average_p5",
       "question": {
         "text": "What happened at the end?",
-        "options": ["Duncan threw away the crayons", "Duncan tried to help the crayons so they could color again", "The crayons disappeared"],
+        "options": [
+          "Duncan threw away the crayons",
+          "Duncan tried to help the crayons so they could color again",
+          "The crayons disappeared"
+        ],
         "correctIndex": 1
       }
     }
@@ -56,27 +77,42 @@
     {
       "type": "SOMEBODY",
       "correct": "Duncan",
-      "distractors": ["Beige Crayon", "Blue Crayon"]
+      "distractors": [
+        "Beige Crayon",
+        "Blue Crayon"
+      ]
     },
     {
       "type": "WANTED",
       "correct": "To color with his crayons",
-      "distractors": ["To throw the crayons away", "To buy new crayons"]
+      "distractors": [
+        "To throw the crayons away",
+        "To buy new crayons"
+      ]
     },
     {
       "type": "BUT",
       "correct": "The crayons quit because they were unhappy",
-      "distractors": ["The crayons were broken", "The crayons were lost"]
+      "distractors": [
+        "The crayons were broken",
+        "The crayons were lost"
+      ]
     },
     {
       "type": "SO",
       "correct": "Duncan listened to their complaints",
-      "distractors": ["Duncan threw the crayons away", "Duncan ignored the letters"]
+      "distractors": [
+        "Duncan threw the crayons away",
+        "Duncan ignored the letters"
+      ]
     },
     {
       "type": "THEN",
       "correct": "He tried to make them happy so they could color again",
-      "distractors": ["The crayons disappeared", "Duncan gave up coloring"]
+      "distractors": [
+        "The crayons disappeared",
+        "Duncan gave up coloring"
+      ]
     }
   ],
   "mission": {
