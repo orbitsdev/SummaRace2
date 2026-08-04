@@ -1,0 +1,124 @@
+{
+  "id": "s02_average",
+  "session": 2,
+  "difficulty": "average",
+  "title": "Seeking a Friend",
+  "heroImage": "Stories/Art/s02_average",
+  "world": "bright_park",
+  "mainIdea": "Kindness means caring for others even when they need extra help.",
+  "pages": [
+    {
+      "text": "Mateo always wanted a kitten. One day, his mom took him to an animal shelter.",
+      "narration": "Stories/Narration/s02_average_p1",
+      "question": {
+        "text": "Who is the main character?",
+        "options": [
+          "Santiago",
+          "Mateo",
+          "Mateo's mom"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "At the shelter, Mateo saw an old cat named Santiago.",
+      "narration": "Stories/Narration/s02_average_p2",
+      "question": {
+        "text": "What did Mateo want?",
+        "options": [
+          "A bicycle",
+          "A kitten",
+          "A rabbit"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Santiago was old and had health problems.",
+      "narration": "Stories/Narration/s02_average_p3",
+      "question": {
+        "text": "What problem did Mateo face?",
+        "options": [
+          "The shelter was closed",
+          "Santiago needed extra care",
+          "Santiago was missing"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Mateo explained that everyone sometimes needs extra help and care.",
+      "narration": "Stories/Narration/s02_average_p4",
+      "question": {
+        "text": "What did Mateo do?",
+        "options": [
+          "He thought about Santiago's needs",
+          "He chose another cat",
+          "He left the shelter"
+        ],
+        "correctIndex": 0
+      }
+    },
+    {
+      "text": "After spending time with Santiago, Mateo knew he was the friend he wanted to bring home.",
+      "narration": "Stories/Narration/s02_average_p5",
+      "question": {
+        "text": "What happened in the end?",
+        "options": [
+          "Mateo chose Santiago",
+          "Mateo chose another pet",
+          "Mateo went home alone"
+        ],
+        "correctIndex": 0
+      }
+    }
+  ],
+  "elements": [
+    {
+      "type": "SOMEBODY",
+      "correct": "Mateo",
+      "distractors": [
+        "Santiago",
+        "Mateo's mom"
+      ]
+    },
+    {
+      "type": "WANTED",
+      "correct": "A pet to bring home",
+      "distractors": [
+        "A bicycle",
+        "A rabbit"
+      ]
+    },
+    {
+      "type": "BUT",
+      "correct": "Santiago was old and needed extra care",
+      "distractors": [
+        "The shelter was closed",
+        "Santiago was missing"
+      ]
+    },
+    {
+      "type": "SO",
+      "correct": "Mateo spent time with him and thought carefully",
+      "distractors": [
+        "Mateo chose another cat",
+        "Mateo left the shelter"
+      ]
+    },
+    {
+      "type": "THEN",
+      "correct": "He chose Santiago as his friend",
+      "distractors": [
+        "He chose another pet",
+        "He went home alone"
+      ]
+    }
+  ],
+  "mission": {
+    "playerSpeed": 6.0,
+    "checkpointSpacing": 45,
+    "startingDanger": 0,
+    "dangerPerSecond": 2.0
+  }
+}

@@ -1,0 +1,124 @@
+{
+  "id": "s10_hard",
+  "session": 10,
+  "difficulty": "hard",
+  "title": "We Also Serve",
+  "heroImage": "Stories/Art/s10_hard",
+  "world": "starlit_finale",
+  "mainIdea": "Animals have shown great courage and loyalty in helping people and deserve recognition for their service.",
+  "pages": [
+    {
+      "text": "Many animals have helped people during wars and emergencies through their hard work and loyalty.",
+      "narration": "Stories/Narration/s10_hard_p1",
+      "question": {
+        "text": "Who are the main subjects of the story?",
+        "options": [
+          "Brave service animals",
+          "Farmers",
+          "Scientists"
+        ],
+        "correctIndex": 0
+      }
+    },
+    {
+      "text": "Maria Dickin wanted to honor animals that showed courage while helping people.",
+      "narration": "Stories/Narration/s10_hard_p2",
+      "question": {
+        "text": "What did Maria Dickin want?",
+        "options": [
+          "To train animals",
+          "To honor brave animals",
+          "To start a zoo"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Animals faced dangerous situations while carrying messages, guiding people, and helping during emergencies.",
+      "narration": "Stories/Narration/s10_hard_p3",
+      "question": {
+        "text": "What challenge did the animals face?",
+        "options": [
+          "They had no homes",
+          "They worked in dangerous situations",
+          "They could not find food"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Pigeons delivered important messages, and guide dogs helped their owners reach safety during emergencies.",
+      "narration": "Stories/Narration/s10_hard_p4",
+      "question": {
+        "text": "How did the animals help people?",
+        "options": [
+          "By performing tricks",
+          "By bravely carrying out important tasks",
+          "By guarding farms"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Because of their courage and loyalty, many animals received the Dickin Medal, a special award for service.",
+      "narration": "Stories/Narration/s10_hard_p5",
+      "question": {
+        "text": "What happened in the end?",
+        "options": [
+          "The animals were forgotten",
+          "The animals were honored with the Dickin Medal",
+          "The medal was removed"
+        ],
+        "correctIndex": 1
+      }
+    }
+  ],
+  "elements": [
+    {
+      "type": "SOMEBODY",
+      "correct": "Brave animals that served people",
+      "distractors": [
+        "Farmers",
+        "Scientists"
+      ]
+    },
+    {
+      "type": "WANTED",
+      "correct": "To help and protect others",
+      "distractors": [
+        "To train animals",
+        "To start a zoo"
+      ]
+    },
+    {
+      "type": "BUT",
+      "correct": "They faced dangerous situations during conflicts and emergencies",
+      "distractors": [
+        "They had no homes",
+        "They could not find food"
+      ]
+    },
+    {
+      "type": "SO",
+      "correct": "They worked loyally and courageously to save lives",
+      "distractors": [
+        "They performed tricks for large crowds",
+        "They guarded farms far from danger"
+      ]
+    },
+    {
+      "type": "THEN",
+      "correct": "They were honored with the Dickin Medal for their service",
+      "distractors": [
+        "They were forgotten after the war ended",
+        "They were never given any award"
+      ]
+    }
+  ],
+  "mission": {
+    "playerSpeed": 6.5,
+    "checkpointSpacing": 45,
+    "startingDanger": 0,
+    "dangerPerSecond": 2.5
+  }
+}

@@ -1,0 +1,124 @@
+{
+  "id": "s04_easy",
+  "session": 4,
+  "difficulty": "easy",
+  "title": "A Visit to the Zoo",
+  "heroImage": "Stories/Art/s04_easy",
+  "world": "blue_hour_suburbs",
+  "mainIdea": "Spending time with family and exploring new places can create happy memories.",
+  "pages": [
+    {
+      "text": "Omar and his family visited the city zoo during summer vacation.",
+      "narration": "Stories/Narration/s04_easy_p1",
+      "question": {
+        "text": "Who is the main character?",
+        "options": [
+          "Omar",
+          "The lion",
+          "The giraffe"
+        ],
+        "correctIndex": 0
+      }
+    },
+    {
+      "text": "They first saw lions resting in the shade.",
+      "narration": "Stories/Narration/s04_easy_p2",
+      "question": {
+        "text": "What did Omar's family want to do?",
+        "options": [
+          "Visit the zoo and see animals",
+          "Go shopping",
+          "Watch a movie"
+        ],
+        "correctIndex": 0
+      }
+    },
+    {
+      "text": "Next, they watched giraffes eating leaves and monkeys swinging on ropes.",
+      "narration": "Stories/Narration/s04_easy_p3",
+      "question": {
+        "text": "What animals did Omar enjoy watching?",
+        "options": [
+          "Giraffes and monkeys",
+          "Sharks and whales",
+          "Rabbits and cats"
+        ],
+        "correctIndex": 0
+      }
+    },
+    {
+      "text": "Omar's little sister enjoyed feeding the ducks.",
+      "narration": "Stories/Narration/s04_easy_p4",
+      "question": {
+        "text": "What activity did Omar's sister enjoy?",
+        "options": [
+          "Feeding the ducks",
+          "Riding a train",
+          "Taking pictures"
+        ],
+        "correctIndex": 0
+      }
+    },
+    {
+      "text": "Before leaving, they bought ice cream and took a family photo. Omar said it was one of the best days of his summer.",
+      "narration": "Stories/Narration/s04_easy_p5",
+      "question": {
+        "text": "How did Omar feel at the end?",
+        "options": [
+          "Sad",
+          "Excited and happy",
+          "Angry"
+        ],
+        "correctIndex": 1
+      }
+    }
+  ],
+  "elements": [
+    {
+      "type": "SOMEBODY",
+      "correct": "Omar and his family",
+      "distractors": [
+        "The lion",
+        "The giraffe"
+      ]
+    },
+    {
+      "type": "WANTED",
+      "correct": "To enjoy a day at the zoo",
+      "distractors": [
+        "To go shopping at the mall",
+        "To watch a movie at home"
+      ]
+    },
+    {
+      "type": "BUT",
+      "correct": "They had many animals to explore",
+      "distractors": [
+        "They arrived after the zoo closed",
+        "They lost their tickets at the gate"
+      ]
+    },
+    {
+      "type": "SO",
+      "correct": "They visited different animal exhibits",
+      "distractors": [
+        "They stayed near the entrance",
+        "They skipped most of the exhibits"
+      ]
+    },
+    {
+      "type": "THEN",
+      "correct": "They had a fun day and made happy memories",
+      "distractors": [
+        "They went home feeling bored",
+        "They forgot most of the visit"
+      ]
+    }
+  ],
+  "mission": {
+    "playerSpeed": 5.5,
+    "checkpointSpacing": 45,
+    "startingDanger": 0,
+    "dangerPerSecond": 1.5
+  }
+}

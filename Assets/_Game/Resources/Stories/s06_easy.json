@@ -1,0 +1,124 @@
+{
+  "id": "s06_easy",
+  "session": 6,
+  "difficulty": "easy",
+  "title": "You Can't Always Tell",
+  "heroImage": "Stories/Art/s06_easy",
+  "world": "golden_fields",
+  "mainIdea": "Things that seem like bad luck can sometimes lead to good outcomes.",
+  "pages": [
+    {
+      "text": "A father and son lost their home and belongings in a flood. They needed to find a safe place to stay.",
+      "narration": "Stories/Narration/s06_easy_p1",
+      "question": {
+        "text": "Who are the main characters in the story?",
+        "options": [
+          "The wagon driver",
+          "A father and his son",
+          "The innkeeper"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "The son felt upset and believed they were very unlucky. The father reminded him, \"You can't always tell.\"",
+      "narration": "Stories/Narration/s06_easy_p2",
+      "question": {
+        "text": "What did the father and son want?",
+        "options": [
+          "To find safety after the flood",
+          "To buy a wagon",
+          "To move to another country"
+        ],
+        "correctIndex": 0
+      }
+    },
+    {
+      "text": "They missed the wagon ride and could not get a room at the inn. The son thought their luck was getting worse.",
+      "narration": "Stories/Narration/s06_easy_p3",
+      "question": {
+        "text": "What problem did they face?",
+        "options": [
+          "They found too much treasure",
+          "Many things seemed to go wrong for them",
+          "They lost the treasure chest"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "They slept in a stable and continued their journey. The father stayed positive despite the difficulties.",
+      "narration": "Stories/Narration/s06_easy_p4",
+      "question": {
+        "text": "What did the father do when problems happened?",
+        "options": [
+          "He stayed hopeful and kept going",
+          "He gave up",
+          "He blamed others"
+        ],
+        "correctIndex": 0
+      }
+    },
+    {
+      "text": "Later, they learned the wagon had crashed and the inn had burned down. When they returned home, they found a treasure chest filled with jewels.",
+      "narration": "Stories/Narration/s06_easy_p5",
+      "question": {
+        "text": "What happened in the end?",
+        "options": [
+          "They remained poor",
+          "They found treasure and realized their luck was good",
+          "They lost everything again"
+        ],
+        "correctIndex": 1
+      }
+    }
+  ],
+  "elements": [
+    {
+      "type": "SOMEBODY",
+      "correct": "A father and his son",
+      "distractors": [
+        "The wagon driver",
+        "The innkeeper"
+      ]
+    },
+    {
+      "type": "WANTED",
+      "correct": "To find safety and rebuild their lives after the flood",
+      "distractors": [
+        "To buy a wagon",
+        "To move to another country"
+      ]
+    },
+    {
+      "type": "BUT",
+      "correct": "Many things kept going wrong for them",
+      "distractors": [
+        "Everything went well for them",
+        "Their house was never damaged"
+      ]
+    },
+    {
+      "type": "SO",
+      "correct": "They continued moving forward and stayed hopeful",
+      "distractors": [
+        "He gave up",
+        "He blamed others"
+      ]
+    },
+    {
+      "type": "THEN",
+      "correct": "They discovered that their bad luck led to good outcomes",
+      "distractors": [
+        "They stayed unlucky for the whole journey",
+        "They never learned why things went wrong"
+      ]
+    }
+  ],
+  "mission": {
+    "playerSpeed": 5.5,
+    "checkpointSpacing": 45,
+    "startingDanger": 0,
+    "dangerPerSecond": 1.5
+  }
+}

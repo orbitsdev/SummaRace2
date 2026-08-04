@@ -1,0 +1,124 @@
+{
+  "id": "s09_average",
+  "session": 9,
+  "difficulty": "average",
+  "title": "First Fast",
+  "heroImage": "Stories/Art/s09_average",
+  "world": "autumn_lane",
+  "mainIdea": "Perseverance, faith, and self-discipline helped Asma successfully complete her first Ramadan fast and celebrate her achievement.",
+  "pages": [
+    {
+      "text": "Asma decided to fast for the first time during Ramadan.",
+      "narration": "Stories/Narration/s09_average_p1",
+      "question": {
+        "text": "Who is the main character in the story?",
+        "options": [
+          "Asma",
+          "Her mother",
+          "Her teacher"
+        ],
+        "correctIndex": 0
+      }
+    },
+    {
+      "text": "Asma wanted to complete her first Ramadan fast with her family.",
+      "narration": "Stories/Narration/s09_average_p2",
+      "question": {
+        "text": "What did Asma want?",
+        "options": [
+          "To eat more snacks",
+          "To complete her first Ramadan fast",
+          "To stay home from school"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Asma became hungry during the day because she could not eat until after sunset.",
+      "narration": "Stories/Narration/s09_average_p3",
+      "question": {
+        "text": "What problem did Asma face?",
+        "options": [
+          "She forgot to eat breakfast",
+          "She became hungry while fasting",
+          "She lost her gifts"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Asma continued fasting every day and followed the Ramadan traditions with her family.",
+      "narration": "Stories/Narration/s09_average_p4",
+      "question": {
+        "text": "What did Asma do to solve the problem?",
+        "options": [
+          "She stopped fasting",
+          "She continued fasting and followed the Ramadan practices",
+          "She skipped school"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "At the end of Ramadan, Asma celebrated Eid al-Fitr with her family and felt proud for completing her first fast.",
+      "narration": "Stories/Narration/s09_average_p5",
+      "question": {
+        "text": "What happened in the end?",
+        "options": [
+          "Asma gave up fasting",
+          "Asma celebrated Eid al-Fitr and felt proud of herself",
+          "Asma stayed home alone"
+        ],
+        "correctIndex": 1
+      }
+    }
+  ],
+  "elements": [
+    {
+      "type": "SOMEBODY",
+      "correct": "Asma",
+      "distractors": [
+        "Asma's mother",
+        "Asma's teacher"
+      ]
+    },
+    {
+      "type": "WANTED",
+      "correct": "To complete her first Ramadan fast",
+      "distractors": [
+        "To eat more snacks",
+        "To stay home from school"
+      ]
+    },
+    {
+      "type": "BUT",
+      "correct": "She became hungry during the day and missed eating snacks",
+      "distractors": [
+        "She forgot to eat breakfast",
+        "She lost her gifts"
+      ]
+    },
+    {
+      "type": "SO",
+      "correct": "She continued fasting and followed the Ramadan practices",
+      "distractors": [
+        "She stopped fasting",
+        "She skipped school"
+      ]
+    },
+    {
+      "type": "THEN",
+      "correct": "She celebrated Eid al-Fitr and felt proud of completing her first fast",
+      "distractors": [
+        "She gave up fasting before Ramadan ended",
+        "She celebrated without finishing her first fast"
+      ]
+    }
+  ],
+  "mission": {
+    "playerSpeed": 6.0,
+    "checkpointSpacing": 45,
+    "startingDanger": 0,
+    "dangerPerSecond": 2.0
+  }
+}

@@ -1,0 +1,124 @@
+{
+  "id": "s08_average",
+  "session": 8,
+  "difficulty": "average",
+  "title": "How to Skateboard",
+  "heroImage": "Stories/Art/s08_average",
+  "world": "misty_morning",
+  "mainIdea": "Practice, patience, and safety help beginners learn how to skateboard.",
+  "pages": [
+    {
+      "text": "A beginner skateboarder wants to learn how to skateboard safely.",
+      "narration": "Stories/Narration/s08_average_p1",
+      "question": {
+        "text": "Who is the passage about?",
+        "options": [
+          "A beginner skateboarder",
+          "A bicycle rider",
+          "A race car driver"
+        ],
+        "correctIndex": 0
+      }
+    },
+    {
+      "text": "The beginner needs a skateboard, safety gear, and a safe place to practice.",
+      "narration": "Stories/Narration/s08_average_p2",
+      "question": {
+        "text": "What does a beginner need before skateboarding?",
+        "options": [
+          "A skateboard and protective gear",
+          "A motorcycle",
+          "A surfboard"
+        ],
+        "correctIndex": 0
+      }
+    },
+    {
+      "text": "Learning to balance and glide on the skateboard can be difficult at first.",
+      "narration": "Stories/Narration/s08_average_p3",
+      "question": {
+        "text": "What challenge does the beginner face?",
+        "options": [
+          "Learning balance and control",
+          "Finding food",
+          "Building a skateboard"
+        ],
+        "correctIndex": 0
+      }
+    },
+    {
+      "text": "The beginner practices pushing, balancing, braking, and getting off the board safely.",
+      "narration": "Stories/Narration/s08_average_p4",
+      "question": {
+        "text": "What does the beginner do to improve?",
+        "options": [
+          "Practices basic skateboarding skills",
+          "Watches television",
+          "Buys a new skateboard every day"
+        ],
+        "correctIndex": 0
+      }
+    },
+    {
+      "text": "After lots of practice, the beginner becomes more confident and is ready to learn tricks.",
+      "narration": "Stories/Narration/s08_average_p5",
+      "question": {
+        "text": "What happens in the end?",
+        "options": [
+          "The beginner quits skateboarding",
+          "The beginner becomes ready for more advanced tricks",
+          "The skateboard breaks"
+        ],
+        "correctIndex": 1
+      }
+    }
+  ],
+  "elements": [
+    {
+      "type": "SOMEBODY",
+      "correct": "A beginner skateboarder",
+      "distractors": [
+        "A bicycle rider",
+        "A race car driver"
+      ]
+    },
+    {
+      "type": "WANTED",
+      "correct": "To learn how to skateboard",
+      "distractors": [
+        "To learn how to ride a motorcycle",
+        "To learn how to surf big waves"
+      ]
+    },
+    {
+      "type": "BUT",
+      "correct": "Skateboarding requires balance, practice, and safety skills",
+      "distractors": [
+        "Finding food",
+        "Building a skateboard"
+      ]
+    },
+    {
+      "type": "SO",
+      "correct": "The beginner learned the basic movements step by step",
+      "distractors": [
+        "Watches television",
+        "Buys a new skateboard every day"
+      ]
+    },
+    {
+      "type": "THEN",
+      "correct": "They became ready to learn more advanced tricks",
+      "distractors": [
+        "They gave up before learning to balance",
+        "They never rode the skateboard again"
+      ]
+    }
+  ],
+  "mission": {
+    "playerSpeed": 6.0,
+    "checkpointSpacing": 45,
+    "startingDanger": 0,
+    "dangerPerSecond": 2.0
+  }
+}

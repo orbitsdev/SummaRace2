@@ -1,0 +1,124 @@
+{
+  "id": "s08_hard",
+  "session": 8,
+  "difficulty": "hard",
+  "title": "Anansi and the Cook Pots",
+  "heroImage": "Stories/Art/s08_hard",
+  "world": "misty_morning",
+  "mainIdea": "Greed can cause problems and lead to unpleasant consequences.",
+  "pages": [
+    {
+      "text": "Anansi loved food but was too lazy to cook for himself.",
+      "narration": "Stories/Narration/s08_hard_p1",
+      "question": {
+        "text": "Who is the main character in the story?",
+        "options": [
+          "Rabbit",
+          "Anansi",
+          "Fox"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Anansi wanted to eat meals from all of his friends' cook pots.",
+      "narration": "Stories/Narration/s08_hard_p2",
+      "question": {
+        "text": "What did Anansi want?",
+        "options": [
+          "To cook food",
+          "To eat food from all his friends",
+          "To build a house"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Anansi tied webs from eight cook pots to his eight legs, but all the food became ready at the same time.",
+      "narration": "Stories/Narration/s08_hard_p3",
+      "question": {
+        "text": "What problem did Anansi face?",
+        "options": [
+          "He forgot where the food was",
+          "All the cook pots were ready at once",
+          "His friends left the village"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "When his friends pulled the webs, Anansi's legs were stretched in eight different directions.",
+      "narration": "Stories/Narration/s08_hard_p4",
+      "question": {
+        "text": "What happened when the friends pulled the webs?",
+        "options": [
+          "Anansi got all the food",
+          "His legs were pulled in different directions",
+          "The webs broke"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Anansi climbed out of the river with long, skinny legs and realized his greed had caused the trouble.",
+      "narration": "Stories/Narration/s08_hard_p5",
+      "question": {
+        "text": "What happened in the end?",
+        "options": [
+          "Anansi learned a lesson about greed",
+          "Anansi became rich",
+          "Anansi ate all the food"
+        ],
+        "correctIndex": 0
+      }
+    }
+  ],
+  "elements": [
+    {
+      "type": "SOMEBODY",
+      "correct": "Anansi",
+      "distractors": [
+        "Rabbit",
+        "Fox"
+      ]
+    },
+    {
+      "type": "WANTED",
+      "correct": "To eat food from all of his friends without cooking",
+      "distractors": [
+        "To cook a big meal for his friends",
+        "To build a new house in the village"
+      ]
+    },
+    {
+      "type": "BUT",
+      "correct": "All of the cook pots became ready at the same time",
+      "distractors": [
+        "All of the cook pots were empty",
+        "All of his friends stopped cooking"
+      ]
+    },
+    {
+      "type": "SO",
+      "correct": "Every web attached to his legs was pulled at once",
+      "distractors": [
+        "Anansi got all the food",
+        "The webs broke"
+      ]
+    },
+    {
+      "type": "THEN",
+      "correct": "His legs stretched out, and he learned a lesson about greed",
+      "distractors": [
+        "His legs stayed short and he ate everything",
+        "His friends never noticed what he had done"
+      ]
+    }
+  ],
+  "mission": {
+    "playerSpeed": 6.5,
+    "checkpointSpacing": 45,
+    "startingDanger": 0,
+    "dangerPerSecond": 2.5
+  }
+}

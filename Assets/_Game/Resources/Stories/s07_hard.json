@@ -1,0 +1,124 @@
+{
+  "id": "s07_hard",
+  "session": 7,
+  "difficulty": "hard",
+  "title": "First Day at the Factory",
+  "heroImage": "Stories/Art/s07_hard",
+  "world": "night_city",
+  "mainIdea": "Hard work can be challenging, but perseverance and responsibility help people provide a better future for their families.",
+  "pages": [
+    {
+      "text": "Stanley Marks began his first day working at Ford's factory.",
+      "narration": "Stories/Narration/s07_hard_p1",
+      "question": {
+        "text": "Who is the main character in the story?",
+        "options": [
+          "Mr. Hubbard",
+          "Stanley Marks",
+          "Henry Ford"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Stanley wanted to do well at his new job so he could help support his family.",
+      "narration": "Stories/Narration/s07_hard_p2",
+      "question": {
+        "text": "What did Stanley want?",
+        "options": [
+          "To quit immediately",
+          "To succeed at his job and support his family",
+          "To become the factory manager"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "The factory work was fast, repetitive, and tiring, making the job difficult.",
+      "narration": "Stories/Narration/s07_hard_p3",
+      "question": {
+        "text": "What problem did Stanley face?",
+        "options": [
+          "The factory had no workers.",
+          "The work was difficult and exhausting.",
+          "He forgot where the factory was."
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Stanley learned his task, followed the instructions, and worked hard throughout the day.",
+      "narration": "Stories/Narration/s07_hard_p4",
+      "question": {
+        "text": "How did Stanley respond to the challenge?",
+        "options": [
+          "He refused to work.",
+          "He learned his job and worked hard.",
+          "He left during training."
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Although the work was difficult, Stanley stayed because the pay could help his family live a better life.",
+      "narration": "Stories/Narration/s07_hard_p5",
+      "question": {
+        "text": "What happened in the end?",
+        "options": [
+          "Stanley quit his job.",
+          "Stanley continued working to provide for his family.",
+          "Stanley became the owner of Ford."
+        ],
+        "correctIndex": 1
+      }
+    }
+  ],
+  "elements": [
+    {
+      "type": "SOMEBODY",
+      "correct": "Stanley Marks",
+      "distractors": [
+        "Mr. Hubbard",
+        "Henry Ford"
+      ]
+    },
+    {
+      "type": "WANTED",
+      "correct": "To succeed at his new factory job and support his family",
+      "distractors": [
+        "To quit the factory on his first day",
+        "To become the manager of the factory"
+      ]
+    },
+    {
+      "type": "BUT",
+      "correct": "The work was difficult, repetitive, and physically demanding",
+      "distractors": [
+        "The factory had no work for him",
+        "The other workers refused to help him"
+      ]
+    },
+    {
+      "type": "SO",
+      "correct": "He learned his task and worked hard on the assembly line",
+      "distractors": [
+        "He refused to work on the assembly line",
+        "He left the factory during his training"
+      ]
+    },
+    {
+      "type": "THEN",
+      "correct": "He stayed because the job could give his family a better future",
+      "distractors": [
+        "He quit the job before the day ended",
+        "He became the owner of the factory"
+      ]
+    }
+  ],
+  "mission": {
+    "playerSpeed": 6.5,
+    "checkpointSpacing": 45,
+    "startingDanger": 0,
+    "dangerPerSecond": 2.5
+  }
+}

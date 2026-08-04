@@ -1,0 +1,124 @@
+{
+  "id": "s03_hard",
+  "session": 3,
+  "difficulty": "hard",
+  "title": "The Selfish Giant",
+  "heroImage": "Stories/Art/s03_hard",
+  "world": "sunset_town",
+  "mainIdea": "Being selfish can hurt others and take away their happiness.",
+  "pages": [
+    {
+      "text": "The children loved playing in the Giant's beautiful garden after school.",
+      "narration": "Stories/Narration/s03_hard_p1",
+      "question": {
+        "text": "Who is one of the main characters?",
+        "options": [
+          "The Giant",
+          "The birds",
+          "The flowers"
+        ],
+        "correctIndex": 0
+      }
+    },
+    {
+      "text": "The garden had green grass, flowers, fruit trees, and singing birds.",
+      "narration": "Stories/Narration/s03_hard_p2",
+      "question": {
+        "text": "What did the children enjoy?",
+        "options": [
+          "Playing in the beautiful garden",
+          "Climbing mountains",
+          "Visiting a castle"
+        ],
+        "correctIndex": 0
+      }
+    },
+    {
+      "text": "One day, the Giant returned home and saw the children playing.",
+      "narration": "Stories/Narration/s03_hard_p3",
+      "question": {
+        "text": "What problem began in the story?",
+        "options": [
+          "The garden disappeared",
+          "The Giant became angry when he saw the children",
+          "The children broke the trees"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "The Giant told the children to leave and built a high wall around the garden.",
+      "narration": "Stories/Narration/s03_hard_p4",
+      "question": {
+        "text": "What did the Giant do?",
+        "options": [
+          "He invited the children to stay",
+          "He chased the children away and built a wall",
+          "He planted more trees"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "The children sadly lost their favorite place to play.",
+      "narration": "Stories/Narration/s03_hard_p5",
+      "question": {
+        "text": "What happened in the end?",
+        "options": [
+          "The children continued playing",
+          "The Giant shared the garden",
+          "The children could no longer play in the garden"
+        ],
+        "correctIndex": 2
+      }
+    }
+  ],
+  "elements": [
+    {
+      "type": "SOMEBODY",
+      "correct": "The Giant",
+      "distractors": [
+        "The birds",
+        "The flowers"
+      ]
+    },
+    {
+      "type": "WANTED",
+      "correct": "To keep the garden only for himself",
+      "distractors": [
+        "To share the garden with everyone",
+        "To build a bigger house"
+      ]
+    },
+    {
+      "type": "BUT",
+      "correct": "The children loved playing there",
+      "distractors": [
+        "The garden disappeared",
+        "The children broke the trees"
+      ]
+    },
+    {
+      "type": "SO",
+      "correct": "He chased them away and built a wall",
+      "distractors": [
+        "He invited the children to stay",
+        "He planted more trees"
+      ]
+    },
+    {
+      "type": "THEN",
+      "correct": "The children lost their favorite place to play",
+      "distractors": [
+        "The children continued playing",
+        "The Giant shared the garden"
+      ]
+    }
+  ],
+  "mission": {
+    "playerSpeed": 6.5,
+    "checkpointSpacing": 45,
+    "startingDanger": 0,
+    "dangerPerSecond": 2.5
+  }
+}

@@ -1,0 +1,124 @@
+{
+  "id": "s05_easy",
+  "session": 5,
+  "difficulty": "easy",
+  "title": "The Crowded House: A Folktale",
+  "heroImage": "Stories/Art/s05_easy",
+  "world": "overcast_industrial",
+  "mainIdea": "People should appreciate what they have because things may be better than they seem.",
+  "pages": [
+    {
+      "text": "The Rubin family felt their small house was too crowded. They asked the wise Reb Solman for help.",
+      "narration": "Stories/Narration/s05_easy_p1",
+      "question": {
+        "text": "Who are the main characters in the story?",
+        "options": [
+          "Reb Solman only",
+          "The Rubin family",
+          "The village animals"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "The family wanted more space because they were always getting in each other's way.",
+      "narration": "Stories/Narration/s05_easy_p2",
+      "question": {
+        "text": "What did the Rubin family want?",
+        "options": [
+          "A bigger house",
+          "More space in their home",
+          "More visitors"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Reb Solman told them to invite relatives and bring animals inside the house. The house became even more crowded.",
+      "narration": "Stories/Narration/s05_easy_p3",
+      "question": {
+        "text": "What problem did the family face?",
+        "options": [
+          "Their house felt too crowded",
+          "They lost their animals",
+          "They moved away"
+        ],
+        "correctIndex": 0
+      }
+    },
+    {
+      "text": "The family followed Reb Solman's advice. Later, he told them to send the visitors home and put the animals outside.",
+      "narration": "Stories/Narration/s05_easy_p4",
+      "question": {
+        "text": "What did the family do to solve the problem?",
+        "options": [
+          "They built a new house",
+          "They followed Reb Solman's advice",
+          "They sold their animals"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "When the visitors left and the animals went outside, the house felt large and comfortable. The family was happy.",
+      "narration": "Stories/Narration/s05_easy_p5",
+      "question": {
+        "text": "What happened in the end?",
+        "options": [
+          "The family moved away",
+          "The house felt spacious and the family was grateful",
+          "The animals stayed inside"
+        ],
+        "correctIndex": 1
+      }
+    }
+  ],
+  "elements": [
+    {
+      "type": "SOMEBODY",
+      "correct": "The Rubin family",
+      "distractors": [
+        "Reb Solman only",
+        "The village animals"
+      ]
+    },
+    {
+      "type": "WANTED",
+      "correct": "A less crowded house",
+      "distractors": [
+        "A bigger house",
+        "More visitors"
+      ]
+    },
+    {
+      "type": "BUT",
+      "correct": "Their house felt too small and cramped",
+      "distractors": [
+        "Their animals ran away from home",
+        "Their village was too far away"
+      ]
+    },
+    {
+      "type": "SO",
+      "correct": "They followed Reb Solman's unusual advice",
+      "distractors": [
+        "They built a new house",
+        "They sold their animals"
+      ]
+    },
+    {
+      "type": "THEN",
+      "correct": "They realized their house was not crowded after all",
+      "distractors": [
+        "They moved to a bigger house",
+        "They kept the animals inside forever"
+      ]
+    }
+  ],
+  "mission": {
+    "playerSpeed": 5.5,
+    "checkpointSpacing": 45,
+    "startingDanger": 0,
+    "dangerPerSecond": 1.5
+  }
+}

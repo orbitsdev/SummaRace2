@@ -1,0 +1,124 @@
+{
+  "id": "s06_average",
+  "session": 6,
+  "difficulty": "average",
+  "title": "Shuffle to Buffalo",
+  "heroImage": "Stories/Art/s06_average",
+  "world": "golden_fields",
+  "mainIdea": "Practice and confidence helped Amelia overcome her fear and succeed in her dance recital.",
+  "pages": [
+    {
+      "text": "Amelia had a tap dance recital and wanted to do her best.",
+      "narration": "Stories/Narration/s06_average_p1",
+      "question": {
+        "text": "Who is the main character in the story?",
+        "options": [
+          "Mom",
+          "Amelia",
+          "The audience"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Amelia wanted to perform her solo dance well at the recital.",
+      "narration": "Stories/Narration/s06_average_p2",
+      "question": {
+        "text": "What did Amelia want?",
+        "options": [
+          "To skip the recital",
+          "To perform her solo successfully",
+          "To become a singer"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Amelia worried that everyone would notice if she made a mistake during her solo.",
+      "narration": "Stories/Narration/s06_average_p3",
+      "question": {
+        "text": "What problem did Amelia face?",
+        "options": [
+          "She forgot her costume",
+          "She was nervous about making mistakes",
+          "She missed the recital"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Amelia practiced everywhere and kept dancing even after making one small mistake.",
+      "narration": "Stories/Narration/s06_average_p4",
+      "question": {
+        "text": "What did Amelia do to solve the problem?",
+        "options": [
+          "She stopped dancing",
+          "She practiced and continued dancing confidently",
+          "She left the stage"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "The audience applauded, and Amelia was proud because her recital was a success.",
+      "narration": "Stories/Narration/s06_average_p5",
+      "question": {
+        "text": "What happened in the end?",
+        "options": [
+          "Amelia quit dancing",
+          "Amelia performed successfully and felt proud of herself",
+          "The recital was canceled"
+        ],
+        "correctIndex": 1
+      }
+    }
+  ],
+  "elements": [
+    {
+      "type": "SOMEBODY",
+      "correct": "Amelia",
+      "distractors": [
+        "Mom",
+        "The audience"
+      ]
+    },
+    {
+      "type": "WANTED",
+      "correct": "To perform her tap dance solo successfully",
+      "distractors": [
+        "To skip the recital",
+        "To become a singer"
+      ]
+    },
+    {
+      "type": "BUT",
+      "correct": "She was nervous about making mistakes during the recital",
+      "distractors": [
+        "She forgot her costume",
+        "She missed the recital"
+      ]
+    },
+    {
+      "type": "SO",
+      "correct": "She practiced everywhere and stayed confident during her performance",
+      "distractors": [
+        "She stopped dancing",
+        "She left the stage"
+      ]
+    },
+    {
+      "type": "THEN",
+      "correct": "She finished the recital successfully and felt proud of herself",
+      "distractors": [
+        "She quit dancing before her solo",
+        "She forgot her whole routine on stage"
+      ]
+    }
+  ],
+  "mission": {
+    "playerSpeed": 6.0,
+    "checkpointSpacing": 45,
+    "startingDanger": 0,
+    "dangerPerSecond": 2.0
+  }
+}

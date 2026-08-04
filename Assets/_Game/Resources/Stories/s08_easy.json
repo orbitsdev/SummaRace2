@@ -1,0 +1,124 @@
+{
+  "id": "s08_easy",
+  "session": 8,
+  "difficulty": "easy",
+  "title": "An Ice Idea",
+  "heroImage": "Stories/Art/s08_easy",
+  "world": "misty_morning",
+  "mainIdea": "New inventions can make life easier, but they can also change people's jobs.",
+  "pages": [
+    {
+      "text": "Doris and her family used an icebox to keep their food cold during the summer.",
+      "narration": "Stories/Narration/s08_easy_p1",
+      "question": {
+        "text": "Who is the main character in the story?",
+        "options": [
+          "Charlie",
+          "Doris",
+          "Papa"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "The family wanted to keep their food fresh, but the ice melted too quickly.",
+      "narration": "Stories/Narration/s08_easy_p2",
+      "question": {
+        "text": "What did the family want?",
+        "options": [
+          "To keep their food cold and fresh",
+          "To buy a car",
+          "To move away"
+        ],
+        "correctIndex": 0
+      }
+    },
+    {
+      "text": "The hot weather caused the ice to melt, and their food spoiled.",
+      "narration": "Stories/Narration/s08_easy_p3",
+      "question": {
+        "text": "What problem did the family face?",
+        "options": [
+          "Their refrigerator broke",
+          "Their icebox could not keep food cold enough",
+          "They lost electricity"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Mama showed Papa an advertisement for a new electric refrigerator, and they decided to buy it.",
+      "narration": "Stories/Narration/s08_easy_p4",
+      "question": {
+        "text": "What did the family do to solve the problem?",
+        "options": [
+          "Bought more ice",
+          "Purchased a new refrigerator",
+          "Stopped buying food"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "The new refrigerator kept the food fresh. Doris was happy but felt sorry for Charlie the ice man.",
+      "narration": "Stories/Narration/s08_easy_p5",
+      "question": {
+        "text": "What happened in the end?",
+        "options": [
+          "The refrigerator did not work",
+          "The family's food stayed fresh, but Doris worried about Charlie",
+          "Charlie bought the refrigerator"
+        ],
+        "correctIndex": 1
+      }
+    }
+  ],
+  "elements": [
+    {
+      "type": "SOMEBODY",
+      "correct": "Doris and her family",
+      "distractors": [
+        "Charlie",
+        "Papa"
+      ]
+    },
+    {
+      "type": "WANTED",
+      "correct": "To keep their food fresh and cold",
+      "distractors": [
+        "To buy a car",
+        "To move away"
+      ]
+    },
+    {
+      "type": "BUT",
+      "correct": "The icebox could not keep enough ice during the hot summer",
+      "distractors": [
+        "The ice man stopped coming to their street",
+        "The kitchen was too cold for the food"
+      ]
+    },
+    {
+      "type": "SO",
+      "correct": "Mama bought a new electric refrigerator",
+      "distractors": [
+        "Bought more ice",
+        "Stopped buying food"
+      ]
+    },
+    {
+      "type": "THEN",
+      "correct": "Their food stayed fresh, though Doris worried about the ice man's future",
+      "distractors": [
+        "Their food spoiled even with the refrigerator",
+        "Their family kept using the old icebox"
+      ]
+    }
+  ],
+  "mission": {
+    "playerSpeed": 5.5,
+    "checkpointSpacing": 45,
+    "startingDanger": 0,
+    "dangerPerSecond": 1.5
+  }
+}

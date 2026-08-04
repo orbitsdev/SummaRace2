@@ -1,0 +1,124 @@
+{
+  "id": "s07_average",
+  "session": 7,
+  "difficulty": "average",
+  "title": "Sploosh!",
+  "heroImage": "Stories/Art/s07_average",
+  "world": "night_city",
+  "mainIdea": "Being overconfident does not always lead to success, while teamwork and humility can bring better results.",
+  "pages": [
+    {
+      "text": "Chef Pierre wanted to become the Queen's Chef Royale by cooking his famous frog legs.",
+      "narration": "Stories/Narration/s07_average_p1",
+      "question": {
+        "text": "Who is the main character in the story?",
+        "options": [
+          "Slice",
+          "Chef Pierre",
+          "Queen Penelope"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Chef Pierre wanted to impress the queen and become her official chef.",
+      "narration": "Stories/Narration/s07_average_p2",
+      "question": {
+        "text": "What did Chef Pierre want?",
+        "options": [
+          "To catch fish",
+          "To become the Queen's Chef Royale",
+          "To grow oranges"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Chef Pierre and his assistants could not catch the biggest frog because it kept escaping.",
+      "narration": "Stories/Narration/s07_average_p3",
+      "question": {
+        "text": "What problem did Chef Pierre face?",
+        "options": [
+          "The frog kept escaping",
+          "The queen canceled the contest",
+          "His kitchen was closed"
+        ],
+        "correctIndex": 0
+      }
+    },
+    {
+      "text": "Chef Pierre went to the pond and tried to catch the frog himself, but he fell into the water.",
+      "narration": "Stories/Narration/s07_average_p4",
+      "question": {
+        "text": "What did Chef Pierre do to solve the problem?",
+        "options": [
+          "He asked the queen for help",
+          "He tried to catch the frog himself",
+          "He cooked another meal"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "The queen said she was a vegetarian, Slice and Dice became the new Chefs Royales, and Pierre became the Frog Keeper.",
+      "narration": "Stories/Narration/s07_average_p5",
+      "question": {
+        "text": "What happened in the end?",
+        "options": [
+          "Chef Pierre became the Queen's Chef Royale",
+          "Slice and Dice became the Chefs Royales, and Pierre became the Frog Keeper",
+          "The frog became the queen's pet"
+        ],
+        "correctIndex": 1
+      }
+    }
+  ],
+  "elements": [
+    {
+      "type": "SOMEBODY",
+      "correct": "Chef Pierre",
+      "distractors": [
+        "Slice",
+        "Queen Penelope"
+      ]
+    },
+    {
+      "type": "WANTED",
+      "correct": "To become the Queen's Chef Royale by cooking his famous frog legs",
+      "distractors": [
+        "To open a small bakery in the village",
+        "To cook oranges for the queen's dinner"
+      ]
+    },
+    {
+      "type": "BUT",
+      "correct": "He and his assistants could not catch the frog",
+      "distractors": [
+        "He could not find his cooking pot",
+        "He arrived late to the palace"
+      ]
+    },
+    {
+      "type": "SO",
+      "correct": "Chef Pierre tried to catch the frog himself",
+      "distractors": [
+        "Chef Pierre asked the queen for help",
+        "Chef Pierre cooked a different meal"
+      ]
+    },
+    {
+      "type": "THEN",
+      "correct": "Slice and Dice became Chefs Royales and Pierre became Frog Keeper",
+      "distractors": [
+        "Chef Pierre became the Queen's Chef Royale",
+        "The frog became the queen's new pet"
+      ]
+    }
+  ],
+  "mission": {
+    "playerSpeed": 6.0,
+    "checkpointSpacing": 45,
+    "startingDanger": 0,
+    "dangerPerSecond": 2.0
+  }
+}

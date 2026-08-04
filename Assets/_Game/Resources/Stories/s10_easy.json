@@ -1,0 +1,124 @@
+{
+  "id": "s10_easy",
+  "session": 10,
+  "difficulty": "easy",
+  "title": "Why Does the Ocean Have Waves?",
+  "heroImage": "Stories/Art/s10_easy",
+  "world": "starlit_finale",
+  "mainIdea": "Ocean waves are created by different natural forces such as wind, storms, earthquakes, and gravity.",
+  "pages": [
+    {
+      "text": "The ocean is always moving because waves carry energy through the water.",
+      "narration": "Stories/Narration/s10_easy_p1",
+      "question": {
+        "text": "What is the topic of the passage?",
+        "options": [
+          "Ocean waves",
+          "Fish",
+          "Boats"
+        ],
+        "correctIndex": 0
+      }
+    },
+    {
+      "text": "Most waves are created when wind blows across the surface of the ocean.",
+      "narration": "Stories/Narration/s10_easy_p2",
+      "question": {
+        "text": "What is the most common cause of waves?",
+        "options": [
+          "Wind",
+          "Fish",
+          "Ships"
+        ],
+        "correctIndex": 0
+      }
+    },
+    {
+      "text": "Strong storms can create dangerous waves called storm surges. Earthquakes and volcanoes can create tsunamis.",
+      "narration": "Stories/Narration/s10_easy_p3",
+      "question": {
+        "text": "What problem can severe weather cause?",
+        "options": [
+          "Storm surges",
+          "Rainbows",
+          "Icebergs"
+        ],
+        "correctIndex": 0
+      }
+    },
+    {
+      "text": "Earthquakes, landslides, and volcanic eruptions can quickly move large amounts of water and create tsunamis.",
+      "narration": "Stories/Narration/s10_easy_p4",
+      "question": {
+        "text": "What can create a tsunami?",
+        "options": [
+          "Wind only",
+          "Underwater disturbances like earthquakes",
+          "Clouds"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "The sun and moon create tides through their gravitational pull. Together, these forces keep the ocean moving.",
+      "narration": "Stories/Narration/s10_easy_p5",
+      "question": {
+        "text": "What happens in the end of the explanation?",
+        "options": [
+          "The ocean stops moving",
+          "Different forces work together to create waves and tides",
+          "Tsunamis become tides"
+        ],
+        "correctIndex": 1
+      }
+    }
+  ],
+  "elements": [
+    {
+      "type": "SOMEBODY",
+      "correct": "Ocean waves",
+      "distractors": [
+        "Fish",
+        "Boats"
+      ]
+    },
+    {
+      "type": "WANTED",
+      "correct": "To move energy across the water",
+      "distractors": [
+        "To carry fish across the ocean",
+        "To push ships toward the shore"
+      ]
+    },
+    {
+      "type": "BUT",
+      "correct": "Different natural forces create different kinds of waves",
+      "distractors": [
+        "Only the wind can create ocean waves",
+        "Waves always stay exactly the same size"
+      ]
+    },
+    {
+      "type": "SO",
+      "correct": "Waves form through wind, storms, earthquakes, and gravity",
+      "distractors": [
+        "Waves form only when boats pass by",
+        "Waves form when clouds touch the water"
+      ]
+    },
+    {
+      "type": "THEN",
+      "correct": "The ocean remains in constant motion",
+      "distractors": [
+        "The ocean stops moving",
+        "Tsunamis become tides"
+      ]
+    }
+  ],
+  "mission": {
+    "playerSpeed": 5.5,
+    "checkpointSpacing": 45,
+    "startingDanger": 0,
+    "dangerPerSecond": 1.5
+  }
+}

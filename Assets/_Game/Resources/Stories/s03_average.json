@@ -1,0 +1,124 @@
+{
+  "id": "s03_average",
+  "session": 3,
+  "difficulty": "average",
+  "title": "The Case of the Missing Lunch",
+  "heroImage": "Stories/Art/s03_average",
+  "world": "sunset_town",
+  "mainIdea": "Working together and asking for help can solve problems more easily.",
+  "pages": [
+    {
+      "text": "Timmy was upset because his favorite lunchbox was missing.",
+      "narration": "Stories/Narration/s03_average_p1",
+      "question": {
+        "text": "Who is the main character?",
+        "options": [
+          "Sarah",
+          "Timmy",
+          "Jake"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Timmy searched the classroom but could not find his lunchbox.",
+      "narration": "Stories/Narration/s03_average_p2",
+      "question": {
+        "text": "What did Timmy want?",
+        "options": [
+          "To buy a new lunchbox",
+          "To find his missing lunchbox",
+          "To go home"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "His friends noticed he was upset and decided to help him search.",
+      "narration": "Stories/Narration/s03_average_p3",
+      "question": {
+        "text": "What problem did Timmy face?",
+        "options": [
+          "His lunchbox was missing",
+          "He forgot his homework",
+          "He lost his backpack"
+        ],
+        "correctIndex": 0
+      }
+    },
+    {
+      "text": "The friends remembered that Timmy had his lunchbox during recess and searched the playground.",
+      "narration": "Stories/Narration/s03_average_p4",
+      "question": {
+        "text": "What did Timmy and his friends do?",
+        "options": [
+          "They stopped looking",
+          "They searched for clues and looked outside",
+          "They asked the teacher for a new lunchbox"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Near the swings, they found the lunchbox. Timmy was happy and thanked his friends.",
+      "narration": "Stories/Narration/s03_average_p5",
+      "question": {
+        "text": "What happened in the end?",
+        "options": [
+          "The lunchbox stayed missing",
+          "Timmy found his lunchbox with his friends' help",
+          "Timmy bought a new lunchbox"
+        ],
+        "correctIndex": 1
+      }
+    }
+  ],
+  "elements": [
+    {
+      "type": "SOMEBODY",
+      "correct": "Timmy",
+      "distractors": [
+        "Sarah",
+        "Jake"
+      ]
+    },
+    {
+      "type": "WANTED",
+      "correct": "To find his missing lunchbox",
+      "distractors": [
+        "To buy a new lunchbox",
+        "To go home"
+      ]
+    },
+    {
+      "type": "BUT",
+      "correct": "He could not find it by himself",
+      "distractors": [
+        "He forgot his homework",
+        "He lost his backpack"
+      ]
+    },
+    {
+      "type": "SO",
+      "correct": "His friends helped him search",
+      "distractors": [
+        "His friends stopped looking for it",
+        "His teacher gave him a new lunchbox"
+      ]
+    },
+    {
+      "type": "THEN",
+      "correct": "They found the lunchbox near the swings",
+      "distractors": [
+        "They never found the lunchbox",
+        "They found only his water bottle"
+      ]
+    }
+  ],
+  "mission": {
+    "playerSpeed": 6.0,
+    "checkpointSpacing": 45,
+    "startingDanger": 0,
+    "dangerPerSecond": 2.0
+  }
+}

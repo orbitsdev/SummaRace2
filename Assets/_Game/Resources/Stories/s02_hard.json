@@ -1,0 +1,124 @@
+{
+  "id": "s02_hard",
+  "session": 2,
+  "difficulty": "hard",
+  "title": "Shawn the Speedy Snail",
+  "heroImage": "Stories/Art/s02_hard",
+  "world": "bright_park",
+  "mainIdea": "People should use their talents to help others instead of thinking only about themselves.",
+  "pages": [
+    {
+      "text": "Shawn was the fastest and strongest snail in the ditch. He always reached the food and water first.",
+      "narration": "Stories/Narration/s02_hard_p1",
+      "question": {
+        "text": "Who is the main character in the story?",
+        "options": [
+          "The hungry snails",
+          "Shawn",
+          "The strongest ditch"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Because he was quick, Shawn ate and drank before the other snails could get any.",
+      "narration": "Stories/Narration/s02_hard_p2",
+      "question": {
+        "text": "What did Shawn want?",
+        "options": [
+          "To share with everyone",
+          "To get the food and water first",
+          "To leave the ditch"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Soon, the other snails became hungry and upset. They told Shawn to leave because he had been selfish.",
+      "narration": "Stories/Narration/s02_hard_p3",
+      "question": {
+        "text": "What problem did Shawn cause?",
+        "options": [
+          "He lost the food",
+          "He made the other snails hungry by being selfish",
+          "He could not find water"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Shawn moved to another ditch. Later, he returned and saw that his old friends were weak and starving.",
+      "narration": "Stories/Narration/s02_hard_p4",
+      "question": {
+        "text": "What did Shawn realize?",
+        "options": [
+          "His friends were doing well",
+          "His actions had hurt his friends",
+          "The ditch was empty"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Shawn carried his friends to the new ditch and brought them food. From then on, he used his speed to help others.",
+      "narration": "Stories/Narration/s02_hard_p5",
+      "question": {
+        "text": "What happened in the end?",
+        "options": [
+          "Shawn stayed selfish",
+          "Shawn helped his friends and changed his behavior",
+          "Shawn left forever"
+        ],
+        "correctIndex": 1
+      }
+    }
+  ],
+  "elements": [
+    {
+      "type": "SOMEBODY",
+      "correct": "Shawn",
+      "distractors": [
+        "The hungry snails",
+        "The strongest ditch"
+      ]
+    },
+    {
+      "type": "WANTED",
+      "correct": "To get all the food and water first",
+      "distractors": [
+        "To share with everyone",
+        "To leave the ditch"
+      ]
+    },
+    {
+      "type": "BUT",
+      "correct": "His selfish actions made his friends hungry and upset",
+      "distractors": [
+        "His friends took all of the food",
+        "His shell was too heavy to carry"
+      ]
+    },
+    {
+      "type": "SO",
+      "correct": "He moved to another ditch and later helped his friends",
+      "distractors": [
+        "He stayed and kept the food",
+        "He raced the other snails again"
+      ]
+    },
+    {
+      "type": "THEN",
+      "correct": "He used his speed to help others instead of himself",
+      "distractors": [
+        "He kept the food for himself only",
+        "He left the ditch and never returned"
+      ]
+    }
+  ],
+  "mission": {
+    "playerSpeed": 6.5,
+    "checkpointSpacing": 45,
+    "startingDanger": 0,
+    "dangerPerSecond": 2.5
+  }
+}

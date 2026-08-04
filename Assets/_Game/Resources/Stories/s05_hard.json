@@ -1,0 +1,124 @@
+{
+  "id": "s05_hard",
+  "session": 5,
+  "difficulty": "hard",
+  "title": "In Grandfather's Day",
+  "heroImage": "Stories/Art/s05_hard",
+  "world": "overcast_industrial",
+  "mainIdea": "Learning about the past helps us appreciate how life has changed over time.",
+  "pages": [
+    {
+      "text": "Sharr and Kaze visited their grandfather and asked him about life long ago.",
+      "narration": "Stories/Narration/s05_hard_p1",
+      "question": {
+        "text": "Who is sharing stories about the past?",
+        "options": [
+          "Sharr",
+          "Kaze",
+          "Grandfather"
+        ],
+        "correctIndex": 2
+      }
+    },
+    {
+      "text": "Grandfather wanted to tell his grandchildren what life was like when he was young.",
+      "narration": "Stories/Narration/s05_hard_p2",
+      "question": {
+        "text": "What did Grandfather want to do?",
+        "options": [
+          "Share memories about the past",
+          "Teach them how to drive",
+          "Show them a movie"
+        ],
+        "correctIndex": 0
+      }
+    },
+    {
+      "text": "The grandchildren were surprised to learn that people once used keyboards and drove cars.",
+      "narration": "Stories/Narration/s05_hard_p3",
+      "question": {
+        "text": "What challenge did the grandchildren have?",
+        "options": [
+          "They found it hard to imagine life in the past",
+          "They forgot the stories",
+          "They did not like technology"
+        ],
+        "correctIndex": 0
+      }
+    },
+    {
+      "text": "Grandfather showed them pictures and shared stories about cooking meals and everyday life.",
+      "narration": "Stories/Narration/s05_hard_p4",
+      "question": {
+        "text": "How did Grandfather help them understand?",
+        "options": [
+          "He shared stories and memories",
+          "He gave them homework",
+          "He bought them books"
+        ],
+        "correctIndex": 0
+      }
+    },
+    {
+      "text": "Sharr and Kaze were amazed by how different life used to be and appreciated Grandfather's stories.",
+      "narration": "Stories/Narration/s05_hard_p5",
+      "question": {
+        "text": "What happened in the end?",
+        "options": [
+          "The grandchildren appreciated learning about the past",
+          "They ignored Grandfather",
+          "They left early"
+        ],
+        "correctIndex": 0
+      }
+    }
+  ],
+  "elements": [
+    {
+      "type": "SOMEBODY",
+      "correct": "Grandfather",
+      "distractors": [
+        "Sharr",
+        "Kaze"
+      ]
+    },
+    {
+      "type": "WANTED",
+      "correct": "To share memories of life in the past",
+      "distractors": [
+        "To teach them how to drive a car",
+        "To show them a movie about space"
+      ]
+    },
+    {
+      "type": "BUT",
+      "correct": "His grandchildren found it hard to imagine",
+      "distractors": [
+        "His grandchildren forgot the stories",
+        "His grandchildren disliked old technology"
+      ]
+    },
+    {
+      "type": "SO",
+      "correct": "He showed them pictures and told stories",
+      "distractors": [
+        "He gave them homework",
+        "He bought them books"
+      ]
+    },
+    {
+      "type": "THEN",
+      "correct": "They appreciated how different life used to be",
+      "distractors": [
+        "They ignored Grandfather",
+        "They left early"
+      ]
+    }
+  ],
+  "mission": {
+    "playerSpeed": 6.5,
+    "checkpointSpacing": 45,
+    "startingDanger": 0,
+    "dangerPerSecond": 2.5
+  }
+}

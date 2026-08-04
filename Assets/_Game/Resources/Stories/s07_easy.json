@@ -1,0 +1,124 @@
+{
+  "id": "s07_easy",
+  "session": 7,
+  "difficulty": "easy",
+  "title": "The Boy With the Ball",
+  "heroImage": "Stories/Art/s07_easy",
+  "world": "night_city",
+  "mainIdea": "Sharing your talents can help you build friendships and confidence.",
+  "pages": [
+    {
+      "text": "Hector moved to a new town and did not know any other children his age.",
+      "narration": "Stories/Narration/s07_easy_p1",
+      "question": {
+        "text": "Who is the main character in the story?",
+        "options": [
+          "Hector",
+          "The teacher",
+          "Josh"
+        ],
+        "correctIndex": 0
+      }
+    },
+    {
+      "text": "Hector wanted to make friends at his new school.",
+      "narration": "Stories/Narration/s07_easy_p2",
+      "question": {
+        "text": "What did Hector want?",
+        "options": [
+          "To move away",
+          "To make friends",
+          "To buy a new ball"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Hector felt nervous because he was new and did not know anyone in his class.",
+      "narration": "Stories/Narration/s07_easy_p3",
+      "question": {
+        "text": "What problem did Hector face?",
+        "options": [
+          "He lost his ball",
+          "He did not know anyone at school",
+          "He missed the bus"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "At recess, Hector showed his classmates the ball tricks he had practiced all summer.",
+      "narration": "Stories/Narration/s07_easy_p4",
+      "question": {
+        "text": "What did Hector do to help solve his problem?",
+        "options": [
+          "He hid from his classmates",
+          "He showed his ball skills",
+          "He went home"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "The students were impressed by Hector's tricks and wanted to be his friends.",
+      "narration": "Stories/Narration/s07_easy_p5",
+      "question": {
+        "text": "What happened in the end?",
+        "options": [
+          "Hector remained lonely",
+          "Hector made new friends through his talent",
+          "Hector stopped playing with the ball"
+        ],
+        "correctIndex": 1
+      }
+    }
+  ],
+  "elements": [
+    {
+      "type": "SOMEBODY",
+      "correct": "Hector",
+      "distractors": [
+        "The teacher",
+        "Josh"
+      ]
+    },
+    {
+      "type": "WANTED",
+      "correct": "To make friends at his new school",
+      "distractors": [
+        "To move away",
+        "To buy a new ball"
+      ]
+    },
+    {
+      "type": "BUT",
+      "correct": "He was new and did not know anyone",
+      "distractors": [
+        "He lost his ball",
+        "He missed the bus"
+      ]
+    },
+    {
+      "type": "SO",
+      "correct": "He showed his ball tricks during recess",
+      "distractors": [
+        "He hid from his classmates",
+        "He went home"
+      ]
+    },
+    {
+      "type": "THEN",
+      "correct": "His classmates admired his skills and became his friends",
+      "distractors": [
+        "His classmates ignored his ball tricks",
+        "His classmates laughed and walked away"
+      ]
+    }
+  ],
+  "mission": {
+    "playerSpeed": 5.5,
+    "checkpointSpacing": 45,
+    "startingDanger": 0,
+    "dangerPerSecond": 1.5
+  }
+}

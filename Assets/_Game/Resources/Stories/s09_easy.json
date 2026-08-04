@@ -1,0 +1,124 @@
+{
+  "id": "s09_easy",
+  "session": 9,
+  "difficulty": "easy",
+  "title": "A Pool Fit for a Hedgehog",
+  "heroImage": "Stories/Art/s09_easy",
+  "world": "autumn_lane",
+  "mainIdea": "Researching before making a decision can help people choose wisely.",
+  "pages": [
+    {
+      "text": "Cora visited her friend Heather and saw her new pool. The weather was very hot.",
+      "narration": "Stories/Narration/s09_easy_p1",
+      "question": {
+        "text": "Who is the main character?",
+        "options": [
+          "Heather",
+          "Cora",
+          "The pool company"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Cora enjoyed the pool and thought it would be nice to have one of her own.",
+      "narration": "Stories/Narration/s09_easy_p2",
+      "question": {
+        "text": "What did Cora want?",
+        "options": [
+          "A larger house",
+          "A pool to stay cool",
+          "More food"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Before buying a pool, Cora needed to choose the best company.",
+      "narration": "Stories/Narration/s09_easy_p3",
+      "question": {
+        "text": "What problem did Cora face?",
+        "options": [
+          "She did not know which company to choose",
+          "She did not like swimming",
+          "She lost her money"
+        ],
+        "correctIndex": 0
+      }
+    },
+    {
+      "text": "Cora researched prices, reviews, and other companies before making her decision.",
+      "narration": "Stories/Narration/s09_easy_p4",
+      "question": {
+        "text": "What did Cora do to solve her problem?",
+        "options": [
+          "She guessed",
+          "She researched and compared companies",
+          "She asked no questions"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "A week later, Cora had her own pool and thanked Heather for the recommendation.",
+      "narration": "Stories/Narration/s09_easy_p5",
+      "question": {
+        "text": "What happened in the end?",
+        "options": [
+          "Cora bought a pool and enjoyed it",
+          "Cora changed her mind",
+          "Cora sold the pool"
+        ],
+        "correctIndex": 0
+      }
+    }
+  ],
+  "elements": [
+    {
+      "type": "SOMEBODY",
+      "correct": "Cora",
+      "distractors": [
+        "Heather",
+        "The pool company"
+      ]
+    },
+    {
+      "type": "WANTED",
+      "correct": "A pool to stay cool during the summer",
+      "distractors": [
+        "A larger house",
+        "More food"
+      ]
+    },
+    {
+      "type": "BUT",
+      "correct": "She needed to decide which company to buy from",
+      "distractors": [
+        "She did not like swimming",
+        "She lost her money"
+      ]
+    },
+    {
+      "type": "SO",
+      "correct": "She researched different pool companies and reviews",
+      "distractors": [
+        "She guessed",
+        "She asked no questions"
+      ]
+    },
+    {
+      "type": "THEN",
+      "correct": "She bought a pool and enjoyed using it",
+      "distractors": [
+        "She changed her mind about the pool",
+        "She sold the pool to Heather"
+      ]
+    }
+  ],
+  "mission": {
+    "playerSpeed": 5.5,
+    "checkpointSpacing": 45,
+    "startingDanger": 0,
+    "dangerPerSecond": 1.5
+  }
+}

@@ -1,0 +1,206 @@
+{
+  "_readme": [
+    "Editorial pass over the generated stories. Principle: keep the researcher's",
+    "SWBST 'correct' line verbatim and bend the distractors to match its register",
+    "(subject form, infinitive form, length). 'correct' is only rewritten when it",
+    "was too long to read on a moving race card (>12 words), and then only by",
+    "trimming, never by changing meaning. Where a page question is not",
+    "SWBST-shaped, distractors are rewritten to fit the SLOT rather than the",
+    "question, since the race card is answering the slot."
+  ],
+
+  "s02_average": {
+    "elements": {
+      "SO":   { "distractors": ["Mateo chose another cat", "Mateo left the shelter"] },
+      "THEN": { "distractors": ["He chose another pet", "He went home alone"] }
+    }
+  },
+  "s02_easy": {
+    "elements": {
+      "WANTED": { "distractors": ["To find a treasure", "To build a puzzle"] },
+      "BUT":    { "distractors": ["The room was completely dark", "The clue sheet was missing"] },
+      "SO":     { "distractors": ["They tried to break the key", "They called for help"] },
+      "THEN":   { "distractors": ["The ice never melted", "The key stayed frozen"] }
+    }
+  },
+  "s02_hard": {
+    "elements": {
+      "BUT":  { "distractors": ["His friends took all of the food", "His shell was too heavy to carry"] },
+      "SO":   { "distractors": ["He stayed and kept the food", "He raced the other snails again"] },
+      "THEN": { "distractors": ["He kept the food for himself only", "He left the ditch and never returned"] }
+    }
+  },
+
+  "s03_average": {
+    "elements": {
+      "SO":   { "distractors": ["His friends stopped looking for it", "His teacher gave him a new lunchbox"] },
+      "THEN": { "distractors": ["They never found the lunchbox", "They found only his water bottle"] }
+    }
+  },
+  "s03_easy": {
+    "elements": {
+      "BUT": { "distractors": ["Their favorite restaurant was closed", "Their mother forgot about dinner"] }
+    }
+  },
+  "s03_hard": {
+    "elements": {
+      "WANTED": { "distractors": ["To share the garden with everyone", "To build a bigger house"] }
+    }
+  },
+
+  "s04_average": {
+    "elements": {
+      "WANTED": { "distractors": ["A new necklace from her uncle", "A day away from school"] },
+      "BUT":    { "distractors": ["Her necklace stopped working", "Her classmates took the necklace"] },
+      "THEN":   { "distractors": ["She kept using the necklace", "She wished for even more things"] }
+    }
+  },
+  "s04_easy": {
+    "elements": {
+      "WANTED": { "distractors": ["To go shopping at the mall", "To watch a movie at home"] },
+      "BUT":    { "distractors": ["They arrived after the zoo closed", "They lost their tickets at the gate"] },
+      "SO":     { "distractors": ["They stayed near the entrance", "They skipped most of the exhibits"] },
+      "THEN":   { "distractors": ["They went home feeling bored", "They forgot most of the visit"] }
+    }
+  },
+  "s04_hard": {
+    "elements": {
+      "SOMEBODY": { "distractors": ["Farmers who work in the countryside", "Sailors who travel along the coast"] },
+      "BUT":      { "distractors": ["There is very little to see in Portugal", "There are no festivals during the summer"] },
+      "SO":       { "distractors": ["They stayed inside their hotel the whole time", "They avoided the local traditions and food"] },
+      "THEN":     { "distractors": ["They left without learning anything new", "They decided never to return to Portugal"] }
+    }
+  },
+
+  "s05_average": {
+    "elements": {
+      "SO":   { "distractors": ["Owen ignored Mzee completely", "Owen found a different friend"] },
+      "THEN": { "distractors": ["They never became friends", "They were kept apart"] }
+    }
+  },
+  "s05_easy": {
+    "elements": {
+      "BUT":  { "distractors": ["Their animals ran away from home", "Their village was too far away"] },
+      "THEN": { "distractors": ["They moved to a bigger house", "They kept the animals inside forever"] }
+    }
+  },
+  "s05_hard": {
+    "elements": {
+      "WANTED": { "distractors": ["To teach them how to drive a car", "To show them a movie about space"] },
+      "BUT":    { "distractors": ["His grandchildren forgot the stories", "His grandchildren disliked old technology"] }
+    }
+  },
+
+  "s06_average": {
+    "elements": {
+      "THEN": { "distractors": ["She quit dancing before her solo", "She forgot her whole routine on stage"] }
+    }
+  },
+  "s06_easy": {
+    "elements": {
+      "BUT":  { "distractors": ["Everything went well for them", "Their house was never damaged"] },
+      "THEN": { "distractors": ["They stayed unlucky for the whole journey", "They never learned why things went wrong"] }
+    }
+  },
+  "s06_hard": {
+    "elements": {
+      "WANTED": { "distractors": ["To learn how to build a robot", "To learn how to cook stew"] },
+      "BUT":    { "distractors": ["Life in the past seemed exactly the same", "Life without Mindcaps was easy to imagine"] },
+      "THEN":   { "distractors": ["The children decided the old days sounded boring", "The children forgot everything Grandfather told them"] }
+    }
+  },
+
+  "s07_average": {
+    "pages": {
+      "2": { "text": "Chef Pierre wanted to impress the queen and become her official chef." }
+    },
+    "elements": {
+      "WANTED": { "distractors": ["To open a small bakery in the village", "To cook oranges for the queen's dinner"] },
+      "BUT":    { "distractors": ["He could not find his cooking pot", "He arrived late to the palace"] },
+      "SO":     { "distractors": ["Chef Pierre asked the queen for help", "Chef Pierre cooked a different meal"] },
+      "THEN":   {
+        "correct": "Slice and Dice became Chefs Royales and Pierre became Frog Keeper",
+        "distractors": ["Chef Pierre became the Queen's Chef Royale", "The frog became the queen's new pet"]
+      }
+    }
+  },
+  "s07_easy": {
+    "elements": {
+      "THEN": { "distractors": ["His classmates ignored his ball tricks", "His classmates laughed and walked away"] }
+    }
+  },
+  "s07_hard": {
+    "pages": {
+      "3": { "text": "The factory work was fast, repetitive, and tiring, making the job difficult." }
+    },
+    "elements": {
+      "WANTED": { "distractors": ["To quit the factory on his first day", "To become the manager of the factory"] },
+      "BUT":    { "distractors": ["The factory had no work for him", "The other workers refused to help him"] },
+      "SO":     { "distractors": ["He refused to work on the assembly line", "He left the factory during his training"] },
+      "THEN":   {
+        "correct": "He stayed because the job could give his family a better future",
+        "distractors": ["He quit the job before the day ended", "He became the owner of the factory"]
+      }
+    }
+  },
+
+  "s08_average": {
+    "elements": {
+      "WANTED": { "distractors": ["To learn how to ride a motorcycle", "To learn how to surf big waves"] },
+      "THEN":   { "distractors": ["They gave up before learning to balance", "They never rode the skateboard again"] }
+    }
+  },
+  "s08_easy": {
+    "elements": {
+      "BUT":  { "distractors": ["The ice man stopped coming to their street", "The kitchen was too cold for the food"] },
+      "THEN": { "distractors": ["Their food spoiled even with the refrigerator", "Their family kept using the old icebox"] }
+    }
+  },
+  "s08_hard": {
+    "elements": {
+      "WANTED": { "distractors": ["To cook a big meal for his friends", "To build a new house in the village"] },
+      "BUT":    { "distractors": ["All of the cook pots were empty", "All of his friends stopped cooking"] },
+      "THEN":   { "distractors": ["His legs stayed short and he ate everything", "His friends never noticed what he had done"] }
+    }
+  },
+
+  "s09_average": {
+    "elements": {
+      "SOMEBODY": { "distractors": ["Asma's mother", "Asma's teacher"] },
+      "THEN":     { "distractors": ["She gave up fasting before Ramadan ended", "She celebrated without finishing her first fast"] }
+    }
+  },
+  "s09_easy": {
+    "elements": {
+      "THEN": { "distractors": ["She changed her mind about the pool", "She sold the pool to Heather"] }
+    }
+  },
+  "s09_hard": {
+    "elements": {
+      "BUT":  { "distractors": ["Baba Yaga hid the key to the house", "Baba Yaga took away her warm clothes"] },
+      "SO":   { "distractors": ["Marusia tried to fight Baba Yaga alone", "Marusia hid in the forest until morning"] },
+      "THEN": { "distractors": ["Marusia stayed trapped inside the house forever", "Baba Yaga kept the hedgehog as a servant"] }
+    }
+  },
+
+  "s10_average": {
+    "elements": {
+      "BUT":  { "distractors": ["Many hospitals refused to accept her help", "Many families moved away before the war"] },
+      "SO":   { "distractors": ["She waited at home until the war ended", "She wrote letters instead of helping soldiers"] },
+      "THEN": { "distractors": ["She stopped helping people after the war", "She joined the army as a soldier"] }
+    }
+  },
+  "s10_easy": {
+    "elements": {
+      "WANTED": { "distractors": ["To carry fish across the ocean", "To push ships toward the shore"] },
+      "BUT":    { "distractors": ["Only the wind can create ocean waves", "Waves always stay exactly the same size"] },
+      "SO":     { "distractors": ["Waves form only when boats pass by", "Waves form when clouds touch the water"] }
+    }
+  },
+  "s10_hard": {
+    "elements": {
+      "SO":   { "distractors": ["They performed tricks for large crowds", "They guarded farms far from danger"] },
+      "THEN": { "distractors": ["They were forgotten after the war ended", "They were never given any award"] }
+    }
+  }
+}

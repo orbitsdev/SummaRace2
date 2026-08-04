@@ -1,0 +1,124 @@
+{
+  "id": "s09_hard",
+  "session": 9,
+  "difficulty": "hard",
+  "title": "Baba Yaga, the Girl, and the Hedgehog",
+  "heroImage": "Stories/Art/s09_hard",
+  "world": "autumn_lane",
+  "mainIdea": "Wisdom, cooperation, and courage helped Marusia overcome danger and regain her freedom.",
+  "pages": [
+    {
+      "text": "Marusia accidentally entered Baba Yaga's forest and was captured.",
+      "narration": "Stories/Narration/s09_hard_p1",
+      "question": {
+        "text": "Who is the main character in the story?",
+        "options": [
+          "Baba Yaga",
+          "Marusia",
+          "Dmitri"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Marusia wanted to escape Baba Yaga's house and return home.",
+      "narration": "Stories/Narration/s09_hard_p2",
+      "question": {
+        "text": "What did Marusia want?",
+        "options": [
+          "To become a witch",
+          "To escape and return home",
+          "To stay with Baba Yaga"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Baba Yaga trapped Marusia inside the house and would not let her leave.",
+      "narration": "Stories/Narration/s09_hard_p3",
+      "question": {
+        "text": "What problem did Marusia face?",
+        "options": [
+          "She was trapped by Baba Yag a.",
+          "She lost her family.",
+          "She forgot the way to the market."
+        ],
+        "correctIndex": 0
+      }
+    },
+    {
+      "text": "Marusia worked with the talking hedgehog and told Baba Yaga where to find the magical flower.",
+      "narration": "Stories/Narration/s09_hard_p4",
+      "question": {
+        "text": "How did Marusia solve the problem?",
+        "options": [
+          "She fought Baba Yaga.",
+          "She worked with the hedgehog to find the magical flower.",
+          "She hid in the forest."
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "After Baba Yaga found the flower, Marusia and Dmitri were set free and returned home.",
+      "narration": "Stories/Narration/s09_hard_p5",
+      "question": {
+        "text": "What happened in the end?",
+        "options": [
+          "Marusia remained trapped forever.",
+          "Marusia and Dmitri were freed and safely returned home.",
+          "Baba Yaga became queen."
+        ],
+        "correctIndex": 1
+      }
+    }
+  ],
+  "elements": [
+    {
+      "type": "SOMEBODY",
+      "correct": "Marusia",
+      "distractors": [
+        "Baba Yaga",
+        "Dmitri"
+      ]
+    },
+    {
+      "type": "WANTED",
+      "correct": "To escape Baba Yaga and return home",
+      "distractors": [
+        "To become a witch",
+        "To stay with Baba Yaga"
+      ]
+    },
+    {
+      "type": "BUT",
+      "correct": "Baba Yaga captured her and magically locked the gate",
+      "distractors": [
+        "Baba Yaga hid the key to the house",
+        "Baba Yaga took away her warm clothes"
+      ]
+    },
+    {
+      "type": "SO",
+      "correct": "Marusia worked with the talking hedgehog to find the magical flower",
+      "distractors": [
+        "Marusia tried to fight Baba Yaga alone",
+        "Marusia hid in the forest until morning"
+      ]
+    },
+    {
+      "type": "THEN",
+      "correct": "Baba Yaga released them, and Marusia and Dmitri returned home safely",
+      "distractors": [
+        "Marusia stayed trapped inside the house forever",
+        "Baba Yaga kept the hedgehog as a servant"
+      ]
+    }
+  ],
+  "mission": {
+    "playerSpeed": 6.5,
+    "checkpointSpacing": 45,
+    "startingDanger": 0,
+    "dangerPerSecond": 2.5
+  }
+}

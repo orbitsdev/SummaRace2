@@ -1,0 +1,124 @@
+{
+  "id": "s03_easy",
+  "session": 3,
+  "difficulty": "easy",
+  "title": "Emma's Favorite Restaurant",
+  "heroImage": "Stories/Art/s03_easy",
+  "world": "sunset_town",
+  "mainIdea": "Trying new experiences can help people discover things they may enjoy.",
+  "pages": [
+    {
+      "text": "Emma and her family loved eating at their favorite Italian restaurant every week.",
+      "narration": "Stories/Narration/s03_easy_p1",
+      "question": {
+        "text": "Who is one of the main characters?",
+        "options": [
+          "Emma",
+          "The chef",
+          "The waiter"
+        ],
+        "correctIndex": 0
+      }
+    },
+    {
+      "text": "Emma always ordered ravioli, and Josh always ordered spaghetti.",
+      "narration": "Stories/Narration/s03_easy_p2",
+      "question": {
+        "text": "What did Emma and Josh want?",
+        "options": [
+          "To stay home",
+          "To eat at their favorite restaurant",
+          "To cook dinner"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "One week, their father suggested trying a new Lebanese restaurant.",
+      "narration": "Stories/Narration/s03_easy_p3",
+      "question": {
+        "text": "What problem did Emma and Josh face?",
+        "options": [
+          "Their favorite restaurant was closed",
+          "They had to try a new restaurant they were unsure about",
+          "They forgot to eat dinner"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Their parents encouraged them to try the new restaurant at least once.",
+      "narration": "Stories/Narration/s03_easy_p4",
+      "question": {
+        "text": "What did Emma and Josh do?",
+        "options": [
+          "They refused to go",
+          "They listened to their parents and agreed to try it",
+          "They ordered pizza"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Emma and Josh agreed to try the new restaurant and hoped they might enjoy something new.",
+      "narration": "Stories/Narration/s03_easy_p5",
+      "question": {
+        "text": "What happened in the end?",
+        "options": [
+          "They decided to try the new restaurant",
+          "They stayed at home",
+          "They went to the Italian restaurant"
+        ],
+        "correctIndex": 0
+      }
+    }
+  ],
+  "elements": [
+    {
+      "type": "SOMEBODY",
+      "correct": "Emma and Josh",
+      "distractors": [
+        "The chef",
+        "The waiter"
+      ]
+    },
+    {
+      "type": "WANTED",
+      "correct": "To eat at their favorite restaurant",
+      "distractors": [
+        "To stay home",
+        "To cook dinner"
+      ]
+    },
+    {
+      "type": "BUT",
+      "correct": "Their father wanted to try a new restaurant",
+      "distractors": [
+        "Their favorite restaurant was closed",
+        "Their mother forgot about dinner"
+      ]
+    },
+    {
+      "type": "SO",
+      "correct": "They agreed to give the new restaurant a chance",
+      "distractors": [
+        "They refused to go",
+        "They ordered pizza"
+      ]
+    },
+    {
+      "type": "THEN",
+      "correct": "They became willing to try something new",
+      "distractors": [
+        "They stayed at home",
+        "They went to the Italian restaurant"
+      ]
+    }
+  ],
+  "mission": {
+    "playerSpeed": 5.5,
+    "checkpointSpacing": 45,
+    "startingDanger": 0,
+    "dangerPerSecond": 1.5
+  }
+}

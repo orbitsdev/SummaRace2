@@ -1,0 +1,124 @@
+{
+  "id": "s05_average",
+  "session": 5,
+  "difficulty": "average",
+  "title": "Owen and Mzee",
+  "heroImage": "Stories/Art/s05_average",
+  "world": "overcast_industrial",
+  "mainIdea": "Friendship can grow between individuals who are very different from one another.",
+  "pages": [
+    {
+      "text": "A baby hippo named Owen was rescued from the sea and taken to a wildlife park.",
+      "narration": "Stories/Narration/s05_average_p1",
+      "question": {
+        "text": "Who is the main character in the story?",
+        "options": [
+          "Mzee",
+          "Owen",
+          "The zookeeper"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Owen wanted comfort and companionship after being rescued.",
+      "narration": "Stories/Narration/s05_average_p2",
+      "question": {
+        "text": "What did Owen want?",
+        "options": [
+          "A new cage",
+          "Comfort and friendship",
+          "More food"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "At the park, Owen met a giant tortoise named Mzee. At first, Mzee avoided him.",
+      "narration": "Stories/Narration/s05_average_p3",
+      "question": {
+        "text": "What problem did Owen face?",
+        "options": [
+          "He could not swim",
+          "Mzee did not want to be his friend at first",
+          "He wanted to leave the park"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Owen kept following Mzee and stayed close to him every day.",
+      "narration": "Stories/Narration/s05_average_p4",
+      "question": {
+        "text": "What did Owen do?",
+        "options": [
+          "He kept trying to be near Mzee",
+          "He ignored Mzee",
+          "He found another friend"
+        ],
+        "correctIndex": 0
+      }
+    },
+    {
+      "text": "Soon, Owen and Mzee became close friends. They spent their days together.",
+      "narration": "Stories/Narration/s05_average_p5",
+      "question": {
+        "text": "What happened in the end?",
+        "options": [
+          "Owen left the park",
+          "Owen and Mzee became close friends",
+          "Mzee moved away"
+        ],
+        "correctIndex": 1
+      }
+    }
+  ],
+  "elements": [
+    {
+      "type": "SOMEBODY",
+      "correct": "Owen",
+      "distractors": [
+        "Mzee",
+        "The zookeeper"
+      ]
+    },
+    {
+      "type": "WANTED",
+      "correct": "Comfort and friendship",
+      "distractors": [
+        "A new cage",
+        "More food"
+      ]
+    },
+    {
+      "type": "BUT",
+      "correct": "He was alone and Mzee avoided him",
+      "distractors": [
+        "He could not swim",
+        "He wanted to leave the park"
+      ]
+    },
+    {
+      "type": "SO",
+      "correct": "Owen kept staying close to Mzee",
+      "distractors": [
+        "Owen ignored Mzee completely",
+        "Owen found a different friend"
+      ]
+    },
+    {
+      "type": "THEN",
+      "correct": "They became close friends",
+      "distractors": [
+        "They never became friends",
+        "They were kept apart"
+      ]
+    }
+  ],
+  "mission": {
+    "playerSpeed": 6.0,
+    "checkpointSpacing": 45,
+    "startingDanger": 0,
+    "dangerPerSecond": 2.0
+  }
+}

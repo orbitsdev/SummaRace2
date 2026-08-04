@@ -1,0 +1,124 @@
+{
+  "id": "s10_average",
+  "session": 10,
+  "difficulty": "average",
+  "title": "Clara Barton: Civil War Hero",
+  "heroImage": "Stories/Art/s10_average",
+  "world": "starlit_finale",
+  "mainIdea": "Clara Barton dedicated her life to helping others and founded the American Red Cross.",
+  "pages": [
+    {
+      "text": "Clara Barton worked as a teacher and believed in helping others.",
+      "narration": "Stories/Narration/s10_average_p1",
+      "question": {
+        "text": "Who is the main character in the story?",
+        "options": [
+          "Clara Barton",
+          "A soldier",
+          "A doctor"
+        ],
+        "correctIndex": 0
+      }
+    },
+    {
+      "text": "Clara wanted to help people, especially soldiers who were hurt during the Civil War.",
+      "narration": "Stories/Narration/s10_average_p2",
+      "question": {
+        "text": "What did Clara Barton want?",
+        "options": [
+          "To become rich",
+          "To help people in need",
+          "To become famous"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Many soldiers were injured and needed supplies, medical care, and support.",
+      "narration": "Stories/Narration/s10_average_p3",
+      "question": {
+        "text": "What problem did Clara face?",
+        "options": [
+          "Soldiers needed help during the war",
+          "There were no schools",
+          "She lost her job"
+        ],
+        "correctIndex": 0
+      }
+    },
+    {
+      "text": "Clara gathered supplies, cared for wounded soldiers, and worked on battlefields to help them.",
+      "narration": "Stories/Narration/s10_average_p4",
+      "question": {
+        "text": "What did Clara do to help solve the problem?",
+        "options": [
+          "She ignored the soldiers",
+          "She gathered supplies and cared for wounded soldiers",
+          "She stayed at home"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "After the war, Clara helped families find missing soldiers and later started the American Red Cross to help even more people.",
+      "narration": "Stories/Narration/s10_average_p5",
+      "question": {
+        "text": "What happened in the end?",
+        "options": [
+          "Clara stopped helping others",
+          "Clara founded the American Red Cross and became a hero",
+          "Clara became a soldier"
+        ],
+        "correctIndex": 1
+      }
+    }
+  ],
+  "elements": [
+    {
+      "type": "SOMEBODY",
+      "correct": "Clara Barton",
+      "distractors": [
+        "A soldier",
+        "A doctor"
+      ]
+    },
+    {
+      "type": "WANTED",
+      "correct": "To help people in need",
+      "distractors": [
+        "To become rich",
+        "To become famous"
+      ]
+    },
+    {
+      "type": "BUT",
+      "correct": "Many soldiers and families suffered during and after the Civil War",
+      "distractors": [
+        "Many hospitals refused to accept her help",
+        "Many families moved away before the war"
+      ]
+    },
+    {
+      "type": "SO",
+      "correct": "She gathered supplies, cared for soldiers, and searched for missing people",
+      "distractors": [
+        "She waited at home until the war ended",
+        "She wrote letters instead of helping soldiers"
+      ]
+    },
+    {
+      "type": "THEN",
+      "correct": "She founded the American Red Cross and became a respected hero",
+      "distractors": [
+        "She stopped helping people after the war",
+        "She joined the army as a soldier"
+      ]
+    }
+  ],
+  "mission": {
+    "playerSpeed": 6.0,
+    "checkpointSpacing": 45,
+    "startingDanger": 0,
+    "dangerPerSecond": 2.0
+  }
+}

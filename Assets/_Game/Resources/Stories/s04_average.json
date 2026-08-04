@@ -1,0 +1,124 @@
+{
+  "id": "s04_average",
+  "session": 4,
+  "difficulty": "average",
+  "title": "Be Careful What You Wish For",
+  "heroImage": "Stories/Art/s04_average",
+  "world": "blue_hour_suburbs",
+  "mainIdea": "People should think carefully about what they wish for because actions can have unexpected consequences.",
+  "pages": [
+    {
+      "text": "Rylee received a strange necklace from her Uncle Aaron. A letter warned her to be careful with it.",
+      "narration": "Stories/Narration/s04_average_p1",
+      "question": {
+        "text": "Who is the main character in the story?",
+        "options": [
+          "Uncle Aaron",
+          "Rylee",
+          "Belinda"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "At school, Rylee wished her classmates liked the necklace. Suddenly, everyone thought it was amazing.",
+      "narration": "Stories/Narration/s04_average_p2",
+      "question": {
+        "text": "What did Rylee want?",
+        "options": [
+          "Her classmates to like the necklace",
+          "A new necklace",
+          "To go home"
+        ],
+        "correctIndex": 0
+      }
+    },
+    {
+      "text": "Later, Rylee wished for the highest score on her test. She got a perfect grade, but many classmates received low scores.",
+      "narration": "Stories/Narration/s04_average_p3",
+      "question": {
+        "text": "What problem did Rylee notice?",
+        "options": [
+          "She lost her test",
+          "Her wishes seemed to cause unexpected problems",
+          "The necklace broke"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Rylee became worried and visited a museum. She wanted to learn more about the necklace.",
+      "narration": "Stories/Narration/s04_average_p4",
+      "question": {
+        "text": "What did Rylee do to solve her problem?",
+        "options": [
+          "She hid the necklace",
+          "She asked the museum for information about it",
+          "She gave it to a friend"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "The museum explained that the necklace warned, \"Be careful what you wish for.\" Rylee decided she did not want to keep it.",
+      "narration": "Stories/Narration/s04_average_p5",
+      "question": {
+        "text": "What happened in the end?",
+        "options": [
+          "Rylee kept using the necklace",
+          "Rylee decided she no longer wanted the necklace",
+          "Rylee wished for more things"
+        ],
+        "correctIndex": 1
+      }
+    }
+  ],
+  "elements": [
+    {
+      "type": "SOMEBODY",
+      "correct": "Rylee",
+      "distractors": [
+        "Uncle Aaron",
+        "Belinda"
+      ]
+    },
+    {
+      "type": "WANTED",
+      "correct": "Good luck and for her wishes to come true",
+      "distractors": [
+        "A new necklace from her uncle",
+        "A day away from school"
+      ]
+    },
+    {
+      "type": "BUT",
+      "correct": "Her wishes seemed to have unexpected consequences",
+      "distractors": [
+        "Her necklace stopped working",
+        "Her classmates took the necklace"
+      ]
+    },
+    {
+      "type": "SO",
+      "correct": "She investigated the necklace and learned more about it",
+      "distractors": [
+        "She hid the necklace",
+        "She gave it to a friend"
+      ]
+    },
+    {
+      "type": "THEN",
+      "correct": "She decided to get rid of the necklace",
+      "distractors": [
+        "She kept using the necklace",
+        "She wished for even more things"
+      ]
+    }
+  ],
+  "mission": {
+    "playerSpeed": 6.0,
+    "checkpointSpacing": 45,
+    "startingDanger": 0,
+    "dangerPerSecond": 2.0
+  }
+}

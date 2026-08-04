@@ -1,0 +1,124 @@
+{
+  "id": "s04_hard",
+  "session": 4,
+  "difficulty": "hard",
+  "title": "AgitAgueda",
+  "heroImage": "Stories/Art/s04_hard",
+  "world": "blue_hour_suburbs",
+  "mainIdea": "Portugal's festivals allow visitors to experience the country's vibrant culture, traditions, and famous attractions.",
+  "pages": [
+    {
+      "text": "Many visitors travel to Portugal to experience AgitAgueda and its exciting celebrations.",
+      "narration": "Stories/Narration/s04_hard_p1",
+      "question": {
+        "text": "Who are the main subjects in the story?",
+        "options": [
+          "Festival visitors",
+          "Farmers",
+          "Sailors"
+        ],
+        "correctIndex": 0
+      }
+    },
+    {
+      "text": "Visitors wanted to enjoy the music, art, food, and culture during the festival.",
+      "narration": "Stories/Narration/s04_hard_p2",
+      "question": {
+        "text": "What did the visitors want?",
+        "options": [
+          "To buy a new house",
+          "To enjoy Portugal's festivals and culture",
+          "To build umbrellas"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Portugal has many festivals and attractions, giving visitors many places and events to explore.",
+      "narration": "Stories/Narration/s04_hard_p3",
+      "question": {
+        "text": "What challenge did the visitors face?",
+        "options": [
+          "They had nothing to see.",
+          "They had many festivals and attractions to explore.",
+          "They could not enter Portugal."
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "They attended AgitAgueda, visited the Umbrella Sky Project, explored local landmarks, and learned about other festivals.",
+      "narration": "Stories/Narration/s04_hard_p4",
+      "question": {
+        "text": "How did the visitors experience Portugal's culture?",
+        "options": [
+          "By staying inside their hotel",
+          "By attending festivals and visiting famous attractions",
+          "By avoiding local traditions"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "The visitors enjoyed Portugal's colorful festivals and discovered the country's rich traditions.",
+      "narration": "Stories/Narration/s04_hard_p5",
+      "question": {
+        "text": "What happened in the end?",
+        "options": [
+          "The visitors left without learning anything.",
+          "The visitors experienced Portugal's festivals and culture.",
+          "The festival was canceled."
+        ],
+        "correctIndex": 1
+      }
+    }
+  ],
+  "elements": [
+    {
+      "type": "SOMEBODY",
+      "correct": "People who visit AgitAgueda and other festivals in Portugal",
+      "distractors": [
+        "Farmers who work in the countryside",
+        "Sailors who travel along the coast"
+      ]
+    },
+    {
+      "type": "WANTED",
+      "correct": "To enjoy music, art, food, and Portuguese culture",
+      "distractors": [
+        "To buy a new house",
+        "To build umbrellas"
+      ]
+    },
+    {
+      "type": "BUT",
+      "correct": "There are many different festivals and attractions to explore",
+      "distractors": [
+        "There is very little to see in Portugal",
+        "There are no festivals during the summer"
+      ]
+    },
+    {
+      "type": "SO",
+      "correct": "They visited AgitAgueda and experienced its unique events and landmarks",
+      "distractors": [
+        "They stayed inside their hotel the whole time",
+        "They avoided the local traditions and food"
+      ]
+    },
+    {
+      "type": "THEN",
+      "correct": "They discovered Portugal's rich traditions and festival culture",
+      "distractors": [
+        "They left without learning anything new",
+        "They decided never to return to Portugal"
+      ]
+    }
+  ],
+  "mission": {
+    "playerSpeed": 6.5,
+    "checkpointSpacing": 45,
+    "startingDanger": 0,
+    "dangerPerSecond": 2.5
+  }
+}

@@ -1,0 +1,124 @@
+{
+  "id": "s02_easy",
+  "session": 2,
+  "difficulty": "easy",
+  "title": "Escaping the Room",
+  "heroImage": "Stories/Art/s02_easy",
+  "world": "bright_park",
+  "mainIdea": "Using knowledge and teamwork can help solve difficult problems.",
+  "pages": [
+    {
+      "text": "Maggie, Travis, and Lucy were inside an escape room.",
+      "narration": "Stories/Narration/s02_easy_p1",
+      "question": {
+        "text": "Who are the main characters?",
+        "options": [
+          "Maggie, Travis, and Lucy",
+          "Maggie and her teacher",
+          "Lucy and a scientist"
+        ],
+        "correctIndex": 0
+      }
+    },
+    {
+      "text": "They wanted to escape, but the key was frozen inside a block of ice.",
+      "narration": "Stories/Narration/s02_easy_p2",
+      "question": {
+        "text": "What did the friends want to do?",
+        "options": [
+          "Find a treasure",
+          "Escape the room",
+          "Build a puzzle"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Travis wrapped the ice in his sweatshirt, but it did not melt.",
+      "narration": "Stories/Narration/s02_easy_p3",
+      "question": {
+        "text": "What problem did the friends face?",
+        "options": [
+          "The door was locked and the key was stuck in ice",
+          "They lost the key",
+          "The room was dark"
+        ],
+        "correctIndex": 0
+      }
+    },
+    {
+      "text": "Lucy remembered that metal transfers heat well. Maggie placed the ice on a metal tray.",
+      "narration": "Stories/Narration/s02_easy_p4",
+      "question": {
+        "text": "What did Lucy suggest?",
+        "options": [
+          "Breaking the key",
+          "Using a metal tray to melt the ice",
+          "Calling for help"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "The ice melted, the key came out, and the friends escaped with one minute left.",
+      "narration": "Stories/Narration/s02_easy_p5",
+      "question": {
+        "text": "What happened at the end?",
+        "options": [
+          "They escaped the room",
+          "They stayed inside",
+          "They lost the key"
+        ],
+        "correctIndex": 0
+      }
+    }
+  ],
+  "elements": [
+    {
+      "type": "SOMEBODY",
+      "correct": "Maggie, Travis, and Lucy",
+      "distractors": [
+        "Maggie and her teacher",
+        "Lucy and a scientist"
+      ]
+    },
+    {
+      "type": "WANTED",
+      "correct": "To escape the room",
+      "distractors": [
+        "To find a treasure",
+        "To build a puzzle"
+      ]
+    },
+    {
+      "type": "BUT",
+      "correct": "The key was trapped inside ice",
+      "distractors": [
+        "The room was completely dark",
+        "The clue sheet was missing"
+      ]
+    },
+    {
+      "type": "SO",
+      "correct": "They used what Lucy learned in science",
+      "distractors": [
+        "They tried to break the key",
+        "They called for help"
+      ]
+    },
+    {
+      "type": "THEN",
+      "correct": "The ice melted and they escaped",
+      "distractors": [
+        "The ice never melted",
+        "The key stayed frozen"
+      ]
+    }
+  ],
+  "mission": {
+    "playerSpeed": 5.5,
+    "checkpointSpacing": 45,
+    "startingDanger": 0,
+    "dangerPerSecond": 1.5
+  }
+}

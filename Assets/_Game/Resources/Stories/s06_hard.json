@@ -1,0 +1,124 @@
+{
+  "id": "s06_hard",
+  "session": 6,
+  "difficulty": "hard",
+  "title": "In Grandfather's Day",
+  "heroImage": "Stories/Art/s06_hard",
+  "world": "golden_fields",
+  "mainIdea": "Learning about the past can help us appreciate how people lived and the experiences they enjoyed.",
+  "pages": [
+    {
+      "text": "Sharr and Kaze visited their grandfather to celebrate his birthday.",
+      "narration": "Stories/Narration/s06_hard_p1",
+      "question": {
+        "text": "Who are the main characters learning about the past?",
+        "options": [
+          "Sharr and Kaze",
+          "Owen and Mzee",
+          "Papa and Mama"
+        ],
+        "correctIndex": 0
+      }
+    },
+    {
+      "text": "The children wanted to learn what life was like before Mindcaps and thought-controlled machines.",
+      "narration": "Stories/Narration/s06_hard_p2",
+      "question": {
+        "text": "What did Sharr and Kaze want to learn?",
+        "options": [
+          "How to build a robot",
+          "What life was like in the past",
+          "How to cook stew"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Grandfather explained that people used keyboards, touchscreens, and drove cars instead of using thought commands.",
+      "narration": "Stories/Narration/s06_hard_p3",
+      "question": {
+        "text": "What was different about life long ago?",
+        "options": [
+          "People used thought commands",
+          "People typed on keyboards and drove cars",
+          "People lived on the moon"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "Grandfather shared memories of helping his mother cook stew in their kitchen.",
+      "narration": "Stories/Narration/s06_hard_p4",
+      "question": {
+        "text": "What memory did Grandfather share?",
+        "options": [
+          "Flying a spaceship",
+          "Cooking stew with his mother",
+          "Riding a Plugger"
+        ],
+        "correctIndex": 1
+      }
+    },
+    {
+      "text": "The children were amazed by Grandfather's stories and realized that life in the past had special experiences.",
+      "narration": "Stories/Narration/s06_hard_p5",
+      "question": {
+        "text": "What happened in the end?",
+        "options": [
+          "The children learned to appreciate life in the past",
+          "The children disliked the stories",
+          "Grandfather forgot his memories"
+        ],
+        "correctIndex": 0
+      }
+    }
+  ],
+  "elements": [
+    {
+      "type": "SOMEBODY",
+      "correct": "Sharr and Kaze",
+      "distractors": [
+        "Owen and Mzee",
+        "Papa and Mama"
+      ]
+    },
+    {
+      "type": "WANTED",
+      "correct": "To learn about life in Grandfather's day",
+      "distractors": [
+        "To learn how to build a robot",
+        "To learn how to cook stew"
+      ]
+    },
+    {
+      "type": "BUT",
+      "correct": "Life in the past was very different from their futuristic world",
+      "distractors": [
+        "Life in the past seemed exactly the same",
+        "Life without Mindcaps was easy to imagine"
+      ]
+    },
+    {
+      "type": "SO",
+      "correct": "Grandfather shared stories and memories from his childhood",
+      "distractors": [
+        "Flying a spaceship",
+        "Riding a Plugger"
+      ]
+    },
+    {
+      "type": "THEN",
+      "correct": "The children gained a new appreciation for life in the past",
+      "distractors": [
+        "The children decided the old days sounded boring",
+        "The children forgot everything Grandfather told them"
+      ]
+    }
+  ],
+  "mission": {
+    "playerSpeed": 6.5,
+    "checkpointSpacing": 45,
+    "startingDanger": 0,
+    "dangerPerSecond": 2.5
+  }
+}
