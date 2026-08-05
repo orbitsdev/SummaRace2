@@ -73,6 +73,12 @@ namespace SummaRace.Core
         /// <summary>Appends one SessionLog line to logs/&lt;learnerId&gt;.jsonl and flushes now.</summary>
         public void AppendLog(SessionLog log)
         {
+            // No learner means no file name: the row landed in a file literally called
+            // ".jsonl", which ExportLogs' "*.jsonl" glob then folded into the researcher's
+            // export. That only happens with no active profile — a scene played directly in
+            // the editor — so this is test traffic and must not reach the study data.
+            if (log == null || string.IsNullOrEmpty(log.learnerId)) return;
+
             try
             {
                 var dir = PathFor(PrefKeys.LogsFolder);

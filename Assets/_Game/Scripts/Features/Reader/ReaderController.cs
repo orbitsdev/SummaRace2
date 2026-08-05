@@ -79,6 +79,12 @@ namespace SummaRace.Features.Reader
 
             Praise.ResetRun(); // new story — restart the praise cadence
 
+            // Nothing plays under the voice. The narration is the accessibility support the
+            // study depends on, and the menu loop started in MainMenu otherwise ran under
+            // every page of every story. Story Select and the session map start it again on
+            // the way back, so stories 2 and 3 are not entered in silence.
+            if (AudioManager.Instance != null) AudioManager.Instance.StopMusic();
+
             if (nextButton != null) nextButton.onClick.AddListener(OnNext);
             if (voiceButton != null) voiceButton.onClick.AddListener(ToggleNarration);
             RefreshVoiceButton();
@@ -129,7 +135,14 @@ namespace SummaRace.Features.Reader
         private static bool NarrationEnabled
         {
             get => PlayerPrefs.GetInt(PrefKeys.NarrationOn, 1) == 1;
-            set => PlayerPrefs.SetInt(PrefKeys.NarrationOn, value ? 1 : 0);
+            set
+            {
+                PlayerPrefs.SetInt(PrefKeys.NarrationOn, value ? 1 : 0);
+                // Unity only writes prefs to disk on a clean quit, and a classroom tablet gets
+                // swiped away or killed instead — the learner's voice choice would silently
+                // come back reset. It is one int; flush it the moment they choose.
+                PlayerPrefs.Save();
+            }
         }
 
         private void PlayPageNarration()

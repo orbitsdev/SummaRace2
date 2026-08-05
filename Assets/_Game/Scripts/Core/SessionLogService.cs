@@ -123,9 +123,20 @@ namespace SummaRace.Core
         private void Flush()
         {
             if (_log == null) return;
-            WriteRow(false);
+            // Double-tapping a story card raises StoryStarted twice, and the first run has not
+            // recorded anything yet. Writing it would put a row in the study data that reads
+            // exactly like a genuinely abandoned run — and those always carry something, since
+            // the learner has to have answered, picked or finished to get anywhere. So an empty
+            // run is dropped; an abandoned one still writes, as before.
+            if (HasData(_log)) WriteRow(false);
             _log = null;
         }
+
+        /// <summary>Anything the researcher could analyse: a page answered, a race pick, or stars.</summary>
+        private static bool HasData(SessionLog log) =>
+            log.readingFirstChoices.Count > 0
+            || log.raceFirstPickCorrect.Count > 0
+            || log.starsEarned > 0;
 
         /// <summary>
         /// Appends one row for the run in flight. <paramref name="partial"/> marks a mid-run

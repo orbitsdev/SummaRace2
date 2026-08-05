@@ -47,6 +47,11 @@ namespace SummaRace.Features.SessionMap
         {
             if (titleText != null) titleText.text = GameText.SessionMapTitle;
 
+            // The Reader stops the music so nothing sits under the narration, and Results ends
+            // on the victory sting — so the map is where the loop comes back. PlayMusic no-ops
+            // when the same clip is already playing, so arriving from the menu costs nothing.
+            if (AudioManager.Instance != null) AudioManager.Instance.PlayMusic(AudioKeys.MusicMenu);
+
             int unlocked = UnlockedSession();
 
             for (int i = 0; i < stops.Length; i++)

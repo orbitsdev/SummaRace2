@@ -51,6 +51,12 @@ namespace SummaRace.Features.StorySelect
         {
             if (titleText != null) titleText.text = GameText.StorySelectTitle;
 
+            // The Reader stops the music so nothing sits under the narration; pick the loop
+            // back up here, or the second and third story of a session are chosen in silence.
+            // PlayMusic no-ops when the same clip is already playing, so arriving from the
+            // menu costs nothing.
+            if (AudioManager.Instance != null) AudioManager.Instance.PlayMusic(AudioKeys.MusicMenu);
+
             int session = Core.GameManager.Instance != null ? Core.GameManager.Instance.SelectedSession : 1;
 
             // Easy is always open; each later difficulty waits on the one before it.

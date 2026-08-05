@@ -74,27 +74,37 @@ namespace SummaRace.Features.Results
 
         private IEnumerator RevealRoutine(int stars)
         {
-            yield return new WaitForSeconds(0.6f);
-
-            for (int i = 0; i < stars; i++)
+            // NEXT MISSION is the only way off this screen, and it is hidden until the reveal
+            // ends — so anything that stops the reveal early used to trap the learner here with
+            // no exit at all. The finally hands the button back however this routine ends.
+            try
             {
-                if (starImages[i] != null)
+                yield return new WaitForSeconds(0.6f);
+
+                int lit = starImages != null ? Mathf.Min(stars, starImages.Length) : 0;
+                for (int i = 0; i < lit; i++)
                 {
-                    starImages[i].color = StarOn;
-                    Tween.PunchScale(starImages[i].transform, Vector3.one * 0.45f, 0.4f);
+                    if (starImages[i] != null)
+                    {
+                        starImages[i].color = StarOn;
+                        Tween.PunchScale(starImages[i].transform, Vector3.one * 0.45f, 0.4f);
+                    }
+                    if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxStar);
+                    yield return new WaitForSeconds(0.45f);
                 }
-                if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxStar);
-                yield return new WaitForSeconds(0.45f);
+
+                yield return RevealTreasure();
+
+                if (praiseText != null) praiseText.text = SummaRace.Core.Praise.ForStars(stars);
+                if (AudioManager.Instance != null) AudioManager.Instance.PlayMusic(AudioKeys.MusicVictory, false);
+
+                yield return new WaitForSeconds(0.8f);
+                if (mainIdeaPanel != null) mainIdeaPanel.SetActive(true);
             }
-
-            yield return RevealTreasure();
-
-            if (praiseText != null) praiseText.text = SummaRace.Core.Praise.ForStars(stars);
-            if (AudioManager.Instance != null) AudioManager.Instance.PlayMusic(AudioKeys.MusicVictory, false);
-
-            yield return new WaitForSeconds(0.8f);
-            if (mainIdeaPanel != null) mainIdeaPanel.SetActive(true);
-            if (nextButton != null) nextButton.gameObject.SetActive(true);
+            finally
+            {
+                if (nextButton != null) nextButton.gameObject.SetActive(true);
+            }
         }
 
         /// <summary>
@@ -106,9 +116,14 @@ namespace SummaRace.Features.Results
             if (treasureRow == null) yield break;
             var result = SummaRace.Core.GameManager.Instance != null ? SummaRace.Core.GameManager.Instance.LastRaceResult : null;
 
-            for (int i = 0; i < 5; i++)
+            // One gem per SWBST element. Driven off the story's own count rather than a literal
+            // 5 so a short story (or a race result from a run that ended early) shortens the row
+            // instead of throwing — this screen has no other exit, so nothing here may throw.
+            int gems = _story.elements != null ? Mathf.Min(5, _story.elements.Length) : 0;
+            for (int i = 0; i < gems; i++)
             {
-                bool earned = result == null || result.firstPickCorrect[i];
+                bool earned = result == null || result.firstPickCorrect == null
+                    || i >= result.firstPickCorrect.Length || result.firstPickCorrect[i];
 
                 var chip = new GameObject("Gem_" + i, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
                 chip.transform.SetParent(treasureRow, false);
@@ -129,7 +144,9 @@ namespace SummaRace.Features.Results
                 lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one;
                 lrt.offsetMin = Vector2.zero; lrt.offsetMax = Vector2.zero;
                 var letter = letterGo.GetComponent<TextMeshProUGUI>();
-                letter.text = _story.elements[i].type.Substring(0, 1);
+                // An element with no type still gets its gem — a blank chip, never an exception.
+                var type = _story.elements[i] != null ? _story.elements[i].type : null;
+                letter.text = string.IsNullOrEmpty(type) ? string.Empty : type.Substring(0, 1);
                 letter.alignment = TextAlignmentOptions.Center;
                 letter.enableAutoSizing = true;
                 letter.fontSizeMax = 46; letter.fontSizeMin = 10;

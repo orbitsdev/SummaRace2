@@ -102,8 +102,13 @@ namespace SummaRace.Core
             }
             while (!op.isDone) yield return null;
 
-            yield return Fade(1f, 0f);
+            // Cleared the moment the load is done, BEFORE the fade — the new scene's Start()
+            // has already run by then, and that is exactly where the four "never a dead end"
+            // rescues live (Reader/Arrange/Summary/Results bail to Story Select when their
+            // story is missing). With the flag still set through the fade, Load() early-returned
+            // and the rescue was silently dropped, stranding the learner on the broken screen.
             _loading = false;
+            yield return Fade(1f, 0f);
         }
 
         private IEnumerator Fade(float from, float to)

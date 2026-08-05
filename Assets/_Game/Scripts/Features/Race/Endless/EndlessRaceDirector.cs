@@ -38,8 +38,14 @@ namespace SummaRace.Features.Race.Endless
         private const float FirstGateDistance = 80f; // clear of their starting safe segments
         private const float FinishGap = 30f;         // FINISH this far after the 5th gate
         private const float MissGrace = 5f;          // metres past a gate before it counts as missed
-        private const float RepresentGap = 18f;      // metres ahead for a re-presented gold card
-        private const int MaxRepresentMisses = 3;    // consecutive dodges before anti-frustration auto-resolve
+        // Seconds of runway a re-presented gold card gets, rather than a fixed 18 metres. 18m
+        // was under a second of warning: the runner is already 2m into the segment, so the card
+        // landed ~16m ahead and at 15-28 m/s it appeared and was gone in 0.6-1.0s. The learner
+        // could not read it, let alone change lane into it — it read as a gold flicker, three
+        // times, and then the element was silently written off.
+        private const float RepresentSeconds = 3.2f;
+        private const float RepresentMinGap = 45f;   // never closer than this, however slow the run
+        private const int MaxRepresentMisses = 6;    // consecutive dodges before anti-frustration auto-resolve
         private const float CardY = 0.5f;
         // Watchdog: seconds with nothing in the world and nothing scheduled before the run is
         // treated as stranded and FINISH is forced back. Long enough that no legitimate
@@ -58,7 +64,12 @@ namespace SummaRace.Features.Race.Endless
         // still 2.5 frames of margin at the worst case (30fps x maxSpeed 30 = 1.0m per sample),
         // but the card is "collected" only ~0.8m before contact instead of ~1.25m, and the
         // window in which two lanes' cards can both fire is correspondingly smaller.
-        private const float TriggerDepth = 1.6f;
+        // FINISH got 3m in F43 for exactly this reason; the answer gates were left at 1.6m, which
+        // is a 1.27m catch window against 1.0m of travel per frame at 30fps/maxSpeed — a 27%
+        // margin. One long frame tunnels the card, and a tunnelled answer gate is recorded as a
+        // WRONG ANSWER (HandleMissedActiveGate), i.e. a rendering hitch silently becomes study
+        // data. Still well inside the half-lane, so it cannot credit two lanes at once.
+        private const float TriggerDepth = 3f;
         // Catch volume WIDTH, deliberately narrower than the visible card (1.425).
         // Measured: half a lane is 0.75, but card 1.425/2 + runner 0.576/2 = 1.0005, so a
         // full-width trigger leaves a 0.5m band each side of every lane centre where the
@@ -106,7 +117,11 @@ namespace SummaRace.Features.Race.Endless
         // Lane-change lean, fed into the runLoop blend tree's `LaneSwitch` parameter.
         private float _laneLean;
         private float? _lastRunnerX;
-        private const float LeanResponse = 4f; // units/sec toward the target lean
+        // A lane change takes laneOffset/laneChangeSpeed = 1.5/14 = 0.107s. At 4 units/sec the
+        // lean could only ever reach 0.43 of the blend range, and it peaked AFTER the kid had
+        // already arrived — so the 3-point LaneSwitch tree never left its centre child and the
+        // kid slid sideways with an unchanged forward run. 20 swings fully in ~0.05s.
+        private const float LeanResponse = 20f; // units/sec toward the target lean
         private float _worldReapplyTimer;      // throttles the pre-race world re-assert
 
         private readonly bool[] _firstPickDone = new bool[5];
@@ -133,6 +148,7 @@ namespace SummaRace.Features.Race.Endless
 
         private TextMeshProUGUI _bannerText;
         private TextMeshProUGUI _feedbackText;
+        private UnityEngine.UI.Image _feedbackPill; // dark backing so the line is readable over the world
         private float _feedbackTimer;
 
         // Persistent SWBST inventory tracker (top strip): 5 slots, current pulses, collected
@@ -259,7 +275,11 @@ namespace SummaRace.Features.Race.Endless
             if (_feedbackTimer > 0f && _feedbackText != null)
             {
                 _feedbackTimer -= Time.deltaTime;
-                if (_feedbackTimer <= 0f) _feedbackText.text = "";
+                if (_feedbackTimer <= 0f)
+                {
+                    _feedbackText.text = "";
+                    if (_feedbackPill != null) _feedbackPill.gameObject.SetActive(false);
+                }
             }
 
             var track = TrackManager.instance;
@@ -771,8 +791,16 @@ namespace SummaRace.Features.Race.Endless
             _activeElement = -1;
             _pendingElement = 5;
             _pendingIsRepresent = false;
-            _pendingGateDistance = track.worldDistance + RepresentGap;
+            _pendingGateDistance = track.worldDistance + RepresentDistance(track);
             TryPlacePending();
+        }
+
+        /// <summary>Runway for a card that is coming back — enough seconds to be seen, read and
+        /// steered into at the speed actually being run, never less than <see cref="RepresentMinGap"/>.</summary>
+        private float RepresentDistance(TrackManager track)
+        {
+            float runSpeed = track != null ? Mathf.Max(track.speed, track.minSpeed) : 10f;
+            return Mathf.Max(RepresentMinGap, runSpeed * RepresentSeconds);
         }
 
         /// <summary>Last-resort backstop for "never a dead end" (GDD): if the run ever has no
@@ -803,6 +831,16 @@ namespace SummaRace.Features.Race.Endless
                     + _activeElement + ".");
                 int element = _activeElement;
                 _activeElement = -1;
+                // Close the first pick before re-presenting. A re-present card is always the
+                // correct one, so without this a strand — a fault on OUR side, where the learner
+                // never got to choose — would be collected and recorded as a CORRECT first pick.
+                // raceFirstPickCorrect is the thesis measure and the star count; it must never be
+                // credited for an answer nobody gave. Treated as a miss, same as a run-past gate.
+                if (!_firstPickDone[element])
+                {
+                    _firstPickDone[element] = true;
+                    _firstPickCorrect[element] = false;
+                }
                 ScheduleRepresent(track, element);
                 return;
             }
@@ -902,8 +940,14 @@ namespace SummaRace.Features.Race.Endless
 
         private float NextGateGap(TrackManager track)
         {
+            // Against the speed we are ACTUALLY running, not maxSpeed. Their track starts at
+            // minSpeed (10) and accelerates at 0.2 m/s², so it only reaches maxSpeed (30) about
+            // 100s in — i.e. past the end of the race. Costing the gap at 30 made every gap ~2.3x
+            // too long: 12 intended seconds became 20-28 real ones, and the learner ran down an
+            // empty corridor between gates wondering if the game had stopped.
+            float runSpeed = Mathf.Max(track.speed, track.minSpeed);
             float bySpeed = SummaRace.Constants.GameRules.RaceSecondsPerGate
-                * DifficultyGateTime() * track.maxSpeed;
+                * DifficultyGateTime() * runSpeed;
             float floor = Mathf.Max(_story.mission.checkpointSpacing,
                 SummaRace.Constants.GameRules.RaceMinGateGap);
             return Mathf.Clamp(bySpeed, floor, SummaRace.Constants.GameRules.RaceMaxGateGap);
@@ -924,7 +968,7 @@ namespace SummaRace.Features.Race.Endless
         {
             _pendingElement = element;
             _pendingIsRepresent = true;
-            _pendingGateDistance = track.worldDistance + RepresentGap;
+            _pendingGateDistance = track.worldDistance + RepresentDistance(track);
             UpdateBanner();
             TryPlacePending();
         }
@@ -1014,7 +1058,28 @@ namespace SummaRace.Features.Race.Endless
 
             BuildTracker(canvasGo.transform);
             _bannerText = MakeHudText(canvasGo.transform, new Vector2(0.5f, 1f), new Vector2(0f, -300f), 64f);
-            _feedbackText = MakeHudText(canvasGo.transform, new Vector2(0.5f, 0.5f), new Vector2(0f, 220f), 56f);
+
+            // Feedback sits on a dark pill, as it does in the legacy race (F16). Bare coloured
+            // text over the world is barely legible: "Not quite — the glowing one!" was landing in
+            // amber on top of a sunlit street, which is the one line the learner most needs to read.
+            var pillGo = new GameObject("FeedbackPill");
+            pillGo.transform.SetParent(canvasGo.transform, false);
+            _feedbackPill = pillGo.AddComponent<UnityEngine.UI.Image>();
+            _feedbackPill.sprite = WoodPlaqueSprite();
+            _feedbackPill.type = UnityEngine.UI.Image.Type.Sliced;
+            _feedbackPill.color = new Color(0.10f, 0.12f, 0.16f, 0.88f);
+            _feedbackPill.raycastTarget = false;
+            var prt = _feedbackPill.rectTransform;
+            prt.anchorMin = prt.anchorMax = prt.pivot = new Vector2(0.5f, 0.5f);
+            prt.anchoredPosition = new Vector2(0f, 220f);
+            prt.sizeDelta = new Vector2(880f, 130f);
+            pillGo.SetActive(false);
+
+            _feedbackText = MakeHudText(pillGo.transform, new Vector2(0.5f, 0.5f), Vector2.zero, 56f);
+            _feedbackText.rectTransform.sizeDelta = new Vector2(840f, 120f);
+            _feedbackText.enableAutoSizing = true;
+            _feedbackText.fontSizeMin = 30f;
+            _feedbackText.fontSizeMax = 56f;
         }
 
         /// <summary>The 5-slot SWBST inventory strip across the top, styled as wooden plaques on
@@ -1030,7 +1095,9 @@ namespace SummaRace.Features.Race.Endless
             // Sized down from 1052x168: on a 1080-wide reference that was running edge to edge
             // and dominating the screen, which matters more here than on a HUD because the
             // learner has to watch the road and read a card at the same time.
-            rrt.anchoredPosition = new Vector2(0f, -26f);
+            // -26 put the board 26px from the top of a 1920-tall reference, i.e. underneath the
+            // Android status bar and inside the notch cutout on most phones. Dropped clear of it.
+            rrt.anchoredPosition = new Vector2(0f, -78f);
             rrt.sizeDelta = new Vector2(774f, 122f);
 
             var wood = WoodPlaqueSprite();
@@ -1072,8 +1139,15 @@ namespace SummaRace.Features.Race.Endless
                 lbl.alignment = TextAlignmentOptions.Center;
                 lbl.fontStyle = FontStyles.Bold;
                 lbl.enableAutoSizing = true;
-                lbl.fontSizeMin = 18f;
+                // 18pt on a 1080-wide reference is unreadable on a phone, and Overflow let long
+                // text escape the plaque entirely. Floor it at a legible size and clip instead,
+                // so no future content can spill across the board again.
+                lbl.fontSizeMin = 24f;
                 lbl.fontSizeMax = 50f;
+                lbl.overflowMode = TextOverflowModes.Ellipsis;
+                // One word per plaque, so never break it: with wrapping on, "SOMEBODY" split as
+                // "SOMEBO / DY". Off, autosize shrinks it to fit on a single line instead.
+                lbl.textWrappingMode = TextWrappingModes.NoWrap;
                 lbl.raycastTarget = false;
                 var lrt = lbl.rectTransform;
                 lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one;
@@ -1101,7 +1175,13 @@ namespace SummaRace.Features.Race.Endless
                 if (i < current) // collected
                 {
                     _slotBg[i].color = SummaRace.Constants.SwbstPalette.ForIndex(i);
-                    lbl.text = _story.elements[i].correct;
+                    // The element NAME, never the answer sentence. A collected answer can be 50+
+                    // characters ("Molly used an 'I message' to tell Bella how she felt") and this
+                    // plaque is 138x96 — autosizing bottomed out at the 18pt floor and the text
+                    // spilled over the neighbouring slots, unreadable. The answer itself already
+                    // flies into this slot (FlyCollectedToSlot), which is what ties it to the
+                    // element; what the tracker has to keep showing is the framework.
+                    lbl.text = string.IsNullOrEmpty(type) ? letter : type.ToUpperInvariant();
                     lbl.color = Color.white;
                     _slotRect[i].localScale = Vector3.one;
                 }
@@ -1450,9 +1530,16 @@ namespace SummaRace.Features.Race.Endless
                 timg.sprite = lumi;
                 timg.preserveAspect = true;
                 var trt = timg.rectTransform;
-                // Clear of the START button, which is centred and 520 wide (x 0.26-0.74).
-                trt.anchorMin = new Vector2(0.01f, 0.04f);
-                trt.anchorMax = new Vector2(0.24f, 0.28f);
+                // mslumi_wave.png is a 2048x1024 (2:1) canvas but Lumi herself only occupies the
+                // middle 44% of its width (x 507-1405) and 95% of its height — the rest is
+                // transparent padding. preserveAspect fits the 2:1 IMAGE to the box, so a portrait
+                // box shrank the visible girl to a fraction of it: she rendered thumbnail-sized in
+                // the corner. Size the box for the padding instead, so the girl lands where we want.
+                // Girl ~240px wide on a 1080 reference => box 240/0.44 = 547 wide, 273 tall, shifted
+                // left by the padding so her left edge sits at the screen margin and she stays clear
+                // of the START button (centred, 520 wide => x 0.26-0.74).
+                trt.anchorMin = new Vector2(-0.111f, 0.045f);
+                trt.anchorMax = new Vector2(0.395f, 0.187f);
                 trt.offsetMin = Vector2.zero; trt.offsetMax = Vector2.zero;
                 teacher.transform.localScale = Vector3.one * 0.7f;
                 Tween.Scale(teacher.transform, Vector3.one, 0.35f, Ease.OutBack, startDelay: 0.30f);
@@ -1465,8 +1552,10 @@ namespace SummaRace.Features.Race.Endless
                 if (worldCardSprite != null) bImg.type = UnityEngine.UI.Image.Type.Sliced;
                 bImg.color = new Color(1f, 1f, 1f, 0.97f);
                 var bRt = bImg.rectTransform;
-                bRt.anchorMin = new Vector2(0.03f, 0.29f);
-                bRt.anchorMax = new Vector2(0.40f, 0.345f);
+                // Sits just above her head so it reads as HER line — at 0.29 it floated in open
+                // sky with the (then thumbnail-sized) Lumi nowhere near it.
+                bRt.anchorMin = new Vector2(0.02f, 0.196f);
+                bRt.anchorMax = new Vector2(0.42f, 0.252f);
                 bRt.offsetMin = Vector2.zero; bRt.offsetMax = Vector2.zero;
                 var bubbleText = MakeHudText(bubble.transform, new Vector2(0.5f, 0.5f), Vector2.zero, 40f);
                 bubbleText.text = SummaRace.Constants.GameText.RaceBriefingLumi;
@@ -1702,11 +1791,16 @@ namespace SummaRace.Features.Race.Endless
         /// goes 0..1; the GO! swoop then locks onto the exact chase pose.</summary>
         private void OrbitStartCamera(Camera cam, float p)
         {
-            float x = Mathf.Lerp(-3.2f, 0f, p);   // behind-left -> centred
-            float y = Mathf.Lerp(1.8f, 4f, p);    // low -> chase height
-            float z = Mathf.Lerp(-3.4f, -5f, p);  // close behind -> chase distance
+            // -3.2 lateral was tuned before the world became a narrow alley (F27/F29): 3.2m to the
+            // left puts the camera at the kerb, so the near wall filled the frame. Worse, aiming
+            // 4m PAST the kid swung him to the right-hand edge — the shot was of a brick wall with
+            // a runner half out of frame. Keep the drift small and aim just above him, so he stays
+            // framed for the whole sweep while the corridor still runs away ahead.
+            float x = Mathf.Lerp(-1.2f, 0f, p);   // slightly behind-left -> centred
+            float y = Mathf.Lerp(1.6f, 4f, p);    // low -> chase height
+            float z = Mathf.Lerp(-3.0f, -5f, p);  // close behind -> chase distance
             Vector3 localPos = new Vector3(x, y, z);
-            Vector3 dir = new Vector3(0f, 1.2f, 4f) - localPos; // look forward, down the corridor
+            Vector3 dir = new Vector3(0f, 1.0f, 2.2f) - localPos; // look forward, down the corridor
             cam.transform.localPosition = localPos;
             if (dir.sqrMagnitude > 0.0001f)
                 cam.transform.localRotation = Quaternion.LookRotation(dir, Vector3.up);
@@ -1819,6 +1913,11 @@ namespace SummaRace.Features.Race.Endless
             if (_feedbackText == null) return;
             _feedbackText.text = message;
             _feedbackText.color = color;
+            if (_feedbackPill != null)
+            {
+                _feedbackPill.gameObject.SetActive(true);
+                Tween.PunchScale(_feedbackPill.transform, Vector3.one * 0.18f, 0.35f);
+            }
             Tween.PunchScale(_feedbackText.transform, Vector3.one * 0.3f, 0.35f);
             _feedbackTimer = 1.4f;
         }
@@ -1866,6 +1965,9 @@ namespace SummaRace.Features.Race.Endless
                 if (gs.scoreText != null) gs.scoreText.gameObject.SetActive(false);
                 if (gs.distanceText != null) gs.distanceText.gameObject.SetActive(false);
                 if (gs.multiplierText != null) gs.multiplierText.gameObject.SetActive(false);
+                // Their own 5-4-3-2-1 writes to this while timeToStart >= 0, which overlaps our
+                // gold 3-2-1 whenever START is tapped early — two countdowns on screen at once.
+                if (gs.countdownText != null) gs.countdownText.gameObject.SetActive(false);
 
                 // Zone backgrounds survive the text-only hide above (CoinZone/PremiumZone
                 // are the text's direct parent; DistanceZone likewise; ScoreZone is two
