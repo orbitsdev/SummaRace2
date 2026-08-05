@@ -102,12 +102,19 @@ namespace SummaRace.Core
                 var files = Directory.GetFiles(dir, "*.jsonl");
                 if (files.Length == 0) return null;
 
-                var name = string.Format("export_{0:yyyyMMdd_HHmm}.jsonl", DateTime.Now);
-                var target = PathFor(name);
+                var stamp = string.Format("{0:yyyyMMdd_HHmm}", DateTime.Now);
+                var target = PathFor("export_" + stamp + ".jsonl");
                 using (var writer = new StreamWriter(target, false))
                     foreach (var file in files)
                         foreach (var line in File.ReadAllLines(file))
                             if (!string.IsNullOrWhiteSpace(line)) writer.WriteLine(line);
+
+                // Every log row is keyed by learnerId (a guid) and deliberately carries no
+                // name, so the rows stay pseudonymised at rest. That left the export
+                // unusable on its own: 40 devices of "learnerId":"3f2b9c1e-..." with no way
+                // back to a child. Write the roster as a SEPARATE companion file so the
+                // researcher gets the mapping without de-pseudonymising the data itself.
+                WriteRoster(PathFor("export_" + stamp + "_learners.json"));
 
                 return target;
             }
@@ -115,6 +122,22 @@ namespace SummaRace.Core
             {
                 EventBus.Raise(new SaveFailed { reason = "export: " + e.Message });
                 return null;
+            }
+        }
+
+        /// <summary>Writes the learnerId → displayName roster beside an export. Best-effort:
+        /// a missing roster must never cost the researcher the logs themselves.</summary>
+        private void WriteRoster(string path)
+        {
+            try
+            {
+                var profiles = LoadProfiles();
+                if (profiles.Count == 0) return;
+                File.WriteAllText(path, JsonUtility.ToJson(new ProfileList { profiles = profiles }, true));
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"SaveManager: could not write the export roster ({e.Message}).");
             }
         }
 

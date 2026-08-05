@@ -27,6 +27,13 @@ MAX_CARD_WORDS = 12
 # than a card we know is readable". Every option is a card, correct or not.
 MAX_CARD_CHARS = 52
 
+# How much longer (in characters) `correct` may be than its longest distractor before
+# the card itself gives the answer away, and how far it may sit from the distractor
+# mean. Both are deliberately tight: at the study's three-card gate, a consistent
+# width difference is a free 50 percentage points.
+LONGEST_MARGIN = 6
+MEAN_SPREAD = 10
+
 
 def words(s):
     return len(s.split())
@@ -49,12 +56,24 @@ def flags(correct, distractors):
     if any(p != c_pron for p in d_pron):
         out.append("subject-mismatch")
 
+    # LENGTH IS THE TELL THAT MATTERS, and it must be measured in characters on the
+    # card, not in words. The old rule was words with a +/-5 tolerance, which fired on
+    # 1 of 150 sets and reported the corpus clean -- while in fact `correct` was the
+    # strictly longest of the three cards in 121 of 150 (80.7%), mean +10.8 characters.
+    # A learner who never reads and simply takes the widest card scored ~85% of race
+    # gates against 33% for guessing, which means the race could not distinguish
+    # comprehension from card-width perception at all. Gate on the shape of the cards.
+    cl = len(correct)
+    dl = [len(d) for d in distractors]
+    mean_d = sum(dl) / float(len(dl))
+    if cl > max(dl) + LONGEST_MARGIN:
+        out.append("length-tell:longest(%d vs %s)" % (cl, dl))
+    elif cl < min(dl) - LONGEST_MARGIN:
+        out.append("length-tell:shortest(%d vs %s)" % (cl, dl))
+    if abs(cl - mean_d) > MEAN_SPREAD:
+        out.append("length-spread(%d vs mean %.0f)" % (cl, mean_d))
+
     cw = words(correct)
-    dw = [words(d) for d in distractors]
-    # Either direction is a tell: the odd one out is odd whether it is the long
-    # option or the short one.
-    if cw > max(dw) + 5 or cw < min(dw) - 5:
-        out.append("length-tell(%d vs %s)" % (cw, dw))
     if cw > MAX_CARD_WORDS:
         out.append("too-long-for-card(%d)" % cw)
 

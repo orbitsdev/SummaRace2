@@ -115,9 +115,22 @@ namespace SummaRace.Features.TeacherMenu
             Status(string.Empty);
         }
 
+        /// <summary>Cancel a primed delete. Any other action counts as "not that, then":
+        /// the confirm used to stay armed across Export and Unlock, so a researcher who
+        /// tapped Delete, changed their mind, checked the export path, and later tapped
+        /// Delete again meaning to re-read the warning would wipe every profile and every
+        /// log on that device instead — irreversibly, mid-study.</summary>
+        private void Disarm()
+        {
+            if (!_deleteArmed) return;
+            _deleteArmed = false;
+            if (deleteLabel != null) deleteLabel.text = GameText.TeacherDelete;
+        }
+
         private void UnlockNext()
         {
             Click();
+            Disarm();
             int session = TeacherGate.UnlockNextSession();
             if (session == 0)
             {
@@ -133,6 +146,7 @@ namespace SummaRace.Features.TeacherMenu
         private void Export()
         {
             Click();
+            Disarm();
             string path = SaveManager.Instance != null ? SaveManager.Instance.ExportLogs() : null;
             // Show the full path: the researcher has to find this file over USB.
             Status(string.IsNullOrEmpty(path) ? GameText.TeacherNothingToExport : path);
