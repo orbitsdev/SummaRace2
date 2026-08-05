@@ -45,6 +45,8 @@ namespace SummaRace.Core
             core.AddComponent<SaveManager>();
             core.AddComponent<SceneLoader>();
             core.AddComponent<SessionLogService>();
+            // Stops the Android BACK gesture closing the app mid-story — see BackButtonGuard.
+            core.AddComponent<BackButtonGuard>();
 
             var settings = core.GetComponent<SaveManager>().LoadSettings();
             core.GetComponent<AudioManager>().SetVolumes(settings);

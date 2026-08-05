@@ -74,6 +74,9 @@ namespace SummaRace.Features.Reader
         private StoryData _story;
         private int _pageIndex;
         private bool _questionAnswered;
+        /// <summary>Latches the one-way hand-off to the race, so a double tap on NEXT cannot
+        /// raise ReadingCompleted twice and zero the logged readingSeconds. See Advance().</summary>
+        private bool _readingHandedOff;
 
         /// <summary>True once the learner has answered any question in this play-through —
         /// i.e. once the run carries a measure. Never cleared.</summary>
@@ -325,12 +328,34 @@ namespace SummaRace.Features.Reader
             for (int i = 0; i < optionButtons.Length; i++)
             {
                 if (optionButtons[i] == null) continue;
-                optionButtons[i].interactable = false;
-                if (_displayOrder[i] == question.correctIndex)
+                bool isCorrect = _displayOrder[i] == question.correctIndex;
+
+                // Grey out the options that are NOT the answer, but leave the correct one
+                // enabled. These buttons use ColorTint with a disabled colour of 0.784 grey at
+                // alpha 0.502, and the tint MULTIPLIES the image colour — so disabling the
+                // correct option rendered its green swatch at ~78% brightness and half opacity,
+                // washing out the single most important teaching beat in the Reader. Nothing is
+                // lost by leaving it enabled: re-entry is already blocked by _questionAnswered
+                // above, so `interactable` was never what stopped a second tap — it was only
+                // ever tinting. Greying the wrong ones and lighting up the right one is also
+                // exactly the visual language this moment wants.
+                optionButtons[i].interactable = isCorrect;
+
+                if (isCorrect)
                 {
                     optionButtons[i].image.color = OptionCorrect;
                     // The "you got it" beat — the flattest moment in the scene until now.
-                    Tween.PunchScale(optionButtons[i].transform, Vector3.one * 0.12f, 0.45f);
+                    // Stop + reset first: these buttons carry ButtonSquash, whose release tween
+                    // (0.18s back to scale 1) is still running on this same transform when the
+                    // click handler fires. PunchScale samples the CURRENT scale as its rest
+                    // value and returns to it, so it captured the 0.92 squash and left the
+                    // correct answer parked at 92% for the rest of the question — the one beat
+                    // that is supposed to grow. Same guard as the fan-in above, and the same
+                    // reason StorySelect.PlayLockedNudge refuses to punch a card root.
+                    var punched = optionButtons[i].transform;
+                    Tween.StopAll(onTarget: punched);
+                    punched.localScale = Vector3.one;
+                    Tween.PunchScale(punched, Vector3.one * 0.12f, 0.45f);
                 }
             }
 
@@ -369,6 +394,18 @@ namespace SummaRace.Features.Reader
                 ShowPage(_pageIndex + 1);
                 return;
             }
+
+            // Hand-off happens exactly once. NEXT stays visible and interactable through this
+            // branch (unlike ShowQuestion, which hides it), so two thumbs on a tablet — which is
+            // how a 9-year-old actually holds one — dispatch OnNext twice in quick succession.
+            // SceneLoader's guard blocks the second scene LOAD but not the second EVENT, and by
+            // then SessionLogService has already run ClosePhase() and reset its start time, so
+            // the second ReadingCompleted overwrites readingSeconds with ~0. The row still
+            // exports as perfectly valid, so a study variable silently reads zero and nobody
+            // finds out until analysis. Hide the button and latch, so neither can happen.
+            if (_readingHandedOff) return;
+            _readingHandedOff = true;
+            if (nextButton != null) nextButton.gameObject.SetActive(false);
 
             EventBus.Raise(new ReadingCompleted());
             SceneLoader.Go(SceneNames.RaceEndless); // experiment: Trash Dash base race
