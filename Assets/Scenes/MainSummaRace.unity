@@ -5597,6 +5597,14 @@ MonoBehaviour:
     type: 3}
   collectSparkleFxPrefab: {fileID: 4535006216103734310, guid: 98c4704d0fd7211449bcf5c451095a60,
     type: 3}
+  treeMeshDay: {fileID: 4300000, guid: c5b4e6cbf5e8cd645a2c8ac01816bd24, type: 3}
+  treeMeshNight: {fileID: 4300000, guid: 70b2d8ca8d7019345868532ba24371f2, type: 3}
+  grassMeshDay: {fileID: 4300002, guid: 7401b0fe5c52e674b86d92ba3bfc92a3, type: 3}
+  grassMeshNight: {fileID: 4300000, guid: edf6b364077c56845beb62322b8bfc8a, type: 3}
+  sceneryLeafMaterial: {fileID: 2100000, guid: a1da5a75d83b2b64d9684707d810f8c7, type: 2}
+  sceneryBranchMaterial: {fileID: 2100000, guid: a31a8a627e6f7d24aa0af123ce1403c6,
+    type: 2}
+  skyTintShader: {fileID: 4800000, guid: 52f458adb0520804da56c5d9a1db0931, type: 3}
 --- !u!4 &828021390
 Transform:
   m_ObjectHideFlags: 0

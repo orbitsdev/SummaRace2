@@ -150,6 +150,70 @@ namespace SummaRace.Constants
         // width by whatever that gap really allows and no more.
         public const float RaceLaneSelectorHalo = 0.34f;
 
+        // ------------------------------------------------------------------------------
+        // RACE WORLD DRESSING (F48). A world used to be light only, so all thirty races ran
+        // the same street. RaceWorlds now also names a theme, a zone family and a sky dome;
+        // these are the numbers that hold that in place against Trash Dash's own track code.
+        //
+        // HOLDING A ZONE. Their SpawnNewSegment rotates to the next zone family once the run
+        // has covered ThemeData.zones[n].length (500m in both themes), and a five-gate race is
+        // ~840m, so a world's family would be swapped out from under it two thirds of the way
+        // through. Their only public lever is ChangeZone(), which steps forward one family AND
+        // resets the distance counter — so calling it exactly zones.Length times is a no-op on
+        // the family and a reset on the counter. Doing that on this interval keeps the counter
+        // under 5 x 30 m/s = 150m, well inside the 500m rotation, so it can never fire. Cheap:
+        // three integer increments, twelve times a minute.
+        public const float RaceZoneHoldSeconds = 5f;
+
+        // REPAINTING THE SKY. Their sky is a vertex-coloured MESH with two variants in the whole
+        // project (Day, NightTime), so eight of the ten worlds were showing the identical bright
+        // blue sky however the recipe was written — overcast, misty, golden and sunset were all
+        // the same clear noon. SummaRace/SkyTint lerps the dome towards the world's sky colour,
+        // which is how a blue gradient can become grey or gold at all (a multiply can only ever
+        // darken it). At this much the dome keeps its own top-to-horizon gradient — enough shape
+        // that it still reads as sky and not as a flat coloured wall behind the road.
+        public const float RaceSkyTintDay = 0.55f;
+        // The night dome is already the colour it should be, and a night world's sky colour is
+        // near-black, so the same strength would flatten it to a void. Just a nudge.
+        public const float RaceSkyTintNight = 0.22f;
+
+        // ROADSIDE GREENERY. Three of the ten worlds (bright_park, golden_fields, autumn_lane)
+        // name country that neither theme contains — there is no park, field or lane in Trash
+        // Dash, only Industrial, Suburbs and Urban. What both themes DO contain is Tree01 and
+        // GrassClump, already vertex-coloured and already on the curved unlit shader, so they
+        // bend with the world instead of detaching from the bent horizon the way an imported
+        // prop would (the F29/F27 trap). Scattering those is not a park, but it is the honest
+        // best available without new art.
+        //
+        // The two lateral bands are the art's OWN convention, read off their prefabs rather
+        // than invented: SuburbsHouse01 puts its tree at x = 8.1, and the Urban pieces put
+        // their grass clumps at x = 4.0 - 5.4. Lanes are 1.5m apart and an answer card is
+        // 1.425 wide, so the nearest greenery is still ~1.5m clear of the outermost card.
+        public const float RaceTreeSideMin = 7.2f;
+        public const float RaceTreeSideMax = 10.5f;
+        public const float RaceGrassSideMin = 3.6f;
+        public const float RaceGrassSideMax = 6.2f;
+        // Tree01 is 7.68m wide and 11.65m tall at scale 1 — enough to swallow the road if it
+        // lands wrong, which is why placement is rejected against the segment's own geometry.
+        public const float RaceTreeScaleMin = 0.70f;
+        public const float RaceTreeScaleMax = 1.05f;
+        public const float RaceGrassScaleMin = 1.0f;
+        public const float RaceGrassScaleMax = 2.2f;
+        // Tries per prop before giving up on a segment that has no room. 6 is enough that a
+        // half-empty verge fills, and low enough that a fully built-up segment costs ~100
+        // bounds tests once, on the frame it spawns, and is then done with.
+        public const int RaceSceneryPlacementTries = 6;
+        // Hard cap per segment whatever the recipe asks for, keeping the recipe's tree:grass
+        // ratio. Ten segments are live at once and a tree is two submeshes (leaf + branch), so
+        // the busiest recipe (autumn_lane, 6 trees + 8 grass) is bounded at 20 renderers per
+        // segment = 200 extra draw calls. That is DRAW CALLS, not memory: Tree01 is 684 tris and
+        // GrassClump 78, both already resident because the theme's own segments use them
+        // (SuburbsHouse01 ships a Tree01), and both share two materials already in the scene —
+        // so the dressing adds ~0 to the RAM figure that matters on the 2GB floor device.
+        // UNMEASURED ON DEVICE: no APK has ever been built (see CLAUDE.md Build blockers), so
+        // if the race misses 30fps on the tablet, this is the first number to halve.
+        public const int RaceMaxSceneryPerSegment = 14;
+
         // Stars (GDD §4.2): 3★ = 5/5 first picks, 2★ = 4/5, 1★ = 3 or fewer
         public const int StarsThreeMin = 5;
         public const int StarsTwoMin = 4;

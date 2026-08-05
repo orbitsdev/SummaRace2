@@ -30,6 +30,21 @@ namespace SummaRace.Features.Race.Endless
         [SerializeField] private GameObject patrolPrefab;      // _Game/Prefabs/PatrolCop (or PatrolCharacter)
         [SerializeField] private GameObject collectSparkleFxPrefab; // Hovl Star hit — sparkle on a correct pick (TDD §11.4)
 
+        // Roadside greenery for the worlds that name country neither theme contains (F48; see
+        // EndlessWorldDressing). These are the THEME'S OWN tree and grass — already vertex
+        // coloured, already on Trash Dash's curved unlit shader — so they bend with the world
+        // instead of detaching from the bent horizon the way an imported prop does. Serialised
+        // here because the dressing component is added at runtime and cannot carry references;
+        // all six are optional, and a missing one simply means no greenery.
+        [Header("World greenery (F48; null = bare verge)")]
+        [SerializeField] private Mesh treeMeshDay;    // Models/Daytime/Tree01
+        [SerializeField] private Mesh treeMeshNight;  // Models/NightTime/Tree01Night
+        [SerializeField] private Mesh grassMeshDay;   // Models/Daytime/GrassClump01
+        [SerializeField] private Mesh grassMeshNight; // Models/NightTime/GrassClumpNight
+        [SerializeField] private Material sceneryLeafMaterial;   // Materials/VCOL (submesh 0)
+        [SerializeField] private Material sceneryBranchMaterial; // Materials/TreeBranch (submesh 1)
+        [SerializeField] private Shader skyTintShader;           // _Game/Art/Shaders/SkyTint
+
         // Warm gold the collect sparkle is retinted to, matching the story-treasure look.
         private static readonly Color StoryGold = new Color(1f, 0.85f, 0.45f);
         private UnityEngine.UI.Image _vignette; // amber screen-edge danger vignette (TDD §11.5)
@@ -282,6 +297,30 @@ namespace SummaRace.Features.Race.Endless
             while (PlayerData.instance == null) yield return null;
             PlayerData.instance.tutorialDone = true;
             if (PlayerData.instance.ftueLevel < 2) PlayerData.instance.ftueLevel = 2;
+
+            // WHERE this race happens, not just what colour the light is (F48). Both halves have
+            // to land before their Begin() runs: it reads the theme once and never looks again,
+            // and its very first Update spawns ten segments from whatever zone is current.
+            var place = SummaRace.Features.Race.RaceWorlds.For(_story.world);
+            // Bounded, because a race that never starts is far worse than a race in the wrong
+            // theme: if their database is slow, SelectTheme leaves their default alone and the
+            // world still gets its light, fog, sky and greenery.
+            float themeWait = 0f;
+            while (!ThemeDatabase.loaded && themeWait < 2f) { themeWait += Time.deltaTime; yield return null; }
+            EndlessWorldDressing.SelectTheme(place);
+
+            var dressing = GetComponent<EndlessWorldDressing>();
+            if (dressing == null) dressing = gameObject.AddComponent<EndlessWorldDressing>();
+            dressing.Configure(place, new EndlessWorldDressing.WorldArt
+            {
+                treeDay = treeMeshDay,
+                treeNight = treeMeshNight,
+                grassDay = grassMeshDay,
+                grassNight = grassMeshNight,
+                leaf = sceneryLeafMaterial,
+                branch = sceneryBranchMaterial,
+                skyTint = skyTintShader,
+            }, _story.id != null ? _story.id.GetHashCode() : 0);
 
             // Jump their Loadout menu straight into the run. Their TrackManager GameObject
             // stays inactive until GameState.Enter -> StartGame -> Begin() activates it,
@@ -2458,8 +2497,10 @@ namespace SummaRace.Features.Race.Endless
         /// definition of what releasing the run means.</summary>
         private void ReleaseRun(Transform hud, string label)
         {
+            bool firstRelease = !_runReleased;
             ShowBigCount(hud, label, true);
             _runReleased = true; // Update()/LateUpdate() stop holding the pre-race dance
+            if (firstRelease) RestartTheirMusic();
             // Both only exist once there is a run: pausing a world that has not started would
             // stack two "hold the track still" mechanisms, and gate 1's options showing under
             // the mission card or the 3-2-1 would be noise rather than reading time.
@@ -2476,6 +2517,30 @@ namespace SummaRace.Features.Race.Endless
                 TrackManager.instance.StartMove(true);
             }
             UpdateBanner();
+        }
+
+        /// <summary>
+        /// STORIES 2 AND 3 OF EVERY SESSION RAN IN SILENCE. Their MusicPlayer is a
+        /// DontDestroyOnLoad singleton whose stems are started exactly once per APP LAUNCH (its
+        /// own Start), and FinishRoutine stops those sources so the victory sting owns Results —
+        /// correct, but nothing ever started them again. Their one other restart site,
+        /// GameState.Enter, is guarded by <c>GetStem(0) != gameTheme</c>, which is true only the
+        /// first time. So the learner heard music on story 1 and nothing on stories 2 and 3, in
+        /// all ten sessions.
+        ///
+        /// Restarted here rather than in Start() because this is the frame the world actually
+        /// begins moving: the music comes in on GO!, not under the mission briefing. Called only
+        /// on the FIRST release (a pause/resume goes nowhere near this), so the stems can never
+        /// be double-started, and it is ahead of the FINISH silence rather than fighting it.
+        /// Coroutine is run on their own component — it is the object that owns the sources, and
+        /// it outlives every scene load, so nothing can strand it half-faded.
+        /// </summary>
+        private static void RestartTheirMusic()
+        {
+            var mp = MusicPlayer.instance;
+            if (mp == null || !mp.isActiveAndEnabled) return;   // grey-box / editor-direct run
+            if (mp.stems == null || mp.stems.Length == 0) return;
+            mp.StartCoroutine(mp.RestartAllStems());
         }
 
         private IEnumerator CountdownRoutine()
