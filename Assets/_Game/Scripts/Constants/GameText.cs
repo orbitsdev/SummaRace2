@@ -104,7 +104,10 @@ namespace SummaRace.Constants
         public static string TeacherSessionOpened(int session) => $"Session {session} is now open.";
 
         // Session map
-        public const string SessionMapTitle = "Choose a Mission";
+        /// <summary>Same verb as StorySelectTitle ("Pick a Story") on purpose: the map and the
+        /// cards are the same action one level apart, and two verbs for it is a word a
+        /// second-language reader has to learn for nothing.</summary>
+        public const string SessionMapTitle = "Pick a Mission";
         /// <summary>Sessions open one at a time via the teacher's PIN (GDD §8.3), so the
         /// locked state has to read as "not yet", never as the learner's fault.</summary>
         public const string SessionLockedHint = "Your teacher opens the next mission!";
@@ -113,7 +116,11 @@ namespace SummaRace.Constants
         // Story select
         public const string StorySelectTitle = "Pick a Story";
         public const string DifficultyEasy = "EASY";
-        public const string DifficultyAverage = "AVERAGE";
+        /// <summary>Label only — the story id stays "sNN_average" (StoryIds), and the
+        /// researcher's own documents say AVERAGE. On the chip a 9-year-old reads, "MEDIUM" is
+        /// the word they already know: "average" is a maths/measurement word in Grade 4, not a
+        /// difficulty word. Revert this one value if the study materials must match verbatim.</summary>
+        public const string DifficultyAverage = "MEDIUM";
         public const string DifficultyHard = "HARD";
         public const string LockedLabel = "Locked";
         /// <summary>Story Select locks are by DIFFICULTY within the current session, not by
@@ -126,14 +133,16 @@ namespace SummaRace.Constants
         /// with (the EASY card has no lock label of its own).</summary>
         public static string LockedCardLine(string hint) => $"{LockedLabel} — {hint}";
 
-        /// <summary>Ms. Lumi's cheer on the race mission briefing.</summary>
+        /// <summary>Ms. Lumi's cheer on the race briefing.</summary>
         public const string RaceBriefingLumi = "Ready, runner?";
 
         public const string SummaryHint =
             "Example: Somebody wanted ___, but ___, so ___, then ___.";
 
         public const string SummaryTitle = "Write your summary!";
-        public const string SummaryPlaceholder = "Type your one-sentence summary here...";
+        /// <summary>Ghost text inside the box. "One-sentence summary" is a compound the title
+        /// above already carries ("summary") — the box only has to say how much to write.</summary>
+        public const string SummaryPlaceholder = "Write one sentence here...";
         public const string SubmitLabel = "SUBMIT";
 
         /// <summary>Closes the on-screen keyboard, which on a portrait tablet covers SUBMIT and
@@ -145,8 +154,8 @@ namespace SummaRace.Constants
         // Gentle nudges shown when a summary needs another try (GDD §4.5)
         public static readonly string[] SummaryNudges =
         {
-            "Try writing a little more — use the story parts above!",
-            "Almost! Can you say it in one sentence about the Somebody?",
+            "Write a little more — use the story parts above!",
+            "Almost! Try one sentence. Start with the Somebody.",
         };
 
         // Praise lines by star count (index 1..3) — one picked at random per result
@@ -157,19 +166,19 @@ namespace SummaRace.Constants
             {
                 "You finished the story!",
                 "You made it to the end!",
-                "You stayed with it — well done!",
+                "You kept going — well done!",
             },
             new[]                                   // 2 stars
             {
-                "Wow, you really know this story!",
+                "Wow, you remembered a lot!",
                 "You found most of the story parts!",
-                "That was strong reading!",
+                "That was careful reading!",
             },
             new[]                                   // 3 stars
             {
                 "Amazing! You found every story part!",
                 "Perfect run — every part, first try!",
-                "You know this story inside out!",
+                "You read every page carefully!",
             },
         };
 
@@ -179,35 +188,41 @@ namespace SummaRace.Constants
         // praise ("you're so smart") — ability praise makes learners avoid harder
         // tasks, which is the opposite of what a 10-session study wants.
         // Kept short: these render inside a small feedback pill.
+        // Also kept IDIOM-FREE — the readers are Filipino ESL learners, and "sharp eyes",
+        // "spot on", "on a roll" and "way to go" are exactly the phrases a second-language
+        // reader has to stop and decode, at the one moment the game wants them running.
         public static readonly string[] PraiseGeneric =
         {
             "Nice one!",
             "That's it!",
             "You got it!",
-            "Well spotted!",
+            "You picked the right one!",
             "Exactly right!",
             "Good thinking!",
             "You read that carefully!",
             "That's the one!",
-            "Sharp eyes!",
+            "You looked closely!",
             "You found it!",
             "Yes! Keep going!",
             "Great reading!",
-            "You're on a roll!",
-            "Spot on!",
+            "Nice work!",
+            "Just right!",
             "You figured it out!",
-            "Way to go!",
+            "Well done!",
         };
 
         /// <summary>Praise that names the SWBST part just collected, indexed
         /// S=0 W=1 B=2 S=3 T=4. Reinforces the framework while it encourages.</summary>
         public static readonly string[][] PraiseByElement =
         {
+            // Wording matches LoadingTips, which is where these five parts are TAUGHT: praise
+            // that names a part differently from its definition ("the plan" for SO, "got in the
+            // way" for BUT) makes the learner hold two labels for one idea.
             new[] { "You found the Somebody!", "That's who it's about!" },
             new[] { "That's what they wanted!", "You found the Wanted!" },
-            new[] { "You spotted the problem!", "That's what got in the way!" },
-            new[] { "That's what they did!", "You found the plan!" },
-            new[] { "That's how it turned out!", "You found the ending!" },
+            new[] { "You found the problem!", "That's what stopped them!" },
+            new[] { "That's what they did!", "You found what they did!" },
+            new[] { "That's how the story ended!", "You found the ending!" },
         };
 
         /// <summary>Shown when every Arrange slot is right.</summary>
@@ -224,7 +239,16 @@ namespace SummaRace.Constants
 
         // Results screen
         public const string MainIdeaHeader = "Main Idea";
+
+        /// <summary>Continue button AFTER the third story of a session, when it leaves for the
+        /// Session Map. "Mission" means a session everywhere else in the game (SessionMapTitle,
+        /// SessionLockedHint), so this wording is only true on that branch.</summary>
         public const string NextMissionLabel = "NEXT MISSION";
+
+        /// <summary>Continue button mid-session, when it returns to the three story cards of the
+        /// SAME session. Calling that "next mission" taught the wrong word for where the learner
+        /// was going — the mission has not changed, only the story.</summary>
+        public const string ResultsNextStoryLabel = "NEXT STORY";
 
         // Reader narration toggle
         public const string VoiceOn = "VOICE ON";
@@ -266,7 +290,10 @@ namespace SummaRace.Constants
         public static readonly string[] OptionLetters = { "A.", "B.", "C." };
 
         // Race briefing — the "get ready" beat between the Reader and the run.
-        public const string RaceBriefingTitle = "Your Mission";
+        /// <summary>Was "Your Mission", which collided with the game's other meaning of mission
+        /// (a whole session of three stories — SessionMapTitle, SessionLockedHint). One race is
+        /// not a mission, so the briefing names what it actually is.</summary>
+        public const string RaceBriefingTitle = "Your Race";
         public const string RaceStartLabel = "START!";
 
         /// <summary>Shown on the START button while the race world is still assembling —
@@ -274,15 +301,25 @@ namespace SummaRace.Constants
         public const string RaceBriefingWait = "Getting ready...";
 
         /// <summary>Briefing body. Names the story so the learner knows the run is
-        /// about what they just read.</summary>
+        /// about what they just read. TAPPING DOES NOT MOVE THE RUNNER: on a tablet the only
+        /// touch path is the runner kit's swipe detector (CharacterInputController reads
+        /// TouchPhase.Began→Ended and needs real travel), so the old "or tap left and right"
+        /// taught a control that does nothing — and a learner whose taps are ignored concludes
+        /// the game is broken, not that they used the wrong gesture.</summary>
         public static string RaceBriefingBody(string storyTitle) =>
-            $"Collect the 5 story parts of\n\"{storyTitle}\" in order.\n\nSwipe or tap left and right to move!";
+            $"Collect the 5 story parts of\n\"{storyTitle}\" in order.\n\nSwipe left or right to move!";
 
         /// <summary>3-2-1-GO! steps. Last entry is treated as the "go" beat.</summary>
         public static readonly string[] RaceCountdown = { "3", "2", "1", "GO!" };
 
         // Race feedback + banner
-        public const string RaceWrongFeedback = "Not quite — the glowing one!";
+        /// <summary>Shown on a wrong pick, when the gate has just gone and the right answer is
+        /// on its way back as a single glowing card (EndlessRaceDirector.ScheduleRepresent).
+        /// "The glowing one!" named a thing with no verb — it never said what to do about it,
+        /// and it reads as a fragment to a learner still building English sentences. Same
+        /// "Not quite —" opening as the Reader's version, so the two screens feel like one
+        /// voice, and no blame in either.</summary>
+        public const string RaceWrongFeedback = "Not quite — get the glowing card!";
         public const string RaceFinishBanner = "FINISH!";
         public const string RaceFinishCard = "FINISH";
         public const string RaceRunToFinish = "Run to the FINISH!";
@@ -294,11 +331,21 @@ namespace SummaRace.Constants
         // Arrange screen
         public const string ArrangeTitle = "Put the story parts in order!";
         public const string UndoLabel = "UNDO";
-        public const string VerifyLabel = "VERIFY ORDER";
-        public const string ArrangeIntroStatus = "Tap a story part, then tap its place in the order.";
-        public const string ArrangeFillFirst = "Fill every slot first!";
+        /// <summary>"Verify" is a designer's word; the learner is checking their work.</summary>
+        public const string VerifyLabel = "CHECK ORDER";
+        /// <summary>The whole instruction has to survive one reading under time pressure, so it
+        /// is two short taps in the order they happen. "Its place in the order" asked a
+        /// 9-year-old to hold an abstract noun phrase; the empty slot they are aiming at is
+        /// right there on screen, wearing its SWBST word.</summary>
+        public const string ArrangeIntroStatus = "Tap a story part, then tap where it goes.";
+        /// <summary>"Slot" is a word this screen never teaches and nothing else in the game
+        /// uses — said in the vocabulary the learner already has ("story parts") instead.</summary>
+        public const string ArrangeFillFirst = "Put all 5 parts in first!";
         public const string ArrangeHintPrefix = "Hint: ";
-        public const string ArrangeAlmost = "Almost! The green ones are locked in — try the others again.";
+        /// <summary>"Locked in" meant CORRECT here while "Locked" everywhere else in the game
+        /// (cards, sessions) means "you cannot have this yet" — one word, two opposite feelings,
+        /// on the screen a stuck learner reads most carefully.</summary>
+        public const string ArrangeAlmost = "Almost! The green ones are right — try the others again.";
 
         /// <summary>Shown when the screen finishes the order for a learner who is stuck
         /// (GameRules.ArrangeMaxAttempts). Deliberately NOT drawn from the praise pools:
@@ -318,11 +365,15 @@ namespace SummaRace.Constants
         /// hint starts explaining the wrong part.</summary>
         public static readonly string[] LoadingTips =
         {
+            // These five lines are the game's DEFINITIONS of the framework — they are also the
+            // Arrange hint. Phrasal verbs were doing the defining ("got in the way", "turned
+            // out"), which is the hardest kind of English for a second-language reader, so a
+            // learner who did not know the phrase learned nothing from the tip.
             "SOMEBODY is who the story is about.",
-            "WANTED tells what the character wished for.",
-            "BUT is the problem that got in the way.",
+            "WANTED is what the character wanted.",
+            "BUT is the problem the character had.",
             "SO is what the character did about it.",
-            "THEN is how everything turned out.",
+            "THEN is how the story ended.",
         };
     }
 }

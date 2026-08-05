@@ -42,7 +42,7 @@ namespace SummaRace.Features.Results
             if (_story == null) _story = StoryLoader.Load("s01_easy"); // editor-direct fallback
             if (_story == null)
             {
-                // No story means no stars, no main idea and — because the NEXT MISSION
+                // No story means no stars, no main idea and — because the continue button's
                 // listener is wired below — no way off this screen. Leave for the cards
                 // rather than sitting on a blank result (TDD §13).
                 Debug.LogError("Results: no story — returning to Story Select.");
@@ -54,7 +54,6 @@ namespace SummaRace.Features.Results
 
             if (titleText != null) titleText.text = _story.title;
             if (mainIdeaHeader != null) mainIdeaHeader.text = GameText.MainIdeaHeader;
-            if (nextButtonLabel != null) nextButtonLabel.text = GameText.NextMissionLabel;
             if (praiseText != null) praiseText.text = "";
             if (mainIdeaPanel != null) mainIdeaPanel.SetActive(false);
             if (mainIdeaText != null) mainIdeaText.text = _story.mainIdea;
@@ -69,12 +68,21 @@ namespace SummaRace.Features.Results
             }
 
             if (SummaRace.Core.GameManager.Instance != null) SummaRace.Core.GameManager.Instance.CompleteStory(stars);
+
+            // Label AFTER CompleteStory, and from the same test the button routes on: this run
+            // only counts toward the session once it is recorded, so before that call the third
+            // story of a session still reads as unfinished. Mid-session the button goes back to
+            // the three story cards of the SAME session — calling that "NEXT MISSION" told the
+            // learner they were leaving for a new mission when the mission had not changed.
+            if (nextButtonLabel != null)
+                nextButtonLabel.text = IsSessionDone() ? GameText.NextMissionLabel : GameText.ResultsNextStoryLabel;
+
             StartCoroutine(RevealRoutine(stars));
         }
 
         private IEnumerator RevealRoutine(int stars)
         {
-            // NEXT MISSION is the only way off this screen, and it is hidden until the reveal
+            // The continue button is the only way off this screen, and it is hidden until the reveal
             // ends — so anything that stops the reveal early used to trap the learner here with
             // no exit at all. The finally hands the button back however this routine ends.
             try
@@ -173,11 +181,17 @@ namespace SummaRace.Features.Results
             // Mid-session there are still stories to pick, so go back to the three cards.
             // After the third one, the session is done — return to the map, which celebrates
             // it on arrival (GDD §3.1).
-            var gm = SummaRace.Core.GameManager.Instance;
-            bool sessionDone = gm != null && gm.CurrentStory != null
-                && gm.IsSessionComplete(gm.CurrentStory.session);
+            SceneLoader.Go(IsSessionDone() ? SceneNames.SessionMap : SceneNames.StorySelect);
+        }
 
-            SceneLoader.Go(sessionDone ? SceneNames.SessionMap : SceneNames.StorySelect);
+        /// <summary>Was that the last story of the session? One test drives both where the
+        /// continue button goes and what it is called, so the label and the destination
+        /// cannot drift apart.</summary>
+        private static bool IsSessionDone()
+        {
+            var gm = SummaRace.Core.GameManager.Instance;
+            return gm != null && gm.CurrentStory != null
+                && gm.IsSessionComplete(gm.CurrentStory.session);
         }
     }
 }

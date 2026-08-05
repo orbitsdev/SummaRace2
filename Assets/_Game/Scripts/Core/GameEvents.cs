@@ -26,7 +26,57 @@ namespace SummaRace.Core
     {
         public int elementIndex;
         public bool wasCorrect;
+
+        // ---- appended, never reordered (see SessionLog's additive rule) ----
+
+        /// <summary>
+        /// WHICH card was taken, as an index into the story JSON's own option list for this
+        /// element: 0 = <c>correct</c>, 1 = <c>distractors[0]</c>, 2 = <c>distractors[1]</c>.
+        /// -1 when the raiser cannot say.
+        /// <para>
+        /// This is the qualitative half of the measure. <see cref="wasCorrect"/> says only THAT
+        /// the learner was wrong at, say, the "But" slot; this says which wrong idea they held —
+        /// and since two distractors are authored to fail in different ways, that is the
+        /// difference between "a misconception is visible in the data" and "it is not". A
+        /// play-through cannot be repeated, so it has to be captured while it happens.
+        /// </para>
+        /// A raiser that does not know this must leave <see cref="chosenText"/> empty; that is
+        /// how the log distinguishes "index 0, the correct one" from "field never filled in".
+        /// </summary>
+        public int chosenOptionIndex;
+
+        /// <summary>Exact text on the card that was taken. Stored verbatim beside the index so
+        /// the row still reads on its own after the content pipeline regenerates a story
+        /// (Tools/StoryPipeline) — the index alone would then point at different words.</summary>
+        public string chosenText;
+
+        /// <summary>Which lane the card was in: 0 left, 1 centre, 2 right; -1 when unknown.
+        /// Lane is randomised per gate, so this is what lets the researcher check afterwards
+        /// that position carried no information — the F44 finding was exactly a surface cue
+        /// (card width) that the log could not have detected on its own.</summary>
+        public int lane;
+
+        /// <summary>True when this was the single gold RE-PRESENTED card rather than a free
+        /// choice among three. A re-present can only follow a wrong pick or a missed gate, so
+        /// it is never the learner's first encounter with that element and must never be read
+        /// as one.</summary>
+        public bool wasRepresent;
     }
+
+    /// <summary>
+    /// The race was paused or resumed by the learner (or a teacher stepping in). Not a fail
+    /// state — but the phase clocks run on real time, so a two-minute intervention would
+    /// otherwise land in the data as two minutes of reading effort.
+    /// </summary>
+    public struct RacePauseChanged { public bool paused; }
+
+    /// <summary>
+    /// The play-through ended without finishing — today only by the learner choosing to leave
+    /// the race. The log row for an abandoned run already exists (empty <c>finishedIso</c>);
+    /// this is what makes it say WHY, so a deliberate exit is never confused with a device
+    /// that died mid-story. <c>reason</c> is a short stable token, not a sentence.
+    /// </summary>
+    public struct RunAbandoned { public string reason; }
 
     public struct PlayerCaught { }
 

@@ -392,8 +392,8 @@ reference px**. The 7" figure (103 ref px) is the conservative bar used below.
 | Summary `SubmitButton` | 540 × 163 | 76 | 115 | PASS |
 | Summary `SummaryInput` | 972 × 317 | 148 | 223 | PASS |
 | Summary `DoneTypingChip` | 335 × 104 | 49 | 73 | PASS (just) |
-| StorySelect `EasyCard` | 895 × 278 | 130 | 195 | PASS |
-| StorySelect `Average/HardCard` | 895 × 278 | 130 | 195 | PASS |
+| StorySelect `EasyCard` | 943 × 467 | 219 | 328 | PASS |
+| StorySelect `Average/HardCard` | 943 × 467 | 219 | 328 | PASS |
 | StorySelect `BackButton` | 248 × 77 | **36** | 54 | **MEDIUM** |
 | SessionMap `Stop_0..9` | 224 × 156 | 73 | 110 | PASS |
 | SessionMap `BackButton` | 208 × 80 | **37** | 56 | MEDIUM |
