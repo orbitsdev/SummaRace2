@@ -26,9 +26,9 @@
       "question": {
         "text": "What did Emma and Josh want?",
         "options": [
-          "To stay home",
+          "To stay home and cook their own dinner",
           "To eat at their favorite restaurant",
-          "To cook dinner"
+          "To cook dinner together in their kitchen"
         ],
         "correctIndex": 1
       }
@@ -39,9 +39,9 @@
       "question": {
         "text": "What problem did Emma and Josh face?",
         "options": [
-          "Their favorite restaurant was closed",
+          "Their favorite Italian restaurant was closed for the week",
           "They had to try a new restaurant they were unsure about",
-          "They forgot to eat dinner"
+          "They forgot to eat any dinner before the restaurant closed"
         ],
         "correctIndex": 1
       }
@@ -52,9 +52,9 @@
       "question": {
         "text": "What did Emma and Josh do?",
         "options": [
-          "They refused to go",
+          "They refused to go and stayed at home for the whole evening",
           "They listened to their parents and agreed to try it",
-          "They ordered pizza"
+          "They ordered pizza from the Italian restaurant instead"
         ],
         "correctIndex": 1
       }

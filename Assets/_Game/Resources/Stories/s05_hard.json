@@ -41,7 +41,7 @@
         "options": [
           "They found it hard to imagine life in the past",
           "They forgot the stories",
-          "They did not like technology"
+          "They did not like the old technology Grandfather described"
         ],
         "correctIndex": 0
       }
@@ -66,8 +66,8 @@
         "text": "What happened in the end?",
         "options": [
           "The grandchildren appreciated learning about the past",
-          "They ignored Grandfather",
-          "They left early"
+          "They ignored Grandfather and asked to watch a movie instead",
+          "They left early because the old stories sounded too boring"
         ],
         "correctIndex": 0
       }

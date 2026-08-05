@@ -39,9 +39,9 @@
       "question": {
         "text": "What problem did Shawn cause?",
         "options": [
-          "He lost the food",
+          "He lost the food he had gathered for the other snails",
           "He made the other snails hungry by being selfish",
-          "He could not find water"
+          "He could not find water anywhere along the whole ditch"
         ],
         "correctIndex": 1
       }
@@ -65,9 +65,9 @@
       "question": {
         "text": "What happened in the end?",
         "options": [
-          "Shawn stayed selfish",
+          "Shawn stayed selfish and ate all the food by himself",
           "Shawn helped his friends and changed his behavior",
-          "Shawn left forever"
+          "Shawn left forever and never returned to the old ditch"
         ],
         "correctIndex": 1
       }

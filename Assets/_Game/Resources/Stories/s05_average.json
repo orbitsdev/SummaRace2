@@ -26,7 +26,7 @@
       "question": {
         "text": "What did Owen want?",
         "options": [
-          "A new cage",
+          "A new cage near the water",
           "Comfort and friendship",
           "More food"
         ],
@@ -41,7 +41,7 @@
         "options": [
           "He could not swim",
           "Mzee did not want to be his friend at first",
-          "He wanted to leave the park"
+          "He wanted to leave the park and swim in the sea"
         ],
         "correctIndex": 1
       }
@@ -65,7 +65,7 @@
       "question": {
         "text": "What happened in the end?",
         "options": [
-          "Owen left the park",
+          "Owen left the park and swam back to the sea",
           "Owen and Mzee became close friends",
           "Mzee moved away"
         ],

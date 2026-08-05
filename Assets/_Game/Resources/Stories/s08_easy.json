@@ -27,8 +27,8 @@
         "text": "What did the family want?",
         "options": [
           "To keep their food cold and fresh",
-          "To buy a car",
-          "To move away"
+          "To buy a new car for their summer trip",
+          "To move away to a much cooler town nearby"
         ],
         "correctIndex": 0
       }
@@ -39,9 +39,9 @@
       "question": {
         "text": "What problem did the family face?",
         "options": [
-          "Their refrigerator broke",
+          "Their refrigerator broke during the hot summer",
           "Their icebox could not keep food cold enough",
-          "They lost electricity"
+          "They lost electricity for the whole week of summer"
         ],
         "correctIndex": 1
       }
@@ -65,9 +65,9 @@
       "question": {
         "text": "What happened in the end?",
         "options": [
-          "The refrigerator did not work",
+          "The refrigerator did not work and all of the food spoiled again",
           "The food stayed fresh, but Doris felt sorry for Charlie",
-          "Charlie bought the refrigerator"
+          "Charlie bought the refrigerator and kept selling ice blocks"
         ],
         "correctIndex": 1
       }

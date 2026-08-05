@@ -78,6 +78,14 @@ crashlytics-build.properties
 /Assets/Resources/GDKEditionAutoGen/
 /Assets/Resources/GDKEditionAutoGen.meta
 
+# MCP screenshots. Written into Assets/ by the Unity MCP capture tool during play-mode QA,
+# so Unity imports them as real textures — they would ship in the APK for no reason.
+/Assets/Screenshots/
+/Assets/Screenshots.meta
+
+# Python bytecode from the story pipeline
+Tools/StoryPipeline/__pycache__/
+
 # Unity IAP artifacts. Trash Dash's purchasing package left these behind and the Google
 # VersionHandler re-creates them; being under Assets/Resources/ they SHIP. An in-app-purchase
 # product catalogue has no place in a 100%-offline classroom build.

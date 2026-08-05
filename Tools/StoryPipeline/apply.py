@@ -9,8 +9,12 @@ import sys
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-STORIES = r"C:\Users\User\Documents\2026\GAME\SummaRace2\Assets\_Game\Resources\Stories"
+import paths
+
+HERE = paths.HERE
+# Was a hardcoded absolute path from the machine the pipeline was written on, which does
+# not exist in this repo -- i.e. this script could not run at all where the project lives.
+STORIES = paths.STORIES
 
 
 def main():
@@ -57,14 +61,29 @@ def main():
             if not 0 <= idx < len(d["pages"]):
                 errors.append("%s: no page %s" % (sid, pno))
                 continue
-            options = d["pages"][idx]["question"]["options"]
+            q = d["pages"][idx]["question"]
+            options = q["options"]
             for oi, text in change.get("options", {}).items():
                 oi = int(oi)
                 if not 0 <= oi < len(options):
                     errors.append("%s p%s: no option %d" % (sid, pno, oi))
                     continue
+                # HARD GUARD. An override is addressed by index, and one digit wrong
+                # silently REPLACES THE CORRECT ANSWER with a distractor -- the question
+                # still validates (three distinct options, correctIndex in range) and the
+                # only symptom is that the item is now unanswerable. It happened twice in
+                # the 2026-08-05 rebalance and was caught only by diffing against git.
+                # An intentional rewrite of a correct option must say so explicitly.
+                if oi == q["correctIndex"] and not change.get("allowCorrect"):
+                    errors.append(
+                        "%s p%s option %d IS the correct answer (correctIndex=%d) -- "
+                        "refusing to overwrite it. Set \"allowCorrect\": true if that is "
+                        "really intended." % (sid, pno, oi, q["correctIndex"]))
+                    continue
                 options[oi] = text
                 n_opt += 1
+            if len({o.strip().lower() for o in options}) != len(options):
+                errors.append("%s p%s: override left duplicate options" % (sid, pno))
 
         with open(path, "w", encoding="utf-8", newline="\n") as f:
             json.dump(d, f, ensure_ascii=False, indent=2)

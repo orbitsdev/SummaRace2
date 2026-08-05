@@ -40,7 +40,7 @@
         "text": "What problem did Clara face?",
         "options": [
           "Soldiers needed help during the war",
-          "There were no schools",
+          "There were no schools left open during the war",
           "She lost her job"
         ],
         "correctIndex": 0
@@ -52,9 +52,9 @@
       "question": {
         "text": "What did Clara do to help solve the problem?",
         "options": [
-          "She ignored the soldiers",
+          "She ignored the soldiers and went back to her teaching job",
           "She gathered supplies and cared for wounded soldiers",
-          "She stayed at home"
+          "She stayed at home and wrote letters to the newspapers"
         ],
         "correctIndex": 1
       }
@@ -65,9 +65,9 @@
       "question": {
         "text": "What happened in the end?",
         "options": [
-          "Clara stopped helping others",
+          "Clara stopped helping others once the Civil War was over",
           "Clara founded the American Red Cross and became a hero",
-          "Clara became a soldier"
+          "Clara became a soldier and fought in the last battles of the war"
         ],
         "correctIndex": 1
       }

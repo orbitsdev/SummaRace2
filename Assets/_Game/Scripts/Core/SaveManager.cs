@@ -18,6 +18,22 @@ namespace SummaRace.Core
         [Serializable]
         private class ProfileList { public List<LearnerProfile> profiles = new(); }
 
+        /// <summary>One line of the companion roster: the id→name key the log rows deliberately
+        /// do not carry. Deliberately NOT the whole LearnerProfile — the roster exists to name
+        /// a learner, and dumping their progress into it would put the same measures in two
+        /// files that could then disagree.</summary>
+        [Serializable]
+        private class RosterEntry
+        {
+            public string learnerId;
+            public string displayName;
+            public int unlockedSession;
+            public int storiesCompleted;
+        }
+
+        [Serializable]
+        private class Roster { public List<RosterEntry> learners = new(); }
+
         private void Awake()
         {
             if (Instance != null && Instance != this) { Destroy(gameObject); return; }
@@ -105,6 +121,9 @@ namespace SummaRace.Core
                 var dir = PathFor(PrefKeys.LogsFolder);
                 if (!Directory.Exists(dir)) return null;
 
+                // One file per learner (AppendLog names it after the learnerId), so a tablet
+                // shared by two children exports both — the rows stay separable because every
+                // row carries its own learnerId.
                 var files = Directory.GetFiles(dir, "*.jsonl");
                 if (files.Length == 0) return null;
 
@@ -131,15 +150,32 @@ namespace SummaRace.Core
             }
         }
 
-        /// <summary>Writes the learnerId → displayName roster beside an export. Best-effort:
-        /// a missing roster must never cost the researcher the logs themselves.</summary>
+        /// <summary>Writes the learnerId → displayName roster beside an export — one row per
+        /// learner on this tablet, so a shared device can be split back into individuals.
+        /// Best-effort: a missing roster must never cost the researcher the logs themselves.</summary>
         private void WriteRoster(string path)
         {
             try
             {
                 var profiles = LoadProfiles();
                 if (profiles.Count == 0) return;
-                File.WriteAllText(path, JsonUtility.ToJson(new ProfileList { profiles = profiles }, true));
+
+                var roster = new Roster();
+                foreach (var profile in profiles)
+                {
+                    if (profile == null || string.IsNullOrEmpty(profile.id)) continue;
+                    int completed = 0;
+                    foreach (var progress in profile.progress) if (progress.completed) completed++;
+                    roster.learners.Add(new RosterEntry
+                    {
+                        learnerId = profile.id,
+                        displayName = profile.displayName,
+                        unlockedSession = profile.unlockedSession,
+                        storiesCompleted = completed,
+                    });
+                }
+
+                File.WriteAllText(path, JsonUtility.ToJson(roster, true));
             }
             catch (Exception e)
             {

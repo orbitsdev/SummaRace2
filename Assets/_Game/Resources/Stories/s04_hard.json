@@ -14,7 +14,7 @@
         "text": "Who are the main subjects in the story?",
         "options": [
           "Festival visitors",
-          "Farmers",
+          "Farmers from the north",
           "Sailors"
         ],
         "correctIndex": 0
@@ -26,9 +26,9 @@
       "question": {
         "text": "What did the visitors want?",
         "options": [
-          "To buy a new house",
+          "To buy a new house near the festival streets",
           "To enjoy Portugal's festivals and culture",
-          "To build umbrellas"
+          "To build umbrellas for the Umbrella Sky Project"
         ],
         "correctIndex": 1
       }
@@ -39,9 +39,9 @@
       "question": {
         "text": "What challenge did the visitors face?",
         "options": [
-          "They had nothing to see.",
+          "They had nothing at all to see in the whole country of Portugal.",
           "They had many festivals and attractions to explore.",
-          "They could not enter Portugal."
+          "They could not enter Portugal during the festival season."
         ],
         "correctIndex": 1
       }
@@ -52,9 +52,9 @@
       "question": {
         "text": "How did the visitors experience Portugal's culture?",
         "options": [
-          "By staying inside their hotel",
+          "By staying inside their hotel for the whole festival week",
           "By attending festivals and visiting famous attractions",
-          "By avoiding local traditions"
+          "By avoiding local traditions and eating only familiar food"
         ],
         "correctIndex": 1
       }
@@ -65,7 +65,7 @@
       "question": {
         "text": "What happened in the end?",
         "options": [
-          "The visitors left without learning anything.",
+          "The visitors left the country without learning anything at all.",
           "The visitors experienced Portugal's festivals and culture.",
           "The festival was canceled."
         ],

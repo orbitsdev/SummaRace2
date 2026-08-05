@@ -52,9 +52,9 @@
       "question": {
         "text": "How did Marusia solve the problem?",
         "options": [
-          "She fought Baba Yaga.",
+          "She fought Baba Yaga and broke the locked gate by herself.",
           "She worked with the hedgehog to find the magical flower.",
-          "She hid in the forest."
+          "She hid in the forest until Baba Yaga stopped looking for her."
         ],
         "correctIndex": 1
       }
@@ -65,9 +65,9 @@
       "question": {
         "text": "What happened in the end?",
         "options": [
-          "Marusia remained trapped forever.",
+          "Marusia remained trapped inside Baba Yaga's house forever.",
           "Marusia and Dmitri were freed and safely returned home.",
-          "Baba Yaga became queen."
+          "Baba Yaga became the queen of the whole dark forest below."
         ],
         "correctIndex": 1
       }

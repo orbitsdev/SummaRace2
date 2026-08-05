@@ -39,7 +39,7 @@
       "question": {
         "text": "What problem did they face?",
         "options": [
-          "They found too much treasure",
+          "They found too much treasure inside the old inn",
           "Many things seemed to go wrong for them",
           "They lost the treasure chest"
         ],
@@ -54,7 +54,7 @@
         "options": [
           "He stayed hopeful and kept going",
           "He gave up",
-          "He blamed others"
+          "He blamed others for their bad luck"
         ],
         "correctIndex": 0
       }
@@ -65,9 +65,9 @@
       "question": {
         "text": "What happened in the end?",
         "options": [
-          "They remained poor",
+          "They remained poor and never found anything at their old home",
           "They found treasure and realized their luck was good",
-          "They lost everything again"
+          "They lost everything again when they returned to their village"
         ],
         "correctIndex": 1
       }

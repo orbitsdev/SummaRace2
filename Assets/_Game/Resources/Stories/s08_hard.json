@@ -28,7 +28,7 @@
         "options": [
           "To cook food",
           "To eat food from all his friends",
-          "To build a house"
+          "To build a house with eight large rooms"
         ],
         "correctIndex": 1
       }
@@ -52,9 +52,9 @@
       "question": {
         "text": "What happened when the friends pulled the webs?",
         "options": [
-          "Anansi got all the food",
+          "Anansi got all of the food from every cook pot",
           "His legs were pulled in different directions",
-          "The webs broke"
+          "The webs broke and floated away down the river"
         ],
         "correctIndex": 1
       }
@@ -67,7 +67,7 @@
         "options": [
           "Anansi learned a lesson about greed",
           "Anansi became rich",
-          "Anansi ate all the food"
+          "Anansi ate all the food from the eight pots"
         ],
         "correctIndex": 0
       }

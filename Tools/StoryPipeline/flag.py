@@ -13,7 +13,10 @@ import sys
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-STORIES = r"C:\Users\User\Documents\2026\GAME\SummaRace2\Assets\_Game\Resources\Stories"
+import paths
+
+# Was a hardcoded absolute path from another machine; see paths.py.
+STORIES = paths.STORIES
 # s01_* are excluded from GENERATION (emit.py) because they are the hand-checked reference,
 # but they are NOT exempt from the gate. They used to be, and that is exactly how the worst
 # length tell in the corpus stayed invisible: when the character-based rule was finally

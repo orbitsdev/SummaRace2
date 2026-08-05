@@ -15,6 +15,13 @@ namespace SummaRace.Core
 
     public struct ReadingCompleted { }
 
+    /// <summary>
+    /// One answer card touched in the race — raised for every pick, right or wrong, at any gate
+    /// (including a re-presented correct card). This is study data, not just juice:
+    /// SessionLogService counts wrong picks per SWBST element from it (GDD §8.2), and because a
+    /// gate the learner steers past raises nothing at all, its absence is what separates a
+    /// wrong ANSWER from a missed GATE. Keep raising it on every pick.
+    /// </summary>
     public struct ElementCollected
     {
         public int elementIndex;
@@ -49,6 +56,13 @@ namespace SummaRace.Core
     }
 
     public struct SessionUnlocked { public int sessionNumber; }
+
+    /// <summary>
+    /// The tablet was handed to a different learner (teacher-gated, GDD §8.3). Raised AFTER
+    /// GameManager.CurrentLearner has moved, so listeners read the learner who is playing now.
+    /// A log row already in flight keeps the id it was opened with — see SessionLogService.
+    /// </summary>
+    public struct LearnerChanged { public string learnerId; }
 
     public struct SaveFailed { public string reason; }
 

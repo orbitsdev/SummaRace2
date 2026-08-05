@@ -101,6 +101,11 @@ namespace SummaRace.Features.Race.Endless
         private int _pendingElement;
         private bool _pendingIsRepresent;
 
+        // "You are here" marker on the live gate — see BuildLaneSelector.
+        private Transform _laneSelector;
+        private SpriteRenderer _laneSelectorSr;
+        private bool _selectorCentreOnly; // a re-present gate has a card in the centre lane only
+
         // One active gate at a time.
         private Transform _activeGateRoot;
         private int _activeElement = -1;
@@ -143,8 +148,11 @@ namespace SummaRace.Features.Race.Endless
         private float _menaceTimer;
         private float _patrolGroundY;      // fixed run-height captured on activation
         private bool _patrolGrounded;      // has _patrolGroundY been captured yet
-        private float _patrolGap = 30f;    // smoothed metres the cop trails behind the player
-        private float _patrolGapVel;       // SmoothDamp velocity for the gap
+        private float _patrolGap = 30f;    // metres the cop trails behind the player (constant once running)
+        private float _patrolMoveVel;      // SmoothDamp velocity for his slide in/out of frame
+        private float _patrolSide = 1f;    // which shoulder he takes: +1 right, -1 left
+        private Renderer[] _patrolRenderers; // cached for the per-frame body measurement
+        private Renderer[] _kidRenderers;
 
         private TextMeshProUGUI _bannerText;
         private TextMeshProUGUI _feedbackText;
@@ -356,6 +364,12 @@ namespace SummaRace.Features.Race.Endless
                 else HandleMissedActiveGate(track);
             }
 
+            // Keep the "you are here" marker on whichever card the runner is lined up with.
+            // Not for FINISH (element 5): that card spans all three lanes, so there is nothing
+            // to choose between and a marker would only add noise to the last beat of the run.
+            if (_activeGateRoot != null && _activeElement >= 0 && _activeElement < 5)
+                UpdateLaneSelector(track);
+
             TryPlacePending();
             CheckStranded(track);
 
@@ -514,6 +528,7 @@ namespace SummaRace.Features.Race.Endless
                 pickup.gateId = _activeGateId;
                 pickup.isCorrect = isCorrect;
             }
+            BuildLaneSelector(root, elementIndex, new Vector2(cardWidth, 0.85f), laneOffset, false);
             // No in-world type pill: the top SWBST tracker now shows the current element (F40).
         }
 
@@ -548,7 +563,98 @@ namespace SummaRace.Features.Race.Endless
             pickup.elementIndex = elementIndex;
             pickup.gateId = _activeGateId;
             pickup.isCorrect = true;
+            BuildLaneSelector(root, elementIndex, new Vector2(cardWidth, 0.85f), laneOffset, true);
             // No in-world type pill: the top SWBST tracker shows the current element (F40).
+        }
+
+        /// <summary>
+        /// The "you are here" marker: a SWBST-coloured frame that sits behind whichever card is
+        /// in the runner's lane and slides between cards exactly as fast as the kid changes lane.
+        ///
+        /// Nothing in the race told the learner which of the three cards they were lined up with.
+        /// The road carries no lane markings at all (measured on screen — it is a plain street
+        /// slab), the camera stays on the track centre while the kid moves across it, and at 30m
+        /// the three cards sit inside 16% of the screen width, so alignment is unreadable until
+        /// the last second. Since running straight on collects the centre card by itself, a
+        /// learner could take an answer without ever understanding they had chosen it — which is
+        /// the "collecting an item seems not logical" the owner reported.
+        ///
+        /// It shows POSITION ONLY, never correctness: it is the same colour whichever card it is
+        /// behind, so it cannot be used to pass a gate without reading (the race is the study's
+        /// measure — see the F44 card-width finding).
+        /// </summary>
+        private void BuildLaneSelector(Transform root, int elementIndex, Vector2 cardSize,
+            float laneOffset, bool centreOnly)
+        {
+            var go = new GameObject("LaneSelector");
+            go.transform.SetParent(root, false);
+            go.transform.localPosition = new Vector3(0f, CardY, 0.03f); // just behind the card
+            var color = SummaRace.Constants.SwbstPalette.ForIndex(elementIndex);
+
+            // Sideways there is nowhere to grow: whatever is left of the 0.075m inter-card gap,
+            // and no more, or the halo disappears behind the neighbouring card. The readable
+            // part is therefore the band above and below the card.
+            float halo = SummaRace.Constants.GameRules.RaceLaneSelectorHalo;
+            float widthPad = Mathf.Min(halo, Mathf.Max(0f, laneOffset - cardSize.x) * 0.8f);
+            var size = new Vector2(cardSize.x + widthPad, cardSize.y + halo);
+
+            var sr = go.AddComponent<SpriteRenderer>();
+            if (worldCardSprite != null)
+            {
+                sr.sprite = worldCardSprite;
+                sr.drawMode = SpriteDrawMode.Sliced;
+                sr.size = size;
+                sr.color = color;
+                // Behind the card it marks, never over its text.
+                sr.sortingOrder = -1;
+            }
+            else
+            {
+                // Grey-box fallback, same shape as BuildCard's.
+                var quad = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                Destroy(quad.GetComponent<Collider>());
+                quad.transform.SetParent(go.transform, false);
+                quad.transform.localScale = new Vector3(size.x, size.y, 1f);
+                quad.GetComponent<Renderer>().material.color = color;
+                Destroy(sr);
+                sr = null;
+            }
+
+            _laneSelector = go.transform;
+            _laneSelectorSr = sr;
+            _selectorCentreOnly = centreOnly;
+        }
+
+        /// <summary>Slides the marker onto the card in the runner's lane. A re-present gate only
+        /// has a centre card, so there the marker hides when the runner is not in that lane —
+        /// "you will not collect this where you are", which is the nudge that gets them back
+        /// across, rather than a marker parked on a card they are going to miss.</summary>
+        private void UpdateLaneSelector(TrackManager track)
+        {
+            if (_laneSelector == null) return;
+            var runner = track.characterController;
+            var bodyT = runner != null && runner.characterCollider != null
+                ? runner.characterCollider.transform : null;
+            if (bodyT == null) return;
+
+            float laneOffset = track.laneOffset;
+            if (laneOffset <= 0.01f) return;
+            float kidX = bodyT.position.x;
+
+            bool onACard = !_selectorCentreOnly || Mathf.Abs(kidX) < laneOffset * 0.5f;
+            if (_laneSelector.gameObject.activeSelf != onACard)
+                _laneSelector.gameObject.SetActive(onACard);
+            if (!onACard) return;
+
+            int lane = _selectorCentreOnly ? 0 : Mathf.Clamp(Mathf.RoundToInt(kidX / laneOffset), -1, 1);
+            var p = _laneSelector.localPosition;
+            float target = lane * laneOffset;
+            // Exactly the kid's own lane-change speed, so the marker arrives with him instead of
+            // trailing or leading — anything else reads as lag on a screen this small.
+            p.x = runner.laneChangeSpeed > 0.01f
+                ? Mathf.MoveTowards(p.x, target, runner.laneChangeSpeed * Time.deltaTime)
+                : target;
+            _laneSelector.localPosition = p;
         }
 
         private void PlaceFinishGate(TrackSegment segment, float localDist)
@@ -700,6 +806,8 @@ namespace SummaRace.Features.Race.Endless
                 .OnComplete(() => { if (cardT != null) Destroy(cardT.gameObject); });
 
             if (root != null) Destroy(root.gameObject);
+            _laneSelector = null; // child of the gate root — it went with it
+            _laneSelectorSr = null;
 
             // TDD §11.4: the boost bundle (sfx + speed) is reserved for a first-hit correct
             // pick — collecting a re-presented gold card still resolves the element, just
@@ -866,6 +974,8 @@ namespace SummaRace.Features.Race.Endless
                 Destroy(_activeGateRoot.gameObject);
             }
             _activeGateRoot = null;
+            _laneSelector = null; // child of the gate root — it went with it
+            _laneSelectorSr = null;
         }
 
         /// <summary>Element fully resolved (correct first hit, re-present collected, or
@@ -1250,18 +1360,38 @@ namespace SummaRace.Features.Race.Endless
             Vector3 startScreen = cam != null ? cam.WorldToScreenPoint(worldPos) : _slotRect[element].position;
             startScreen.z = 0f;
 
+            // The token is a PILL, not bare text. Measured before: the answer was set at a fixed
+            // 60pt in a 420x130 box with no autosizing, and a 52-character SO/THEN line ("Molly
+            // used an "I message" to tell Bella how she felt") measured 1581x363 — five lines of
+            // white text overflowing its own box by 233px, unbacked, sweeping across the middle
+            // of the screen for most of a second right when the learner needs to see the road.
+            // Autosized inside a dark plaque it stays one readable object at any answer length.
             var tokenGo = new GameObject("CollectToken");
             tokenGo.transform.SetParent(hud, false);
-            var tmp = tokenGo.AddComponent<TextMeshProUGUI>();
+            var pill = tokenGo.AddComponent<UnityEngine.UI.Image>();
+            pill.sprite = WoodPlaqueSprite();
+            pill.type = UnityEngine.UI.Image.Type.Sliced;
+            pill.color = new Color(0.10f, 0.12f, 0.16f, 0.88f); // same backing as the feedback line
+            pill.raycastTarget = false;
+            var pillRt = pill.rectTransform;
+            pillRt.sizeDelta = new Vector2(600f, 180f);
+            pillRt.position = startScreen;
+
+            var textGo = new GameObject("Word");
+            textGo.transform.SetParent(tokenGo.transform, false);
+            var tmp = textGo.AddComponent<TextMeshProUGUI>();
             if (worldLabelFont != null) tmp.font = worldLabelFont;
             tmp.text = _story.elements[element].correct;
-            tmp.fontSize = 60f;
             tmp.alignment = TextAlignmentOptions.Center;
             tmp.fontStyle = FontStyles.Bold;
             tmp.color = Color.white;
             tmp.raycastTarget = false;
-            tmp.rectTransform.sizeDelta = new Vector2(420f, 130f);
-            tmp.rectTransform.position = startScreen;
+            tmp.enableAutoSizing = true;
+            tmp.fontSizeMin = 26f;
+            tmp.fontSizeMax = 58f;
+            var trt = tmp.rectTransform;
+            trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one;
+            trt.offsetMin = new Vector2(18f, 14f); trt.offsetMax = new Vector2(-18f, -14f);
 
             Vector3 slotPos = _slotRect[element].position; slotPos.z = 0f;
             tokenGo.transform.localScale = Vector3.one * 0.5f;
@@ -1338,10 +1468,11 @@ namespace SummaRace.Features.Race.Endless
             _patrolAnim = go.GetComponentInChildren<Animator>();
             if (_patrolAnim != null) _patrolAnim.SetBool("Running", true);
 
-            // Start it far back and out of sight; UpdatePatrol eases it in from there.
+            // Station him out of shot at the depth he will run at for the whole race: the bump
+            // moves him sideways, never forward, so there is nothing to ease in from behind.
             var p = runner.transform.position;
-            _patrol.position = new Vector3(p.x, p.y, p.z - 30f);
-            _patrolGap = 30f;
+            _patrolGap = SummaRace.Constants.GameRules.PatrolSurgeGap;
+            _patrol.position = new Vector3(LateralTarget(p, false), p.y, p.z - _patrolGap);
             _patrol.rotation = Quaternion.identity; // faces down the road, same as the runner
             go.SetActive(_runReleased);
         }
@@ -1360,11 +1491,20 @@ namespace SummaRace.Features.Race.Endless
         }
 
         /// <summary>
-        /// Subway-Surfers "appear only on a bump" chaser. The cop stays hidden behind the
-        /// camera during a clean run; a wrong pick sets _menaceTimer, and while that runs the
-        /// cop rushes into view close behind the kid, then recedes off screen again. It never
-        /// catches (GDD D7). Position is a GAP behind the LIVE player each frame (not a lerp of
-        /// world-Z toward a target), so a floating-origin recenter is absorbed with no stall.
+        /// "Appear only on a bump" chaser, arriving from the SIDE instead of from behind. A
+        /// wrong pick sets _menaceTimer; while that runs he slides in beside the kid's shoulder,
+        /// then slides back out of shot. He never catches (GDD D7). His position is recomputed
+        /// from the LIVE player every frame (never a lerp of world-Z toward a target), so a
+        /// floating-origin recenter is absorbed with no stall.
+        ///
+        /// He arrives sideways because arriving from behind is geometrically impossible in this
+        /// frame — the full measurement is on GameRules.PatrolSurgeGap. In short: a chaser behind
+        /// the kid sits between the kid and the lens, so closing the gap only drags him into the
+        /// camera and out of the bottom of the screen (at 2.9m only his hat was in frame, at 2.1m
+        /// his mesh was inside the kid's), and portrait's 35deg horizontal FOV leaves him sharing
+        /// the kid's screen column at every gap. Holding him at a constant depth and moving him
+        /// ACROSS the frame instead puts a whole, readable second runner at the kid's shoulder,
+        /// and keeps him from sweeping through the camera plane on his way in.
         /// </summary>
         private void UpdatePatrol(TrackManager track)
         {
@@ -1398,29 +1538,72 @@ namespace SummaRace.Features.Race.Endless
                 // captured constant is stable for the whole run.
                 _patrolGroundY = runner.transform.position.y;
                 _patrolGrounded = true;
+
+                // Snap to his station before the first frame he is visible in. SmoothDamp from
+                // wherever he was left would walk him across the frame in full view of the
+                // learner, which is the one thing "appear only on a bump" must never do.
+                var startPos = runner.transform.position;
+                _patrol.position = new Vector3(LateralTarget(startPos, false),
+                    _patrolGroundY, startPos.z - _patrolGap);
+                _patrolMoveVel = 0f;
             }
 
             bool surging = _menaceTimer > 0f;
             if (surging) _menaceTimer -= Time.deltaTime;
 
             var playerPos = runner.transform.position;
-            var cam = Camera.main;
-            float camBack = cam != null
-                ? Mathf.Max(1.5f, playerPos.z - cam.transform.position.z)
-                : 5f; // sane default if the camera is mid-swap
+            // The kid's LANE lives on the character, not on the controller's own transform:
+            // characterController.transform.position.x is 0 for the whole run (measured), the
+            // 1.5m lane offset is on characterCollider/character. So the old "lane-match
+            // smoothing" was lerping toward a constant — the cop ran down the centre line
+            // whatever lane the kid was in, which is half of why he read as misplaced.
+            var bodyT = runner.characterCollider != null
+                ? runner.characterCollider.transform
+                : runner.transform;
+            float kidX = bodyT.position.x;
 
-            // Two states, keyed on the bump — hidden behind the camera vs. close & on-screen.
-            float hiddenGap = camBack + SummaRace.Constants.GameRules.PatrolHiddenBehind;
-            float surgeGap = SummaRace.Constants.GameRules.PatrolSurgeGap;
-            float targetGap = surging ? surgeGap : hiddenGap;
-            // SmoothDamp eases the cop in on a bump and back out after — natural, not snappy.
-            _patrolGap = Mathf.SmoothDamp(_patrolGap, targetGap, ref _patrolGapVel,
-                SummaRace.Constants.GameRules.PatrolGapSmoothTime);
+            // Which shoulder: the one the kid is NOT on, so the two never share a screen column.
+            // Sticky through the middle lane, or he would slide across and back on every pass.
+            if (kidX > SummaRace.Constants.GameRules.PatrolSideDeadband) _patrolSide = -1f;
+            else if (kidX < -SummaRace.Constants.GameRules.PatrolSideDeadband) _patrolSide = 1f;
 
-            float nx = Mathf.Lerp(_patrol.position.x, playerPos.x,
-                SummaRace.Constants.GameRules.PatrolFollowX * Time.deltaTime);
+            // EVERYTHING BELOW POSITIONS HIS VISIBLE BODY, NOT HIS PIVOT. His rendered mass is not
+            // centred on his transform and the offset MOVES: measured live it reaches 0.79m
+            // forward and 0.65m sideways as the run clip translates his 19-part rigid rig while
+            // the transform stays put. So a gap set on the transform was up to 0.8m tighter than
+            // it read, always toward the kid — at a nominal 1.5m gap the two models' bounds still
+            // overlapped by 0.81m along the run. Reading the offset off the live bounds each frame
+            // fixes it for every stride, and for any future character swap, instead of for one
+            // hand-picked number.
+            Bounds copB, kidB;
+            bool haveCop = BodyBounds(_patrol, ref _patrolRenderers, out copB);
+            bool haveKid = BodyBounds(bodyT, ref _kidRenderers, out kidB);
+            Vector3 bodyOffset = haveCop ? copB.center - _patrol.position : Vector3.zero;
+
+            // Depth is CONSTANT — he is out of shot at rest because he is out to the SIDE, not
+            // because he is behind the camera, so nothing about the bump moves him toward the lens.
+            // Held at least the two half-depths apart, so the two bodies cannot intersect at any
+            // lane, stride or lateral offset: separation along the run is the guarantee, and it
+            // does not depend on anything the framing does.
+            float minGap = haveCop && haveKid
+                ? copB.extents.z + kidB.extents.z + SummaRace.Constants.GameRules.PatrolBodyMargin
+                : 0f; // nothing rendered to measure — the tuned gap stands on its own
+            _patrolGap = Mathf.Max(SummaRace.Constants.GameRules.PatrolSurgeGap, minGap);
+
+            float targetX = LateralTarget(playerPos, surging);
+            // SmoothDamp so he slides in on a bump and drifts back out after — natural, not snappy.
+            float bodyX = _patrol.position.x + bodyOffset.x;
+            float newBodyX = Mathf.SmoothDamp(bodyX, targetX, ref _patrolMoveVel,
+                SummaRace.Constants.GameRules.PatrolMoveSmoothTime);
             float groundY = _patrolGrounded ? _patrolGroundY : playerPos.y;
-            _patrol.position = new Vector3(nx, groundY, playerPos.z - _patrolGap);
+            // y is deliberately NOT offset-corrected: his feet belong on the road, and the
+            // transform is the thing that stands on it.
+            _patrol.position = new Vector3(newBodyX - bodyOffset.x, groundY,
+                playerPos.z - _patrolGap - bodyOffset.z);
+            // He runs straight down the road. He is NOT yawed at the kid, however much better
+            // that would read: turning him swings that forward mesh offset sideways (a 37deg yaw
+            // moved his body 0.65m across, straight back into the kid's column) and inflates his
+            // footprint from 1.2m wide to 1.8m, which is what put him back on top of the runner.
 
             // Amber vignette rides the surge, not the (now cop-independent) danger meter.
             if (_vignette != null)
@@ -1435,6 +1618,54 @@ namespace SummaRace.Features.Race.Endless
                 bool visible = vc.a > 0.004f;
                 if (_vignette.enabled != visible) _vignette.enabled = visible;
             }
+        }
+
+        /// <summary>
+        /// Where the chaser belongs sideways: parked outside the frame at rest, in at the kid's
+        /// shoulder during a bump. Expressed as a fraction of the view's half-width AT HIS OWN
+        /// DEPTH and read off the live camera, so he lands in the same place in frame whatever
+        /// the camera is doing — a hard-coded metre offset means something completely different
+        /// at 2m and at 4m through a 35deg horizontal FOV.
+        /// </summary>
+        private float LateralTarget(Vector3 playerPos, bool surging)
+        {
+            var cam = Camera.main;
+            float fraction = surging
+                ? SummaRace.Constants.GameRules.PatrolSurgeScreenX
+                : SummaRace.Constants.GameRules.PatrolRestScreenX;
+            if (cam == null) return _patrolSide * fraction; // mid-swap: something sane, off centre
+
+            float bodyDepth = Mathf.Max(0.5f, playerPos.z - _patrolGap - cam.transform.position.z);
+            float halfWidth = Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad) * cam.aspect * bodyDepth;
+
+            // Anchored on the CAMERA (i.e. the centre of the road), not on the kid: the camera
+            // does not follow lanes, so the kid himself swings almost to the screen edge in an
+            // outside lane (measured). Anchoring on him would drag the cop back across the frame
+            // and put them in the same column again — the very thing this placement avoids.
+            return cam.transform.position.x + _patrolSide * fraction * halfWidth;
+        }
+
+        /// <summary>World-space bounds of a rigged model's VISIBLE renderers — what is actually on
+        /// screen, as opposed to where its transform happens to sit. The array is cached because
+        /// this runs every frame over a 19-part rigid rig and GetComponentsInChildren allocates;
+        /// disabled renderers are skipped so the cop's hidden weapons (HideCopAccessories) cannot
+        /// inflate it. Pass the CHARACTER for the runner, never the controller's own transform —
+        /// that subtree returns nonsense bounds hundreds of metres across.</summary>
+        private static bool BodyBounds(Transform root, ref Renderer[] cache, out Bounds bounds)
+        {
+            bounds = default(Bounds);
+            if (root == null) return false;
+            if (cache == null || cache.Length == 0) cache = root.GetComponentsInChildren<Renderer>(true);
+
+            bool any = false;
+            for (int i = 0; i < cache.Length; i++)
+            {
+                var r = cache[i];
+                if (r == null || !r.enabled || !r.gameObject.activeInHierarchy) continue;
+                if (!any) { bounds = r.bounds; any = true; }
+                else bounds.Encapsulate(r.bounds);
+            }
+            return any;
         }
 
         /// <summary>

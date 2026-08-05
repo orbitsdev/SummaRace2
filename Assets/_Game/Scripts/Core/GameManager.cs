@@ -15,9 +15,22 @@ namespace SummaRace.Core
         public static GameManager Instance { get; private set; }
 
         public StoryData CurrentStory { get; private set; }
-        public LearnerProfile CurrentLearner { get; set; }
+
+        /// <summary>
+        /// Whose stars, unlocks and log rows this play-through belongs to. Read-only from the
+        /// outside: it used to be a public setter that nothing ever called, so every device was
+        /// permanently profile[0] and a shared tablet merged two children into one unusable
+        /// record. Move it with <see cref="SetActiveLearner"/> so the id is persisted and the
+        /// in-flight log is closed in the same step.
+        /// </summary>
+        public LearnerProfile CurrentLearner { get; private set; }
 
         private readonly List<LearnerProfile> _profiles = new();
+
+        /// <summary>Every learner saved on this tablet, in save order — the teacher's picker
+        /// reads this. Read-only: profiles are made by <see cref="CreateLearner"/> so id
+        /// generation and persistence stay in one place.</summary>
+        public IReadOnlyList<LearnerProfile> Learners => _profiles;
 
         private int _selectedSession = 1;
 
@@ -105,9 +118,9 @@ namespace SummaRace.Core
         }
 
         /// <summary>
-        /// Loads the saved learners and activates one, creating a first profile when the device
-        /// has none so progress always has somewhere to persist. Name Entry lets the learner set
-        /// their real name and avatar on that same profile.
+        /// Loads the saved learners and re-activates whoever was last playing, creating a first
+        /// profile when the device has none so progress always has somewhere to persist. Name
+        /// Entry lets the learner set their real name and avatar on that same profile.
         /// </summary>
         public void InitProfiles()
         {
@@ -115,31 +128,122 @@ namespace SummaRace.Core
             if (SaveManager.Instance != null)
                 _profiles.AddRange(SaveManager.Instance.LoadProfiles());
 
-            if (_profiles.Count == 0)
+            // The id is the only thread tying an exported log row back to a child: SaveManager
+            // names the .jsonl after it and the export roster maps it to a name. A blank or
+            // duplicated id silently folds two learners into one file, and nothing downstream
+            // can undo that — so repair the list on load rather than trusting the file.
+            bool repaired = false;
+            var seen = new HashSet<string>();
+            for (int i = 0; i < _profiles.Count; i++)
             {
-                _profiles.Add(new LearnerProfile
+                var profile = _profiles[i];
+                if (string.IsNullOrEmpty(profile.id) || !seen.Add(profile.id))
                 {
-                    id = Guid.NewGuid().ToString(),
-                    displayName = GameText.DefaultLearnerName,
-                });
-                PersistProfiles();
+                    profile.id = NewLearnerId();
+                    seen.Add(profile.id);
+                    repaired = true;
+                }
             }
 
-            CurrentLearner = _profiles[0];
+            if (_profiles.Count == 0)
+            {
+                _profiles.Add(NewProfile());
+                repaired = true;
+            }
+
+            // Restore the learner who was holding the tablet before the app was closed. An
+            // unknown id (a wipe deleted the profiles, or the file was hand-edited) is never an
+            // error — fall back to the first profile and rewrite the pointer below.
+            string savedId = LoadActiveLearnerId();
+            var saved = string.IsNullOrEmpty(savedId) ? null : _profiles.Find(p => p.id == savedId);
+            CurrentLearner = saved ?? _profiles[0];
+
+            if (repaired) PersistProfiles();
+            SaveActiveLearnerId(CurrentLearner.id);
         }
 
-        /// <summary>Adds a learner created at Name Entry, activates it, and saves.</summary>
+        /// <summary>Adds a learner, activates it, and saves. Used by the teacher's picker when a
+        /// second child starts on this tablet.</summary>
         public void RegisterLearner(LearnerProfile learner)
         {
             if (learner == null) return;
             if (!_profiles.Contains(learner)) _profiles.Add(learner);
-            CurrentLearner = learner;
             PersistProfiles();
+            SetActiveLearner(learner);
+        }
+
+        /// <summary>
+        /// Starts another learner on this tablet and makes them active. A profile that was never
+        /// named and never played is handed back instead of adding a second one: a teacher who
+        /// taps "new learner" twice (or backs out of Name Entry) would otherwise leave empty
+        /// rows in the export roster that the researcher has to explain away.
+        /// </summary>
+        public LearnerProfile CreateLearner()
+        {
+            var blank = _profiles.Find(p => !p.named && (p.progress == null || p.progress.Count == 0));
+            var learner = blank ?? NewProfile();
+            RegisterLearner(learner);
+            return learner;
+        }
+
+        /// <summary>
+        /// Hands the tablet to another learner. Teacher-gated on purpose (GDD §8.3): a learner
+        /// who could switch themselves could also play as someone else, and every star, unlock
+        /// and log row would land on the wrong child — unrecoverable once exported.
+        /// </summary>
+        public void SetActiveLearner(LearnerProfile learner)
+        {
+            if (learner == null || !_profiles.Contains(learner)) return;
+
+            if (CurrentLearner == learner)
+            {
+                SaveActiveLearnerId(learner.id);   // still worth pinning after a fresh install
+                return;
+            }
+
+            CurrentLearner = learner;
+            SaveActiveLearnerId(learner.id);
+
+            // Nothing of the previous learner's play-through may survive the handover: every
+            // screen from here reads progress, unlocks and results off whoever is active now.
+            CurrentStory = null;
+            LastRaceResult = null;
+            LastArrangeAttempts = 0;
+            LastSummaryText = null;
+            _selectedSession = 1;
+            _justCompletedSession = 0;
+
+            // SessionLogService listens and closes the run in flight. It never re-stamps that
+            // row — the learnerId was written when the story started — so the learner who was
+            // just playing keeps their own data, in their own file.
+            EventBus.Raise(new LearnerChanged { learnerId = learner.id });
         }
 
         public void PersistProfiles()
         {
             if (SaveManager.Instance != null) SaveManager.Instance.SaveProfiles(_profiles);
+        }
+
+        private static LearnerProfile NewProfile() => new LearnerProfile
+        {
+            id = NewLearnerId(),
+            displayName = GameText.DefaultLearnerName,
+        };
+
+        private static string NewLearnerId() => Guid.NewGuid().ToString();
+
+        private static string LoadActiveLearnerId() =>
+            SaveManager.Instance != null ? SaveManager.Instance.LoadSettings().activeLearnerId : null;
+
+        /// <summary>Pins the active learner so the next launch resumes the same child rather
+        /// than silently reverting to the first profile.</summary>
+        private static void SaveActiveLearnerId(string id)
+        {
+            if (SaveManager.Instance == null) return;
+            var settings = SaveManager.Instance.LoadSettings();
+            if (string.Equals(settings.activeLearnerId, id, StringComparison.Ordinal)) return;
+            settings.activeLearnerId = id;
+            SaveManager.Instance.SaveSettings(settings);
         }
 
         /// <summary>Updates profile progress and writes it to disk.</summary>

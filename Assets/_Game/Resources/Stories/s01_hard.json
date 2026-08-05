@@ -27,8 +27,8 @@
         "text": "What did Jayden need to do?",
         "options": [
           "Pick an animal for his assignment",
-          "Visit a zoo",
-          "Draw an animal"
+          "Visit a zoo with his whole class on Friday",
+          "Draw an animal from his science book"
         ],
         "correctIndex": 0
       }
@@ -39,7 +39,7 @@
       "question": {
         "text": "What problem did Jayden face?",
         "options": [
-          "He forgot the assignment",
+          "He forgot the assignment his teacher had given him",
           "He could not decide which animal to choose",
           "He lost his notebook"
         ],

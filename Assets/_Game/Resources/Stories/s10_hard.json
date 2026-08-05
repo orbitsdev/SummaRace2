@@ -14,7 +14,7 @@
         "text": "Who are the main subjects of the story?",
         "options": [
           "Brave service animals",
-          "Farmers",
+          "Farmers and their horses",
           "Scientists"
         ],
         "correctIndex": 0
@@ -41,7 +41,7 @@
         "options": [
           "They had no homes",
           "They worked in dangerous situations",
-          "They could not find food"
+          "They could not find food during the long wars"
         ],
         "correctIndex": 1
       }
@@ -52,7 +52,7 @@
       "question": {
         "text": "How did the animals help people?",
         "options": [
-          "By performing tricks",
+          "By performing clever tricks for large crowds",
           "By bravely carrying out important tasks",
           "By guarding farms"
         ],
@@ -65,9 +65,9 @@
       "question": {
         "text": "What happened in the end?",
         "options": [
-          "The animals were forgotten",
+          "The animals were forgotten once the wars had ended",
           "The animals were honored with the Dickin Medal",
-          "The medal was removed"
+          "The medal was removed and never given to animals"
         ],
         "correctIndex": 1
       }

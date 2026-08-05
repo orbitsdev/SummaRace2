@@ -39,7 +39,7 @@
       "question": {
         "text": "What was different about life long ago?",
         "options": [
-          "People used thought commands",
+          "People used thought commands to move machines",
           "People typed on keyboards and drove cars",
           "People lived on the moon"
         ],
@@ -66,7 +66,7 @@
         "text": "What happened in the end?",
         "options": [
           "The children learned to appreciate life in the past",
-          "The children disliked the stories",
+          "The children disliked the stories and stopped listening",
           "Grandfather forgot his memories"
         ],
         "correctIndex": 0

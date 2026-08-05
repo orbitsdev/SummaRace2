@@ -55,6 +55,33 @@ namespace SummaRace.Constants
         public const string TeacherRecoveryLastChance =
             "Last chance — this cannot be undone. Tap Back to leave without erasing.";
         public const string TeacherRecoveryDone = "Tablet reset. Set a new PIN.";
+        /// <summary>The gate could not be cleared, so the wipe was not started. Says what did
+        /// NOT happen: a researcher who reads "reset failed" and assumes the data went too would
+        /// stop trying to export it.</summary>
+        public const string TeacherRecoveryFailed =
+            "Could not reset this tablet. Nothing was erased — try again.";
+
+        // Switching learners. One tablet per learner is the study's intent, but a shared tablet
+        // must never silently merge two children: stars, unlocks and every exported log row are
+        // keyed to one profile, and a merge cannot be undone at analysis time. So the switch
+        // exists, and it sits behind the PIN with session unlocking — learners must not be able
+        // to change who they are any more than they can open the next session (GDD §8.3).
+        public const string TeacherSwitchLearner = "Switch learner";
+        public const string TeacherLearnerPickerTitle = "Who is playing?";
+        public const string TeacherNewLearner = "+ New learner";
+        public const string TeacherLearnerPickerClose = "Done";
+        public const string TeacherLearnerPickerUnavailable = "Learner list unavailable on this screen.";
+        public static string TeacherLearnerRow(string name, int session) =>
+            $"{name}  ·  Session {session}";
+        /// <summary>The learner already holding the tablet — says so in words rather than a
+        /// tick, because a glyph outside the TMP atlas renders as an empty box.</summary>
+        public static string TeacherLearnerRowActive(string name, int session) =>
+            $"{name}  ·  Session {session}  (playing)";
+        public static string TeacherActiveLearner(string name) => $"Now playing: {name}";
+
+        /// <summary>Discreet line on the Main Menu. A run recorded against the wrong child is
+        /// unrecoverable, so it is worth naming who the tablet thinks is playing.</summary>
+        public static string PlayingAs(string name) => $"Playing as {name}";
 
         public const string TeacherUnlockNext = "Unlock next session";
         public const string TeacherExport = "Export logs";
@@ -62,6 +89,17 @@ namespace SummaRace.Constants
         public const string TeacherDeleteConfirm = "Tap again to confirm";
         public const string TeacherDeleted = "All learner data deleted.";
         public const string TeacherNothingToExport = "No logs to export yet.";
+
+        /// <summary>
+        /// What the researcher reads off the screen and then goes looking for over USB, so it
+        /// carries the whole path on its own line. It also names the second file: the export
+        /// itself is pseudonymised (every row keys on a learnerId guid), and the roster written
+        /// beside it is the ONLY mapping back to a child — pulling one file and not the other
+        /// leaves 40 devices of unattributable rows, and the roster cannot be regenerated once
+        /// the tablet is wiped.
+        /// </summary>
+        public static string TeacherExported(string path) =>
+            $"Saved to:\n{path}\nAlso copy the _learners.json beside it — it is the only key from a log to a name.";
         public const string TeacherAllUnlocked = "All 10 sessions are already open.";
         public static string TeacherSessionOpened(int session) => $"Session {session} is now open.";
 
@@ -97,6 +135,12 @@ namespace SummaRace.Constants
         public const string SummaryTitle = "Write your summary!";
         public const string SummaryPlaceholder = "Type your one-sentence summary here...";
         public const string SubmitLabel = "SUBMIT";
+
+        /// <summary>Closes the on-screen keyboard, which on a portrait tablet covers SUBMIT and
+        /// the nudge line. Named for what the learner is doing ("I've finished typing"), not for
+        /// the device — "close keyboard" would ask a 9-year-old to think about the tablet, and
+        /// it must never read as a second SUBMIT.</summary>
+        public const string SummaryDoneTyping = "DONE TYPING";
 
         // Gentle nudges shown when a summary needs another try (GDD §4.5)
         public static readonly string[] SummaryNudges =
@@ -191,6 +235,24 @@ namespace SummaRace.Constants
         public const string NextPageLabel = "NEXT PAGE";
         public const string StartRaceLabel = "START RACE!";
         public const string ReaderWrongFeedback = "Not quite — the green one is the answer!";
+
+        /// <summary>Reader's quiet corner exit. It is only offered before the learner's first
+        /// answer (see ReaderController.RefreshSecondaryControls), so it is worded as a plain
+        /// direction rather than as a warning — at that point nothing can be lost.</summary>
+        public const string ReaderBackLabel = "BACK";
+
+        /// <summary>Second step of that exit. A one-tap exit is not safe on a screen a
+        /// 9-year-old taps freely, so BACK arms first and this asks for the confirming tap
+        /// (the same "tap again" guard the teacher screen uses on its destructive actions).
+        /// One short word on purpose: it has to fit the same small chip, because a control
+        /// that changes size reads as a different button appearing under the finger.</summary>
+        public const string ReaderBackConfirm = "LEAVE?";
+
+        /// <summary>Replays the current page's narration once. Worded as the learner's own
+        /// request rather than as a device control — VOICE beside it is the setting that
+        /// sticks, this is a one-off, and before it existed the only way to hear a missed
+        /// page again was to toggle VOICE off and on.</summary>
+        public const string ReaderReplayLabel = "HEAR AGAIN";
 
         /// <summary>Progress line above the reading card, e.g. "Page 1 / 5".</summary>
         public static string PageProgress(int current, int total) => $"Page {current} / {total}";

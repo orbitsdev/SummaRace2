@@ -26,7 +26,7 @@
       "question": {
         "text": "What did Amelia want?",
         "options": [
-          "To skip the recital",
+          "To skip the recital and stay at home",
           "To perform her solo successfully",
           "To become a singer"
         ],
@@ -39,7 +39,7 @@
       "question": {
         "text": "What problem did Amelia face?",
         "options": [
-          "She forgot her costume",
+          "She forgot her costume at the dance studio",
           "She was nervous about making mistakes",
           "She missed the recital"
         ],
@@ -52,9 +52,9 @@
       "question": {
         "text": "What did Amelia do to solve the problem?",
         "options": [
-          "She stopped dancing",
+          "She stopped dancing after making one small mistake",
           "She practiced and continued dancing confidently",
-          "She left the stage"
+          "She left the stage and asked her mom to take her home"
         ],
         "correctIndex": 1
       }
@@ -65,9 +65,9 @@
       "question": {
         "text": "What happened in the end?",
         "options": [
-          "Amelia quit dancing",
+          "Amelia quit dancing and walked off the stage before her solo",
           "Amelia performed successfully and felt proud of herself",
-          "The recital was canceled"
+          "The recital was canceled because the hall was too crowded"
         ],
         "correctIndex": 1
       }

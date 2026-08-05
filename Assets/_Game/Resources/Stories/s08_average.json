@@ -27,8 +27,8 @@
         "text": "What does a beginner need before skateboarding?",
         "options": [
           "A skateboard and protective gear",
-          "A motorcycle",
-          "A surfboard"
+          "A motorcycle and a strong racing helmet",
+          "A surfboard and a pair of swim fins"
         ],
         "correctIndex": 0
       }
@@ -65,9 +65,9 @@
       "question": {
         "text": "What happens in the end?",
         "options": [
-          "The beginner quits skateboarding",
+          "The beginner quits skateboarding after a few hard falls",
           "The beginner becomes ready for more advanced tricks",
-          "The skateboard breaks"
+          "The skateboard breaks during the very first practice day"
         ],
         "correctIndex": 1
       }

@@ -26,6 +26,17 @@ namespace SummaRace.Features.Reader
         [Header("Narration")]
         [SerializeField] private Button voiceButton;
         [SerializeField] private TMP_Text voiceButtonLabel;
+        // Replays the page the learner is on. Optional: with nothing wired the controller
+        // builds a small kit pill for it at runtime, so the affordance ships without a
+        // scene edit (same idiom as SceneLoader's overlay and the race briefing).
+        [SerializeField] private Button replayButton;
+        [SerializeField] private TMP_Text replayButtonLabel;
+
+        [Header("Leaving the story")]
+        // Also optional/self-building. When it is allowed is the interesting part — see
+        // RefreshSecondaryControls.
+        [SerializeField] private Button backButton;
+        [SerializeField] private TMP_Text backButtonLabel;
 
         [Header("Question")]
         [SerializeField] private GameObject questionPanel;
@@ -43,14 +54,35 @@ namespace SummaRace.Features.Reader
         private const float OptionFanSeconds = 0.28f;  // per-option pop-in
         private const float OptionFanStagger = 0.06f;  // gap between options
 
+        /// <summary>How long BACK stays armed waiting for its confirming tap. Long enough to
+        /// read the second label, short enough that a learner who wandered off does not leave
+        /// the story with one later stray tap.</summary>
+        private const float BackConfirmSeconds = 4f;
+
         private static readonly Color OptionNormal = new Color(0.96f, 0.94f, 1.00f); // light pill (high contrast on the gold card)
         private static readonly Color OptionCorrect = new Color(0.55f, 0.85f, 0.45f); // friendly green
         private static readonly Color FeedbackCorrect = new Color(0.20f, 0.55f, 0.25f); // green
         private static readonly Color FeedbackNotQuite = new Color(0.85f, 0.50f, 0.15f); // warm orange, never harsh
 
+        // Small-chip palette: the navy pill (Resources/UI/bar_bg) is the HUD's own language
+        // (F16), the gold pill (bar_fill) is what "armed" looks like everywhere else.
+        private static readonly Color ChipTextIdle = new Color(0.97f, 0.97f, 1.00f);   // on navy
+        private static readonly Color ChipTextArmed = new Color(0.30f, 0.20f, 0.05f);  // on gold
+        private static readonly Color ChipFallbackIdle = new Color(0.11f, 0.17f, 0.33f, 0.95f);
+        private static readonly Color ChipFallbackArmed = new Color(0.98f, 0.73f, 0.22f);
+
         private StoryData _story;
         private int _pageIndex;
         private bool _questionAnswered;
+
+        /// <summary>True once the learner has answered any question in this play-through —
+        /// i.e. once the run carries a measure. Never cleared.</summary>
+        private bool _answerCommitted;
+
+        private bool _backArmed;
+        private float _backArmedAt;
+        private Sprite _pillIdle;
+        private Sprite _pillArmed;
 
         /// <summary>
         /// Which story option each on-screen slot shows: <c>_displayOrder[slot] = option index</c>.
@@ -88,6 +120,10 @@ namespace SummaRace.Features.Reader
             if (nextButton != null) nextButton.onClick.AddListener(OnNext);
             if (voiceButton != null) voiceButton.onClick.AddListener(ToggleNarration);
             RefreshVoiceButton();
+
+            EnsureSecondaryControls();
+            if (replayButton != null) replayButton.onClick.AddListener(ReplayNarration);
+            if (backButton != null) backButton.onClick.AddListener(OnBackTapped);
             for (int i = 0; i < optionButtons.Length; i++)
             {
                 int index = i; // capture
@@ -127,6 +163,7 @@ namespace SummaRace.Features.Reader
             if (index > 0 && AudioManager.Instance != null)
                 AudioManager.Instance.PlaySfx(AudioKeys.SfxPageTurn);
 
+            RefreshSecondaryControls(readingPage: true);
             PlayPageNarration();
         }
 
@@ -158,6 +195,21 @@ namespace SummaRace.Features.Reader
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxClick);
             RefreshVoiceButton();
             PlayPageNarration(); // re-read the current page when switched on
+        }
+
+        /// <summary>
+        /// Reads the current page again, once. Deliberately does NOT touch
+        /// <see cref="PrefKeys.NarrationOn"/>: a learner who missed the audio used to have to
+        /// switch VOICE off and then on again to hear it (ToggleNarration re-reads the page as
+        /// a side effect), which flipped their saved preference twice and only worked while the
+        /// voice was already on. The toggle is the setting; this is a one-off request, so it
+        /// plays even with VOICE OFF — the learner asked for it on this tap.
+        /// </summary>
+        private void ReplayNarration()
+        {
+            if (AudioManager.Instance == null || _story == null) return;
+            AudioManager.Instance.PlaySfx(AudioKeys.SfxClick);
+            AudioManager.Instance.PlayNarration(_story.pages[_pageIndex].narration);
         }
 
         private void RefreshVoiceButton()
@@ -195,6 +247,7 @@ namespace SummaRace.Features.Reader
             if (teacherGroup != null) teacherGroup.alpha = 0f; // hide the buddy — focus on the answers
             if (nextButton != null) nextButton.gameObject.SetActive(false);
             if (feedbackText != null) feedbackText.text = "";
+            RefreshSecondaryControls(readingPage: false);
 
             if (questionText != null) questionText.text = question.text;
 
@@ -243,6 +296,11 @@ namespace SummaRace.Features.Reader
         {
             if (_questionAnswered) return;
             _questionAnswered = true;
+
+            // From here the play-through is study data: SessionLogService records the FIRST
+            // answer per page and this is one. The exit stays gone for the rest of the run.
+            _answerCommitted = true;
+            RefreshSecondaryControls(readingPage: false);
 
             var question = _story.pages[_pageIndex].question;
 
@@ -302,6 +360,225 @@ namespace SummaRace.Features.Reader
 
             EventBus.Raise(new ReadingCompleted());
             SceneLoader.Go(SceneNames.RaceEndless); // experiment: Trash Dash base race
+        }
+
+        // ---------- leaving safely, and hearing the page again ----------
+
+        private void Update()
+        {
+            // The armed BACK forgets itself. Unscaled so a paused/slowed frame cannot leave
+            // the confirm sitting there indefinitely.
+            if (_backArmed && Time.unscaledTime - _backArmedAt > BackConfirmSeconds) DisarmBack();
+        }
+
+        /// <summary>
+        /// Decides whether the learner may leave, and whether the replay chip is useful.
+        ///
+        /// THE RULE: BACK exists only while a page is being READ and only until the learner's
+        /// first answer. Two separate reasons, both about the study rather than about taste:
+        ///
+        /// 1. Once one question has been answered the play-through carries a measure —
+        ///    SessionLogService records the FIRST answer per page and nothing later replaces
+        ///    it — so leaving after that point would either discard recorded data or file a
+        ///    half-run against the learner. Before it, the run holds nothing: SessionLogService
+        ///    .HasData is false, so the row is dropped rather than written as an abandonment.
+        ///    A learner who tapped the wrong story card therefore costs the study exactly zero.
+        ///    In practice this window is page 1 before its question is answered, because the
+        ///    NEXT button is hidden until a question is answered, so no later page is reachable
+        ///    without committing one.
+        /// 2. It is never offered DURING a question, even an unanswered one. An exit sitting
+        ///    next to an item a learner is unsure about invites bailing out of hard questions,
+        ///    which would bias the reading measure by exactly the learners it matters most for.
+        ///
+        /// Everything downstream (race, Arrange, Summary, Results) stays one-way on purpose:
+        /// by then the run is data. The teacher's escape hatch there is still the app switcher.
+        /// </summary>
+        private void RefreshSecondaryControls(bool readingPage)
+        {
+            bool mayLeave = readingPage && !_answerCommitted;
+            if (!mayLeave) DisarmBack();
+            if (backButton != null) backButton.gameObject.SetActive(mayLeave);
+
+            // A page with no narration path would give a chip that plays silence — worse than
+            // no chip. AudioManager already treats a missing clip as a silent page, so this is
+            // only about not offering a control that cannot do anything.
+            bool hasNarration = _story != null &&
+                                !string.IsNullOrEmpty(_story.pages[_pageIndex].narration);
+            if (replayButton != null) replayButton.gameObject.SetActive(readingPage && hasNarration);
+        }
+
+        /// <summary>
+        /// Two taps to leave. The first only arms it: a 9-year-old tapping around the corner of
+        /// the screen must not be able to drop out of the story, and the same "tap again"
+        /// pattern already guards the teacher screen's destructive actions.
+        /// </summary>
+        private void OnBackTapped()
+        {
+            if (!_backArmed) { ArmBack(); return; }
+
+            if (AudioManager.Instance != null)
+            {
+                AudioManager.Instance.StopNarration(); // the voice never follows them out
+                AudioManager.Instance.PlaySfx(AudioKeys.SfxClick);
+            }
+
+            // Back to the cards they came from, so re-picking the right difficulty is one tap.
+            // Nothing is raised on the way out: the in-flight log is left empty on purpose and
+            // the next StoryStarted drops it (SessionLogService.HasData).
+            SceneLoader.Go(SceneNames.StorySelect);
+        }
+
+        private void ArmBack()
+        {
+            _backArmed = true;
+            _backArmedAt = Time.unscaledTime;
+            if (backButtonLabel != null)
+            {
+                backButtonLabel.text = GameText.ReaderBackConfirm;
+                // Both armed looks are light (gold pill, or an amber flat fallback), so the
+                // label goes dark either way — a light-on-gold label is the one combination
+                // that would make the confirming step the hardest thing on screen to read.
+                backButtonLabel.color = ChipTextArmed;
+            }
+            ApplyChipStyle(backButton, armed: true);
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxSlotWiggle);
+        }
+
+        private void DisarmBack()
+        {
+            if (!_backArmed) return;
+            _backArmed = false;
+            if (backButtonLabel != null)
+            {
+                backButtonLabel.text = GameText.ReaderBackLabel;
+                backButtonLabel.color = ChipTextIdle;
+            }
+            ApplyChipStyle(backButton, armed: false);
+        }
+
+        /// <summary>Idle = navy pill, armed = gold pill. Falls back to flat colours when the
+        /// generated pill sprites are missing, so the state is never invisible.</summary>
+        private void ApplyChipStyle(Button chip, bool armed)
+        {
+            if (chip == null || chip.image == null) return;
+
+            var sprite = armed ? _pillArmed : _pillIdle;
+            if (sprite != null)
+            {
+                chip.image.sprite = sprite;
+                chip.image.color = Color.white;
+            }
+            else
+            {
+                chip.image.color = armed ? ChipFallbackArmed : ChipFallbackIdle;
+            }
+        }
+
+        /// <summary>
+        /// Builds the two small chips when the scene carries no objects for them. Serialized
+        /// references win whenever they exist, so dressing these properly later is a scene
+        /// edit and no code change. Built here because the Reader had no exit and no replay at
+        /// all, and a control that only appears once someone remembers to wire it is the same
+        /// as no control on study day.
+        /// </summary>
+        private void EnsureSecondaryControls()
+        {
+            _pillIdle = Resources.Load<Sprite>("UI/bar_bg");    // navy 9-sliced pill
+            _pillArmed = Resources.Load<Sprite>("UI/bar_fill");  // gold 9-sliced pill
+
+            if (backButton != null && backButtonLabel == null)
+                backButtonLabel = backButton.GetComponentInChildren<TMP_Text>(true);
+            if (replayButton != null && replayButtonLabel == null)
+                replayButtonLabel = replayButton.GetComponentInChildren<TMP_Text>(true);
+
+            var root = ResolveSceneCanvas();
+            if (root != null)
+            {
+                if (backButton == null)
+                    // Bottom-left corner: clear of NEXT (x 0.30-0.80) and below Ms. Lumi
+                    // (y 0.11 up), so it reads as a quiet corner control rather than a choice.
+                    backButton = BuildChip(root, "BackChip",
+                        new Vector2(0.035f, 0.040f), new Vector2(0.235f, 0.105f),
+                        GameText.ReaderBackLabel, 30f, out backButtonLabel);
+
+                if (replayButton == null)
+                    // Directly under VOICE, in the band between the top HUD row (y 0.945) and
+                    // the reading card (y 0.90) — it belongs with the audio controls.
+                    replayButton = BuildChip(root, "ReplayChip",
+                        new Vector2(0.700f, 0.902f), new Vector2(0.970f, 0.945f),
+                        GameText.ReaderReplayLabel, 28f, out replayButtonLabel);
+            }
+
+            if (backButtonLabel != null) backButtonLabel.text = GameText.ReaderBackLabel;
+            if (replayButtonLabel != null) replayButtonLabel.text = GameText.ReaderReplayLabel;
+            ApplyChipStyle(backButton, armed: false);
+            ApplyChipStyle(replayButton, armed: false);
+        }
+
+        /// <summary>One small pill button, Fredoka-labelled like every other button in the kit.</summary>
+        private Button BuildChip(Transform root, string name, Vector2 anchorMin, Vector2 anchorMax,
+                                 string text, float fontSize, out TMP_Text label)
+        {
+            var chipGo = new GameObject(name, typeof(RectTransform));
+            chipGo.transform.SetParent(root, false);
+            var rect = (RectTransform)chipGo.transform;
+            rect.anchorMin = anchorMin;
+            rect.anchorMax = anchorMax;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+            rect.SetAsLastSibling(); // the question page is a full-rect sibling — stay tappable above it
+
+            var image = chipGo.AddComponent<Image>();
+            if (_pillIdle != null)
+            {
+                image.sprite = _pillIdle;
+                image.type = Image.Type.Sliced;
+            }
+            else image.color = ChipFallbackIdle;
+
+            var labelGo = new GameObject("Label", typeof(RectTransform));
+            labelGo.transform.SetParent(chipGo.transform, false);
+            label = labelGo.AddComponent<TextMeshProUGUI>();
+            // Borrow the NEXT button's font rather than loading one: it is the kit's heading
+            // face (Fredoka) and it is already in memory in this scene.
+            if (nextButtonLabel != null && nextButtonLabel.font != null) label.font = nextButtonLabel.font;
+            label.text = text;
+            label.fontSize = fontSize;
+            label.enableAutoSizing = true;
+            label.fontSizeMin = 16f;
+            label.fontSizeMax = fontSize;
+            label.alignment = TextAlignmentOptions.Center;
+            label.textWrappingMode = TextWrappingModes.NoWrap;
+            label.color = ChipTextIdle;
+            var labelRect = label.rectTransform;
+            labelRect.anchorMin = Vector2.zero;
+            labelRect.anchorMax = Vector2.one;
+            labelRect.offsetMin = new Vector2(10f, 6f);
+            labelRect.offsetMax = new Vector2(-10f, -6f);
+
+            chipGo.AddComponent<SummaRace.UI.ButtonSquash>();
+            var button = chipGo.AddComponent<Button>();
+            button.targetGraphic = image;
+            return button;
+        }
+
+        /// <summary>
+        /// The canvas this scene's own UI lives on. A blind FindAnyObjectByType would happily
+        /// return SceneLoader's persistent FadeCanvas ([Core], DontDestroyOnLoad, alpha 0) and
+        /// the chips would be built invisible on the loading overlay.
+        /// </summary>
+        private Transform ResolveSceneCanvas()
+        {
+            var canvas = nextButton != null ? nextButton.GetComponentInParent<Canvas>() : null;
+            if (canvas == null && voiceButton != null) canvas = voiceButton.GetComponentInParent<Canvas>();
+            if (canvas != null) return canvas.rootCanvas.transform;
+
+            foreach (var candidate in FindObjectsByType<Canvas>(FindObjectsSortMode.None))
+                if (candidate.gameObject.scene == gameObject.scene)
+                    return candidate.rootCanvas.transform;
+
+            Debug.LogWarning("Reader: no scene canvas found — back and replay chips not built.");
+            return null;
         }
     }
 }

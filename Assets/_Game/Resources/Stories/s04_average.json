@@ -27,8 +27,8 @@
         "text": "What did Rylee want?",
         "options": [
           "Her classmates to like the necklace",
-          "A new necklace",
-          "To go home"
+          "A brand new necklace from a shop in town",
+          "To go home early from school that day"
         ],
         "correctIndex": 0
       }
@@ -39,9 +39,9 @@
       "question": {
         "text": "What problem did Rylee notice?",
         "options": [
-          "She lost her test",
+          "She lost her test paper somewhere inside the classroom",
           "Her wishes seemed to cause unexpected problems",
-          "The necklace broke"
+          "The necklace broke into pieces after her second wish"
         ],
         "correctIndex": 1
       }
@@ -52,9 +52,9 @@
       "question": {
         "text": "What did Rylee do to solve her problem?",
         "options": [
-          "She hid the necklace",
+          "She hid the necklace at the very back of her closet",
           "She asked the museum for information about it",
-          "She gave it to a friend"
+          "She gave it to a friend and asked her to keep it"
         ],
         "correctIndex": 1
       }
@@ -65,7 +65,7 @@
       "question": {
         "text": "What happened in the end?",
         "options": [
-          "Rylee kept using the necklace",
+          "Rylee kept using the necklace for more and more wishes",
           "Rylee decided she no longer wanted the necklace",
           "Rylee wished for more things"
         ],

@@ -120,6 +120,12 @@ namespace SummaRace.Features.Results
             // 5 so a short story (or a race result from a run that ended early) shortens the row
             // instead of throwing — this screen has no other exit, so nothing here may throw.
             int gems = _story.elements != null ? Mathf.Min(5, _story.elements.Length) : 0;
+
+            // The count came from the story but the row was still cut into literal fifths, so
+            // the two could disagree — a short row would have sat bunched against the left of
+            // the chest with a gap where the missing gems used to be. One number now drives both.
+            float slotWidth = 1f / Mathf.Max(1, gems);
+
             for (int i = 0; i < gems; i++)
             {
                 bool earned = result == null || result.firstPickCorrect == null
@@ -128,8 +134,8 @@ namespace SummaRace.Features.Results
                 var chip = new GameObject("Gem_" + i, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
                 chip.transform.SetParent(treasureRow, false);
                 var rt = (RectTransform)chip.transform;
-                rt.anchorMin = new Vector2(i * 0.2f + 0.015f, 0f);
-                rt.anchorMax = new Vector2((i + 1) * 0.2f - 0.015f, 1f);
+                rt.anchorMin = new Vector2(i * slotWidth + 0.015f, 0f);
+                rt.anchorMax = new Vector2((i + 1) * slotWidth - 0.015f, 1f);
                 rt.offsetMin = Vector2.zero;
                 rt.offsetMax = Vector2.zero;
                 var img = chip.GetComponent<Image>();

@@ -26,7 +26,7 @@
       "question": {
         "text": "What did the Rubin family want?",
         "options": [
-          "A bigger house",
+          "A bigger house in the village",
           "More space in their home",
           "More visitors"
         ],
@@ -65,9 +65,9 @@
       "question": {
         "text": "What happened in the end?",
         "options": [
-          "The family moved away",
+          "The family moved away and bought a much larger house in town",
           "The house felt spacious and the family was grateful",
-          "The animals stayed inside"
+          "The animals stayed inside and the house felt crowded forever"
         ],
         "correctIndex": 1
       }

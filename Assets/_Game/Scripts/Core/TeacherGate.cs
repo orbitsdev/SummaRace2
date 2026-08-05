@@ -27,14 +27,28 @@ namespace SummaRace.Core
             return settings != null && !string.IsNullOrEmpty(settings.teacherPinHash);
         }
 
+        /// <summary>
+        /// Stores the salted hash of a new PIN. Returns true only once the hash is verified on
+        /// disk: SaveManager.SaveSettings swallows a failed write (it raises SaveFailed and
+        /// returns void), so this used to report success unconditionally — and the screen then
+        /// told the researcher "PIN saved, write it in the study notes, it cannot be read back"
+        /// for a PIN the device does not have. On the next launch that tablet is back on the
+        /// setup step with nobody expecting it, which is the one state where a learner can claim
+        /// the gate. Cheap to be sure: read it back.
+        /// </summary>
         public static bool SetPin(string pin)
         {
             if (!IsPinAcceptable(pin) || SaveManager.Instance == null) return false;
 
             var settings = LoadSettings();
-            settings.teacherPinHash = Hash(pin);
+            if (settings == null) return false;
+
+            string hash = Hash(pin);
+            settings.teacherPinHash = hash;
             SaveManager.Instance.SaveSettings(settings);
-            return true;
+
+            var stored = LoadSettings();   // re-read from disk, not from the object just written
+            return stored != null && string.Equals(stored.teacherPinHash, hash, StringComparison.Ordinal);
         }
 
         public static bool VerifyPin(string pin)
@@ -69,14 +83,23 @@ namespace SummaRace.Core
         /// unlock another session or export another log again, and the only remaining escape
         /// would be clearing app data from Android settings, which costs exactly the same data
         /// with none of the warning. Destructive by design; the caller states the cost first.
+        ///
+        /// The PIN is cleared FIRST and the data only after that is confirmed. The other order
+        /// has a failure mode worse than either half: a swallowed settings write (SaveSettings
+        /// raises SaveFailed and returns void) would leave the tablet erased AND still locked by
+        /// the PIN nobody knows — the exact state this gesture exists to escape. Failing before
+        /// the delete costs a retry; failing after costs the study's data. Returns false when
+        /// the gate could not be cleared, in which case nothing was erased.
         /// </summary>
-        public static void ResetDevice()
+        public static bool ResetDevice()
         {
+            if (!ClearPin()) return false;
+
             if (SaveManager.Instance != null) SaveManager.Instance.DeleteAllData();
-            ClearPin();
             // Rebuild the default profile so the next screen still has a learner to read,
             // exactly as the post-study wipe does — a reset must not leave the game profileless.
             if (GameManager.Instance != null) GameManager.Instance.InitProfiles();
+            return true;
         }
 
         /// <summary>A PIN has to be memorable for a teacher but not a single keypress.</summary>
@@ -92,14 +115,19 @@ namespace SummaRace.Core
             IsPinAcceptable(first) && second != null &&
             string.Equals(first.Trim(), second.Trim(), StringComparison.Ordinal);
 
-        /// <summary>Drops the stored hash so the gate falls back to "set a PIN".</summary>
-        private static void ClearPin()
+        /// <summary>Drops the stored hash so the gate falls back to "set a PIN". Verified on
+        /// disk for the same reason SetPin is — the write can fail silently, and a reset that
+        /// only appeared to clear the gate is the worst outcome this screen can produce.</summary>
+        private static bool ClearPin()
         {
-            if (SaveManager.Instance == null) return;
+            if (SaveManager.Instance == null) return false;
 
             var settings = LoadSettings();
+            if (settings == null) return false;
+
             settings.teacherPinHash = null;
             SaveManager.Instance.SaveSettings(settings);
+            return !HasPin();
         }
 
         private static Data.AppSettings LoadSettings() =>

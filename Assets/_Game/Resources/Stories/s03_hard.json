@@ -27,7 +27,7 @@
         "text": "What did the children enjoy?",
         "options": [
           "Playing in the beautiful garden",
-          "Climbing mountains",
+          "Climbing the mountains near the town",
           "Visiting a castle"
         ],
         "correctIndex": 0
@@ -39,9 +39,9 @@
       "question": {
         "text": "What problem began in the story?",
         "options": [
-          "The garden disappeared",
+          "The garden disappeared behind a thick grey wall of fog",
           "The Giant became angry when he saw the children",
-          "The children broke the trees"
+          "The children broke the trees while they were playing"
         ],
         "correctIndex": 1
       }
@@ -52,7 +52,7 @@
       "question": {
         "text": "What did the Giant do?",
         "options": [
-          "He invited the children to stay",
+          "He invited the children to stay and play all day",
           "He chased the children away and built a wall",
           "He planted more trees"
         ],
@@ -65,7 +65,7 @@
       "question": {
         "text": "What happened in the end?",
         "options": [
-          "The children continued playing",
+          "The children continued playing in the garden every day",
           "The Giant shared the garden",
           "The children could no longer play in the garden"
         ],

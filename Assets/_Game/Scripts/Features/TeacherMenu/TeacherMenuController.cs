@@ -45,6 +45,11 @@ namespace SummaRace.Features.TeacherMenu
         [SerializeField] private TMP_Text deleteLabel;
         [SerializeField] private Button backButton;
 
+        [Header("Learners")]
+        [Tooltip("Optional. Left unwired the screen clones it from the Unlock button, so the " +
+                 "action exists on the scene as it stands today without a re-author.")]
+        [SerializeField] private Button switchLearnerButton;
+
         [Header("Action labels")]
         [SerializeField] private TMP_Text titleText;
         [SerializeField] private TMP_Text unlockLabel;
@@ -55,6 +60,19 @@ namespace SummaRace.Features.TeacherMenu
         private const float RecoveryHoldSeconds = 6f;
         private const int AttemptsBeforeCooldown = 5;
         private const float CooldownSeconds = 30f;
+
+        // Layout of the action column, also local for the same reason. The scene authored three
+        // buttons at y = 150 / 0 / -150 inside ActionsPanel and gave it no layout group; a
+        // fourth no longer centres on that spacing, so the column is positioned from one rule
+        // here instead — the scene and this file cannot drift apart that way.
+        private const float ActionSpacing = 150f;
+        private const float LearnerRowHeight = 120f;
+
+        /// <summary>The learner picker, built on first use out of this screen's own controls.
+        /// Null until then (and if there is nothing to clone).</summary>
+        private GameObject _learnerPanel;
+        private RectTransform _learnerList;
+        private TMP_Text _learnerTitle;
 
         private GateStep _step;
 
@@ -98,9 +116,13 @@ namespace SummaRace.Features.TeacherMenu
                 pinInput.text = string.Empty;
             }
 
+            EnsureSwitchLearnerButton();
+            LayOutActions(switchLearnerButton, unlockButton, exportButton, deleteButton);
+
             ShowGate();
 
             if (submitButton != null) submitButton.onClick.AddListener(Submit);
+            if (switchLearnerButton != null) switchLearnerButton.onClick.AddListener(OpenLearnerPicker);
             if (unlockButton != null) unlockButton.onClick.AddListener(UnlockNext);
             if (exportButton != null) exportButton.onClick.AddListener(Export);
             if (deleteButton != null) deleteButton.onClick.AddListener(DeleteData);
@@ -125,6 +147,8 @@ namespace SummaRace.Features.TeacherMenu
             _retryAt = 0f;
             if (gatePanel != null) gatePanel.SetActive(true);
             if (actionsPanel != null) actionsPanel.SetActive(false);
+            // The picker lives behind the PIN too — it must not survive a return to the gate.
+            if (_learnerPanel != null) _learnerPanel.SetActive(false);
         }
 
         /// <summary>Points the one input field at one question and clears what it held.</summary>
@@ -282,6 +306,17 @@ namespace SummaRace.Features.TeacherMenu
 
         private void EndHold() => _holdStart = -1f;
 
+        /// <summary>
+        /// A press that is interrupted rather than released — a call, a notification, the home
+        /// button — is not guaranteed to deliver PointerUp, and unscaled time keeps running while
+        /// the app is away. Without this the hold could "complete" in the background and the
+        /// researcher would come back to "Reset this tablet?" with no idea what they did: an
+        /// alarming screen that is two taps from erasing the study. Interrupted is not held.
+        /// </summary>
+        private void OnApplicationPause(bool paused) { if (paused) EndHold(); }
+
+        private void OnApplicationFocus(bool focused) { if (!focused) EndHold(); }
+
         private void Update()
         {
             if (_holdStart < 0f) return;
@@ -311,7 +346,14 @@ namespace SummaRace.Features.TeacherMenu
                 return;
             }
 
-            TeacherGate.ResetDevice();
+            if (!TeacherGate.ResetDevice())
+            {
+                // The gate could not be cleared, so nothing was erased. Stay armed: the next tap
+                // retries, rather than making the researcher hold for six seconds again.
+                Status(GameText.TeacherRecoveryFailed);
+                return;
+            }
+
             SetStep(GateStep.CreatePin);
             Status(GameText.TeacherRecoveryDone);
         }
@@ -325,6 +367,7 @@ namespace SummaRace.Features.TeacherMenu
             SetStep(GateStep.EnterPin);
             _wrongAttempts = 0;
             if (gatePanel != null) gatePanel.SetActive(false);
+            if (_learnerPanel != null) _learnerPanel.SetActive(false);
             if (actionsPanel != null) actionsPanel.SetActive(true);
             _deleteArmed = false;
             if (deleteLabel != null) deleteLabel.text = GameText.TeacherDelete;
@@ -364,8 +407,10 @@ namespace SummaRace.Features.TeacherMenu
             Click();
             Disarm();
             string path = SaveManager.Instance != null ? SaveManager.Instance.ExportLogs() : null;
-            // Show the full path: the researcher has to find this file over USB.
-            Status(string.IsNullOrEmpty(path) ? GameText.TeacherNothingToExport : path);
+            // Show the full path: the researcher has to find this file over USB. The bare path
+            // was not enough — the export is deliberately pseudonymised, so the companion roster
+            // written beside it has to be pulled too or the rows cannot be tied to a child.
+            Status(string.IsNullOrEmpty(path) ? GameText.TeacherNothingToExport : GameText.TeacherExported(path));
         }
 
         /// <summary>Two taps, because this is unrecoverable. Keeps the PIN — a post-study wipe
@@ -386,6 +431,327 @@ namespace SummaRace.Features.TeacherMenu
             _deleteArmed = false;
             if (deleteLabel != null) deleteLabel.text = GameText.TeacherDelete;
             Status(GameText.TeacherDeleted);
+        }
+
+        // ---------- Who is holding the tablet ----------
+
+        /// <summary>
+        /// Opens the learner picker. This is the only way to change learner in the whole app,
+        /// and it is behind the PIN with session unlocking for the same reason: a learner who
+        /// could switch could also play as a classmate, and the stars, unlocks and log rows
+        /// would land on the wrong child (GDD §8.3). Nothing about this is undoable after the
+        /// study exports, so it is an adult action by design.
+        /// </summary>
+        private void OpenLearnerPicker()
+        {
+            Click();
+            Disarm();
+            EnsureLearnerPanel();
+
+            if (_learnerPanel == null)
+            {
+                // Everything here is cloned from this screen's own controls; with none wired
+                // there is nothing to clone. Say so rather than open an empty board (TDD §13).
+                Status(GameText.TeacherLearnerPickerUnavailable);
+                return;
+            }
+
+            RefreshLearnerRows();
+            if (actionsPanel != null) actionsPanel.SetActive(false);
+            _learnerPanel.SetActive(true);
+            Status(string.Empty);
+        }
+
+        private void CloseLearnerPicker()
+        {
+            if (_learnerPanel != null) _learnerPanel.SetActive(false);
+            if (actionsPanel != null) actionsPanel.SetActive(true);
+        }
+
+        private void ChooseLearner(Data.LearnerProfile learner)
+        {
+            Click();
+            var manager = Core.GameManager.Instance;
+            if (manager == null || learner == null) return;
+
+            manager.SetActiveLearner(learner);
+            CloseLearnerPicker();
+            // Name them back: on a shared tablet the confirmation IS the safeguard.
+            Status(GameText.TeacherActiveLearner(learner.displayName));
+        }
+
+        /// <summary>
+        /// Starts a second (third, fourth…) learner on this tablet. Name Entry already asks for
+        /// a name and an avatar and writes them to whoever is active, so the new profile is
+        /// named there rather than through a second, nearly identical box here — and that
+        /// screen exits to the Main Menu, so this is never a dead end.
+        /// </summary>
+        private void StartNewLearner()
+        {
+            Click();
+            var manager = Core.GameManager.Instance;
+            if (manager == null)
+            {
+                // No [Core] means no profiles and nowhere to save — the same failure the PIN
+                // step reports, so it reads the same way.
+                Status(GameText.TeacherSaveFailed);
+                return;
+            }
+
+            manager.CreateLearner();
+            SceneLoader.Go(SceneNames.NameEntry);
+        }
+
+        /// <summary>Rebuilds the list. Cheap enough to redo per open, and it always agrees with
+        /// the profiles as they are right now (a name set at Name Entry, a session unlocked).</summary>
+        private void RefreshLearnerRows()
+        {
+            if (_learnerList == null) return;
+
+            // Unparent before destroying: Destroy only takes effect at the end of the frame, so
+            // the layout group would otherwise stack the old rows under the new ones for a frame
+            // — and the stale buttons would still be tappable while it did.
+            for (int i = _learnerList.childCount - 1; i >= 0; i--)
+            {
+                var stale = _learnerList.GetChild(i);
+                stale.SetParent(null, false);
+                Destroy(stale.gameObject);
+            }
+
+            if (_learnerTitle != null) _learnerTitle.text = GameText.TeacherLearnerPickerTitle;
+
+            var newRow = CloneButton(unlockButton, _learnerList, "NewLearner", GameText.TeacherNewLearner);
+            if (newRow != null)
+            {
+                ShapeRow(newRow);
+                newRow.onClick.AddListener(StartNewLearner);
+            }
+
+            var manager = Core.GameManager.Instance;
+            if (manager == null) return;
+
+            var learners = manager.Learners;
+            for (int i = 0; i < learners.Count; i++)
+            {
+                var learner = learners[i];
+                if (learner == null) continue;
+
+                bool playing = learner == manager.CurrentLearner;
+                var row = CloneButton(unlockButton, _learnerList, "Learner" + i,
+                    playing
+                        ? GameText.TeacherLearnerRowActive(learner.displayName, learner.unlockedSession)
+                        : GameText.TeacherLearnerRow(learner.displayName, learner.unlockedSession));
+                if (row == null) continue;
+
+                ShapeRow(row);
+                // Re-picking whoever is already playing would only flush their log for nothing.
+                row.interactable = !playing;
+                var chosen = learner;              // capture per row, not per loop
+                row.onClick.AddListener(() => ChooseLearner(chosen));
+            }
+        }
+
+        // ---------- Building the picker out of the screen's own parts ----------
+
+        /// <summary>
+        /// Adds the fourth action by copying the Unlock button. Cloning rather than building
+        /// keeps the kit styling (9-sliced pill, dark ring, label font, ButtonSquash) exactly as
+        /// the scene already carries it — a hand-built button would drift the moment the skin
+        /// changes. Skipped when the scene wires one itself.
+        /// </summary>
+        private void EnsureSwitchLearnerButton()
+        {
+            if (switchLearnerButton != null || unlockButton == null) return;
+            switchLearnerButton = CloneButton(
+                unlockButton, unlockButton.transform.parent, "Switch learner", GameText.TeacherSwitchLearner);
+        }
+
+        /// <summary>Centres the action column however many buttons it ends up with.</summary>
+        private static void LayOutActions(params Button[] actions)
+        {
+            int count = 0;
+            for (int i = 0; i < actions.Length; i++) if (actions[i] != null) count++;
+            if (count == 0) return;
+
+            float top = (count - 1) * 0.5f * ActionSpacing;
+            int slot = 0;
+            for (int i = 0; i < actions.Length; i++)
+            {
+                if (actions[i] == null) continue;
+                var rect = actions[i].transform as RectTransform;
+                if (rect != null)
+                    rect.anchoredPosition = new Vector2(rect.anchoredPosition.x, top - slot * ActionSpacing);
+                slot++;
+            }
+        }
+
+        private void EnsureLearnerPanel()
+        {
+            if (_learnerPanel != null) return;
+            if (actionsPanel == null || unlockButton == null) return;
+
+            var panel = new GameObject("LearnerPanel", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            var rect = (RectTransform)panel.transform;
+            rect.SetParent(actionsPanel.transform.parent, false);
+            // Its own box rather than the actions panel's: the list needs the height, and it has
+            // to clear the title banner above (bottom ≈0.865) and the status line below (0.26).
+            rect.anchorMin = new Vector2(0.06f, 0.28f);
+            rect.anchorMax = new Vector2(0.94f, 0.83f);
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+
+            var backdrop = panel.GetComponent<Image>();
+            var board = actionsPanel.GetComponent<Image>();
+            if (board != null)
+            {
+                backdrop.sprite = board.sprite;
+                backdrop.type = board.type;
+                backdrop.color = board.color;
+                backdrop.pixelsPerUnitMultiplier = board.pixelsPerUnitMultiplier;
+            }
+            else
+            {
+                backdrop.color = new Color(0f, 0f, 0f, 0.35f);
+            }
+            backdrop.raycastTarget = false;
+
+            _learnerTitle = CloneText(statusText, rect, "PickerTitle");
+            if (_learnerTitle != null)
+            {
+                var titleRect = (RectTransform)_learnerTitle.transform;
+                titleRect.anchorMin = new Vector2(0.05f, 1f);
+                titleRect.anchorMax = new Vector2(0.95f, 1f);
+                titleRect.pivot = new Vector2(0.5f, 1f);
+                titleRect.sizeDelta = new Vector2(0f, 110f);
+                titleRect.anchoredPosition = new Vector2(0f, -24f);
+                _learnerTitle.alignment = TextAlignmentOptions.Center;
+                _learnerTitle.text = GameText.TeacherLearnerPickerTitle;
+            }
+
+            BuildLearnerScroll(rect);
+
+            var done = CloneButton(unlockButton, rect, "PickerDone", GameText.TeacherLearnerPickerClose);
+            if (done != null)
+            {
+                var doneRect = (RectTransform)done.transform;
+                doneRect.anchorMin = new Vector2(0.5f, 0f);
+                doneRect.anchorMax = new Vector2(0.5f, 0f);
+                doneRect.pivot = new Vector2(0.5f, 0f);
+                doneRect.sizeDelta = new Vector2(600f, 120f);
+                doneRect.anchoredPosition = new Vector2(0f, 26f);
+                done.onClick.AddListener(() => { Click(); CloseLearnerPicker(); });
+            }
+
+            panel.SetActive(false);
+            _learnerPanel = panel;
+        }
+
+        /// <summary>A real scroll view, because a tablet shared by a whole reading group can
+        /// hold more learners than the board is tall.</summary>
+        private void BuildLearnerScroll(RectTransform parent)
+        {
+            var scrollGo = new GameObject("LearnerScroll", typeof(RectTransform), typeof(ScrollRect));
+            var scrollRect = (RectTransform)scrollGo.transform;
+            scrollRect.SetParent(parent, false);
+            scrollRect.anchorMin = new Vector2(0.05f, 0f);
+            scrollRect.anchorMax = new Vector2(0.95f, 1f);
+            scrollRect.offsetMin = new Vector2(0f, 170f);    // clear of the Done button
+            scrollRect.offsetMax = new Vector2(0f, -140f);   // clear of the title
+
+            var viewportGo = new GameObject(
+                "Viewport", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(RectMask2D));
+            var viewport = (RectTransform)viewportGo.transform;
+            viewport.SetParent(scrollRect, false);
+            viewport.anchorMin = Vector2.zero;
+            viewport.anchorMax = Vector2.one;
+            viewport.offsetMin = Vector2.zero;
+            viewport.offsetMax = Vector2.zero;
+            // Fully transparent, but still a raycast target: a drag started on the gap between
+            // two rows has to land on something or the list will not scroll.
+            viewportGo.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0f);
+
+            var contentGo = new GameObject(
+                "Content", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
+            _learnerList = (RectTransform)contentGo.transform;
+            _learnerList.SetParent(viewport, false);
+            _learnerList.anchorMin = new Vector2(0f, 1f);
+            _learnerList.anchorMax = new Vector2(1f, 1f);
+            _learnerList.pivot = new Vector2(0.5f, 1f);
+            _learnerList.sizeDelta = Vector2.zero;
+            _learnerList.anchoredPosition = Vector2.zero;
+
+            var column = contentGo.GetComponent<VerticalLayoutGroup>();
+            column.padding = new RectOffset(10, 10, 10, 10);
+            column.spacing = 16f;
+            column.childAlignment = TextAnchor.UpperCenter;
+            column.childControlWidth = true;
+            column.childForceExpandWidth = true;
+            column.childControlHeight = true;
+            column.childForceExpandHeight = false;
+
+            var fitter = contentGo.GetComponent<ContentSizeFitter>();
+            fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+            var scroll = scrollGo.GetComponent<ScrollRect>();
+            scroll.viewport = viewport;
+            scroll.content = _learnerList;
+            scroll.horizontal = false;
+            scroll.vertical = true;
+            scroll.movementType = ScrollRect.MovementType.Elastic;
+            scroll.elasticity = 0.1f;
+            scroll.inertia = true;
+            scroll.decelerationRate = 0.135f;
+            scroll.scrollSensitivity = 30f;
+        }
+
+        /// <summary>Rows are laid out by the column, so their height has to be stated as a
+        /// layout preference rather than a rect size.</summary>
+        private static void ShapeRow(Button row)
+        {
+            var element = row.gameObject.GetComponent<LayoutElement>();
+            if (element == null) element = row.gameObject.AddComponent<LayoutElement>();
+            element.minHeight = LearnerRowHeight;
+            element.preferredHeight = LearnerRowHeight;
+        }
+
+        /// <summary>
+        /// Copies one of this screen's own buttons instead of building a new one, so a
+        /// code-added control cannot drift from the kit styling the scene already carries.
+        /// The clone's onClick is cleared first: runtime listeners are not copied by
+        /// Instantiate, but a scene-authored one would be.
+        /// </summary>
+        private Button CloneButton(Button template, Transform parent, string name, string label)
+        {
+            if (template == null || parent == null) return null;
+
+            var clone = Instantiate(template.gameObject, parent, false);
+            clone.name = name;
+            clone.SetActive(true);
+
+            var button = clone.GetComponent<Button>();
+            if (button != null)
+            {
+                button.onClick.RemoveAllListeners();
+                button.interactable = true;
+            }
+
+            // Leave the label's own activation alone — several kit buttons carry baked text and
+            // deliberately keep their TMP child switched off (F17/F22).
+            var text = clone.GetComponentInChildren<TMP_Text>(true);
+            if (text != null) text.text = label;
+
+            return button;
+        }
+
+        private TMP_Text CloneText(TMP_Text template, Transform parent, string name)
+        {
+            if (template == null || parent == null) return null;
+
+            var clone = Instantiate(template.gameObject, parent, false);
+            clone.name = name;
+            clone.SetActive(true);
+            return clone.GetComponent<TMP_Text>();
         }
 
         private void Prompt(string message)

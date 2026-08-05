@@ -27,7 +27,7 @@
         "text": "What did Omar's family want to do?",
         "options": [
           "Visit the zoo and see animals",
-          "Go shopping",
+          "Go shopping at the big city mall",
           "Watch a movie"
         ],
         "correctIndex": 0
@@ -65,9 +65,9 @@
       "question": {
         "text": "How did Omar feel at the end?",
         "options": [
-          "Sad",
+          "Tired and very unhappy",
           "Excited and happy",
-          "Angry"
+          "Bored and angry"
         ],
         "correctIndex": 1
       }

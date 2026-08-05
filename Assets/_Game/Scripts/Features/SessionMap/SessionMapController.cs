@@ -90,7 +90,14 @@ namespace SummaRace.Features.SessionMap
             var stop = stops[index].button != null ? stops[index].button.transform : null;
             if (stop == null) yield break;
 
-            if (lockedHintText != null) lockedHintText.text = GameText.SessionCompleteCheer;
+            if (lockedHintText != null)
+            {
+                // Start hides this label when nothing is locked, and the cheer borrows it — so
+                // on a tablet with all ten sessions open the celebration wrote into a disabled
+                // object and the learner was told nothing at all.
+                lockedHintText.text = GameText.SessionCompleteCheer;
+                lockedHintText.gameObject.SetActive(true);
+            }
 
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxStar);
 
@@ -140,8 +147,8 @@ namespace SummaRace.Features.SessionMap
             }
             else
             {
-                // Locked is a friendly "not yet", never a scold and never a dead end (GDD D7).
-                stop.button.onClick.AddListener(PlayLockedNudge);
+                var locked = stop;   // capture per stop, not per loop
+                stop.button.onClick.AddListener(() => PlayLockedNudge(locked));
             }
         }
 
@@ -189,10 +196,32 @@ namespace SummaRace.Features.SessionMap
             SceneLoader.Go(SceneNames.StorySelect);
         }
 
-        private static void PlayLockedNudge()
+        /// <summary>
+        /// Locked is a friendly "not yet", never a scold and never a dead end (GDD D7). It is
+        /// also never the learner's doing — sessions open on the teacher's PIN (GDD §8.3) — so
+        /// the tap has to leave that sentence on screen, not just play a sound a muted
+        /// classroom tablet will never make.
+        /// </summary>
+        private void PlayLockedNudge(SessionStop stop)
         {
             if (AudioManager.Instance != null)
                 AudioManager.Instance.PlaySfx(AudioKeys.SfxSlotWiggle);
+
+            // Punch the lock, not the stop root: the root carries ButtonSquash, which drives
+            // the same localScale from its own tween, and two tweens on one transform leave it
+            // wherever the last one wrote.
+            if (stop != null && stop.lockIcon != null)
+                Tween.PunchScale(stop.lockIcon.transform, Vector3.one * 0.3f, 0.35f);
+
+            // Re-assert the explanation every time. The session-complete cheer borrows this
+            // same label, so a learner who finished a session and then reached for the next
+            // stop was answered by "Mission complete!" — which says nothing about the lock in
+            // front of them.
+            if (lockedHintText != null)
+            {
+                lockedHintText.text = GameText.SessionLockedHint;
+                lockedHintText.gameObject.SetActive(true);
+            }
         }
 
         private static void PlayClick()

@@ -52,9 +52,9 @@
       "question": {
         "text": "What can create a tsunami?",
         "options": [
-          "Wind only",
+          "Only strong wind blowing across the surface",
           "Underwater disturbances like earthquakes",
-          "Clouds"
+          "Thick storm clouds gathering above the water"
         ],
         "correctIndex": 1
       }
@@ -65,9 +65,9 @@
       "question": {
         "text": "What happens in the end of the explanation?",
         "options": [
-          "The ocean stops moving",
+          "The ocean stops moving once the wind and the storms go away",
           "Different forces work together to create waves and tides",
-          "Tsunamis become tides"
+          "Tsunamis slowly turn into tides after the moon pulls them in"
         ],
         "correctIndex": 1
       }

@@ -40,8 +40,8 @@
         "text": "What problem did the friends face?",
         "options": [
           "The door was locked and the key was stuck in ice",
-          "They lost the key",
-          "The room was dark"
+          "They lost the key somewhere under the escape room table",
+          "The room was too dark for them to read any of the clues"
         ],
         "correctIndex": 0
       }
@@ -52,7 +52,7 @@
       "question": {
         "text": "What did Lucy suggest?",
         "options": [
-          "Breaking the key",
+          "Breaking the block of ice with a hammer",
           "Using a metal tray to melt the ice",
           "Calling for help"
         ],

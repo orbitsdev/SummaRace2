@@ -1,6 +1,6 @@
 # SummaRace — Finalization Plan
 
-**Written:** 2026-08-04 · **Updated:** 2026-08-05 · **Branch:** `experiment/endless-override-2`
+**Written:** 2026-08-04 · **Updated:** 2026-08-05 (post-F46 playtest pass) · **Branch:** `experiment/endless-override-2`
 
 ---
 
@@ -11,36 +11,64 @@ record of how the work was scoped, not as a to-do list.
 
 | Phase | State |
 |---|---|
-| P0 decontaminate | ✅ packages, their scenes, `OpenURL`, Boot back to index 0 — **plus the app icon**, which this pass caught still pointing at Trash Dash's `StoreIcon.png` |
-| P1 30 stories | ✅ 30/30 load through `StoryLoader`, 0 validation failures |
+| P0 decontaminate | ✅ **re-verified 2026-08-05 file by file** — `manifest.json` carries no ads/analytics/purchasing/GDK; `UnityConnectSettings.asset` has every service `m_Enabled: 0`; `Assets/Resources/` is empty (`BillingMode.json` gone); `UNITY_SOCIAL` is **not** an Android define (Android's list is just `UNITY_POST_PROCESSING_STACK_V2`); `Application.OpenURL` has zero references in `MainSummaRace.unity`; Build Settings is 12 scenes with Boot at index 0 and none of theirs; app icon is ours |
+| P1 30 stories | ✅ 30/30 load through `StoryLoader`, 0 validation failures; distractor width tell closed in F44 |
 | P2 reachable | ✅ StorySelect data-driven, SessionMap built |
 | P3 profiles/logging/gating | ✅ `SessionLogService`, `TeacherGate`, NameEntry + TeacherMenu |
-| P4 10 worlds | ✅ one per session; the unlit-art problem that made them all look alike is fixed with a colour grade |
-| P5 narration + art | ✅ 150 clips imported and verified resolving; hero art 30/30 (27 placeholders) |
+| P4 10 worlds | ✅ one per session, 30 applied / 30 distinct |
+| P5 narration + art | ✅ **30/30** hero PNGs, **150/150** narration clips and **21/21** `AudioKeys` all resolve — nothing is missing at runtime. 27 of the 30 hero images are placeholders (quality gap, not a wiring gap) |
 | **P6 ship pass** | ⬜ **blocked — see below** |
 
-**P6 is blocked on tooling, not on code.** Android Build Support is not installed in this
-Unity: `BuildPipeline.IsBuildTargetSupported(Android)` returns false, the SDK/NDK/JDK paths
-are empty and the active target is StandaloneWindows64. So **no APK exists yet**, and the
-two acceptance numbers that need one — APK ≤ 300MB and 30fps in the race on the 2GB floor
-device — are unmeasured. Install the module via Unity Hub, then run P6.
+### P6 is blocked on tooling, not on code
 
-**Still open, and each needs a human:**
+**Android Build Support is not installed.** Unity is `6000.4.1f1` and its
+`Editor/Data/PlaybackEngines` holds only `windowsstandalonesupport` — there is no
+`AndroidPlayer`. **No APK has ever been produced**, so the two acceptance numbers that need
+one — APK ≤ 300MB and 30fps in the race on the 2GB floor device — are estimates, not
+measurements. Install the module via Unity Hub, then run P6.
+
+**Second build blocker, now fixed but easy to reintroduce:** an unguarded `using UnityEditor;`
+in a runtime script fails the *player* compile outright while the Editor compiles it happily.
+Three have been found so far — `TrackManager.cs` (F44), `Plugins/ithappy/Animals_FREE/Scripts/CreatureMover.cs`
+and `TextMesh Pro/Examples & Extras/Scripts/TMP_TextInfoDebugTool.cs` (both F46). Any new
+third-party pack dropped into `Assets/` should be checked for one before the next build attempt.
+
+### Still open, and each needs a human
 
 1. **Owner full-loop playtest on a non-s01 story.** 27 of the 30 have never been played
    through the loop once. Editor-only verification cannot cover it — PrimeTween/PanelIntro
-   /UIFloat motion only runs in Play mode.
-2. **Researcher content sign-off** (GDD D6) — the authored distractors and `s01_easy`'s
-   AI-authored questions. Both are validity items, not bugs. See §5.
+   /UIFloat motion only runs in Play mode, and F46 changed gate spacing, trigger depth, the
+   start dolly and the tracker, none of which can be judged outside Play.
+2. **One tablet per learner, or several learners per tablet?** Design call, and it decides
+   how the study is run in the room. The data model already supports several profiles per
+   device (`SaveManager` keeps one `.jsonl` per learner and `ExportLogs` merges them), and
+   teacher-gated learner switching is being implemented — but the owner has to decide whether
+   the protocol actually uses it, because it changes what the researcher hands out and how
+   the PIN install rule reads.
 3. **The race has no pause/back/quit.** The pause button is re-hidden every frame and the
-   pause menu's Exit routes to their `QuitToLoadout`. Since the FINISH-gate fix the race
+   pause menu's Exit routes to their `QuitToLoadout`. Since the FINISH-gate fix (F43) the race
    always ends, so this is no longer a dead end — but a learner still cannot leave a race
-   by choice. Design call.
-4. **`Race.unity` (legacy) is still build index 6** with nothing routing to it. Cutting it
-   would shrink the APK; worth deciding against a real build rather than guessing.
-5. **Trash Dash's inactive objects** (GameOver/Leaderboard/Highscore/StoreButton/Loadout)
-   are still in `MainSummaRace`. Hidden is not removed; the shipping blockers (packages,
-   URLs, their scenes, the icon) are all gone.
+   by choice, and there is no way to hand the tablet back mid-run. Design call.
+4. **The patrol chase is not framable under the approved camera.** Measured in F46: the camera
+   sits 5m behind the runner and 4m up, pitched ~15° with a 58.7° vertical FOV, so the bottom
+   of the frustum is 44.4° below horizontal. A cop on the ground is only in frame while the gap
+   is ≤ ~2.75m, and below ~2.2m he intersects the runner. The shipped 2.1m is a compromise: a
+   sliver of head, or a blob growing out of the kid's back. Making the chaser read properly
+   needs a **camera pull-back**, which is a look change to the whole race and therefore an
+   owner call, not a tuning number. Doing nothing is defensible — he never catches (D7) and
+   the danger vignette already carries the signal.
+5. **Researcher content sign-off** (GDD D6) — the authored distractors and `s01_easy`'s
+   AI-authored questions. Both are validity items, not bugs. See §5.
+6. **Real hero art ×27.** All 30 resolve, so nothing is broken; 27 are 30–80KB generated
+   fills. Specified in `SummaRace_Asset_Shopping_List.md`. Art swaps need no code change.
+7. **`Race.unity` (legacy) is still build index 6** with nothing routing to it (~23MB).
+   Cutting it would shrink the APK; worth deciding against a real build rather than guessing.
+8. **Trash Dash's inactive objects** (GameOver / Loadout ×2 / Highscore / OpenLeaderboard /
+   StoreButton / MissionsButton / Ad Button / Premium Button) are still in `MainSummaRace`.
+   F46 neutralised the five buttons (onClick cleared, non-interactable) — they hung off
+   `LevelLoader.LoadLevel(name)` and could have loaded a `shop` scene that is not in the build.
+   Hidden is still not removed; GameOver and the Loadout children need a code guard first, and
+   their `UICamera/Game` chrome must stay — `GameState.UpdateUI()` dereferences it every frame.
 
 ---
 
@@ -58,8 +86,9 @@ phase boundary and still have something better than we started with.
 ## 1. Verified state (checked in-repo and against the live Editor, 2026-08-04)
 
 **What is genuinely done:** the whole loop, polished — Boot → MainMenu → StorySelect →
-Reader → Race (endless) → Arrange → Summary → Results. Git log runs to F42; CLAUDE.md's
-table stops at F35 and is stale by seven passes.
+Reader → Race (endless) → Arrange → Summary → Results. (At the time of writing, git log ran
+to F42 and CLAUDE.md's table stopped at F35; both have since been brought current — the
+table now runs to F46.)
 
 **What is genuinely missing** (each verified, not assumed):
 
@@ -213,6 +242,9 @@ lock, IL2CPP/ARM64/API 26. Owner playtest of one complete session (all 3 difficu
 
 ## 4. Cut-line, if a day disappears
 
+**Spent — none of these was needed.** All 150 narration clips and all 10 worlds shipped, and
+the teacher export UI exists. Kept as the record of what was considered droppable.
+
 Drop from the bottom, in this order:
 
 1. Narration for average/hard (keep easy — the youngest support need)
@@ -250,3 +282,5 @@ no dead ends · progress that survives a relaunch.
 | Distractor quality is the validity-critical item | Gold-standard register model + programmatic validation + researcher sign-off |
 | Bloom + 10 worlds on a 2GB device | Frame-rate check in P6; worlds are data, so any one can be flattened |
 | Editor-only verification | Motion/tweens only run in Play mode; owner playtest gates each phase |
+| **The build has never been attempted on the target platform** | Everything about size, frame rate and IL2CPP behaviour is inference from disk. Install the Android module *early* in the remaining time, not last — F44 and F46 each found a compile-time blocker the Editor could not see |
+| Race defects that silently produce wrong study data | F46 found two (a tunnelled gate logged as WRONG, a watchdog re-present logged as CORRECT). Anything that writes `raceFirstPickCorrect` deserves the same scrutiny — it *is* the star count and the logged measure |

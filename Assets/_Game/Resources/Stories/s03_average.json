@@ -65,9 +65,9 @@
       "question": {
         "text": "What happened in the end?",
         "options": [
-          "The lunchbox stayed missing",
+          "The lunchbox stayed missing until the end of the week",
           "Timmy found his lunchbox with his friends' help",
-          "Timmy bought a new lunchbox"
+          "Timmy bought a brand new lunchbox at the school store"
         ],
         "correctIndex": 1
       }

@@ -28,7 +28,7 @@
         "options": [
           "To quit immediately",
           "To succeed at his job and support his family",
-          "To become the factory manager"
+          "To become the manager of the whole Ford factory"
         ],
         "correctIndex": 1
       }
@@ -54,7 +54,7 @@
         "options": [
           "He refused to work.",
           "He learned his job and worked hard.",
-          "He left during training."
+          "He left the factory during his first training day."
         ],
         "correctIndex": 1
       }
@@ -65,9 +65,9 @@
       "question": {
         "text": "What happened in the end?",
         "options": [
-          "Stanley quit his job.",
+          "Stanley quit his job at the very end of the first day.",
           "Stanley continued working to provide for his family.",
-          "Stanley became the owner of Ford."
+          "Stanley became the owner of the whole Ford motor factory."
         ],
         "correctIndex": 1
       }

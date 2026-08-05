@@ -39,7 +39,7 @@
       "question": {
         "text": "What problem did the crayons have?",
         "options": [
-          "They were broken",
+          "They were broken into small pieces",
           "They were unhappy with their jobs",
           "They were lost"
         ],
@@ -65,9 +65,9 @@
       "question": {
         "text": "What happened at the end?",
         "options": [
-          "Duncan threw away the crayons",
+          "Duncan threw away the crayons and bought a brand new box of them",
           "Duncan tried to help the crayons so they could color again",
-          "The crayons disappeared"
+          "The crayons disappeared and were never found in his room again"
         ],
         "correctIndex": 1
       }

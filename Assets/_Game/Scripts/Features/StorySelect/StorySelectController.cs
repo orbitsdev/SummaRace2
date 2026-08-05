@@ -1,4 +1,5 @@
 using System;
+using PrimeTween;
 using SummaRace.Constants;
 using SummaRace.Core;
 using SummaRace.Data;
@@ -99,7 +100,11 @@ namespace SummaRace.Features.StorySelect
             // instead of borrowing the "finish the story above" hint.
             string hint = story == null ? GameText.StoryUnavailableHint : GameText.LockedHint;
 
-            if (card.titleText != null && story != null) card.titleText.text = story.title;
+            // A card whose JSON failed to load used to keep whatever title was baked into the
+            // scene, so it named a story sitting right beside "this story isn't ready yet" —
+            // and a learner who taps it gets nothing but a nudge. Say nothing rather than
+            // promise a story that cannot open; the hint below does the explaining.
+            if (card.titleText != null) card.titleText.text = story != null ? story.title : string.Empty;
 
             // Hero art is optional: a story with no illustration yet falls back to the
             // title-only card rather than showing a broken image (TDD §9.4).
@@ -151,8 +156,8 @@ namespace SummaRace.Features.StorySelect
             }
             else
             {
-                // Locked is a friendly nudge, never a scold and never a dead end (GDD D7).
-                card.button.onClick.AddListener(PlayLockedNudge);
+                var locked = card;   // capture per card, not per loop
+                card.button.onClick.AddListener(() => PlayLockedNudge(locked));
             }
         }
 
@@ -193,10 +198,26 @@ namespace SummaRace.Features.StorySelect
             }
         }
 
-        private static void PlayLockedNudge()
+        /// <summary>
+        /// Locked is a friendly nudge, never a scold and never a dead end (GDD D7). The nudge
+        /// has to be seen as well as heard: classroom tablets get muted, and a sound-only
+        /// answer is indistinguishable from a button that does not work.
+        /// </summary>
+        private static void PlayLockedNudge(DifficultyCard card)
         {
             if (AudioManager.Instance != null)
                 AudioManager.Instance.PlaySfx(AudioKeys.SfxSlotWiggle);
+
+            if (card == null) return;
+
+            // Punch the lock — or the title on the EASY card, which has no lock of its own and
+            // is locked only when its JSON is missing. Never the card root: it carries
+            // ButtonSquash, which drives the same localScale from its own tween, and two tweens
+            // on one transform leave it wherever the last one wrote.
+            Transform target = card.lockIcon != null ? card.lockIcon.transform
+                             : card.titleText != null ? card.titleText.transform
+                             : null;
+            if (target != null) Tween.PunchScale(target, Vector3.one * 0.25f, 0.35f);
         }
 
         private static void PlayClick()

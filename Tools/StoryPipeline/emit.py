@@ -14,9 +14,12 @@ import json
 import os
 import sys
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-PROJECT = r"C:\Users\User\Documents\2026\GAME\SummaRace2"
-STORIES = os.path.join(PROJECT, "Assets", "_Game", "Resources", "Stories")
+import paths
+
+HERE = paths.HERE
+# Was a hardcoded absolute path from another machine; see paths.py.
+PROJECT = paths.PROJECT
+STORIES = paths.STORIES
 
 SLOTS = ("SOMEBODY", "WANTED", "BUT", "SO", "THEN")
 

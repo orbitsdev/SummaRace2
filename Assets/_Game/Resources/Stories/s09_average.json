@@ -52,9 +52,9 @@
       "question": {
         "text": "What did Asma do to solve the problem?",
         "options": [
-          "She stopped fasting",
+          "She stopped fasting and ate lunch at school with her friends",
           "She continued fasting and followed the Ramadan practices",
-          "She skipped school"
+          "She skipped school and slept at home until the sun went down"
         ],
         "correctIndex": 1
       }
@@ -65,9 +65,9 @@
       "question": {
         "text": "What happened in the end?",
         "options": [
-          "Asma gave up fasting",
+          "Asma gave up fasting before the last week of Ramadan ended",
           "Asma celebrated Eid al-Fitr and felt proud of herself",
-          "Asma stayed home alone"
+          "Asma stayed home alone while her family celebrated Eid al-Fitr"
         ],
         "correctIndex": 1
       }
