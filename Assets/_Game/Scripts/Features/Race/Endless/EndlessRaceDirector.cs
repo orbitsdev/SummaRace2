@@ -1757,8 +1757,9 @@ namespace SummaRace.Features.Race.Endless
             float x = body.localPosition.x;
             float dt = Time.deltaTime;
             float target = 0f;
-            if (dt > 0f && _lastRunnerX.HasValue && track.laneChangeSpeed > 0.01f)
-                target = Mathf.Clamp((x - _lastRunnerX.Value) / dt / track.laneChangeSpeed, -1f, 1f);
+            // laneChangeSpeed lives on their CharacterInputController, not on TrackManager.
+            if (dt > 0f && _lastRunnerX.HasValue && runner.laneChangeSpeed > 0.01f)
+                target = Mathf.Clamp((x - _lastRunnerX.Value) / dt / runner.laneChangeSpeed, -1f, 1f);
             _lastRunnerX = x;
 
             // Ease toward the target; the raw value is a step function (full speed or zero).
