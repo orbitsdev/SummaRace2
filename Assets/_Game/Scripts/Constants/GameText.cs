@@ -258,7 +258,14 @@ namespace SummaRace.Constants
         public const string NextLabel = "NEXT";
         public const string NextPageLabel = "NEXT PAGE";
         public const string StartRaceLabel = "START RACE!";
-        public const string ReaderWrongFeedback = "Not quite — the green one is the answer!";
+        /// <summary>Says nothing about colour. "The green one is the answer" made colour the ONLY
+        /// channel carrying the answer, which tells a red-green colour-blind learner nothing at
+        /// all — ~8% of boys, so 1-2 children in a 40-learner study, silently excluded from the
+        /// one sentence that teaches after a wrong pick. ReaderController highlights the correct
+        /// option AND punch-scales it (see OnOptionChosen), so the answer is already carried by
+        /// motion as well as colour; this line just stops naming the channel a learner may not
+        /// have. Deliberately NOT a tick glyph — there is no tick in the UI to point at.</summary>
+        public const string ReaderWrongFeedback = "Not quite — here is the answer!";
 
         /// <summary>Reader's quiet corner exit. It is only offered before the learner's first
         /// answer (see ReaderController.RefreshSecondaryControls), so it is worded as a plain
@@ -358,8 +365,12 @@ namespace SummaRace.Constants
         public const string ArrangeHintPrefix = "Hint: ";
         /// <summary>"Locked in" meant CORRECT here while "Locked" everywhere else in the game
         /// (cards, sessions) means "you cannot have this yet" — one word, two opposite feelings,
-        /// on the screen a stuck learner reads most carefully.</summary>
-        public const string ArrangeAlmost = "Almost! The green ones are right — try the others again.";
+        /// on the screen a stuck learner reads most carefully. And "the GREEN ones" made colour
+        /// the only channel: a red-green colour-blind learner (~1-2 children in this study) could
+        /// not tell which parts were already right, on the one screen where being stuck is
+        /// possible. A correct slot is also physically locked — it stops responding to taps — so
+        /// "already in place" names something every learner can perceive.</summary>
+        public const string ArrangeAlmost = "Almost! The parts already in place are right — try the others again.";
 
         /// <summary>Shown when the screen finishes the order for a learner who is stuck
         /// (GameRules.ArrangeMaxAttempts). Deliberately NOT drawn from the praise pools:
