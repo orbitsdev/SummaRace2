@@ -16,10 +16,53 @@ python parse.py            # runs.txt  -> parsed.json + anomaly report
 python emit.py             # regression: reproduce the hand-checked s01 files
 python emit.py --write     # write the 27 generated stories
 python apply.py            # apply overrides.json (the editorial pass)
-python flag.py             # quality gate: must report 0 flagged
+python flag.py             # content gate:  must report 0 flagged
+python fit.py              # geometry gate: must report 0 failures
+python qa.py               # corpus audit (not a gate -- read the numbers)
 ```
 
+`extract.py`/`parse.py`/`emit.py` need `parsed.json`, which is a scratch artefact and is not
+committed, so **only the last four are runnable straight from a clone**. `apply.py` rewrites
+named fields of the JSONs already on disk and is content-idempotent: running it with
+unmodified overrides produces a zero-line `git diff`.
+
 `worksheet.py` prints an authoring worksheet for whatever `flag.py` flags.
+
+## The three checkers
+
+| Script | Asks |
+|---|---|
+| `flag.py` | Is this element set's WORDING a tell? (register, subject form, character budget) |
+| `fit.py` | Will this string RENDER? Every string, in the exact rect it lands in at runtime, at the size TMP's auto-sizer would pick |
+| `qa.py` | Can the corpus be beaten WITHOUT READING? Strategy scores against a permutation null, plus structure, asset resolution, Reader/race reuse, slot shape, grounding and typography |
+
+`fit.py` and `qa.py` read every constant from the thing that owns it — `EndlessRaceDirector.cs`,
+`MainSummaRace.unity`, the UI scenes (via `scenegeom.py`) and the TMP font assets and their
+source TTFs (via `tmpfont.py`). Resize a race card or move a Reader anchor and the next run
+picks it up instead of going quietly stale.
+
+Two traps `tmpfont.py` exists to avoid, both of which make a naive measurement wrong rather
+than merely imprecise:
+
+* the TMP font assets are **dynamic** (`m_AtlasPopulationMode: 1`), so their baked character
+  tables hold only glyphs some scene has already used — 69 of ASCII for Fredoka, 44 for
+  Nunito, with no `J`, `Z`, `j`, `z`, `-` or `:`. Advances come from the source TTFs and are
+  cross-checked against Unity's baked values (they agree to 0.0075 font units at pointSize 90).
+* world-space TMP under a **perspective** camera carries TMP's ×0.1 `orthographicMultiplier`,
+  so a race card's "font size 2.4" is 0.24 world units per em. Miss it and every race number
+  is off by 10x.
+
+`paths.py` resolves the project root (`$SUMMARACE_ROOT`, else the repo this file sits in).
+Every script used to carry a hardcoded absolute path from the machine the pipeline was first
+written on, so none of them could run where the project actually lives.
+
+## Overriding a Reader question option
+
+`apply.py` addresses options by index and **refuses to overwrite the option at
+`correctIndex`** — one digit wrong there silently replaces the correct answer with a
+distractor, and the result still validates (three distinct options, index in range); the only
+symptom is an unanswerable item. If you really do mean to rewrite a correct option (the P7
+card-shortening pass did, twice), add `"allowCorrect": true` beside `"options"`.
 
 ## Why it is shaped like this
 
@@ -63,3 +106,12 @@ a research instrument:
 line verbatim and bend the distractors to match it**; rewrite `correct` only to trim
 over-long cards, never to change meaning. `apply.py` fails loudly if an override does not
 match a real story/slot/page. `flag.py` is the gate and must report 0.
+
+**The same three failure modes apply to the Reader's own question options**, and that was
+missed for a long time: F44 rebalanced the race cards, which had been *derived from* the
+Reader's wrong options, and left the source alone. The correct option was then strictly the
+longest of the three in 124 of 150 Reader questions (mean +10.5 characters), so "tap the
+longest" scored 81.3% against 33.3% for guessing — on data `SessionLogService` logs as
+`readingFirstCorrect`. Rebalanced 2026-08-05 by extending 112 distractors (see
+`Documentation/SummaRace_Content_QA_Report.md`). **If Reader content is ever revised, re-run
+`qa.py` and check section B, not just `flag.py`.**
