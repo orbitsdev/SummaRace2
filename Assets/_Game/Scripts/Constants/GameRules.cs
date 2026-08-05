@@ -87,6 +87,61 @@ namespace SummaRace.Constants
         public const float RaceMinGateGap = 110f; // never shorter than this (always room to appear)
         public const float RaceMaxGateGap = 300f; // never absurdly long
 
+        // ------------------------------------------------------------------------------
+        // RACE LEGIBILITY. The world cards cannot be read, and the numbers say so.
+        //
+        // Re-derived from the shipped values, not from a rule of thumb:
+        //   camera FOV 58.7 vertical, local (0,4,-3) pitched 14.947deg (MainSummaRace.unity),
+        //   parented to the runner 5m ahead of it; laneOffset 1.5 => card 1.425x0.85 with a
+        //   1.275x0.73 text box; Fredoka-SemiBold CapLine 63 / PointSize 90 = 0.700em cap;
+        //   TMP 3D scales fontSize by 0.1, so cap height = 0.07 * fontSize in metres.
+        //   An average 35-character answer auto-sizes to ~1.95pt => a 0.137m cap.
+        //   Frame height at distance d is 2*d*tan(29.35deg) = 1.124*d, so on a 10.1" tablet
+        //   (21.75cm tall in portrait) viewed at 40cm that cap subtends 227/d arcmin.
+        //   The ergonomic floor for comfortable reading is ~20 arcmin => d <= 11.35m from the
+        //   LENS; the card sits 3.5m below it, so that is 10.80m along the road, i.e. only
+        //   5.8m ahead of the runner.
+        //   The run starts at 10 m/s and accelerates 0.2 m/s^2, so it passes gate 1 at
+        //   11.5 m/s and gate 5 at ~20.4 m/s:
+        //       LEGIBLE TIME PER GATE = 0.50s at gate 1, 0.28s at gate 5.
+        //   The three cards of one gate carry ~19 words / ~102 characters, which is ~11.6s of
+        //   decoding at 100wpm and ~16.5s at the 70wpm a struggling Grade-4 reader manages.
+        //
+        // That is a VALIDITY failure, not a polish item: every gate is a forced choice among
+        // three lanes and a run-past is recorded as first-pick-incorrect, so if nobody can read
+        // the cards then strong and weak summarisers both converge on 1-in-3 and
+        // raceFirstPickCorrect — the study's headline measure and the star count — cannot
+        // discriminate between them. (F44 removed the card-WIDTH tell that let learners score
+        // without reading; that tell was the only thing making the race scoreable, so removing
+        // it exposed that the cards had never been legible.)
+        //
+        // The fix is EndlessRaceDirector's screen-space option preview: the three options are
+        // also drawn as normal HUD text, in lane order, identical in weight, in the sky band
+        // above the horizon (so it can occlude no road, card, halo, runner or tracker). Reading
+        // then costs the whole approach instead of half a second. Speed is deliberately NOT
+        // touched — F40c records the owner's steer that the only pacing change asked for was
+        // track LENGTH, never speed.
+        //
+        // Distance to the first gate. 80m was "clear of their starting safe segments" and it
+        // still is at 130 — but 80m from a standing start is only 7.4s, the shortest approach
+        // of the whole race, on the one gate where the learner has never seen a card before.
+        // 130m is 11.6s, which is exactly the 100wpm budget above. This is a track-length
+        // change, which is the kind F40c sanctioned.
+        public const float RaceFirstGateDistance = 130f;
+
+        // Seconds the race's LEAVE chip stays armed before it disarms itself. Same two-tap
+        // shape as the Reader's back button and the teacher screen's destructive actions: one
+        // tap can never leave a run. Long enough for a teacher to read the confirm, short
+        // enough that it cannot sit armed under a child's next stray tap.
+        public const float RaceLeaveConfirmSeconds = 4f;
+
+        // Tap-to-move (EndlessTouchInput). A tap is only a tap if the finger stayed inside this
+        // fraction of the screen WIDTH and lifted within this long; anything larger belongs to
+        // Trash Dash's own swipe handler, whose threshold is 1% of the screen width — so at 2%
+        // the two paths cannot both claim one gesture.
+        public const float RaceTapMaxDrag = 0.02f;
+        public const float RaceTapMaxSeconds = 0.45f;
+
         // The "you are here" lane marker is a coloured halo standing out behind the answer card
         // the runner is lined up with. This is the extra HEIGHT (metres, split top and bottom):
         // the marker can only grow upwards and downwards, because sideways there is nowhere to

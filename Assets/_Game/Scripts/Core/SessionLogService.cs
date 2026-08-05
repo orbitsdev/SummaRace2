@@ -24,7 +24,17 @@ namespace SummaRace.Core
         /// <summary>Bump whenever a field is added to <see cref="SessionLog"/>, and say what
         /// changed in the data dictionary. Stamped on every row so a build swapped in mid-study
         /// shows up in the data rather than in an argument about it.</summary>
-        private const int SchemaVersion = 2;
+        private const int SchemaVersion = 3;
+
+        /// <summary>Hard ceiling on <see cref="SessionLog.racePicks"/>. A well-behaved run
+        /// produces at most 5 gates x (1 first pick + MaxRepresentMisses re-presents) = 35
+        /// entries, so this cannot be reached in play — it exists so that no future change to
+        /// the re-present ladder, and no stuck gate, can grow one JSON line without bound on a
+        /// 2GB device. Overflow drops the newest picks and keeps the earliest, because the
+        /// early ones are the first encounters and those are the measure.</summary>
+        private const int MaxRacePicks = 64;
+
+        private const string AbandonLearnerLeftRace = "race_left_by_learner";
 
         private const string PhaseReading = "reading";
         private const string PhaseRace = "race";
@@ -42,6 +52,7 @@ namespace SummaRace.Core
         private float _startedRealtime;
         private float _phaseStartedRealtime;   // start of the phase currently running
         private bool _dirtySinceWrite;         // something worth saving has happened since the last row
+        private float _pauseStartedRealtime = -1f; // realtime the race was paused, -1 = not paused
 
         private void OnEnable()
         {
@@ -49,6 +60,8 @@ namespace SummaRace.Core
             EventBus.Subscribe<PageAnswered>(OnPageAnswered);
             EventBus.Subscribe<ReadingCompleted>(OnReadingCompleted);
             EventBus.Subscribe<ElementCollected>(OnElementCollected);
+            EventBus.Subscribe<RacePauseChanged>(OnRacePauseChanged);
+            EventBus.Subscribe<RunAbandoned>(OnRunAbandoned);
             EventBus.Subscribe<RaceCompleted>(OnRaceCompleted);
             EventBus.Subscribe<ArrangeVerified>(OnArrangeVerified);
             EventBus.Subscribe<SummarySubmitted>(OnSummarySubmitted);
@@ -62,6 +75,8 @@ namespace SummaRace.Core
             EventBus.Unsubscribe<PageAnswered>(OnPageAnswered);
             EventBus.Unsubscribe<ReadingCompleted>(OnReadingCompleted);
             EventBus.Unsubscribe<ElementCollected>(OnElementCollected);
+            EventBus.Unsubscribe<RacePauseChanged>(OnRacePauseChanged);
+            EventBus.Unsubscribe<RunAbandoned>(OnRunAbandoned);
             EventBus.Unsubscribe<RaceCompleted>(OnRaceCompleted);
             EventBus.Unsubscribe<ArrangeVerified>(OnArrangeVerified);
             EventBus.Unsubscribe<SummarySubmitted>(OnSummarySubmitted);
@@ -111,6 +126,7 @@ namespace SummaRace.Core
             _pagesRecorded.Clear();
             _startedRealtime = Time.realtimeSinceStartup;
             _phaseStartedRealtime = _startedRealtime;
+            _pauseStartedRealtime = -1f;
             _dirtySinceWrite = true;
         }
 
@@ -153,11 +169,92 @@ namespace SummaRace.Core
 
             if (!evt.wasCorrect) _log.raceWrongPicks[i]++;
 
+            // WHICH card, not just right/wrong. Wrapped because this is the one handler that
+            // allocates, and a logging fault must never surface as a stall in front of a class.
+            try
+            {
+                if (_log.racePicks != null && _log.racePicks.Count < MaxRacePicks)
+                {
+                    // A raiser that cannot say which option it was leaves chosenText empty —
+                    // that is the only way to tell "index 0, the correct card" apart from a
+                    // struct field nobody filled in (0 is a meaningful value here).
+                    bool detailed = !string.IsNullOrEmpty(evt.chosenText);
+                    _log.racePicks.Add(new SummaRace.Data.RacePick
+                    {
+                        element = i,
+                        option = detailed ? evt.chosenOptionIndex : -1,
+                        text = evt.chosenText,
+                        lane = detailed ? evt.lane : -1,
+                        correct = evt.wasCorrect,
+                        represent = evt.wasRepresent,
+                        atSeconds = Time.realtimeSinceStartup - _startedRealtime,
+                    });
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("SessionLogService: could not record a race pick (" + e.Message + ").");
+            }
+
             // Provisional; RaceCompleted has the last word (see ResolveFirstOutcomes).
-            if (string.IsNullOrEmpty(_log.raceFirstOutcome[i]))
+            // A RE-PRESENT is never a first encounter — it only exists because the learner
+            // already picked wrong or ran the gate past — so it must not fill this in. It used
+            // to: a missed gate raised nothing, then the gold re-present was collected and wrote
+            // "correct", so a gate the learner never even chose at read as a correct answer on
+            // any row RaceCompleted did not later overwrite (i.e. every abandoned run).
+            if (!evt.wasRepresent && string.IsNullOrEmpty(_log.raceFirstOutcome[i]))
                 _log.raceFirstOutcome[i] = evt.wasCorrect ? OutcomeCorrect : OutcomeWrong;
 
             _dirtySinceWrite = true;
+        }
+
+        /// <summary>
+        /// The race was paused or resumed. Every phase clock here is REAL time, so a teacher
+        /// stepping in for two minutes would otherwise be indistinguishable from two minutes of
+        /// effort. Counted rather than subtracted at source: the raw durations stay raw, and the
+        /// researcher decides whether to net the pause out.
+        /// </summary>
+        private void OnRacePauseChanged(RacePauseChanged evt)
+        {
+            if (_log == null) return;
+            if (evt.paused)
+            {
+                if (_pauseStartedRealtime >= 0f) return; // already paused — never double-count
+                _pauseStartedRealtime = Time.realtimeSinceStartup;
+                _log.racePauseCount++;
+            }
+            else
+            {
+                if (_pauseStartedRealtime < 0f) return;  // resume without a pause — ignore
+                float held = Time.realtimeSinceStartup - _pauseStartedRealtime;
+                if (held > 0f) _log.racePausedSeconds += held;
+                _pauseStartedRealtime = -1f;
+            }
+            _dirtySinceWrite = true;
+        }
+
+        /// <summary>
+        /// The learner left mid-run. The abandoned row already existed — it is written by the
+        /// next StoryStarted, or at quit, and is recognisable by an empty finishedIso — so this
+        /// does not invent a second mechanism: it names the reason and writes the row NOW,
+        /// because "the next StoryStarted" may be a different child on a tablet that was handed
+        /// over, or may never come at all.
+        /// <para>
+        /// ResolveFirstOutcomes is deliberately NOT run: it reads raceFirstPickCorrect, which
+        /// only RaceCompleted fills, so on a partial row it would rewrite every element as
+        /// "missed" including the ones actually answered. The provisional stream is already
+        /// honest for everything the learner reached, and racePicks is the full account.
+        /// </para>
+        /// </summary>
+        private void OnRunAbandoned(RunAbandoned evt)
+        {
+            if (_log == null) return;
+            _log.abandonReason = string.IsNullOrEmpty(evt.reason)
+                ? AbandonLearnerLeftRace : evt.reason;
+            // Close an open pause so its seconds are not silently lost with the run.
+            if (_pauseStartedRealtime >= 0f) OnRacePauseChanged(new RacePauseChanged { paused = false });
+            _dirtySinceWrite = true;
+            Flush();
         }
 
         private void OnRaceCompleted(RaceCompleted evt)
@@ -254,6 +351,10 @@ namespace SummaRace.Core
         private void Flush()
         {
             if (_log == null) return;
+            // A run that ends while still paused (the app is quit from the pause screen) would
+            // otherwise drop that whole interval, and it is exactly the interval a researcher
+            // most wants to see.
+            if (_pauseStartedRealtime >= 0f) OnRacePauseChanged(new RacePauseChanged { paused = false });
             // Double-tapping a story card raises StoryStarted twice, and the first run has not
             // recorded anything yet. Writing it would put a row in the study data that reads
             // exactly like a genuinely abandoned run — and those always carry something, since

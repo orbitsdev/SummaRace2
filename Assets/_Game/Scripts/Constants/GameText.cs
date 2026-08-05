@@ -300,14 +300,15 @@ namespace SummaRace.Constants
         /// tapping through before then would reveal the runner-kit menus underneath.</summary>
         public const string RaceBriefingWait = "Getting ready...";
 
-        /// <summary>Briefing body. Names the story so the learner knows the run is
-        /// about what they just read. TAPPING DOES NOT MOVE THE RUNNER: on a tablet the only
-        /// touch path is the runner kit's swipe detector (CharacterInputController reads
-        /// TouchPhase.Began→Ended and needs real travel), so the old "or tap left and right"
-        /// taught a control that does nothing — and a learner whose taps are ignored concludes
-        /// the game is broken, not that they used the wrong gesture.</summary>
+        /// <summary>Briefing body. Names the story so the learner knows the run is about what
+        /// they just read. Tap is named FIRST because it is the input a struggling learner should
+        /// reach for: it is one tap to any lane (a swipe is one lane per swipe, so the far lane
+        /// needed two inside a sub-second window), it needs less dexterity, and it cannot be
+        /// misread as a Jump the way a hurried diagonal flick can. Tap only became true with
+        /// EndlessTouchInput — before that this line promised a control that did nothing, and a
+        /// learner whose taps are ignored concludes the game is broken, not that they mis-gestured.</summary>
         public static string RaceBriefingBody(string storyTitle) =>
-            $"Collect the 5 story parts of\n\"{storyTitle}\" in order.\n\nSwipe left or right to move!";
+            $"Collect the 5 story parts of\n\"{storyTitle}\" in order.\n\nTap or swipe left and right to move!";
 
         /// <summary>3-2-1-GO! steps. Last entry is treated as the "go" beat.</summary>
         public static readonly string[] RaceCountdown = { "3", "2", "1", "GO!" };
@@ -320,6 +321,19 @@ namespace SummaRace.Constants
         /// "Not quite —" opening as the Reader's version, so the two screens feel like one
         /// voice, and no blame in either.</summary>
         public const string RaceWrongFeedback = "Not quite — get the glowing card!";
+        // Race pause. A learner could not leave a race at all before this — in a 55-minute
+        // classroom session the likeliest real failure is a child tapping the wrong story, or the
+        // clock running out, and force-quitting was the only way out (which files the run as
+        // abandoned). Pausing is never framed as failure or as a penalty: "Take a break!" and
+        // "KEEP RUNNING" say the run is still theirs and still waiting.
+        public const string RacePauseTitle = "Take a break!";
+        public const string RacePauseBody = "Your story is waiting for you.";
+        public const string RaceResumeLabel = "KEEP RUNNING";
+        public const string RaceLeaveLabel = "LEAVE RACE";
+        /// <summary>Second tap of the leave confirm — deliberately two taps so a 9-year-old
+        /// cannot lose a run to one stray press.</summary>
+        public const string RaceLeaveConfirm = "LEAVE?";
+
         public const string RaceFinishBanner = "FINISH!";
         public const string RaceFinishCard = "FINISH";
         public const string RaceRunToFinish = "Run to the FINISH!";

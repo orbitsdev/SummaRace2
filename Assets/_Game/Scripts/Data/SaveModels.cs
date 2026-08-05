@@ -44,6 +44,50 @@ namespace SummaRace.Data
     }
 
     /// <summary>
+    /// One card touched in the race — the qualitative half of the race measure.
+    /// <para>
+    /// The star count only records whether the learner was right at each SWBST slot. This
+    /// records WHICH idea they took when they were wrong, which is the half a summarising
+    /// study is actually interested in: the two distractors at a slot are authored to fail in
+    /// different ways, so "chose the retelling instead of the problem" and "chose a detail
+    /// instead of the goal" are different misconceptions and only this can tell them apart.
+    /// A play-through cannot be repeated, so it is captured as it happens.
+    /// </para>
+    /// One entry per pick, in the order they happened, including repeat picks at the same gate.
+    /// </summary>
+    [Serializable]
+    public class RacePick
+    {
+        /// <summary>SWBST slot, 0 = Somebody .. 4 = Then.</summary>
+        public int element;
+
+        /// <summary>Index into the story JSON's own option list for that element:
+        /// 0 = <c>correct</c>, 1 = <c>distractors[0]</c>, 2 = <c>distractors[1]</c>.
+        /// -1 when the raiser could not say (an older build, or the legacy race scene).</summary>
+        public int option;
+
+        /// <summary>The card's exact text, stored beside the index so the row still reads on
+        /// its own after Tools/StoryPipeline regenerates a story and the indices point at
+        /// different words.</summary>
+        public string text;
+
+        /// <summary>0 left, 1 centre, 2 right; -1 unknown. Lane is randomised per gate, so this
+        /// is what lets position bias be checked after the fact rather than assumed away.</summary>
+        public int lane;
+
+        public bool correct;
+
+        /// <summary>This was the single gold RE-PRESENTED card, not a free choice among three.
+        /// A re-present only ever follows a wrong pick or a missed gate, so it is never a first
+        /// encounter and must be excluded from any "what did they choose" analysis.</summary>
+        public bool represent;
+
+        /// <summary>Seconds since the play-through opened (real time), for ordering picks
+        /// against the phase clocks.</summary>
+        public float atSeconds;
+    }
+
+    /// <summary>
     /// One entry appended per play-through — the research data (TDD §12, GDD §8.2).
     /// <para>
     /// EVERY FIELD HERE IS THE STUDY. Nothing in this class may be renamed or removed once a
@@ -169,5 +213,33 @@ namespace SummaRace.Data
         /// <see cref="arrangeAssisted"/> this is the assist ladder: solved unaided
         /// (true/false), helped to the end (false/true).</summary>
         public bool arrangeSolved;
+
+        // ---------------- schema 3 ----------------
+
+        /// <summary>Every card touched in the race, in order — see <see cref="RacePick"/>.
+        /// <see cref="raceWrongPicks"/> counts these per element; this says which card each
+        /// one was. Capped defensively (see SessionLogService) so a pathological run can
+        /// never grow an unbounded row.</summary>
+        public List<RacePick> racePicks = new List<RacePick>();
+
+        /// <summary>How many times the race was paused during this run. The pause is not a
+        /// fail state and costs the learner nothing, but a run that was interrupted is not
+        /// comparable to one that was not — a teacher stepping in is exactly the kind of
+        /// classroom event that has to be visible in the data rather than inferred from an
+        /// odd duration.</summary>
+        public int racePauseCount;
+
+        /// <summary>Total real seconds spent paused. <see cref="raceSeconds"/> and
+        /// <see cref="totalSeconds"/> are real elapsed time and therefore INCLUDE this;
+        /// subtract it to get time actually on task.</summary>
+        public float racePausedSeconds;
+
+        /// <summary>Why a run ended without finishing. Empty on a completed run and on a run
+        /// that simply stopped (a killed app, a flat battery), which stays recognisable by an
+        /// empty <see cref="finishedIso"/>. <c>"race_left_by_learner"</c> = they chose to
+        /// leave from the race's pause screen. On such a row <see cref="raceFirstOutcome"/> is
+        /// only as far as the run got, and elements that were missed and then re-presented but
+        /// never re-taken stay empty — <see cref="racePicks"/> is the full account.</summary>
+        public string abandonReason;
     }
 }

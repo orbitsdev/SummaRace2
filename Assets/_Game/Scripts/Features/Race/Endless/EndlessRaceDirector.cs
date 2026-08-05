@@ -35,7 +35,9 @@ namespace SummaRace.Features.Race.Endless
         private UnityEngine.UI.Image _vignette; // amber screen-edge danger vignette (TDD §11.5)
         private Sprite _vignetteSprite;        // generated per race entry; freed in OnDestroy
 
-        private const float FirstGateDistance = 80f; // clear of their starting safe segments
+        // Distance to gate 1, and the reason it is not 80 any more, live on
+        // GameRules.RaceFirstGateDistance (80m from a standing start was 7.4s — the shortest
+        // approach in the race, on the one gate whose options the learner has never seen).
         private const float FinishGap = 30f;         // FINISH this far after the 5th gate
         private const float MissGrace = 5f;          // metres past a gate before it counts as missed
         // Seconds of runway a re-presented gold card gets, rather than a fixed 18 metres. 18m
@@ -159,6 +161,26 @@ namespace SummaRace.Features.Race.Endless
         private UnityEngine.UI.Image _feedbackPill; // dark backing so the line is readable over the world
         private float _feedbackTimer;
 
+        // Screen-space reading surface for the three options (see GameRules.RaceFirstGateDistance
+        // for why the world cards cannot be the reading surface). Same three strings, same lane
+        // order, identical styling — it must add no cue the world cards do not have.
+        private GameObject _previewRoot;
+        private readonly TextMeshProUGUI[] _previewLabel = new TextMeshProUGUI[3];
+        private readonly UnityEngine.UI.Image[] _previewPlaque = new UnityEngine.UI.Image[3];
+        private bool _previewWanted;
+
+        // Pause. Never a fail state and never an ending — see OpenPause.
+        private GameObject _pauseRoot;      // full-screen overlay, its own canvas above everything
+        private GameObject _pauseChip;      // the small control that opens it
+        private RectTransform _pauseChipRect;
+        private TextMeshProUGUI _leaveLabel;
+        private bool _paused;
+        private bool _leaving;              // exit in flight; nothing may run after this
+        private bool _leaveArmed;
+        private float _leaveArmedAt;
+        private bool _wasMovingBeforePause;
+
+
         // Persistent SWBST inventory tracker (top strip): 5 slots, current pulses, collected
         // fill in-order. Teaches the framework and answers "what to collect next" (F40).
         private readonly UnityEngine.UI.Image[] _slotBg = new UnityEngine.UI.Image[5];
@@ -189,6 +211,13 @@ namespace SummaRace.Features.Race.Endless
         private void OnDestroy()
         {
             EndlessRaceMode.Active = false;
+            // Close an open pause in the log rather than losing it: the row's paused-seconds
+            // must add up even if the scene ends while the pause screen is still on top.
+            if (_paused)
+            {
+                _paused = false;
+                SummaRace.Core.EventBus.Raise(new SummaRace.Core.RacePauseChanged { paused = false });
+            }
             if (Instance == this) Instance = null;
             if (_subscribed && TrackManager.instance != null)
                 TrackManager.instance.newSegmentCreated -= OnNewSegment;
@@ -239,7 +268,7 @@ namespace SummaRace.Features.Race.Endless
             SilenceOurMenuMusic();
             DeduplicateTheirMusicPlayer();
 
-            _pendingGateDistance = FirstGateDistance;
+            _pendingGateDistance = SummaRace.Constants.GameRules.RaceFirstGateDistance;
             _pendingElement = 0;
             _pendingIsRepresent = false;
             BuildHud();
@@ -271,6 +300,11 @@ namespace SummaRace.Features.Race.Endless
             // PC: WASD alongside the arrow keys their controller already binds.
             if (GetComponent<EndlessKeyboardInput>() == null)
                 gameObject.AddComponent<EndlessKeyboardInput>();
+            // Touch: tap a third of the screen to go to that lane. Their swipe path still
+            // works; see EndlessTouchInput for why the two cannot claim the same gesture.
+            var tap = GetComponent<EndlessTouchInput>();
+            if (tap == null) tap = gameObject.AddComponent<EndlessTouchInput>();
+            tap.SetBlockers(_pauseChipRect);
 
             yield return new WaitForSeconds(0.5f);
             HideTheirChrome();
@@ -280,6 +314,18 @@ namespace SummaRace.Features.Race.Endless
 
         private void Update()
         {
+            // Unscaled and ahead of every other guard: the LEAVE chip is armed while the world
+            // is frozen at timeScale 0, so a scaled clock would leave it armed for ever and the
+            // next stray tap on that corner would end the run.
+            if (_leaveArmed &&
+                Time.unscaledTime - _leaveArmedAt > SummaRace.Constants.GameRules.RaceLeaveConfirmSeconds)
+                DisarmLeave();
+
+            // Paused: the world, their scripts and ours are all held. Nothing below this line
+            // may run — the pass-by check, the stranded watchdog and the pending placement all
+            // reason about a moving track.
+            if (_paused || _leaving) return;
+
             if (_feedbackTimer > 0f && _feedbackText != null)
             {
                 _feedbackTimer -= Time.deltaTime;
@@ -503,11 +549,17 @@ namespace SummaRace.Features.Race.Endless
             // carry no information. Same Fisher-Yates the legacy RaceController used.
             string[] texts = { element.correct, element.distractors[0], element.distractors[1] };
             bool[] correctFlags = { true, false, false };
+            // Carried through the same swaps: which option of the STORY JSON each lane ended up
+            // holding (0 = correct, 1/2 = distractors). Without it the log can say the learner
+            // was wrong at "But" but never which wrong idea they took — and that is the half of
+            // a summarising study that cannot be reconstructed afterwards.
+            int[] optionIndices = { 0, 1, 2 };
             for (int i = 2; i > 0; i--)
             {
                 int j = UnityEngine.Random.Range(0, i + 1);
                 var tmpText = texts[i]; texts[i] = texts[j]; texts[j] = tmpText;
                 var tmpFlag = correctFlags[i]; correctFlags[i] = correctFlags[j]; correctFlags[j] = tmpFlag;
+                var tmpOpt = optionIndices[i]; optionIndices[i] = optionIndices[j]; optionIndices[j] = tmpOpt;
             }
 
             for (int lane = 0; lane < 3; lane++)
@@ -527,8 +579,15 @@ namespace SummaRace.Features.Race.Endless
                 pickup.elementIndex = elementIndex;
                 pickup.gateId = _activeGateId;
                 pickup.isCorrect = isCorrect;
+                pickup.optionIndex = optionIndices[lane];
+                pickup.lane = lane;
+                pickup.optionText = text;
             }
             BuildLaneSelector(root, elementIndex, new Vector2(cardWidth, 0.85f), laneOffset, false);
+            // The cards themselves are physically unreadable at any distance worth reading them
+            // at (the derivation is on GameRules.RaceFirstGateDistance) — the HUD preview is
+            // where the learner actually reads the three options.
+            ShowOptionPreview(texts);
             // No in-world type pill: the top SWBST tracker now shows the current element (F40).
         }
 
@@ -563,8 +622,15 @@ namespace SummaRace.Features.Race.Endless
             pickup.elementIndex = elementIndex;
             pickup.gateId = _activeGateId;
             pickup.isCorrect = true;
+            pickup.optionIndex = 0;   // a re-present is always the correct card
+            pickup.lane = 1;          // centre
+            pickup.isRepresent = true;
+            pickup.optionText = element.correct;
             BuildLaneSelector(root, elementIndex, new Vector2(cardWidth, 0.85f), laneOffset, true);
             // No in-world type pill: the top SWBST tracker shows the current element (F40).
+            // One card, centre lane only — the preview shows that honestly rather than
+            // re-listing three options the gate no longer has.
+            ShowOptionPreview(new string[] { null, element.correct, null });
         }
 
         /// <summary>
@@ -682,6 +748,8 @@ namespace SummaRace.Features.Race.Endless
             trigger.center = new Vector3(0f, -0.4f, 0f);
 
             card.gameObject.AddComponent<EndlessOptionPickup>().isFinishGate = true;
+            // Nothing to read at FINISH — one card spanning all three lanes.
+            HideOptionPreview();
         }
 
         /// <summary>Rounded kit-sprite card with auto-sized TMP text (F11 style); quad fallback when unwired.</summary>
@@ -760,10 +828,18 @@ namespace SummaRace.Features.Race.Endless
             if (pickup.isCorrect) CollectCorrect(pickup);
             else HitWrong(pickup);
 
+            // WHICH card, not merely right/wrong. Everything below is captured at gate-build
+            // time (PlaceAnswerGate), before the lane shuffle scrambles the order, so it costs
+            // nothing here and cannot be wrong. A play-through cannot be repeated: a wrong pick
+            // whose distractor was not recorded is a misconception nobody can ever recover.
             SummaRace.Core.EventBus.Raise(new SummaRace.Core.ElementCollected
             {
                 elementIndex = pickup.elementIndex,
-                wasCorrect = pickup.isCorrect
+                wasCorrect = pickup.isCorrect,
+                chosenOptionIndex = pickup.optionIndex,
+                chosenText = pickup.optionText,
+                lane = pickup.lane,
+                wasRepresent = pickup.isRepresent,
             });
         }
 
@@ -808,6 +884,7 @@ namespace SummaRace.Features.Race.Endless
             if (root != null) Destroy(root.gameObject);
             _laneSelector = null; // child of the gate root — it went with it
             _laneSelectorSr = null;
+            HideOptionPreview(); // this gate's options are answered; the next placement re-fills it
 
             // TDD §11.4: the boost bundle (sfx + speed) is reserved for a first-hit correct
             // pick — collecting a re-presented gold card still resolves the element, just
@@ -976,6 +1053,7 @@ namespace SummaRace.Features.Race.Endless
             _activeGateRoot = null;
             _laneSelector = null; // child of the gate root — it went with it
             _laneSelectorSr = null;
+            HideOptionPreview();
         }
 
         /// <summary>Element fully resolved (correct first hit, re-present collected, or
@@ -1097,6 +1175,10 @@ namespace SummaRace.Features.Race.Endless
             if (_finished) yield break;
             _finished = true;
 
+            // Nothing to pause or read any more — the run is over and Arrange is next.
+            if (_pauseChip != null) _pauseChip.SetActive(false);
+            HideOptionPreview();
+
             var track = TrackManager.instance;
             if (track != null)
             {
@@ -1152,6 +1234,12 @@ namespace SummaRace.Features.Race.Endless
             var scaler = canvasGo.AddComponent<UnityEngine.UI.CanvasScaler>();
             scaler.uiScaleMode = UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1080f, 1920f);
+            // The HUD had no raycaster because nothing on it was ever tappable; the pause chip
+            // is. Everything else on this canvas sets raycastTarget = false (MakeHudText does it
+            // for every label), so adding one cannot start swallowing taps meant for the road —
+            // and their swipe handler reads Input directly rather than through the EventSystem,
+            // so it is unaffected either way.
+            canvasGo.AddComponent<UnityEngine.UI.GraphicRaycaster>();
 
             // Amber danger vignette (TDD §11.5): darkest at the screen edges, clear in the
             // middle, alpha driven by danger in UpdatePatrol. Drawn behind the text.
@@ -1190,6 +1278,434 @@ namespace SummaRace.Features.Race.Endless
             _feedbackText.enableAutoSizing = true;
             _feedbackText.fontSizeMin = 30f;
             _feedbackText.fontSizeMax = 56f;
+
+            BuildOptionPreview(canvasGo.transform);
+            BuildPauseChip(canvasGo.transform);
+            BuildPauseOverlay();
+        }
+
+        // ---------- the reading surface ----------
+
+        /// <summary>
+        /// THE THREE OPTIONS, AS READABLE TEXT. The world cards are the thing you steer into;
+        /// this is the thing you read. They are not the same job and the geometry says they
+        /// cannot both be done by one object:
+        ///
+        /// with the shipped camera (58.7deg vertical FOV, 5m behind the runner, 4m up, pitched
+        /// 14.947deg) and the shipped card (1.425x0.85 with a 1.275x0.73 text box, Fredoka cap
+        /// 0.700em, TMP's 0.1 world scale for 3D text), an average 35-character answer auto-sizes
+        /// to ~1.95pt = a 0.137m cap height, which on a 10.1" tablet at 40cm subtends 227/d
+        /// arcmin. Clearing the ~20 arcmin comfortable-reading floor needs d &lt;= 11.35m from the
+        /// lens = 5.8m ahead of the runner, and the run passes gate 1 at 11.5 m/s and gate 5 at
+        /// ~20.4 m/s. That is 0.50s and 0.28s of legible time — against three cards carrying
+        /// ~19 words, i.e. ~11.6s of reading at 100wpm. The cards were never readable.
+        ///
+        /// That is a measurement failure rather than a comfort one: every gate is a forced
+        /// choice among three lanes and a run-past is logged as first-pick-incorrect, so if the
+        /// cards cannot be read then a strong and a weak summariser both land on a 1-in-3 guess
+        /// and raceFirstPickCorrect — the star count AND the study's headline measure — stops
+        /// discriminating. (F44 removed the card-width tell that had been letting learners score
+        /// without reading; that tell was the only thing making the race scoreable, so its
+        /// removal is what exposed this.)
+        ///
+        /// Rules this panel must keep:
+        ///  * ALL THREE options, in LANE ORDER left/centre/right, identical plaque, identical
+        ///    colour, identical type. Nothing may distinguish the correct one — the whole point
+        ///    of F44 was that a surface cue is worth 84.7% against 33% for guessing.
+        ///  * It occludes nothing. It lives in the SKY BAND: screen y 0.745-0.885. The horizon
+        ///    sits at 0.738 (15deg above the camera axis / tan(29.35deg)), so no ground card,
+        ///    lane halo or runner can ever reach it, and the SWBST tracker's underside is at
+        ///    0.896, so it does not touch that either.
+        /// </summary>
+        private void BuildOptionPreview(Transform parent)
+        {
+            var board = new GameObject("OptionPreview");
+            board.transform.SetParent(parent, false);
+            var bimg = board.AddComponent<UnityEngine.UI.Image>();
+            bimg.sprite = WoodPlaqueSprite();
+            bimg.type = UnityEngine.UI.Image.Type.Sliced;
+            bimg.color = new Color(0.26f, 0.17f, 0.09f, 0.94f); // same wood language as the tracker
+            bimg.raycastTarget = false;
+            var brt = bimg.rectTransform;
+            brt.anchorMin = new Vector2(0.03f, 0.745f);
+            brt.anchorMax = new Vector2(0.97f, 0.885f);
+            brt.offsetMin = Vector2.zero; brt.offsetMax = Vector2.zero;
+
+            // Three equal columns: left/centre/right, exactly the lanes they stand for.
+            const float pad = 0.014f;
+            float w = (1f - 4f * pad) / 3f;
+            for (int i = 0; i < 3; i++)
+            {
+                var col = new GameObject("Option_" + i);
+                col.transform.SetParent(board.transform, false);
+                var img = col.AddComponent<UnityEngine.UI.Image>();
+                img.sprite = worldCardSprite != null ? worldCardSprite : WoodPlaqueSprite();
+                img.type = UnityEngine.UI.Image.Type.Sliced;
+                img.color = new Color(0.98f, 0.97f, 0.93f); // the world card's white, so the
+                img.raycastTarget = false;                  // mapping is obvious at a glance
+                var rt = img.rectTransform;
+                float x0 = pad + i * (w + pad);
+                rt.anchorMin = new Vector2(x0, 0.07f);
+                rt.anchorMax = new Vector2(x0 + w, 0.93f);
+                rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
+                _previewPlaque[i] = img;
+
+                var lblGo = new GameObject("Text");
+                lblGo.transform.SetParent(col.transform, false);
+                var lbl = lblGo.AddComponent<TextMeshProUGUI>();
+                if (worldLabelFont != null) lbl.font = worldLabelFont;
+                lbl.alignment = TextAlignmentOptions.Center;
+                lbl.color = new Color(0.10f, 0.10f, 0.12f);  // the world card's black
+                lbl.raycastTarget = false;
+                lbl.enableAutoSizing = true;
+                // A 295x215px box on a 1080x1920 reference. The longest card string the content
+                // pipeline allows is 53 characters (flag.py MAX_CARD_CHARS), which lands at
+                // ~41pt = a 28.7px cap = ~28 arcmin on a 10.1" tablet at 40cm; a typical 34-char
+                // option renders at the 44 ceiling, ~30 arcmin. Both clear the 20-arcmin floor
+                // with margin, on a 7" device as well. 26 is a backstop, not a working value.
+                lbl.fontSizeMin = 26f;
+                lbl.fontSizeMax = 44f;
+                lbl.overflowMode = TextOverflowModes.Ellipsis;
+                var lrt = lbl.rectTransform;
+                lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one;
+                lrt.offsetMin = new Vector2(12f, 8f); lrt.offsetMax = new Vector2(-12f, -8f);
+                _previewLabel[i] = lbl;
+            }
+
+            _previewRoot = board;
+            board.SetActive(false);
+        }
+
+        /// <summary>Fills the preview from a gate's cards, indexed BY LANE (0 left, 1 centre,
+        /// 2 right) so the panel and the road agree. A null entry means that lane has no card —
+        /// which is the honest picture of a re-present, where only the centre lane is offered.</summary>
+        private void ShowOptionPreview(string[] textsByLane)
+        {
+            if (_previewRoot == null || textsByLane == null) return;
+            for (int i = 0; i < 3; i++)
+            {
+                string text = i < textsByLane.Length ? textsByLane[i] : null;
+                bool has = !string.IsNullOrEmpty(text);
+                if (_previewLabel[i] != null) _previewLabel[i].text = has ? text : "";
+                // An empty lane fades rather than vanishes, so the three columns keep standing
+                // for the three lanes and the remaining card does not slide across the panel.
+                if (_previewPlaque[i] != null)
+                    _previewPlaque[i].color = has
+                        ? new Color(0.98f, 0.97f, 0.93f)
+                        : new Color(0.98f, 0.97f, 0.93f, 0.18f);
+            }
+            _previewWanted = true;
+            ApplyPreviewVisibility();
+        }
+
+        private void HideOptionPreview()
+        {
+            _previewWanted = false;
+            ApplyPreviewVisibility();
+        }
+
+        /// <summary>The panel is only ever up while there is something to read AND the world is
+        /// actually running: gate 1 is placed during the briefing, and showing its answers
+        /// underneath the mission card or the 3-2-1 would be noise, not reading time.</summary>
+        private void ApplyPreviewVisibility()
+        {
+            if (_previewRoot == null) return;
+            bool show = _previewWanted && _runReleased && !_finished && !_paused && !_leaving;
+            if (_previewRoot.activeSelf != show) _previewRoot.SetActive(show);
+        }
+
+        // ---------- pause ----------
+
+        /// <summary>
+        /// The control that opens the pause screen. Deliberately small and in the top-right
+        /// gutter beside the SWBST tracker: a race is played with swipes and taps across the
+        /// middle and lower screen, so this is the one corner a nine-year-old's hand does not
+        /// visit — while a teacher scanning the screen finds a pause glyph immediately. It is a
+        /// drawn glyph rather than a word so it needs no reading and no translation.
+        /// Accidentally opening it costs nothing (the world simply waits); the destructive half
+        /// is the LEAVE chip inside, which arms before it acts.
+        /// </summary>
+        private void BuildPauseChip(Transform parent)
+        {
+            var chip = new GameObject("PauseChip");
+            chip.transform.SetParent(parent, false);
+            var img = chip.AddComponent<UnityEngine.UI.Image>();
+            img.sprite = WoodPlaqueSprite();
+            img.type = UnityEngine.UI.Image.Type.Sliced;
+            img.color = new Color(0.30f, 0.20f, 0.10f, 0.92f);
+            var rt = img.rectTransform;
+            rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(1f, 1f);
+            // The tracker board is 880 wide and centred, so it ends at x=980 on a 1080 reference;
+            // this sits in the 100px gutter to its right, clear of the status bar / notch band.
+            rt.anchoredPosition = new Vector2(-8f, -95f);
+            rt.sizeDelta = new Vector2(88f, 88f);
+            _pauseChipRect = rt;
+
+            for (int i = 0; i < 2; i++) // the two bars of a pause glyph
+            {
+                var bar = new GameObject("Bar_" + i);
+                bar.transform.SetParent(chip.transform, false);
+                var bimg = bar.AddComponent<UnityEngine.UI.Image>();
+                bimg.color = new Color(1f, 0.97f, 0.90f);
+                bimg.raycastTarget = false;
+                var brt = bimg.rectTransform;
+                brt.anchorMin = brt.anchorMax = brt.pivot = new Vector2(0.5f, 0.5f);
+                brt.sizeDelta = new Vector2(15f, 44f);
+                brt.anchoredPosition = new Vector2(i == 0 ? -13f : 13f, 0f);
+            }
+
+            var button = chip.AddComponent<UnityEngine.UI.Button>();
+            button.targetGraphic = img;
+            button.onClick.AddListener(OpenPause);
+
+            _pauseChip = chip;
+            chip.SetActive(false); // only once the world is actually running
+        }
+
+        /// <summary>
+        /// The pause screen itself, on its own canvas above everything — including their chrome,
+        /// which must never be visible behind ours. Two choices only: come back, or leave. It is
+        /// worded as a rest, never as a failure, and leaving is the small quiet option rather
+        /// than the loud one (GDD D7: the race never punishes and never ends by itself).
+        /// </summary>
+        private void BuildPauseOverlay()
+        {
+            var canvasGo = new GameObject("SummaRacePause");
+            canvasGo.transform.SetParent(transform, false);
+            var canvas = canvasGo.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = 70; // above the briefing (60) and our HUD (40)
+            var scaler = canvasGo.AddComponent<UnityEngine.UI.CanvasScaler>();
+            scaler.uiScaleMode = UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1080f, 1920f);
+            canvasGo.AddComponent<UnityEngine.UI.GraphicRaycaster>();
+            _pauseRoot = canvasGo;
+
+            // Opaque enough to hide anything of theirs, and it swallows taps so a swipe meant
+            // for the menu cannot also reach the world behind it.
+            var dim = new GameObject("Dim");
+            dim.transform.SetParent(canvasGo.transform, false);
+            var dimImg = dim.AddComponent<UnityEngine.UI.Image>();
+            dimImg.color = new Color(0.03f, 0.05f, 0.09f, 0.72f);
+            var drt = dimImg.rectTransform;
+            drt.anchorMin = Vector2.zero; drt.anchorMax = Vector2.one;
+            drt.offsetMin = Vector2.zero; drt.offsetMax = Vector2.zero;
+
+            var card = new GameObject("PauseCard");
+            card.transform.SetParent(canvasGo.transform, false);
+            var cardImg = card.AddComponent<UnityEngine.UI.Image>();
+            var gold = Resources.Load<Sprite>("UI/panel_gold");
+            if (gold != null)
+            {
+                cardImg.sprite = gold;
+                cardImg.type = UnityEngine.UI.Image.Type.Sliced;
+                cardImg.pixelsPerUnitMultiplier = 0.6f;
+            }
+            else cardImg.color = new Color(0.98f, 0.93f, 0.80f);
+            var crt = cardImg.rectTransform;
+            crt.anchorMin = new Vector2(0.08f, 0.40f);
+            crt.anchorMax = new Vector2(0.92f, 0.70f);
+            crt.offsetMin = Vector2.zero; crt.offsetMax = Vector2.zero;
+
+            var title = MakeHudText(card.transform, new Vector2(0.5f, 0.70f), Vector2.zero, 76f);
+            title.text = SummaRace.Constants.GameText.RacePauseTitle;
+            title.color = new Color(0.32f, 0.19f, 0.02f);
+            title.fontStyle = FontStyles.Bold;
+
+            var body = MakeHudText(card.transform, new Vector2(0.5f, 0.34f), Vector2.zero, 42f);
+            body.text = SummaRace.Constants.GameText.RacePauseBody;
+            body.color = new Color(0.35f, 0.25f, 0.10f);
+            body.rectTransform.sizeDelta = new Vector2(700f, 140f);
+
+            // Coming back is the big, obvious, green thing — the same CTA treatment as START.
+            var ring = new GameObject("ResumeRing");
+            ring.transform.SetParent(canvasGo.transform, false);
+            var ringImg = ring.AddComponent<UnityEngine.UI.Image>();
+            ringImg.sprite = greenPillSprite != null ? greenPillSprite : worldCardSprite;
+            if (ringImg.sprite != null) ringImg.type = UnityEngine.UI.Image.Type.Sliced;
+            ringImg.color = new Color(0.10f, 0.30f, 0.14f);
+            ringImg.raycastTarget = false;
+            var ringRt = ringImg.rectTransform;
+            ringRt.anchorMin = ringRt.anchorMax = ringRt.pivot = new Vector2(0.5f, 0.28f);
+            ringRt.sizeDelta = new Vector2(648f, 206f);
+
+            var resume = new GameObject("ResumeButton");
+            resume.transform.SetParent(canvasGo.transform, false);
+            var rImg = resume.AddComponent<UnityEngine.UI.Image>();
+            rImg.sprite = greenPillSprite != null ? greenPillSprite : worldCardSprite;
+            if (rImg.sprite != null) rImg.type = UnityEngine.UI.Image.Type.Sliced;
+            rImg.color = greenPillSprite != null ? Color.white : new Color(0.30f, 0.75f, 0.35f);
+            var rRt = rImg.rectTransform;
+            rRt.anchorMin = rRt.anchorMax = rRt.pivot = new Vector2(0.5f, 0.28f);
+            rRt.sizeDelta = new Vector2(620f, 180f);
+            var rBtn = resume.AddComponent<UnityEngine.UI.Button>();
+            rBtn.targetGraphic = rImg;
+            rBtn.onClick.AddListener(ResumeFromPause);
+
+            var rLabel = MakeHudText(resume.transform, new Vector2(0.5f, 0.5f), Vector2.zero, 58f);
+            rLabel.text = SummaRace.Constants.GameText.RaceResumeLabel;
+            rLabel.color = Color.white;
+            rLabel.fontStyle = FontStyles.Bold;
+            rLabel.rectTransform.sizeDelta = new Vector2(580f, 150f);
+
+            // Leaving is small, quiet and two-tap — the same shape as the Reader's back chip and
+            // the teacher screen's destructive actions. One tap can never end a run.
+            var leave = new GameObject("LeaveChip");
+            leave.transform.SetParent(canvasGo.transform, false);
+            var lImg = leave.AddComponent<UnityEngine.UI.Image>();
+            lImg.sprite = WoodPlaqueSprite();
+            lImg.type = UnityEngine.UI.Image.Type.Sliced;
+            lImg.color = new Color(0.24f, 0.16f, 0.09f, 0.95f);
+            var lRt = lImg.rectTransform;
+            lRt.anchorMin = lRt.anchorMax = lRt.pivot = new Vector2(0.5f, 0.135f);
+            lRt.sizeDelta = new Vector2(380f, 110f);
+            var lBtn = leave.AddComponent<UnityEngine.UI.Button>();
+            lBtn.targetGraphic = lImg;
+            lBtn.onClick.AddListener(OnLeaveTapped);
+
+            _leaveLabel = MakeHudText(leave.transform, new Vector2(0.5f, 0.5f), Vector2.zero, 40f);
+            _leaveLabel.text = SummaRace.Constants.GameText.RaceLeaveLabel;
+            _leaveLabel.color = new Color(1f, 0.94f, 0.84f);
+            _leaveLabel.fontStyle = FontStyles.Bold;
+            _leaveLabel.rectTransform.sizeDelta = new Vector2(350f, 100f);
+
+            canvasGo.SetActive(false);
+        }
+
+        /// <summary>
+        /// Freeze everything, safely. Three things have to move together or the race half-stops:
+        /// their TrackManager (the world), Time.timeScale (animation, tweens, their own Update
+        /// arithmetic) and AudioListener.pause.
+        /// <para>
+        /// AudioListener.pause is not decoration — it is Trash Dash's own "we are paused"
+        /// singleton (CharacterInputController reads it, GameState.Pause early-returns on it).
+        /// Setting it here means their focus-loss Pause() becomes a no-op while our screen is
+        /// up, so their pause menu, their wholeUI hide and their Quit-to-Loadout can never
+        /// appear over ours.
+        /// </para>
+        /// EVERY exit from this state restores timeScale and audio: ResumeFromPause, the leave
+        /// path, OnApplicationFocus, and OnDestroy unconditionally — a frozen timeScale escaping
+        /// this scene once left the whole app silent and motionless until it was restarted
+        /// (F44), and that must not come back.
+        /// </summary>
+        private void OpenPause()
+        {
+            if (_paused || _finished || _leaving || !_runReleased) return;
+
+            // Before the listener is muted, or it is a silent button.
+            if (SummaRace.Core.AudioManager.Instance != null)
+                SummaRace.Core.AudioManager.Instance.PlaySfx(SummaRace.Constants.AudioKeys.SfxClick);
+
+            _paused = true;
+            var track = TrackManager.instance;
+            _wasMovingBeforePause = track != null && track.isMoving;
+            if (track != null && track.isMoving) track.StopMove();
+
+            Time.timeScale = 0f;
+            AudioListener.pause = true;
+
+            DisarmLeave();
+            if (_pauseRoot != null) _pauseRoot.SetActive(true);
+            if (_pauseChip != null) _pauseChip.SetActive(false);
+            ApplyPreviewVisibility();
+
+            SummaRace.Core.EventBus.Raise(new SummaRace.Core.RacePauseChanged { paused = true });
+        }
+
+        /// <summary>Back into the run exactly where it stopped. StartMove(false) keeps the speed
+        /// the run had reached — StartMove(true) would reset it to minSpeed, which would turn a
+        /// pause into a penalty.</summary>
+        private void ResumeFromPause()
+        {
+            if (!_paused || _leaving) return;
+            _paused = false;
+
+            Time.timeScale = 1f;
+            AudioListener.pause = false;
+            if (SummaRace.Core.AudioManager.Instance != null)
+                SummaRace.Core.AudioManager.Instance.PlaySfx(SummaRace.Constants.AudioKeys.SfxClick);
+
+            if (_pauseRoot != null) _pauseRoot.SetActive(false);
+            DisarmLeave();
+            if (_pauseChip != null && !_finished) _pauseChip.SetActive(true);
+            ApplyPreviewVisibility();
+
+            var track = TrackManager.instance;
+            if (_wasMovingBeforePause && track != null && !_finished) track.StartMove(false);
+
+            SummaRace.Core.EventBus.Raise(new SummaRace.Core.RacePauseChanged { paused = false });
+        }
+
+        /// <summary>Two taps to leave a run. The first only arms it.</summary>
+        private void OnLeaveTapped()
+        {
+            if (_leaving) return;
+            if (!_leaveArmed) { ArmLeave(); return; }
+            LeaveRace();
+        }
+
+        private void ArmLeave()
+        {
+            _leaveArmed = true;
+            _leaveArmedAt = Time.unscaledTime;
+            if (_leaveLabel != null)
+            {
+                _leaveLabel.text = SummaRace.Constants.GameText.RaceLeaveConfirm;
+                _leaveLabel.color = new Color(1f, 0.86f, 0.35f);
+            }
+        }
+
+        private void DisarmLeave()
+        {
+            _leaveArmed = false;
+            if (_leaveLabel != null)
+            {
+                _leaveLabel.text = SummaRace.Constants.GameText.RaceLeaveLabel;
+                _leaveLabel.color = new Color(1f, 0.94f, 0.84f);
+            }
+        }
+
+        /// <summary>
+        /// The learner chose to leave. Three obligations, in this order:
+        ///  1. TELL THE STUDY. The run is partial, and SessionLogService already knows how to
+        ///     write a partial run (empty finishedIso) — so this routes through that mechanism
+        ///     rather than inventing a second one, and names the reason so a deliberate exit is
+        ///     never read as a device that died mid-story.
+        ///  2. HAND BACK A CLEAN ENGINE. timeScale and AudioListener are restored here as well
+        ///     as in OnDestroy, because the scene load itself runs on unscaled time and would
+        ///     otherwise complete with the app still frozen.
+        ///  3. LEAVE THROUGH OUR OWN DOOR. SceneLoader.Go, never their QuitToLoadout — that
+        ///     ends in the runner kit's menus, which is not a place this game has.
+        /// </summary>
+        private void LeaveRace()
+        {
+            if (_leaving) return;
+            _leaving = true;
+            _finished = true; // stops the gate/miss/stranded machinery for good
+
+            SummaRace.Core.EventBus.Raise(new SummaRace.Core.RunAbandoned
+            {
+                reason = "race_left_by_learner"
+            });
+
+            Time.timeScale = 1f;
+            AudioListener.pause = false;
+            _paused = false;
+
+            var track = TrackManager.instance;
+            if (track != null && track.isMoving) track.StopMove();
+
+            // Their music is DontDestroyOnLoad and would otherwise follow the learner out.
+            var mp = MusicPlayer.instance;
+            if (mp != null)
+                foreach (var src in mp.GetComponentsInChildren<AudioSource>()) src.Stop();
+
+            if (_pauseRoot != null) _pauseRoot.SetActive(false);
+            HideOptionPreview();
+
+            // Back to the cards they came from, so choosing again is one tap (the Reader's back
+            // button lands in the same place).
+            SummaRace.Core.SceneLoader.Go(SummaRace.Constants.SceneNames.StorySelect);
         }
 
         /// <summary>The 5-slot SWBST inventory strip across the top, styled as wooden plaques on
@@ -1208,7 +1724,9 @@ namespace SummaRace.Features.Race.Endless
             // -26 put the board 26px from the top of a 1920-tall reference, i.e. underneath the
             // Android status bar and inside the notch cutout on most phones. Dropped clear of it.
             rrt.anchoredPosition = new Vector2(0f, -78f);
-            rrt.sizeDelta = new Vector2(774f, 122f);
+            // 880 wide, not 774 — see the slot arithmetic below. Still 100px of margin each
+            // side of a 1080-wide reference.
+            rrt.sizeDelta = new Vector2(880f, 122f);
 
             var wood = WoodPlaqueSprite();
 
@@ -1223,7 +1741,17 @@ namespace SummaRace.Features.Race.Endless
             brt.anchorMin = Vector2.zero; brt.anchorMax = Vector2.one;
             brt.offsetMin = Vector2.zero; brt.offsetMax = Vector2.zero;
 
-            const float slotW = 138f, slotH = 96f, gap = 12f;
+            // SIZED AGAINST THE LONGEST ELEMENT NAME — do not shrink this back.
+            // The plaques carry the five SWBST names, a fixed known set: SOMEBODY, WANTED, BUT,
+            // SO, THEN. "SOMEBODY" needs 128.3px at the 24pt autosize floor (and more with
+            // synthetic bold); at the old slotW 138 the label box was 138 - 2*10 = 118px, so the
+            // first slot of all 30 races ellipsised for every learner in every session. The fix
+            // is the plaque, never the font floor — a 7-8" tablet is already the binding case
+            // for small type in this game.
+            //   5*160 + 4*10 = 840 inside an 880-wide board => 140px label box vs 128.3 needed.
+            //   The other four are far shorter (WANTED ~104px is the next longest), so
+            //   SOMEBODY is the only binding case and 140px clears all five.
+            const float slotW = 160f, slotH = 96f, gap = 10f;
             float total = 5f * slotW + 4f * gap;
             float startX = -total * 0.5f + slotW * 0.5f;
 
@@ -1878,6 +2406,23 @@ namespace SummaRace.Features.Race.Endless
         private void OnApplicationFocus(bool focus)
         {
             if (!focus || !EndlessRaceMode.Active) return;
+
+            // OUR pause outranks the OS one. If the learner paused, then backgrounded the
+            // tablet, coming back must NOT resume the race — the pause screen is still on
+            // screen and the world has to stay where they left it. But their focus-loss
+            // Pause() may have run before ours took effect, so re-assert the frozen state
+            // rather than trusting it: this is the one path that could otherwise return with
+            // the world moving under an opaque menu, or with the audio listener muted for the
+            // rest of the session because nothing else ever unmutes it.
+            if (_paused)
+            {
+                Time.timeScale = 0f;
+                AudioListener.pause = true;
+                if (TrackManager.instance != null && TrackManager.instance.isMoving)
+                    TrackManager.instance.StopMove();
+                return;
+            }
+
             if (Time.timeScale != 0f) return; // nothing was paused
 
             Time.timeScale = 1f;
@@ -1915,6 +2460,11 @@ namespace SummaRace.Features.Race.Endless
         {
             ShowBigCount(hud, label, true);
             _runReleased = true; // Update()/LateUpdate() stop holding the pre-race dance
+            // Both only exist once there is a run: pausing a world that has not started would
+            // stack two "hold the track still" mechanisms, and gate 1's options showing under
+            // the mission card or the 3-2-1 would be noise rather than reading time.
+            if (_pauseChip != null) _pauseChip.SetActive(true);
+            ApplyPreviewVisibility();
             if (TrackManager.instance != null)
             {
                 StartRunnerRun(TrackManager.instance);
@@ -2104,6 +2654,12 @@ namespace SummaRace.Features.Race.Endless
 
         private void LateUpdate()
         {
+            // While paused the cop holds station: his placement is recomputed from the LIVE
+            // player every frame, and the player has not moved, so skipping is a no-op that
+            // cannot strand him — and on resume the very next frame re-derives him from the
+            // runner, exactly as it does after a floating-origin recenter.
+            if (_paused || _leaving) return;
+
             var track = TrackManager.instance;
 
             // After TrackManager.Update has moved the runner, so the cop is placed against
@@ -2122,6 +2678,9 @@ namespace SummaRace.Features.Race.Endless
             if (worldLabelFont != null) tmp.font = worldLabelFont;
             tmp.fontSize = size;
             tmp.alignment = TextAlignmentOptions.Center;
+            // Labels are never the tap target — the button's own Image is. Left on (TMP's
+            // default) a label would sit in front of its own button and swallow the press.
+            tmp.raycastTarget = false;
             var rt = tmp.rectTransform;
             rt.anchorMin = rt.anchorMax = anchor;
             rt.pivot = anchor;
