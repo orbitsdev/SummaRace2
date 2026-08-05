@@ -48,6 +48,28 @@ namespace SummaRace.Features.StorySelect
         private static readonly Color StarOn = Color.white;
         private static readonly Color CardLocked = new Color(0.62f, 0.66f, 0.70f);
 
+        /// <summary>
+        /// Ceiling on how bright a LOCKED card's hero art is allowed to render. An Image's
+        /// colour MULTIPLIES its sprite, so tinting by this caps the background luminance
+        /// whatever the picture turns out to be — which is the whole point here: 27 of the 30
+        /// hero images are still placeholders, so no fixed pair of text/background colours
+        /// could be certified against art nobody has drawn yet.
+        ///
+        /// It replaces work the scene's grad_scrim cannot do. That scrim covers only the
+        /// card's bottom 55% and ramps from alpha 0.85 at the card's foot to 0 at its top:
+        /// by the hint's upper edge (card y 0.44) it is down to 0.09, and the "Locked" label
+        /// (card y 0.45-0.65) sits almost entirely ABOVE it. Measured on the worst case an
+        /// unknown picture can produce (an all-white hero): "Locked" goes 1.72:1 -> 6.86:1
+        /// and the hint 1.85:1 -> 6.09:1, against WCAG AA's 4.5:1. Any real art is darker
+        /// than white and the scrim only subtracts further, so those two numbers are floors.
+        /// </summary>
+        private static readonly Color HeroLocked = new Color(0.30f, 0.32f, 0.36f);
+
+        // Set from here rather than left in the scene so the pairing above stays a measured
+        // property of the code: the ceiling is worthless if the label drifts darker later.
+        private static readonly Color LockedLabelInk = new Color(0.88f, 0.95f, 0.97f);
+        private static readonly Color LockedHintInk = new Color(0.82f, 0.90f, 0.93f);
+
         private void Start()
         {
             if (titleText != null) titleText.text = GameText.StorySelectTitle;
@@ -114,18 +136,31 @@ namespace SummaRace.Features.StorySelect
                     ? null
                     : Resources.Load<Sprite>(story.heroImage);
                 if (sprite != null) card.heroImage.sprite = sprite;
-                card.heroImage.gameObject.SetActive(sprite != null);
+
+                // Full colour once the story is open; capped while it is locked, so the two
+                // locked labels always have a background dark enough to read against (see
+                // HeroLocked). This is also just what "not yet" should look like.
+                card.heroImage.color = playable ? Color.white : HeroLocked;
+
+                // A locked card keeps the panel even with no picture to put in it: with the
+                // sprite cleared the Image draws a flat slate rect, which is exactly the
+                // background the contrast above was measured against. A PLAYABLE card with no
+                // art still falls back to the title-only card (TDD §9.4).
+                if (!playable && sprite == null) card.heroImage.sprite = null;
+                card.heroImage.gameObject.SetActive(sprite != null || !playable);
             }
 
             if (card.lockIcon != null) card.lockIcon.gameObject.SetActive(!playable);
             if (card.lockedLabel != null)
             {
                 card.lockedLabel.text = GameText.LockedLabel;
+                card.lockedLabel.color = LockedLabelInk;
                 card.lockedLabel.gameObject.SetActive(!playable);
             }
             if (card.lockedHint != null)
             {
                 card.lockedHint.text = hint;
+                card.lockedHint.color = LockedHintInk;
                 card.lockedHint.gameObject.SetActive(!playable);
             }
             else if (!playable && card.titleText != null)

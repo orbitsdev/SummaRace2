@@ -394,8 +394,14 @@ namespace SummaRace.Features.Arrange
                 {
                     slotLabels[i].text = filled ? _pieceTexts[_slotContent[i]] : _story.elements[i].type;
                     slotLabels[i].fontStyle = filled ? FontStyles.Normal : FontStyles.Bold;
-                    // Empty slot wears its SWBST color; a placed piece reads as normal text.
-                    slotLabels[i].color = filled ? LabelFilled : SwbstPalette.DeepForIndex(i);
+                    // Empty slot wears its SWBST colour; a placed piece reads as normal text.
+                    // Ink, not Deep: these five labels sit on their own pastel slot, and a
+                    // contrast pass measured Deep-on-pastel at 3.30-4.44:1 — under WCAG AA's
+                    // 4.5:1, on the words that NAME the framework this game exists to teach,
+                    // read by 9-year-olds on a classroom tablet at low brightness. Ink is the
+                    // same hue darkened further (0.45 vs 0.30), so the SWBST colour language
+                    // is unchanged and only the legibility moves.
+                    slotLabels[i].color = filled ? LabelFilled : SwbstPalette.InkForIndex(i);
                 }
                 if (slotButtons[i] != null && !_slotLocked[i])
                     slotButtons[i].image.color = filled ? SlotFilled : SwbstPalette.PastelForIndex(i);

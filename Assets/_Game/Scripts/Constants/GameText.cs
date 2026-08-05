@@ -296,7 +296,23 @@ namespace SummaRace.Constants
         public const string VoiceOff = "VOICE OFF";
 
         // Reader page flow
-        public const string NextLabel = "NEXT";
+        /// <summary>The button under a story PAGE. It used to say "NEXT", which promises the
+        /// next page and delivers a question — and not a harmless one: ReaderController
+        /// .ShowQuestion hides the reading card, so the page the question is about is GONE
+        /// while the learner answers, and that first answer is study data
+        /// (SessionLogService records only the first answer per page). A learner who thinks
+        /// NEXT means "next page" reads casually, taps, and is measured on a text they can no
+        /// longer see. Naming the destination is the whole fix, and it is the same thing this
+        /// button already does in its other two states below — this was the odd one out.
+        ///
+        /// It cannot touch the measure it protects: it is identical on every page of every
+        /// story, it is gone from the screen before any option exists, and it says nothing
+        /// about which option is right. No extra reading either — one word for one word, and
+        /// "Question" is the word the progress badge shows one tap later
+        /// (QuestionProgress), so the button teaches the badge and the badge confirms the
+        /// button. Fits: 248 px at 48pt Fredoka in the 540 px NextButton, narrower than the
+        /// "NEXT PAGE" that already ships there.</summary>
+        public const string NextLabel = "QUESTION!";
         public const string NextPageLabel = "NEXT PAGE";
         public const string StartRaceLabel = "START RACE!";
         /// <summary>Says nothing about colour. "The green one is the answer" made colour the ONLY

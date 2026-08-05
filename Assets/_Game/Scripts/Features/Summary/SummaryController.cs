@@ -60,10 +60,27 @@ namespace SummaRace.Features.Summary
 
             if (referenceText != null && _story.elements != null)
             {
+                // Ink, not the raw palette. This card is the kit's cream "Daily Reward
+                // pannel" (0.971, 0.923, 0.829), and the five SWBST hues straight off the
+                // palette read at 2.81 / 1.99 / 2.89 / 1.79 / 2.88:1 on it — WANTED and SO
+                // are barely visible, and this list is what the learner writes their summary
+                // FROM. InkForIndex keeps each element's own hue and lands them at
+                // 7.13 / 5.61 / 7.31 / 5.18 / 7.25:1, all clear of WCAG AA's 4.5:1.
                 var sb = new System.Text.StringBuilder();
                 for (int i = 0; i < _story.elements.Length; i++)
-                    sb.AppendLine($"{i + 1}. <color=#{SwbstPalette.HexForIndex(i)}><b>{_story.elements[i].type}</b></color>: {_story.elements[i].correct}");
+                    sb.AppendLine($"{i + 1}. <color=#{SwbstPalette.InkHexForIndex(i)}><b>{_story.elements[i].type}</b></color>: {_story.elements[i].correct}");
                 referenceText.text = sb.ToString();
+
+                // Overflow guard, not a fix: measured across all 30 stories this list needs
+                // 5-6 wrapped lines (218-262 px, worst case 306 px with the trailing break)
+                // in a 389 px box, so nothing clips today. But autosizing was OFF with the
+                // size pinned at 32, so the FIRST story whose correct answer grows past
+                // ~56 characters would have spilled its last SWBST part off the card
+                // silently. Max stays 32 (nothing renders differently today); the floor of
+                // 26 is the smallest this audience should ever be asked to read.
+                referenceText.fontSizeMax = referenceText.fontSize;
+                referenceText.fontSizeMin = 26f;
+                referenceText.enableAutoSizing = true;
             }
 
             if (titleText != null) titleText.text = GameText.SummaryTitle;

@@ -61,8 +61,17 @@ namespace SummaRace.Features.Reader
 
         private static readonly Color OptionNormal = new Color(0.96f, 0.94f, 1.00f); // light pill (high contrast on the gold card)
         private static readonly Color OptionCorrect = new Color(0.55f, 0.85f, 0.45f); // friendly green
-        private static readonly Color FeedbackCorrect = new Color(0.20f, 0.55f, 0.25f); // green
-        private static readonly Color FeedbackNotQuite = new Color(0.85f, 0.50f, 0.15f); // warm orange, never harsh
+
+        // Both feedback colours are read against the question card, which is the kit's
+        // "Daily Reward pannel" — a CREAM interior (0.971, 0.923, 0.829 after the card_paper
+        // grain, which sits at 0.9% alpha and changes nothing), not the white it looks like.
+        // At the old values the sentence that explains a wrong answer ran at 2.54:1 and the
+        // praise at 3.59:1, both under WCAG AA's 4.5:1 — on the one line a struggling reader
+        // most needs, at low classroom brightness. Deepened, not re-hued: still a warm amber
+        // and a friendly green, never a scolding red. Measured on that cream: 4.89:1 and
+        // 5.57:1.
+        private static readonly Color FeedbackCorrect = new Color(0.12f, 0.42f, 0.18f); // deep green
+        private static readonly Color FeedbackNotQuite = new Color(0.62f, 0.32f, 0.02f); // deep warm amber, never harsh
 
         // Small-chip palette: the navy pill (Resources/UI/bar_bg) is the HUD's own language
         // (F16), the gold pill (bar_fill) is what "armed" looks like everywhere else.
