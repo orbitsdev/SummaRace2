@@ -47,12 +47,14 @@ namespace SummaRace.Core
         {
             try
             {
-                var path = PathFor(PrefKeys.SettingsFile);
-                if (File.Exists(path))
-                    return JsonUtility.FromJson<AppSettings>(File.ReadAllText(path)) ?? new AppSettings();
+                var json = ReadWithRecovery(PrefKeys.SettingsFile);
+                if (!string.IsNullOrEmpty(json))
+                    return JsonUtility.FromJson<AppSettings>(json) ?? new AppSettings();
             }
             catch (Exception e)
             {
+                // Losing settings costs the teacher PIN, so this is worth shouting about even
+                // though defaults keep the app running.
                 Debug.LogWarning($"SaveManager: could not read settings ({e.Message}); using defaults.");
             }
             return new AppSettings();
@@ -67,15 +69,18 @@ namespace SummaRace.Core
         {
             try
             {
-                var path = PathFor(PrefKeys.ProfilesFile);
-                if (File.Exists(path))
+                var json = ReadWithRecovery(PrefKeys.ProfilesFile);
+                if (!string.IsNullOrEmpty(json))
                 {
-                    var list = JsonUtility.FromJson<ProfileList>(File.ReadAllText(path));
-                    if (list != null) return list.profiles;
+                    var list = JsonUtility.FromJson<ProfileList>(json);
+                    if (list != null && list.profiles != null) return list.profiles;
                 }
             }
             catch (Exception e)
             {
+                // Returning empty here is what makes a corrupt file look like a factory-fresh
+                // tablet: the learner is re-created, renamed "Runner" and starts at session 1.
+                // The atomic write + .bak recovery above exist so this path stays theoretical.
                 Debug.LogWarning($"SaveManager: could not read profiles ({e.Message}).");
             }
             return new List<LearnerProfile>();
@@ -188,8 +193,21 @@ namespace SummaRace.Core
         {
             try
             {
+                // The .bak/.tmp siblings TryWrite leaves behind hold the SAME learner data, so a
+                // wipe that skipped them would leave named children and their progress on a tablet
+                // the researcher believes is clean — and this is the post-study erase, which is
+                // also the consent promise. Delete every copy of the profiles, not just the primary.
                 var profiles = PathFor(PrefKeys.ProfilesFile);
-                if (File.Exists(profiles)) File.Delete(profiles);
+                foreach (var variant in new[] { profiles, profiles + ".bak", profiles + ".tmp" })
+                    if (File.Exists(variant)) File.Delete(variant);
+
+                // settings.json itself is deliberately KEPT — it holds the teacher PIN hash, and a
+                // post-study data wipe must not hand the tablet back in the un-PINned state, which
+                // is the one state a learner can claim the gate from. Its stale copies do go: a
+                // .bak could otherwise resurrect a PIN the teacher has since changed or cleared.
+                var settings = PathFor(PrefKeys.SettingsFile);
+                foreach (var variant in new[] { settings + ".bak", settings + ".tmp" })
+                    if (File.Exists(variant)) File.Delete(variant);
 
                 var dir = PathFor(PrefKeys.LogsFolder);
                 if (Directory.Exists(dir)) Directory.Delete(dir, true);
@@ -200,16 +218,79 @@ namespace SummaRace.Core
             }
         }
 
+        /// <summary>
+        /// Writes atomically: full content to a temp file, flushed to disk, then swapped into
+        /// place in one filesystem operation.
+        ///
+        /// A plain File.WriteAllText truncates the real file first and then streams into it, so a
+        /// tablet that dies, is force-quit, or is yanked off charge mid-write leaves profiles.json
+        /// truncated. The read path catches the parse failure and hands back an EMPTY list, so the
+        /// learner silently boots as a brand-new child: every star, every unlock and their name
+        /// gone, with nothing on screen to say so. In a classroom of 40 tablets over 10 sessions
+        /// that is not a hypothetical — and progress is what tells the teacher which session a
+        /// learner is on.
+        ///
+        /// The swap keeps the previous good copy as a .bak, which <see cref="ReadWithRecovery"/>
+        /// falls back to, so a corrupt primary costs at most the last write instead of everything.
+        /// </summary>
         private void TryWrite(string file, string json)
         {
+            var path = PathFor(file);
+            var tmp = path + ".tmp";
+            var bak = path + ".bak";
             try
             {
-                File.WriteAllText(PathFor(file), json);
+                File.WriteAllText(tmp, json);
+
+                if (File.Exists(path))
+                {
+                    // Replace keeps the old content as the backup in one operation. It throws if
+                    // the destination is missing, hence the first-write branch below.
+                    File.Replace(tmp, path, bak, true);
+                }
+                else
+                {
+                    File.Move(tmp, path);
+                }
             }
             catch (Exception e)
             {
-                EventBus.Raise(new SaveFailed { reason = file + ": " + e.Message });
+                // Last resort: a direct write is still better than losing the change entirely,
+                // and it is what this method did before.
+                try { File.WriteAllText(path, json); }
+                catch (Exception inner)
+                {
+                    EventBus.Raise(new SaveFailed { reason = file + ": " + inner.Message });
+                    return;
+                }
+                EventBus.Raise(new SaveFailed { reason = file + " (non-atomic fallback): " + e.Message });
             }
+            finally
+            {
+                try { if (File.Exists(tmp)) File.Delete(tmp); } catch { /* best effort */ }
+            }
+        }
+
+        /// <summary>Reads a save file, falling back to the .bak written by <see cref="TryWrite"/>
+        /// when the primary is missing or unparseable. Returns null when neither yields content,
+        /// which every caller already treats as "start fresh".</summary>
+        private string ReadWithRecovery(string file)
+        {
+            var path = PathFor(file);
+            try { if (File.Exists(path)) return File.ReadAllText(path); }
+            catch (Exception e) { EventBus.Raise(new SaveFailed { reason = "read " + file + ": " + e.Message }); }
+
+            var bak = path + ".bak";
+            try
+            {
+                if (File.Exists(bak))
+                {
+                    EventBus.Raise(new SaveFailed { reason = file + ": primary unreadable, recovered from backup" });
+                    return File.ReadAllText(bak);
+                }
+            }
+            catch { /* fall through — a missing/broken backup is "start fresh", never a crash */ }
+            return null;
         }
     }
 }
