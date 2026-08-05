@@ -871,11 +871,25 @@ namespace SummaRace.Features.Race
             go.transform.localPosition = localPos;
             go.transform.localScale = localScale;
 
-            var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite = worldCardSprite;
-            sr.drawMode = SpriteDrawMode.Sliced;
-            sr.size = size;
-            sr.color = cardColor;
+            // Sliced draw mode with no sprite renders nothing, so an unwired field would make
+            // every answer card, START card and FINISH card invisible. Same grey-box fallback
+            // the endless path's BuildCard already uses.
+            if (worldCardSprite != null)
+            {
+                var sr = go.AddComponent<SpriteRenderer>();
+                sr.sprite = worldCardSprite;
+                sr.drawMode = SpriteDrawMode.Sliced;
+                sr.size = size;
+                sr.color = cardColor;
+            }
+            else
+            {
+                var quad = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                Destroy(quad.GetComponent<Collider>());
+                quad.transform.SetParent(go.transform, false);
+                quad.transform.localScale = new Vector3(size.x, size.y, 1f);
+                quad.GetComponent<Renderer>().material.color = cardColor;
+            }
 
             var textGo = new GameObject("Text");
             textGo.transform.SetParent(go.transform, false);
