@@ -24,7 +24,9 @@ namespace SummaRace.Core
         /// <summary>Bump whenever a field is added to <see cref="SessionLog"/>, and say what
         /// changed in the data dictionary. Stamped on every row so a build swapped in mid-study
         /// shows up in the data rather than in an argument about it.</summary>
-        private const int SchemaVersion = 3;
+        // 4: adds participantCode to every row, so the export joins to the paper pretest/posttest
+        // without depending on the companion roster file also being retrieved.
+        private const int SchemaVersion = 4;
 
         /// <summary>Hard ceiling on <see cref="SessionLog.racePicks"/>. A well-behaved run
         /// produces at most 5 gates x (1 first pick + MaxRepresentMisses re-presents) = 35
@@ -107,6 +109,16 @@ namespace SummaRace.Core
                 schemaVersion = SchemaVersion,
                 runId = Guid.NewGuid().ToString("N"),
                 learnerId = learner != null ? learner.id : string.Empty,
+
+                // The researcher's own participant id, copied off this child's paper booklet, is
+                // ALSO stamped on every row — not only into the companion roster. The roster is a
+                // separate file the teacher has to remember to pull off the tablet; if only the
+                // .jsonl is retrieved, learnerId is a guid that appears nowhere on paper and the
+                // process data cannot be joined to that child's pretest/posttest score, which is
+                // what makes these logs usable in the results chapter at all. Copying it here
+                // makes the export self-joining. It is still pseudonymous: a participant code is
+                // the researcher's own pseudonym, not the child's name.
+                participantCode = ParticipantCodes.Of(learner),
                 storyId = evt.storyId,
                 startedIso = DateTime.UtcNow.ToString("o"),
                 isReplay = GameManager.Instance != null && GameManager.Instance.IsCompleted(evt.storyId),

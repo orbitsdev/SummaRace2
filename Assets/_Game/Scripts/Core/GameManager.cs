@@ -6,6 +6,21 @@ using UnityEngine;
 
 namespace SummaRace.Core
 {
+    /// <summary>Outcome of trying to set a learner's participant code — see
+    /// <see cref="GameManager.SetParticipantCode"/>. Every failure is reported rather than
+    /// silently corrected: this is the researcher's join key, and a code the app "fixed" is
+    /// worse than one it refused.</summary>
+    public enum ParticipantCodeResult
+    {
+        Saved,
+        /// <summary>No learner to write it to (no [Core], a scene played directly).</summary>
+        NoLearner,
+        /// <summary>Not 2–12 letters or numbers.</summary>
+        Invalid,
+        /// <summary>Another learner on this tablet already has it.</summary>
+        Duplicate,
+    }
+
     /// <summary>
     /// The app's brain — holds shared state across scenes (TDD §7.2).
     /// Created by Bootstrapper, survives scene loads.
@@ -145,6 +160,19 @@ namespace SummaRace.Core
                 }
             }
 
+            // Canonicalise the participant codes once on load so every later comparison — the
+            // duplicate check, the roster, the picker rows — sees one spelling of one code.
+            // Deliberately never DEDUPES: a duplicate is the researcher's to resolve against
+            // the paper booklets, and a code this app quietly renamed would join to nothing.
+            for (int i = 0; i < _profiles.Count; i++)
+            {
+                var profile = _profiles[i];
+                string canonical = ParticipantCodes.Normalize(profile.participantCode);
+                if (string.Equals(profile.participantCode, canonical, StringComparison.Ordinal)) continue;
+                profile.participantCode = canonical;
+                repaired = true;
+            }
+
             if (_profiles.Count == 0)
             {
                 _profiles.Add(NewProfile());
@@ -222,6 +250,84 @@ namespace SummaRace.Core
         public void PersistProfiles()
         {
             if (SaveManager.Instance != null) SaveManager.Instance.SaveProfiles(_profiles);
+        }
+
+        // ---------- The participant code: the study's join key ----------
+        // Everything here is called only from the PIN-gated teacher screen. The learner's own
+        // screens never read or write it, and Name Entry is untouched: a child still types a
+        // name and picks a runner, and the code is the adult's field beside it.
+
+        /// <summary>
+        /// Writes the researcher's participant code onto a learner, in canonical form.
+        /// Refuses anything unusable and refuses a code another learner on this tablet already
+        /// holds — a shared code makes two children indistinguishable in the export, which is
+        /// precisely the failure the field exists to prevent, and it cannot be undone once the
+        /// tablets are collected. <paramref name="normalized"/> is what was (or would have
+        /// been) stored; <paramref name="clashName"/> names the learner already holding it.
+        /// </summary>
+        public ParticipantCodeResult SetParticipantCode(
+            LearnerProfile learner, string raw, out string normalized, out string clashName)
+        {
+            normalized = ParticipantCodes.Normalize(raw);
+            clashName = null;
+
+            if (learner == null || !_profiles.Contains(learner)) return ParticipantCodeResult.NoLearner;
+            if (!ParticipantCodes.IsAcceptable(raw)) return ParticipantCodeResult.Invalid;
+
+            var clash = FindLearnerByParticipantCode(normalized, learner);
+            if (clash != null)
+            {
+                clashName = clash.displayName;
+                return ParticipantCodeResult.Duplicate;
+            }
+
+            learner.participantCode = normalized;
+            PersistProfiles();
+            return ParticipantCodeResult.Saved;
+        }
+
+        /// <summary>The learner holding this code on this tablet, ignoring <paramref name="ignore"/>
+        /// (so re-saving a learner's own code is not a clash with themselves). Null when free.</summary>
+        public LearnerProfile FindLearnerByParticipantCode(string code, LearnerProfile ignore)
+        {
+            string wanted = ParticipantCodes.Normalize(code);
+            if (wanted.Length == 0) return null;
+
+            for (int i = 0; i < _profiles.Count; i++)
+            {
+                var profile = _profiles[i];
+                if (profile == null || profile == ignore) continue;
+                if (string.Equals(ParticipantCodes.Of(profile), wanted, StringComparison.Ordinal))
+                    return profile;
+            }
+            return null;
+        }
+
+        /// <summary>How many learners on this tablet have no participant code yet. Non-zero at
+        /// export time means rows the researcher cannot tie to a booklet.</summary>
+        public int CountLearnersWithoutParticipantCode()
+        {
+            int missing = 0;
+            for (int i = 0; i < _profiles.Count; i++)
+                if (!ParticipantCodes.IsSet(_profiles[i])) missing++;
+            return missing;
+        }
+
+        /// <summary>A code held by two learners on this tablet, or null when all are distinct.
+        /// Codes are refused at entry, so this catches only what predates the check or arrived
+        /// from a hand-edited save — but it is checked again at export because the cost of
+        /// missing it is unrecoverable. Cross-TABLET duplicates are invisible here by
+        /// construction: only the researcher's own roster can catch "P07" on two devices.</summary>
+        public string FirstDuplicateParticipantCode()
+        {
+            var seen = new HashSet<string>();
+            for (int i = 0; i < _profiles.Count; i++)
+            {
+                string code = ParticipantCodes.Of(_profiles[i]);
+                if (code.Length == 0) continue;
+                if (!seen.Add(code)) return code;
+            }
+            return null;
         }
 
         private static LearnerProfile NewProfile() => new LearnerProfile

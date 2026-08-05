@@ -26,6 +26,17 @@ namespace SummaRace.Core
         private class RosterEntry
         {
             public string learnerId;
+
+            /// <summary>
+            /// The researcher's own participant id, written on that child's paper booklet
+            /// (e.g. "P07"). This is the column the results chapter joins on: learnerId is a
+            /// guid that appears nowhere on paper, and displayName was typed by a nine-year-old.
+            /// Empty means the teacher never set one on this tablet — those rows have no
+            /// reliable route back to a pretest score, so an empty value here is a finding,
+            /// not a formatting detail.
+            /// </summary>
+            public string participantCode;
+
             public string displayName;
             public int unlockedSession;
             public int storiesCompleted;
@@ -155,9 +166,11 @@ namespace SummaRace.Core
             }
         }
 
-        /// <summary>Writes the learnerId → displayName roster beside an export — one row per
-        /// learner on this tablet, so a shared device can be split back into individuals.
-        /// Best-effort: a missing roster must never cost the researcher the logs themselves.</summary>
+        /// <summary>Writes the learnerId → participantCode → displayName roster beside an
+        /// export — one row per learner on this tablet, so a shared device can be split back
+        /// into individuals AND every row can be tied to a paper pretest/posttest booklet in a
+        /// single lookup. Best-effort: a missing roster must never cost the researcher the logs
+        /// themselves.</summary>
         private void WriteRoster(string path)
         {
             try
@@ -174,6 +187,9 @@ namespace SummaRace.Core
                     roster.learners.Add(new RosterEntry
                     {
                         learnerId = profile.id,
+                        // Canonical form, so the spreadsheet join does not miss on a stray space
+                        // or a lower-case letter that survived a hand-edited save.
+                        participantCode = ParticipantCodes.Of(profile),
                         displayName = profile.displayName,
                         unlockedSession = profile.unlockedSession,
                         storiesCompleted = completed,

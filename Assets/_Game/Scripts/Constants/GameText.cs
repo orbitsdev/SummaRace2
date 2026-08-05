@@ -71,12 +71,53 @@ namespace SummaRace.Constants
         public const string TeacherNewLearner = "+ New learner";
         public const string TeacherLearnerPickerClose = "Done";
         public const string TeacherLearnerPickerUnavailable = "Learner list unavailable on this screen.";
-        public static string TeacherLearnerRow(string name, int session) =>
-            $"{name}  ·  Session {session}";
+
+        /// <summary>Picker row. The participant code leads, because on a shared tablet it is the
+        /// only part of the row that means the same thing on the tablet and on the paper booklet
+        /// — and a row that shows no code is an install that was never finished.</summary>
+        public static string TeacherLearnerRow(string code, string name, int session) =>
+            $"{(string.IsNullOrEmpty(code) ? TeacherParticipantNone : code)}  ·  {name}  ·  Session {session}";
         /// <summary>The learner already holding the tablet — says so in words rather than a
         /// tick, because a glyph outside the TMP atlas renders as an empty box.</summary>
-        public static string TeacherLearnerRowActive(string name, int session) =>
-            $"{name}  ·  Session {session}  (playing)";
+        public static string TeacherLearnerRowActive(string code, string name, int session) =>
+            $"{TeacherLearnerRow(code, name, session)}  (playing)";
+
+        // Participant code — the researcher's join key between this tablet and the paper
+        // pretest/posttest booklets. Teacher-facing only: it is set behind the PIN and never
+        // shown to or typed by a learner, because a nine-year-old's spelling of their own name
+        // is exactly what this exists to stop the study depending on.
+        public const string TeacherParticipantAction = "Participant code";
+        /// <summary>Stands in for an unset code wherever one would be printed, so "missing"
+        /// never renders as a blank the reader can mistake for a layout gap.</summary>
+        public const string TeacherParticipantNone = "(no code)";
+        public static string TeacherParticipantActionLabel(string code) =>
+            string.IsNullOrEmpty(code)
+                ? $"{TeacherParticipantAction}: {TeacherParticipantNone}"
+                : $"{TeacherParticipantAction}: {code}";
+        /// <summary>The prompt over the entry box. Names the booklet, because copying the code
+        /// off the child's own paper is the whole procedure — inventing one on the tablet
+        /// recreates the problem one step later.</summary>
+        public const string TeacherParticipantPrompt =
+            "Participant code for this learner\nCopy it from their test booklet (e.g. P07)";
+        public const string TeacherParticipantSubmit = "SAVE CODE";
+        public const string TeacherParticipantInvalid = "Use 2-12 letters or numbers, like P07.";
+        public static string TeacherParticipantDuplicate(string code, string name) =>
+            $"{code} already belongs to {name} on this tablet. Give each learner their own code.";
+        public static string TeacherParticipantSaved(string code) =>
+            $"Participant code saved: {code}. It is written beside this learner in every export.";
+        /// <summary>Shown when a learner reaches the teacher screen without a code. Says what it
+        /// costs rather than "required", because the cost is the whole reason it is asked for.</summary>
+        public const string TeacherParticipantMissing =
+            "Set this learner's participant code before they play — it is the only link from " +
+            "their play data to their paper pretest.";
+        public static string TeacherParticipantMissingCount(int count) =>
+            count == 1
+                ? "1 learner on this tablet still has no participant code."
+                : $"{count} learners on this tablet still have no participant code.";
+        /// <summary>Loud on purpose: a shared code makes two children the same child in the
+        /// exported data, and nothing downstream can separate them again.</summary>
+        public static string TeacherParticipantDuplicateWarning(string code) =>
+            $"WARNING: {code} is on two learners here. The export cannot tell them apart.";
         public static string TeacherActiveLearner(string name) => $"Now playing: {name}";
 
         /// <summary>Discreet line on the Main Menu. A run recorded against the wrong child is

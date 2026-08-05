@@ -33,6 +33,89 @@ namespace SummaRace.Data
         public bool named;
         public int unlockedSession = 1; // teacher raises this
         public List<StoryProgress> progress = new List<StoryProgress>();
+
+        // ------------------------------------------------------------------
+        // APPENDED — never reorder or rename anything above. A profile written
+        // by an older build simply has no key for this and keeps the "" below
+        // (JsonUtility constructs the object first, then overwrites only the
+        // keys the JSON actually carries), so old saves load unchanged.
+        // ------------------------------------------------------------------
+
+        /// <summary>
+        /// THE JOIN KEY FOR THE WHOLE STUDY. The researcher's own participant id — the same
+        /// short code written on that child's paper pretest/posttest booklet, e.g. "P07".
+        /// <para>
+        /// The outcome measure is a paper rubric and the app's logs are the process data; the
+        /// results chapter exists only if the two can be joined. <see cref="id"/> is a guid
+        /// minted on the tablet and appears nowhere on paper, and <see cref="displayName"/> is
+        /// typed by a nine-year-old — misspelled, abbreviated, or "Maria R." on two booklets —
+        /// so neither can carry that join on its own. This can, because an adult sets it from
+        /// the booklet in front of them.
+        /// </para>
+        /// Set only from the PIN-gated teacher screen, never by the learner. Normalised and
+        /// checked for uniqueness through <see cref="ParticipantCodes"/> — a duplicate code is
+        /// the exact failure this field exists to prevent, so it is refused at entry rather
+        /// than discovered during analysis. Empty means "not set yet", which the teacher
+        /// screen treats as an unfinished install.
+        /// </summary>
+        public string participantCode = "";
+    }
+
+    /// <summary>
+    /// Rules for <see cref="LearnerProfile.participantCode"/>, in one place because three
+    /// layers touch it: the teacher screen validates what was typed, GameManager enforces
+    /// uniqueness across the tablet, and SaveManager writes it into the export roster. They
+    /// must agree on what "P07", "p07 " and "P07" are, or the join fails on whitespace.
+    /// <para>Not in GameRules: that file is gameplay tuning, and none of this is.</para>
+    /// </summary>
+    public static class ParticipantCodes
+    {
+        /// <summary>Long enough for "P01".."P40" plus a site/class prefix, short enough to stay
+        /// legible on a picker row and on a booklet cover.</summary>
+        public const int MaxLength = 12;
+
+        /// <summary>Two, so one stray keystroke cannot become a participant.</summary>
+        public const int MinLength = 2;
+
+        /// <summary>
+        /// The one canonical form: trimmed, spaces removed, upper-cased, length-capped.
+        /// "p07", " P07" and "P 07" are one participant; without this they are three, and the
+        /// duplicate check below would wave all three through.
+        /// </summary>
+        public static string Normalize(string raw)
+        {
+            if (string.IsNullOrEmpty(raw)) return string.Empty;
+
+            var text = new System.Text.StringBuilder(raw.Length);
+            for (int i = 0; i < raw.Length && text.Length < MaxLength; i++)
+            {
+                char c = raw[i];
+                if (char.IsWhiteSpace(c)) continue;
+                text.Append(char.ToUpperInvariant(c));
+            }
+            return text.ToString();
+        }
+
+        /// <summary>Letters and digits only, <see cref="MinLength"/>..<see cref="MaxLength"/>.
+        /// Deliberately no punctuation: the code is retyped into a spreadsheet by hand, and a
+        /// hyphen or a stray period is a join that silently misses.</summary>
+        public static bool IsAcceptable(string raw)
+        {
+            string code = Normalize(raw);
+            if (code.Length < MinLength || code.Length > MaxLength) return false;
+            for (int i = 0; i < code.Length; i++)
+                if (!char.IsLetterOrDigit(code[i])) return false;
+            return true;
+        }
+
+        /// <summary>True when this profile carries a usable code. Treats null, "" and
+        /// whitespace alike so a hand-edited or older save reads the same as a fresh one.</summary>
+        public static bool IsSet(LearnerProfile learner) =>
+            learner != null && Normalize(learner.participantCode).Length > 0;
+
+        /// <summary>The stored code in canonical form, or "" when there is none.</summary>
+        public static string Of(LearnerProfile learner) =>
+            learner == null ? string.Empty : Normalize(learner.participantCode);
     }
 
     [Serializable]
@@ -110,6 +193,14 @@ namespace SummaRace.Data
         /// <summary>True for a mid-run snapshot, false for the row written when the run ended.</summary>
         public bool isPartial;
         public string learnerId;
+        /// <summary>Schema 4. The researcher's participant id for this learner (e.g. "P07"),
+        /// copied off their paper booklet and set by the teacher behind the PIN. Duplicated here
+        /// from the companion roster deliberately: the roster is a separate file that has to be
+        /// pulled off the tablet too, and without it learnerId is a guid that appears nowhere on
+        /// paper — so a lost roster would sever every row from the pretest/posttest score it has
+        /// to be joined to. Empty means the teacher never set one on that tablet, which is a
+        /// finding about the install, not a formatting detail.</summary>
+        public string participantCode;
         public string storyId;
         public string startedIso;
         public string finishedIso;

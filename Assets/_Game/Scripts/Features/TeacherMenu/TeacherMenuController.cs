@@ -26,8 +26,8 @@ namespace SummaRace.Features.TeacherMenu
     /// </summary>
     public class TeacherMenuController : MonoBehaviour
     {
-        /// <summary>Which question the single PIN field is asking right now.</summary>
-        private enum GateStep { EnterPin, CreatePin, ConfirmPin, Recovery }
+        /// <summary>Which question the single input field is asking right now.</summary>
+        private enum GateStep { EnterPin, CreatePin, ConfirmPin, Recovery, ParticipantCode }
 
         [Header("Gate")]
         [SerializeField] private GameObject gatePanel;
@@ -49,6 +49,10 @@ namespace SummaRace.Features.TeacherMenu
         [Tooltip("Optional. Left unwired the screen clones it from the Unlock button, so the " +
                  "action exists on the scene as it stands today without a re-author.")]
         [SerializeField] private Button switchLearnerButton;
+
+        [Tooltip("Optional, same cloning rule. Sets the active learner's participant code — " +
+                 "the id on their paper test booklet.")]
+        [SerializeField] private Button participantButton;
 
         [Header("Action labels")]
         [SerializeField] private TMP_Text titleText;
@@ -82,6 +86,12 @@ namespace SummaRace.Features.TeacherMenu
 
         private bool _deleteArmed;
         private bool _recoveryArmed;
+
+        /// <summary>The participant code is being asked as part of CREATING a learner, so
+        /// saving it continues to Name Entry rather than back to the action list. Creation is
+        /// the one moment the code is guaranteed to be asked for, which is what stops a tablet
+        /// reaching a child with an unidentifiable profile on it.</summary>
+        private bool _codeThenNameEntry;
         private int _wrongAttempts;
         private float _retryAt;
 
@@ -116,12 +126,13 @@ namespace SummaRace.Features.TeacherMenu
                 pinInput.text = string.Empty;
             }
 
-            EnsureSwitchLearnerButton();
-            LayOutActions(switchLearnerButton, unlockButton, exportButton, deleteButton);
+            EnsureExtraActions();
+            LayOutActions(participantButton, switchLearnerButton, unlockButton, exportButton, deleteButton);
 
             ShowGate();
 
             if (submitButton != null) submitButton.onClick.AddListener(Submit);
+            if (participantButton != null) participantButton.onClick.AddListener(EditParticipantCode);
             if (switchLearnerButton != null) switchLearnerButton.onClick.AddListener(OpenLearnerPicker);
             if (unlockButton != null) unlockButton.onClick.AddListener(UnlockNext);
             if (exportButton != null) exportButton.onClick.AddListener(Export);
@@ -158,7 +169,26 @@ namespace SummaRace.Features.TeacherMenu
             // The raw PIN survives only across the two setup taps.
             if (step != GateStep.ConfirmPin) _pendingPin = null;
             if (step != GateStep.Recovery) _recoveryArmed = false;
-            if (pinInput != null) pinInput.text = string.Empty;
+            if (step != GateStep.ParticipantCode) _codeThenNameEntry = false;
+
+            if (pinInput != null)
+            {
+                // The field is shared, so its rules have to follow the question. A PIN is
+                // digits behind dots; a participant code is letters AND digits and must be
+                // READABLE while it is typed — it is being copied off a paper booklet, and a
+                // masked code cannot be checked against the page before it is saved.
+                if (step == GateStep.ParticipantCode)
+                {
+                    pinInput.contentType = TMP_InputField.ContentType.Alphanumeric;
+                    pinInput.characterLimit = Data.ParticipantCodes.MaxLength;
+                }
+                else
+                {
+                    pinInput.contentType = TMP_InputField.ContentType.Pin;
+                    pinInput.characterLimit = 0;
+                }
+                pinInput.text = string.Empty;
+            }
 
             switch (step)
             {
@@ -173,6 +203,10 @@ namespace SummaRace.Features.TeacherMenu
                 case GateStep.Recovery:
                     Prompt(GameText.TeacherRecoveryTitle);
                     SubmitText(GameText.TeacherRecoveryErase);
+                    break;
+                case GateStep.ParticipantCode:
+                    Prompt(GameText.TeacherParticipantPrompt);
+                    SubmitText(GameText.TeacherParticipantSubmit);
                     break;
                 default:
                     Prompt(GameText.TeacherEnterPin);
@@ -190,14 +224,15 @@ namespace SummaRace.Features.TeacherMenu
             }
 
             Click();
-            string pin = pinInput != null ? pinInput.text : string.Empty;
+            string typed = pinInput != null ? pinInput.text : string.Empty;
 
             switch (_step)
             {
-                case GateStep.CreatePin: BeginSetPin(pin); break;
-                case GateStep.ConfirmPin: FinishSetPin(pin); break;
+                case GateStep.CreatePin: BeginSetPin(typed); break;
+                case GateStep.ConfirmPin: FinishSetPin(typed); break;
                 case GateStep.Recovery: ConfirmReset(); break;
-                default: TryEnter(pin); break;
+                case GateStep.ParticipantCode: SaveParticipantCode(typed); break;
+                default: TryEnter(typed); break;
             }
         }
 
@@ -373,12 +408,140 @@ namespace SummaRace.Features.TeacherMenu
             // hidden, and it must not come back mid-setup or mid-reset if it is shown again.
             SetStep(GateStep.EnterPin);
             _wrongAttempts = 0;
+            _deleteArmed = false;
+            if (deleteLabel != null) deleteLabel.text = GameText.TeacherDelete;
+            RefreshParticipantLabel();
+
+            // A learner with no participant code has no route back to their paper pretest, and
+            // that is only discoverable during analysis — long after the tablets are collected.
+            // So the code is asked for HERE, the first time an adult gets through the PIN,
+            // rather than left as a button someone might not press. Back still leaves (TDD §13),
+            // and it simply asks again next time.
+            var manager = Core.GameManager.Instance;
+            if (manager != null && manager.CurrentLearner != null &&
+                !Data.ParticipantCodes.IsSet(manager.CurrentLearner))
+            {
+                ShowParticipantStep(false);
+                Status(GameText.TeacherParticipantMissing);
+                return;
+            }
+
             if (gatePanel != null) gatePanel.SetActive(false);
             if (_learnerPanel != null) _learnerPanel.SetActive(false);
             if (actionsPanel != null) actionsPanel.SetActive(true);
-            _deleteArmed = false;
-            if (deleteLabel != null) deleteLabel.text = GameText.TeacherDelete;
+            Status(ParticipantWarning() ?? string.Empty);
+        }
+
+        // ---------- The participant code: the join to the paper pretest/posttest ----------
+
+        /// <summary>
+        /// Opens the code entry for the active learner. Behind the PIN with everything else,
+        /// deliberately: the learner types their own NAME at Name Entry and that stays theirs,
+        /// but the identifier the study joins on is copied off a booklet by an adult. A
+        /// nine-year-old's spelling of their own name is exactly the join the results chapter
+        /// cannot be allowed to rest on.
+        /// </summary>
+        private void EditParticipantCode()
+        {
+            Click();
+            Disarm();
+
+            var manager = Core.GameManager.Instance;
+            if (manager == null || manager.CurrentLearner == null)
+            {
+                Reject(GameText.TeacherSaveFailed);
+                return;
+            }
+
+            ShowParticipantStep(false);
             Status(string.Empty);
+        }
+
+        /// <summary>Swaps the gate in on the code question, pre-filled with whatever this
+        /// learner already has so an edit is a correction rather than a retype.</summary>
+        private void ShowParticipantStep(bool thenNameEntry)
+        {
+            SetStep(GateStep.ParticipantCode);
+            _codeThenNameEntry = thenNameEntry;   // set AFTER SetStep, which clears it
+
+            var manager = Core.GameManager.Instance;
+            if (pinInput != null && manager != null)
+                pinInput.text = Data.ParticipantCodes.Of(manager.CurrentLearner);
+
+            if (_learnerPanel != null) _learnerPanel.SetActive(false);
+            if (actionsPanel != null) actionsPanel.SetActive(false);
+            if (gatePanel != null) gatePanel.SetActive(true);
+        }
+
+        private void SaveParticipantCode(string typed)
+        {
+            var manager = Core.GameManager.Instance;
+            if (manager == null)
+            {
+                Reject(GameText.TeacherSaveFailed);
+                return;
+            }
+
+            string code;
+            string clash;
+            var result = manager.SetParticipantCode(manager.CurrentLearner, typed, out code, out clash);
+
+            switch (result)
+            {
+                case ParticipantCodeResult.Invalid:
+                    Reject(GameText.TeacherParticipantInvalid);
+                    return;
+                case ParticipantCodeResult.Duplicate:
+                    // The one failure this whole field exists to prevent. Refused at the moment
+                    // it is typed, while the teacher still has both booklets in front of them —
+                    // after export, two children sharing a code cannot be separated at all.
+                    Reject(GameText.TeacherParticipantDuplicate(code, clash));
+                    return;
+                case ParticipantCodeResult.NoLearner:
+                    Reject(GameText.TeacherSaveFailed);
+                    return;
+            }
+
+            if (_codeThenNameEntry)
+            {
+                // Created from the picker: the learner is identified, now let them name
+                // themselves and pick a runner exactly as a first-boot learner does.
+                _codeThenNameEntry = false;
+                if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxStar);
+                SceneLoader.Go(SceneNames.NameEntry);
+                return;
+            }
+
+            // OpenActions plays the accepted sound, so nothing extra here — two confirmations
+            // on one tap reads as two things having happened.
+            OpenActions();
+            Status(GameText.TeacherParticipantSaved(code));
+        }
+
+        /// <summary>The code problems worth interrupting an adult about, or null when there are
+        /// none. Duplicates lead: a missing code loses one learner's rows, a shared one merges
+        /// two learners' rows into an unusable single participant.</summary>
+        private static string ParticipantWarning()
+        {
+            var manager = Core.GameManager.Instance;
+            if (manager == null) return null;
+
+            string duplicate = manager.FirstDuplicateParticipantCode();
+            if (!string.IsNullOrEmpty(duplicate))
+                return GameText.TeacherParticipantDuplicateWarning(duplicate);
+
+            int missing = manager.CountLearnersWithoutParticipantCode();
+            return missing > 0 ? GameText.TeacherParticipantMissingCount(missing) : null;
+        }
+
+        /// <summary>Keeps the action button reading the ACTIVE learner's code, so the tablet
+        /// answers "who is this, on paper?" without a tap.</summary>
+        private void RefreshParticipantLabel()
+        {
+            if (participantButton == null) return;
+            var manager = Core.GameManager.Instance;
+            string code = manager != null ? Data.ParticipantCodes.Of(manager.CurrentLearner) : string.Empty;
+            SetButtonLabel(participantButton, GameText.TeacherParticipantActionLabel(code));
         }
 
         /// <summary>Cancel a primed delete. Any other action counts as "not that, then":
@@ -426,7 +589,15 @@ namespace SummaRace.Features.TeacherMenu
                 return;
             }
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxStar);
-            Status(GameText.TeacherExported(path));
+
+            // The roster beside the export carries each learner's participant code, and this is
+            // the last moment anyone looks at it while the tablet is still in hand. A missing or
+            // shared code is not a formatting problem — it is rows that cannot be joined to a
+            // pretest score — so say it here rather than let it be found during analysis.
+            string warning = ParticipantWarning();
+            Status(warning == null
+                ? GameText.TeacherExported(path)
+                : GameText.TeacherExported(path) + "\n" + warning);
         }
 
         /// <summary>Two taps, because this is unrecoverable. Keeps the PIN — a post-study wipe
@@ -494,16 +665,30 @@ namespace SummaRace.Features.TeacherMenu
             if (manager == null || learner == null) return;
 
             manager.SetActiveLearner(learner);
+            RefreshParticipantLabel();
+
+            // A learner brought in from an older tablet (or an install that was interrupted)
+            // may have no code. Ask now, while the adult is still on this screen with the
+            // booklets — not at export, when it is only a hole in the data.
+            if (!Data.ParticipantCodes.IsSet(learner))
+            {
+                ShowParticipantStep(false);
+                Status(GameText.TeacherParticipantMissing);
+                return;
+            }
+
             CloseLearnerPicker();
             // Name them back: on a shared tablet the confirmation IS the safeguard.
             Status(GameText.TeacherActiveLearner(learner.displayName));
         }
 
         /// <summary>
-        /// Starts a second (third, fourth…) learner on this tablet. Name Entry already asks for
-        /// a name and an avatar and writes them to whoever is active, so the new profile is
-        /// named there rather than through a second, nearly identical box here — and that
-        /// screen exits to the Main Menu, so this is never a dead end.
+        /// Starts a second (third, fourth…) learner on this tablet. Two steps, in this order:
+        /// the adult gives the participant code here, then Name Entry lets the child give their
+        /// own name and avatar. Asking for the code AT CREATION is what guarantees no profile
+        /// can ever collect data without an identifier — the alternative, a button someone is
+        /// meant to remember to press, is the same "discovered during analysis" failure one
+        /// step removed. Name Entry exits to the Main Menu, so this is never a dead end.
         /// </summary>
         private void StartNewLearner()
         {
@@ -518,7 +703,9 @@ namespace SummaRace.Features.TeacherMenu
             }
 
             manager.CreateLearner();
-            SceneLoader.Go(SceneNames.NameEntry);
+            RefreshParticipantLabel();
+            ShowParticipantStep(true);
+            Status(GameText.TeacherParticipantMissing);
         }
 
         /// <summary>Rebuilds the list. Cheap enough to redo per open, and it always agrees with
@@ -556,10 +743,14 @@ namespace SummaRace.Features.TeacherMenu
                 if (learner == null) continue;
 
                 bool playing = learner == manager.CurrentLearner;
+                // The row leads with the participant code, so "which of these is P07?" is
+                // answerable at a glance and a profile that never got one is visible as
+                // "(no code)" instead of looking like every other row.
+                string code = Data.ParticipantCodes.Of(learner);
                 var row = CloneButton(unlockButton, _learnerList, "Learner" + i,
                     playing
-                        ? GameText.TeacherLearnerRowActive(learner.displayName, learner.unlockedSession)
-                        : GameText.TeacherLearnerRow(learner.displayName, learner.unlockedSession));
+                        ? GameText.TeacherLearnerRowActive(code, learner.displayName, learner.unlockedSession)
+                        : GameText.TeacherLearnerRow(code, learner.displayName, learner.unlockedSession));
                 if (row == null) continue;
 
                 ShapeRow(row);
@@ -573,16 +764,33 @@ namespace SummaRace.Features.TeacherMenu
         // ---------- Building the picker out of the screen's own parts ----------
 
         /// <summary>
-        /// Adds the fourth action by copying the Unlock button. Cloning rather than building
-        /// keeps the kit styling (9-sliced pill, dark ring, label font, ButtonSquash) exactly as
-        /// the scene already carries it — a hand-built button would drift the moment the skin
-        /// changes. Skipped when the scene wires one itself.
+        /// Adds the actions the scene does not author by copying the Unlock button. Cloning
+        /// rather than building keeps the kit styling (9-sliced pill, dark ring, label font,
+        /// ButtonSquash) exactly as the scene already carries it — a hand-built button would
+        /// drift the moment the skin changes. Skipped for anything the scene wires itself.
         /// </summary>
-        private void EnsureSwitchLearnerButton()
+        private void EnsureExtraActions()
         {
-            if (switchLearnerButton != null || unlockButton == null) return;
-            switchLearnerButton = CloneButton(
-                unlockButton, unlockButton.transform.parent, "Switch learner", GameText.TeacherSwitchLearner);
+            if (unlockButton == null) return;
+
+            if (switchLearnerButton == null)
+                switchLearnerButton = CloneButton(
+                    unlockButton, unlockButton.transform.parent, "Switch learner",
+                    GameText.TeacherSwitchLearner);
+
+            if (participantButton == null)
+                participantButton = CloneButton(
+                    unlockButton, unlockButton.transform.parent, "Participant code",
+                    GameText.TeacherParticipantActionLabel(string.Empty));
+        }
+
+        /// <summary>Retitles a cloned action. Leaves the label object's own activation alone for
+        /// the same reason CloneButton does — several kit buttons carry baked text.</summary>
+        private static void SetButtonLabel(Button button, string label)
+        {
+            if (button == null) return;
+            var text = button.GetComponentInChildren<TMP_Text>(true);
+            if (text != null) text.text = label;
         }
 
         /// <summary>Centres the action column however many buttons it ends up with.</summary>
