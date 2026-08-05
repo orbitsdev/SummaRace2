@@ -206,7 +206,7 @@ namespace SummaRace.Features.TeacherMenu
         {
             if (!TeacherGate.IsPinAcceptable(pin))
             {
-                Status(GameText.TeacherPinTooShort);
+                Reject(GameText.TeacherPinTooShort);
                 return;
             }
 
@@ -219,7 +219,7 @@ namespace SummaRace.Features.TeacherMenu
             if (!TeacherGate.PinsMatch(_pendingPin, pin))
             {
                 SetStep(GateStep.CreatePin);
-                Status(GameText.TeacherPinMismatch);
+                Reject(GameText.TeacherPinMismatch);
                 return;
             }
 
@@ -229,7 +229,7 @@ namespace SummaRace.Features.TeacherMenu
                 // when the scene is played directly, or no room on disk) — say so rather than
                 // repeating "too short" at a researcher who did nothing wrong.
                 SetStep(GateStep.CreatePin);
-                Status(GameText.TeacherSaveFailed);
+                Reject(GameText.TeacherSaveFailed);
                 return;
             }
 
@@ -242,7 +242,7 @@ namespace SummaRace.Features.TeacherMenu
             float wait = _retryAt - Time.unscaledTime;
             if (wait > 0f)
             {
-                Status(GameText.TeacherCooldown(Mathf.CeilToInt(wait)));
+                Reject(GameText.TeacherCooldown(Mathf.CeilToInt(wait)));
                 return;
             }
 
@@ -257,11 +257,11 @@ namespace SummaRace.Features.TeacherMenu
                 {
                     _wrongAttempts = 0;
                     _retryAt = Time.unscaledTime + CooldownSeconds;
-                    Status(GameText.TeacherCooldown(Mathf.CeilToInt(CooldownSeconds)));
+                    Reject(GameText.TeacherCooldown(Mathf.CeilToInt(CooldownSeconds)));
                     return;
                 }
 
-                Status(GameText.TeacherWrongPin);
+                Reject(GameText.TeacherWrongPin);
                 return;
             }
 
@@ -332,7 +332,9 @@ namespace SummaRace.Features.TeacherMenu
             Click();
             _swallowNextSubmit = true;   // the finger that armed this is still down
             SetStep(GateStep.Recovery);
-            Status(GameText.TeacherRecoveryWarning);
+            // Sounds like a warning, not like progress: the hold has just opened the one screen
+            // in this app that can erase the study.
+            Reject(GameText.TeacherRecoveryWarning);
         }
 
         /// <summary>Two taps on top of the six-second hold, because this erases the tablet.</summary>
@@ -342,7 +344,7 @@ namespace SummaRace.Features.TeacherMenu
             {
                 _recoveryArmed = true;
                 SubmitText(GameText.TeacherRecoveryConfirm);
-                Status(GameText.TeacherRecoveryLastChance);
+                Reject(GameText.TeacherRecoveryLastChance);
                 return;
             }
 
@@ -350,7 +352,7 @@ namespace SummaRace.Features.TeacherMenu
             {
                 // The gate could not be cleared, so nothing was erased. Stay armed: the next tap
                 // retries, rather than making the researcher hold for six seconds again.
-                Status(GameText.TeacherRecoveryFailed);
+                Reject(GameText.TeacherRecoveryFailed);
                 return;
             }
 
@@ -362,6 +364,11 @@ namespace SummaRace.Features.TeacherMenu
 
         private void OpenActions()
         {
+            // The PIN was accepted — the one moment on this screen that deserves a "yes". The
+            // panels swap, which is the visual half, but a correct PIN and a wrong one sounded
+            // identical, and this screen is used one-handed in a noisy classroom.
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxCorrect);
+
             // Leave the gate on its default question with an empty field: the panel is only
             // hidden, and it must not come back mid-setup or mid-reset if it is shown again.
             SetStep(GateStep.EnterPin);
@@ -393,7 +400,7 @@ namespace SummaRace.Features.TeacherMenu
             int session = TeacherGate.UnlockNextSession();
             if (session == 0)
             {
-                Status(GameText.TeacherAllUnlocked);
+                Reject(GameText.TeacherAllUnlocked);
                 return;
             }
             // sfx_unlock is specified in the asset list but not yet produced; the rising star
@@ -410,7 +417,16 @@ namespace SummaRace.Features.TeacherMenu
             // Show the full path: the researcher has to find this file over USB. The bare path
             // was not enough — the export is deliberately pseudonymised, so the companion roster
             // written beside it has to be pulled too or the rows cannot be tied to a child.
-            Status(string.IsNullOrEmpty(path) ? GameText.TeacherNothingToExport : GameText.TeacherExported(path));
+            if (string.IsNullOrEmpty(path))
+            {
+                // Nothing was written. That is the one outcome here a researcher must not read
+                // past — "exported" and "there was nothing to export" are one line of text apart
+                // and only one of them means the study data is on the tablet's file system.
+                Reject(GameText.TeacherNothingToExport);
+                return;
+            }
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxStar);
+            Status(GameText.TeacherExported(path));
         }
 
         /// <summary>Two taps, because this is unrecoverable. Keeps the PIN — a post-study wipe
@@ -422,6 +438,9 @@ namespace SummaRace.Features.TeacherMenu
             {
                 _deleteArmed = true;
                 if (deleteLabel != null) deleteLabel.text = GameText.TeacherDeleteConfirm;
+                // Arming a wipe must not sound like every other button on the screen. The label
+                // change is easy to miss on a tablet held at arm's length; the nudge is not.
+                if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxSlotWiggle);
                 return;
             }
 
@@ -452,7 +471,7 @@ namespace SummaRace.Features.TeacherMenu
             {
                 // Everything here is cloned from this screen's own controls; with none wired
                 // there is nothing to clone. Say so rather than open an empty board (TDD §13).
-                Status(GameText.TeacherLearnerPickerUnavailable);
+                Reject(GameText.TeacherLearnerPickerUnavailable);
                 return;
             }
 
@@ -494,7 +513,7 @@ namespace SummaRace.Features.TeacherMenu
             {
                 // No [Core] means no profiles and nowhere to save — the same failure the PIN
                 // step reports, so it reads the same way.
-                Status(GameText.TeacherSaveFailed);
+                Reject(GameText.TeacherSaveFailed);
                 return;
             }
 
@@ -767,6 +786,20 @@ namespace SummaRace.Features.TeacherMenu
         private void Status(string message)
         {
             if (statusText != null) statusText.text = message;
+        }
+
+        /// <summary>
+        /// A tap that was refused — wrong PIN, mismatched setup, cooldown, nothing to export.
+        /// Every one of these used to answer with the same cheerful click as a tap that WORKED,
+        /// because Submit() clicks before it knows the answer, and then changed one line of small
+        /// status text. A researcher standing over a child, glancing at the tablet, could not
+        /// tell the two apart. The nudge sound is the warm one used everywhere else for "not
+        /// that" (never a harsh buzzer — the same restraint the learner's screens get).
+        /// </summary>
+        private void Reject(string message)
+        {
+            Status(message);
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxSlotWiggle);
         }
 
         private static void Click()

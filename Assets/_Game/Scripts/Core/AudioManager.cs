@@ -12,12 +12,15 @@ namespace SummaRace.Core
     {
         public static AudioManager Instance { get; private set; }
 
+        // Holds a null for a key with no clip too — see GetClip. Values may be null on purpose.
         private readonly Dictionary<string, AudioClip> _cache = new();
         private AudioSource _musicSource;
         private AudioSource _sfxSource;
         private AudioSource _voiceSource;
         private float _musicVolume = 0.8f;
         private float _sfxVolume = 1f;
+        // Defaults mirror AppSettings so an un-configured manager still sounds like the game.
+        private float _voiceVolume = 1f;
 
         private void Awake()
         {
@@ -47,7 +50,11 @@ namespace SummaRace.Core
                 return;
             }
             _voiceSource.clip = clip;
-            _voiceSource.volume = 1f;
+            // The narration is the accessibility support the study depends on, so it is the one
+            // channel that gets its own level: AppSettings.narrationVolume was a declared setting
+            // with no reader at all (this line hard-coded 1f), which meant a researcher who turned
+            // the voice down still got it at full volume over a quieter mix.
+            _voiceSource.volume = _voiceVolume;
             _voiceSource.Play();
         }
 
@@ -66,7 +73,15 @@ namespace SummaRace.Core
         {
             var clip = GetClip(key);
             if (clip == null) return;
-            if (_musicSource.clip == clip && _musicSource.isPlaying) return;
+            if (_musicSource.clip == clip && _musicSource.isPlaying)
+            {
+                // Same track already running: never restart it (that is what lets StorySelect and
+                // the session map re-assert the menu loop for free). Do honour a changed loop
+                // flag, though — asking for a one-shot sting while it happens to be looping
+                // otherwise left it looping for ever.
+                _musicSource.loop = loop;
+                return;
+            }
 
             _musicSource.clip = clip;
             _musicSource.loop = loop;
@@ -78,9 +93,14 @@ namespace SummaRace.Core
 
         public void SetVolumes(AppSettings settings)
         {
+            if (settings == null) return;
             _musicVolume = settings.musicVolume;
             _sfxVolume = settings.sfxVolume;
+            _voiceVolume = settings.narrationVolume;
             _musicSource.volume = _musicVolume;
+            // A page already being read follows the new level immediately rather than only from
+            // the next page — the volume was changed to be heard now.
+            if (_voiceSource != null) _voiceSource.volume = _voiceVolume;
         }
 
         private AudioClip GetClip(string key)
@@ -89,10 +109,12 @@ namespace SummaRace.Core
 
             var clip = Resources.Load<AudioClip>("Audio/" + key);
             if (clip == null)
-            {
                 Debug.LogWarning($"AudioManager: clip '{key}' not found in Resources/Audio.");
-                return null;
-            }
+
+            // Cache the miss as well as the hit. A missing key is usually one the game asks for
+            // over and over (footsteps fire several times a second in the race), and each miss
+            // was costing a fresh Resources.Load plus a console line — on the 2GB floor device
+            // that is a per-frame cost for a sound that will never exist.
             _cache[key] = clip;
             return clip;
         }

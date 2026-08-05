@@ -207,7 +207,19 @@ namespace SummaRace.Features.Reader
         /// </summary>
         private void ReplayNarration()
         {
-            if (AudioManager.Instance == null || _story == null) return;
+            if (_story == null) return;
+
+            // HEAR AGAIN is the one control in the game whose entire result is a sound, so on a
+            // muted classroom tablet — which is most of them — it answered a tap with literally
+            // nothing on screen and read as a broken button. The punch is not decoration: it is
+            // the only proof the tap landed.
+            // Punch the label, never the chip root: the root carries ButtonSquash, which drives
+            // the same localScale from its own press tween, and two tweens on one transform
+            // leave it wherever the last one wrote (same rule as Arrange and Story Select).
+            if (replayButtonLabel != null)
+                Tween.PunchScale(replayButtonLabel.transform, Vector3.one * 0.25f, 0.35f);
+
+            if (AudioManager.Instance == null) return;
             AudioManager.Instance.PlaySfx(AudioKeys.SfxClick);
             AudioManager.Instance.PlayNarration(_story.pages[_pageIndex].narration);
         }

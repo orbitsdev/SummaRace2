@@ -144,7 +144,17 @@ namespace SummaRace.Features.Arrange
                 return;
             }
 
-            if (_selectedPiece < 0) return;
+            if (_selectedPiece < 0)
+            {
+                // An empty slot tapped with nothing in hand played a click and then did nothing
+                // at all — the same "is this broken?" silence the locked slot used to give. Say
+                // what the screen is waiting for instead; it is the instruction line the learner
+                // arrived on, so it is never new information to decode.
+                SetStatus(GameText.ArrangeIntroStatus);
+                if (slotLabels[slot] != null)
+                    Tween.PunchScale(slotLabels[slot].transform, Vector3.one * 0.15f, 0.3f);
+                return;
+            }
 
             _slotContent[slot] = _selectedPiece;
             _undoStack.Push((_selectedPiece, slot));
@@ -167,6 +177,10 @@ namespace SummaRace.Features.Arrange
                     return;
                 }
             }
+
+            // Nothing left to take back (an empty board, or everything still on it is locked
+            // green). The tap used to end here with a click and no change anywhere on screen.
+            SetStatus(GameText.ArrangeIntroStatus);
         }
 
         private void OnVerify()

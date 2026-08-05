@@ -33,6 +33,13 @@ namespace SummaRace.Features.NameEntry
 
         private void Start()
         {
+            // On a fresh device this is the FIRST screen the learner ever sees (Boot routes here
+            // before the Main Menu), and it was the only menu screen in the game with no music at
+            // all — so the app opened silent, which on a classroom tablet is indistinguishable
+            // from a device whose sound is broken. PlayMusic no-ops when the loop is already
+            // running, so arriving here from the teacher's "+ New learner" costs nothing.
+            if (AudioManager.Instance != null) AudioManager.Instance.PlayMusic(AudioKeys.MusicMenu);
+
             if (titleText != null) titleText.text = GameText.NameEntryTitle;
             if (avatarPromptText != null) avatarPromptText.text = GameText.NameEntryPickAvatar;
             if (confirmLabel != null) confirmLabel.text = GameText.NameEntryConfirm;

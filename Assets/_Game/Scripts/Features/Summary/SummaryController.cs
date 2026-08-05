@@ -84,7 +84,9 @@ namespace SummaRace.Features.Summary
             EnsureDoneTypingChip();
             if (doneTypingButton != null)
             {
-                doneTypingButton.onClick.AddListener(StopTyping);
+                // Through OnDoneTyping, not StopTyping directly: the tap needs its own click, and
+                // StopTyping is also called from Accept(), which already plays its own sound.
+                doneTypingButton.onClick.AddListener(OnDoneTyping);
                 doneTypingButton.gameObject.SetActive(false);
             }
         }
@@ -201,6 +203,14 @@ namespace SummaRace.Features.Summary
                 max.x = typing ? Mathf.Min(_hintRestRight, 0.63f) : _hintRestRight;
                 rect.anchorMax = max;
             }
+        }
+
+        /// <summary>The learner tapping DONE TYPING — the only tap on this screen that answered
+        /// with no sound of its own.</summary>
+        private void OnDoneTyping()
+        {
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxClick);
+            StopTyping();
         }
 
         /// <summary>
