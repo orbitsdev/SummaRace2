@@ -29,6 +29,11 @@ namespace SummaRace.Core
     {
         public bool correct;
         public int attemptCount;
+        /// <summary>True when the remaining pieces were placed FOR the learner by the
+        /// anti-frustration assist rather than solved. The researcher must be able to tell
+        /// those apart directly; inferring it from the attempt count would silently break
+        /// the moment the threshold is retuned.</summary>
+        public bool assisted;
     }
 
     public struct SummarySubmitted

@@ -279,6 +279,17 @@ namespace SummaRace.Features.Arrange
             if (SummaRace.Core.GameManager.Instance != null)
                 SummaRace.Core.GameManager.Instance.SetArrangeResult(_attempts);
 
+            // Record the assist explicitly. The true attempt count is already logged, but the
+            // researcher must be able to separate "solved it" from "was helped to the end"
+            // without inferring it from a threshold that may later be retuned. correct stays
+            // false: the learner did not order these themselves, and the log should not say so.
+            EventBus.Raise(new ArrangeVerified
+            {
+                correct = false,
+                attemptCount = _attempts,
+                assisted = true
+            });
+
             yield return new WaitForSeconds(1.6f); // time to read the completed order
             SceneLoader.Go(SceneNames.Summary);
         }

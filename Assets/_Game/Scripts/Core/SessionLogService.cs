@@ -83,6 +83,8 @@ namespace SummaRace.Core
         {
             if (_log == null) return;
             _log.arrangeAttempts = evt.attemptCount;
+            // Sticky: a later raise must never clear the fact that the learner was helped.
+            if (evt.assisted) _log.arrangeAssisted = true;
             _dirtySinceWrite = true;
         }
 

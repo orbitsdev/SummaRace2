@@ -56,6 +56,9 @@ namespace SummaRace.Data
         public List<bool> raceFirstPickCorrect = new List<bool>();
         public int timesCaught;
         public int arrangeAttempts;
+        /// <summary>The anti-frustration assist placed the remaining SWBST pieces for the
+        /// learner instead of them completing the ordering unaided.</summary>
+        public bool arrangeAssisted;
         public int nudgeCount;
         public string summaryText;      // verbatim
         public int starsEarned;
