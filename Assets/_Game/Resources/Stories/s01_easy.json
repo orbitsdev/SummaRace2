@@ -11,11 +11,11 @@
       "text": "Molly and her friend Bella were playing at the playground. They were supposed to take turns on the swing. Molly counted up to 100 while Bella was on the swing.",
       "narration": "Stories/Narration/s01_easy_p1",
       "question": {
-        "text": "Who is the story about?",
+        "text": "Who is the story mainly about?",
         "options": [
-          "Molly and her friend Bella",
+          "Molly",
           "The teacher",
-          "A boy named Duncan"
+          "Duncan"
         ],
         "correctIndex": 0
       }

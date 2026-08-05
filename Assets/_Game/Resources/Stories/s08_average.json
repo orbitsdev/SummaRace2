@@ -24,11 +24,11 @@
       "text": "The beginner needs a skateboard, safety gear, and a safe place to practice.",
       "narration": "Stories/Narration/s08_average_p2",
       "question": {
-        "text": "What does a beginner need before skateboarding?",
+        "text": "Why does a beginner need a board and safety gear?",
         "options": [
-          "A skateboard and protective gear",
-          "A motorcycle and a strong racing helmet",
-          "A surfboard and a pair of swim fins"
+          "To learn how to skateboard safely",
+          "To ride a motorcycle on the highway",
+          "To surf on the big ocean waves"
         ],
         "correctIndex": 0
       }

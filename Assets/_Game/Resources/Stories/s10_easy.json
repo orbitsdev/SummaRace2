@@ -24,11 +24,11 @@
       "text": "Most waves are created when wind blows across the surface of the ocean.",
       "narration": "Stories/Narration/s10_easy_p2",
       "question": {
-        "text": "What is the most common cause of waves?",
+        "text": "What do the waves made by the wind carry?",
         "options": [
-          "Wind",
-          "Fish",
-          "Ships"
+          "Energy across the water",
+          "Fish from the deep sea",
+          "Boats from the harbor"
         ],
         "correctIndex": 0
       }
@@ -50,11 +50,11 @@
       "text": "Earthquakes, landslides, and volcanic eruptions can quickly move large amounts of water and create tsunamis.",
       "narration": "Stories/Narration/s10_easy_p4",
       "question": {
-        "text": "What can create a tsunami?",
+        "text": "Besides wind and storms, what else can make waves?",
         "options": [
-          "Only strong wind blowing across the surface",
-          "Underwater disturbances like earthquakes",
-          "Thick storm clouds gathering above the water"
+          "Only the wind blowing across the surface",
+          "Earthquakes and volcanic eruptions",
+          "Thick storm clouds high above the water"
         ],
         "correctIndex": 1
       }
@@ -100,10 +100,10 @@
     },
     {
       "type": "SO",
-      "correct": "Waves and tides form from wind, storms, and gravity",
+      "correct": "Wind, storms, earthquakes, and gravity form waves",
       "distractors": [
-        "Waves and tides form from rain, clouds, and fog",
-        "Waves and tides form when boats cross the ocean"
+        "Rain, clouds, snow, and moonlight form waves",
+        "Boats, birds, and fishing nets form waves"
       ]
     },
     {

@@ -20,7 +20,7 @@ STORIES = paths.STORIES
 def main():
     ov = json.load(open(os.path.join(HERE, "overrides.json"), encoding="utf-8"))
     errors = []
-    n_el = n_pg = n_opt = 0
+    n_el = n_pg = n_opt = n_qtext = 0
 
     for sid, spec in ov.items():
         if sid.startswith("_"):
@@ -63,6 +63,17 @@ def main():
                 continue
             q = d["pages"][idx]["question"]
             options = q["options"]
+            # Question TEXT. Added by the 2026-08-06 page<->slot alignment audit: a page
+            # question that asks about something other than the SWBST slot at the same
+            # index breaks the support-removal ladder the whole instrument rests on
+            # (Reader pre-teaches slot k with the text visible, Race asks slot k with the
+            # text gone), and until now the only repairable part of a question was its
+            # wrong options. Rewriting a question is a change to the RESEARCHER'S content,
+            # so every use of this field is listed as a sign-off item in
+            # Documentation/SummaRace_Story_Alignment_Audit.md.
+            if "text" in change:
+                q["text"] = change["text"]
+                n_qtext += 1
             for oi, text in change.get("options", {}).items():
                 oi = int(oi)
                 if not 0 <= oi < len(options):
@@ -92,6 +103,7 @@ def main():
     print("element sets updated: %d" % n_el)
     print("page texts fixed    : %d" % n_pg)
     print("question options    : %d" % n_opt)
+    print("question texts      : %d" % n_qtext)
     if errors:
         print("\nERRORS:")
         for e in errors:

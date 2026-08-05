@@ -28,7 +28,28 @@
   "already-false statement simply carries more (still false) detail. 111 distractors",
   "across 74 questions -- 37 questions got both distractors pushed past the correct",
   "option and 37 got one -- chosen as the 74 largest margins. Target: the correct",
-  "option's length rank spread evenly across longest/middle/shortest."
+  "option's length rank spread evenly across longest/middle/shortest.",
+  "",
+  "ALIGNMENT AUDIT 2026-08-06 -- PAGE <-> SLOT.",
+  "The instrument's whole design is a support-removal ladder: the Reader pre-teaches",
+  "SWBST slot k with the story text visible, the Race asks slot k with the text gone,",
+  "and the thesis wants a per-slot with-support / without-support contrast. Nothing in",
+  "the data or the code enforces the pairing -- there is no field linking a page",
+  "question to a slot, only the convention 'page k pre-teaches element k'. All 150",
+  "pairs were graded by hand: 135 aligned, 8 weak, 7 misaligned.",
+  "",
+  "Two of the seven were OUR regressions (a P7 card-length trim that changed meaning)",
+  "and are restored to the researcher's own SWBST line: s04_easy BUT, s10_easy SO.",
+  "Five are misaligned in the researcher's SOURCE DOCUMENT, where the processing",
+  "question on page k asks about a different proposition than the SWBST line for slot k.",
+  "Those are repaired by rewriting the QUESTION toward the slot, never the SWBST line",
+  "(the SWBST analysis is the researcher's framework and the summary target). Every one",
+  "is a sign-off item, listed with the original question quoted in",
+  "Documentation/SummaRace_Story_Alignment_Audit.md.",
+  "",
+  "s03_hard p2 is deliberately NOT fixed: its slot is the Giant's want, and page 2's",
+  "text carries no statement of it at all, so no faithful question can be written from",
+  "that page. It needs a researcher decision, not an invented question."
  ],
  "s02_average": {
   "elements": {
@@ -343,10 +364,10 @@
    },
    "BUT": {
     "distractors": [
-     "They lost their tickets at the front gate",
-     "They had no map to find the animal areas"
+     "They lost their zoo map at the gate",
+     "They saw only the lions that day"
     ],
-    "correct": "They had too much to see in only one day"
+    "correct": "They had many animals to explore"
    },
    "SO": {
     "distractors": [
@@ -378,6 +399,24 @@
      "0": "Tired and very unhappy",
      "2": "Bored and angry"
     }
+   },
+   "3": {
+    "text": "What did Omar and his family find at the zoo?",
+    "options": {
+     "0": "Many animals to explore",
+     "1": "One empty animal cage",
+     "2": "A playground with swings"
+    },
+    "allowCorrect": true
+   },
+   "4": {
+    "text": "How did Omar's family see so much of the zoo?",
+    "options": {
+     "0": "They visited one exhibit after another",
+     "1": "They stayed near the front gate",
+     "2": "They watched only the lions rest"
+    },
+    "allowCorrect": true
    }
   }
  },
@@ -893,9 +932,12 @@
   "questions": {
    "2": {
     "options": {
-     "1": "A motorcycle and a strong racing helmet",
-     "2": "A surfboard and a pair of swim fins"
-    }
+     "1": "To ride a motorcycle on the highway",
+     "2": "To surf on the big ocean waves",
+     "0": "To learn how to skateboard safely"
+    },
+    "text": "Why does a beginner need a board and safety gear?",
+    "allowCorrect": true
    },
    "5": {
     "options": {
@@ -1210,10 +1252,10 @@
     ]
    },
    "SO": {
-    "correct": "Waves and tides form from wind, storms, and gravity",
+    "correct": "Wind, storms, earthquakes, and gravity form waves",
     "distractors": [
-     "Waves and tides form from rain, clouds, and fog",
-     "Waves and tides form when boats cross the ocean"
+     "Rain, clouds, snow, and moonlight form waves",
+     "Boats, birds, and fishing nets form waves"
     ]
    },
    "THEN": {
@@ -1232,9 +1274,21 @@
    },
    "4": {
     "options": {
-     "0": "Only strong wind blowing across the surface",
-     "2": "Thick storm clouds gathering above the water"
-    }
+     "0": "Only the wind blowing across the surface",
+     "2": "Thick storm clouds high above the water",
+     "1": "Earthquakes and volcanic eruptions"
+    },
+    "text": "Besides wind and storms, what else can make waves?",
+    "allowCorrect": true
+   },
+   "2": {
+    "text": "What do the waves made by the wind carry?",
+    "options": {
+     "0": "Energy across the water",
+     "1": "Fish from the deep sea",
+     "2": "Boats from the harbor"
+    },
+    "allowCorrect": true
    }
   }
  },
@@ -1294,6 +1348,15 @@
     "options": {
      "2": "They could not find food during the long wars"
     }
+   },
+   "2": {
+    "text": "Why did Maria Dickin want to honor the animals?",
+    "options": {
+     "0": "They performed tricks for crowds",
+     "1": "They helped and protected people",
+     "2": "They were kept as pets in homes"
+    },
+    "allowCorrect": true
    }
   }
  },
@@ -1323,6 +1386,14 @@
     "options": {
      "0": "It started to rain on the playground"
     }
+   },
+   "1": {
+    "text": "Who is the story mainly about?",
+    "options": {
+     "0": "Molly",
+     "2": "Duncan"
+    },
+    "allowCorrect": true
    }
   }
  },

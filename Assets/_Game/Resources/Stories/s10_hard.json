@@ -24,11 +24,11 @@
       "text": "Maria Dickin wanted to honor animals that showed courage while helping people.",
       "narration": "Stories/Narration/s10_hard_p2",
       "question": {
-        "text": "What did Maria Dickin want?",
+        "text": "Why did Maria Dickin want to honor the animals?",
         "options": [
-          "To train animals",
-          "To honor brave animals",
-          "To start a zoo"
+          "They performed tricks for crowds",
+          "They helped and protected people",
+          "They were kept as pets in homes"
         ],
         "correctIndex": 1
       }

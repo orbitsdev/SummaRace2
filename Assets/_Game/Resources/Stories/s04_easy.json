@@ -37,11 +37,11 @@
       "text": "Next, they watched giraffes eating leaves and monkeys swinging on ropes.",
       "narration": "Stories/Narration/s04_easy_p3",
       "question": {
-        "text": "What animals did Omar enjoy watching?",
+        "text": "What did Omar and his family find at the zoo?",
         "options": [
-          "Giraffes and monkeys",
-          "Sharks and whales",
-          "Rabbits and cats"
+          "Many animals to explore",
+          "One empty animal cage",
+          "A playground with swings"
         ],
         "correctIndex": 0
       }
@@ -50,11 +50,11 @@
       "text": "Omar's little sister enjoyed feeding the ducks.",
       "narration": "Stories/Narration/s04_easy_p4",
       "question": {
-        "text": "What activity did Omar's sister enjoy?",
+        "text": "How did Omar's family see so much of the zoo?",
         "options": [
-          "Feeding the ducks",
-          "Riding a train",
-          "Taking pictures"
+          "They visited one exhibit after another",
+          "They stayed near the front gate",
+          "They watched only the lions rest"
         ],
         "correctIndex": 0
       }
@@ -92,10 +92,10 @@
     },
     {
       "type": "BUT",
-      "correct": "They had too much to see in only one day",
+      "correct": "They had many animals to explore",
       "distractors": [
-        "They lost their tickets at the front gate",
-        "They had no map to find the animal areas"
+        "They lost their zoo map at the gate",
+        "They saw only the lions that day"
       ]
     },
     {
