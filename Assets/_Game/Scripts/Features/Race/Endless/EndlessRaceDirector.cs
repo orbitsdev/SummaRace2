@@ -1227,6 +1227,12 @@ namespace SummaRace.Features.Race.Endless
                 var vc = _vignette.color;
                 vc.a = Mathf.Lerp(vc.a, surging ? 0.35f : 0f, 6f * Time.deltaTime);
                 _vignette.color = vc;
+                // Disable it outright when invisible. A full-screen alpha-blended Image still
+                // costs a full screen of overdraw at alpha 0, and on a tile-based mobile GPU
+                // that is pure bandwidth for every frame of an otherwise clean run — which is
+                // most frames, since the vignette only shows during a menace surge.
+                bool visible = vc.a > 0.004f;
+                if (_vignette.enabled != visible) _vignette.enabled = visible;
             }
         }
 

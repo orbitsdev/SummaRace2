@@ -77,3 +77,11 @@ crashlytics-build.properties
 # Xbox GDK package auto-generated asset (never shipped from this project)
 /Assets/Resources/GDKEditionAutoGen/
 /Assets/Resources/GDKEditionAutoGen.meta
+
+# Unity IAP artifacts. Trash Dash's purchasing package left these behind and the Google
+# VersionHandler re-creates them; being under Assets/Resources/ they SHIP. An in-app-purchase
+# product catalogue has no place in a 100%-offline classroom build.
+/Assets/Resources/BillingMode.json
+/Assets/Resources/BillingMode.json.meta
+/Assets/Resources/IAPProductCatalog.json
+/Assets/Resources/IAPProductCatalog.json.meta
