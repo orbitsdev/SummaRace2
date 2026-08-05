@@ -1,6 +1,48 @@
 # SummaRace — Finalization Plan
 
-**Written:** 2026-08-04 · **Branch:** `experiment/endless-override-2` · **Horizon:** a few days
+**Written:** 2026-08-04 · **Updated:** 2026-08-05 · **Branch:** `experiment/endless-override-2`
+
+---
+
+## STATUS — P0 through P5 are done; only P6 (ship pass) remains
+
+Everything in §1's gap table below is closed. Read this block first; §1–§3 are kept as the
+record of how the work was scoped, not as a to-do list.
+
+| Phase | State |
+|---|---|
+| P0 decontaminate | ✅ packages, their scenes, `OpenURL`, Boot back to index 0 — **plus the app icon**, which this pass caught still pointing at Trash Dash's `StoreIcon.png` |
+| P1 30 stories | ✅ 30/30 load through `StoryLoader`, 0 validation failures |
+| P2 reachable | ✅ StorySelect data-driven, SessionMap built |
+| P3 profiles/logging/gating | ✅ `SessionLogService`, `TeacherGate`, NameEntry + TeacherMenu |
+| P4 10 worlds | ✅ one per session; the unlit-art problem that made them all look alike is fixed with a colour grade |
+| P5 narration + art | ✅ 150 clips imported and verified resolving; hero art 30/30 (27 placeholders) |
+| **P6 ship pass** | ⬜ **blocked — see below** |
+
+**P6 is blocked on tooling, not on code.** Android Build Support is not installed in this
+Unity: `BuildPipeline.IsBuildTargetSupported(Android)` returns false, the SDK/NDK/JDK paths
+are empty and the active target is StandaloneWindows64. So **no APK exists yet**, and the
+two acceptance numbers that need one — APK ≤ 300MB and 30fps in the race on the 2GB floor
+device — are unmeasured. Install the module via Unity Hub, then run P6.
+
+**Still open, and each needs a human:**
+
+1. **Owner full-loop playtest on a non-s01 story.** 27 of the 30 have never been played
+   through the loop once. Editor-only verification cannot cover it — PrimeTween/PanelIntro
+   /UIFloat motion only runs in Play mode.
+2. **Researcher content sign-off** (GDD D6) — the authored distractors and `s01_easy`'s
+   AI-authored questions. Both are validity items, not bugs. See §5.
+3. **The race has no pause/back/quit.** The pause button is re-hidden every frame and the
+   pause menu's Exit routes to their `QuitToLoadout`. Since the FINISH-gate fix the race
+   always ends, so this is no longer a dead end — but a learner still cannot leave a race
+   by choice. Design call.
+4. **`Race.unity` (legacy) is still build index 6** with nothing routing to it. Cutting it
+   would shrink the APK; worth deciding against a real build rather than guessing.
+5. **Trash Dash's inactive objects** (GameOver/Leaderboard/Highscore/StoreButton/Loadout)
+   are still in `MainSummaRace`. Hidden is not removed; the shipping blockers (packages,
+   URLs, their scenes, the icon) are all gone.
+
+---
 
 Guiding principle, per owner: **the build wins over the documents.** The GDD is intent;
 where the game has deliberately diverged for playability (most of all the endless-runner
