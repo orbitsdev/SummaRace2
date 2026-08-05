@@ -1,46 +1,53 @@
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace SummaRace.Core
 {
     /// <summary>
-    /// Swallows the Android hardware/gesture BACK so it can never close the app.
+    /// Stops the Android hardware/gesture BACK closing the app mid-story.
     ///
-    /// Unity's default behaviour for BACK is to finish the activity — quit. Nothing in this
-    /// project handled it, which meant a learner could be dropped out of the game to the
-    /// launcher at any moment, mid-story, and the run would be filed as abandoned. Two things
-    /// make that a near-certainty rather than an edge case across 40 tablets and 10 sessions:
+    /// Unity's default for BACK is to finish the activity — quit. Nothing handled it, which meant
+    /// a learner could be dropped to the launcher at any moment and the run filed as abandoned.
+    /// Two things make that a weekly event across 40 tablets rather than an edge case: on gesture
+    /// navigation BACK is an EDGE SWIPE, the same motion the race asks for, so the race actively
+    /// trains the gesture that quits it; and on three-button navigation it is a permanent target
+    /// under a portrait game, next to where a child's thumb already sits.
     ///
-    ///   * on gesture navigation BACK is an EDGE SWIPE — the same motion the race asks the
-    ///     learner to make to change lane, so the race actively trains the gesture that quits;
-    ///   * on three-button navigation it is a permanent on-screen target sitting directly under
-    ///     a portrait game, next to where a child's thumb already is.
+    /// HOW, and why the obvious version does not work. The first version of this class polled
+    /// <c>Keyboard.current.escapeKey</c> (which is where the Input System surfaces Android BACK)
+    /// and did nothing with it, on the belief that reading a control marks it handled. **It does
+    /// not.** Reading an input control has no consuming semantics, and the quit is performed by
+    /// the platform, not by the input stack — so that version compiled, ran, logged, and stopped
+    /// nothing. It was caught in review, not by testing, which is exactly how a no-op that looks
+    /// like a fix survives.
     ///
-    /// So BACK is consumed and does nothing. It deliberately does NOT act as an in-game "go
-    /// back": every screen that should be leavable already has its own on-screen control with
-    /// the right rules (the Reader's exit, for instance, is only offered before the learner's
-    /// first answer, because after that the run is study data). Wiring a hardware button to
-    /// those would re-open the exact dead-end and data-loss paths those rules exist to close.
+    /// <see cref="Application.wantsToQuit"/> is the documented hook: it fires before the app
+    /// closes and returning false cancels it. It covers BACK regardless of navigation mode and
+    /// regardless of which input backend is active — which matters here, because this branch runs
+    /// `activeInputHandler: 2` (Both) and the race deliberately relies on the legacy touch path.
     ///
+    /// It deliberately does NOT act as an in-game "go back". Every screen that should be leavable
+    /// has its own on-screen control with the right rules — the Reader's exit, for one, is offered
+    /// only before the learner's first answer, because after that the run is study data. Wiring a
+    /// hardware button to those would reopen the dead-end and data-loss paths those rules close.
     /// A supervising adult can still leave via the system app switcher; nothing here traps a
     /// device, only a stray thumb.
+    ///
+    /// NOTE: `Application.wantsToQuit` is not raised in the editor on Play-mode exit, so this can
+    /// only be confirmed on a device. Verify it in the first on-tablet smoke test.
     /// </summary>
     public class BackButtonGuard : MonoBehaviour
     {
-        private void Update()
-        {
-            // Android maps BACK to Escape under the Input System. Reading the control marks it
-            // handled for this frame; there is no other consumer, so simply not acting on it is
-            // what keeps the app open.
-            var keyboard = Keyboard.current;
-            if (keyboard == null) return;
-            if (!keyboard.escapeKey.wasPressedThisFrame) return;
+        private void OnEnable() => Application.wantsToQuit += RefuseQuit;
+        private void OnDisable() => Application.wantsToQuit -= RefuseQuit;
 
-            // Nothing to do. Logged once per press only in the editor, so a developer wondering
-            // why BACK "does nothing" finds the reason instead of assuming a broken build.
+        /// <summary>Always refuses. There is no state in which a learner tapping BACK should end
+        /// the session — a teacher who genuinely wants the app closed uses the app switcher.</summary>
+        private static bool RefuseQuit()
+        {
 #if UNITY_EDITOR
-            Debug.Log("BackButtonGuard: BACK swallowed — see the class comment for why.");
+            Debug.Log("BackButtonGuard: quit refused — see the class comment for why.");
 #endif
+            return false;
         }
     }
 }

@@ -227,6 +227,17 @@ namespace SummaRace.Core
 
                 var dir = PathFor(PrefKeys.LogsFolder);
                 if (Directory.Exists(dir)) Directory.Delete(dir, true);
+
+                // The runner kit keeps its OWN save beside ours and nothing here knew about it.
+                // Trash Dash's PlayerData writes persistentDataPath/save.bin during play (every
+                // 300m of a run), carrying that child's rank, coins, highscores and mission
+                // state. It survived this wipe entirely — so a tablet the researcher had just
+                // erased still held ten sessions of one learner's play. Pseudonymous, so not a
+                // disclosure, but this is the one action whose entire purpose is to keep that
+                // promise. Deleted by name rather than through their API because PlayerData is
+                // their code and may not be alive when a teacher wipes from the menu.
+                var runnerSave = PathFor("save.bin");
+                if (File.Exists(runnerSave)) File.Delete(runnerSave);
             }
             catch (Exception e)
             {
