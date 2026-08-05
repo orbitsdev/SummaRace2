@@ -108,6 +108,24 @@ The branch `experiment/endless-override-2` **never ships as-is**. Decontaminatio
 
 Promotion = delete the packages, strip the Loadout/Shop/GameOver/leaderboard objects from the scene, and re-audit — not just hide more.
 
+### Teacher PIN — install rule and recovery (F45)
+
+**Set the PIN during install, before the tablet is handed to a learner.** Two matching entries
+still cannot tell a teacher from a determined child; what changed is that a child claiming it
+is now *recoverable* instead of terminal.
+
+**If the PIN is lost, or a learner set one:** MainMenu → teacher corner → on the **Enter PIN**
+step, **leave the PIN box empty** and **press and hold OK for 6 seconds** (both conditions are
+required — `BeginHold` arms only on `GateStep.EnterPin` with an empty box). A "Reset this
+tablet?" warning appears; release, tap **ERASE TABLET**, then tap again to confirm. The tablet
+wipes and returns to first-run PIN setup. Back cancels at any point before the second tap.
+
+**Cost:** every learner profile, all progress and **every log on that tablet**, permanently —
+export lives behind the same PIN, so the logs cannot be retrieved afterwards. **Export before
+the study ends, not after a lockout.** After 5 wrong PINs the screen imposes a 30s wait; the
+hold gesture still works during it. Recovery is a hold rather than a code because a hardcoded
+backdoor PIN would ship readable inside the APK.
+
 **Known flags:**
 - `s01_easy.json` page-split/questions/distractors were AI-authored — the researcher's source doc (`Documentation/STORIES FOR SESSION 1-10 ….docx`) gives Day 1 **EASY** only a passage + main idea, while Day 1 AVERAGE/HARD get the full `5 PAGES:` + `Processing Question` treatment. Sign-off before the study build is still the right call (GDD D6), but as a formality: the authored questions follow the researcher's own pattern faithfully. **Do not "fix" them to be comprehension-shaped** — an earlier pass (2026-07-21) argued that and was wrong. The researcher's own processing questions are deliberately SWBST-shaped ("Who is the main character?" = Somebody, "What did Duncan want to do?" = Wanted, "What problem did the crayons have?" = But, …). The Reader **pre-teaches** the five slots with the text on screen; the Race asks the same five with the text gone. That is the support-removal ladder working — Read = scaffold → Race = unsupported recall → Arrange = sequence → Summary = produce — not redundancy. Same pattern applies to the Phase G stories. The source doc also writes options as `A. / B. / C.`, which is the case for adding letter prefixes in the Reader.
 - **Hero art: 30 of 30 resolve, but 27 are placeholders** — `s01_*` are the real (TEMP crop) art at ~1.8MB; `s02`–`s10` are 30–80KB generated fills from P8. Replace when the researcher locks the 30-image style. No image-gen provider keys are configured in MCP (`generate_image` needs a fal.ai/OpenRouter key if wanted). **Art swaps are free**: the JSON carries `heroImage`/`narration` Resources paths and `AudioManager.PlayNarration` treats a missing clip as a silent page, so dropping a correctly named file lights it up with no code change.
