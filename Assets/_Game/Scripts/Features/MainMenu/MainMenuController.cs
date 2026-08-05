@@ -25,6 +25,10 @@ namespace SummaRace.Features.MainMenu
                  "once exported, so it is worth a corner of the screen.")]
         [SerializeField] private TMP_Text activeLearnerText;
 
+        /// <summary>The navy chip built behind <see cref="activeLearnerText"/> when it is not
+        /// wired in the scene. Held so it can be hidden along with an empty name.</summary>
+        private GameObject _activeLearnerPill;
+
         /// <summary>
         /// One naming detour per arrival, so this screen can never trade places with Name Entry
         /// forever. SceneLoader answers a scene that is missing from Build Settings by loading
@@ -66,6 +70,8 @@ namespace SummaRace.Features.MainMenu
                 // Blank rather than a placeholder when played straight from the editor: there is
                 // no learner then, and inventing a name here would read as a real one.
                 activeLearnerText.text = learner != null ? GameText.PlayingAs(learner.displayName) : string.Empty;
+                // An empty pill reads as a UI glitch, so the chip goes with the name.
+                if (_activeLearnerPill != null) _activeLearnerPill.SetActive(learner != null);
             }
 
             // Survive being opened directly in the editor for testing (TDD §13).
@@ -110,21 +116,48 @@ namespace SummaRace.Features.MainMenu
             var text = clone.GetComponent<TMP_Text>();
             if (text == null) { Destroy(clone); return null; }
 
-            text.fontSize = 34f;
-            text.enableAutoSizing = false;
+            // This line was deep navy with no backing, on the assumption that y 0.15-0.215 is the
+            // "bright sky backdrop". It is not: bg_playground puts its DARK DIRT band exactly
+            // there, so on a real portrait render the text came out navy-on-brown and half cut by
+            // the ground edge — verified in a full playthrough. Rather than chase the backdrop
+            // (which changes per scene tint, and is art someone may re-render), give the line its
+            // own pill and stop depending on what is behind it — the same reasoning that fixed
+            // StorySelect's locked cards, and the navy chip is already this project's language
+            // for a small persistent label (Resources/UI/bar_bg, used by the race HUD).
+            var pillGo = new GameObject("ActiveLearnerPill", typeof(RectTransform));
+            pillGo.transform.SetParent(canvas.transform, false);
+            var pill = pillGo.AddComponent<UnityEngine.UI.Image>();
+            pill.sprite = Resources.Load<Sprite>("UI/bar_bg");
+            if (pill.sprite != null) pill.type = UnityEngine.UI.Image.Type.Sliced;
+            pill.color = pill.sprite != null ? Color.white : new Color(0.11f, 0.17f, 0.33f, 0.92f);
+            pill.raycastTarget = false;
+            var prect = pill.rectTransform;
+            prect.anchorMin = new Vector2(0.26f, 0.152f);
+            prect.anchorMax = new Vector2(0.74f, 0.203f);
+            prect.offsetMin = Vector2.zero;
+            prect.offsetMax = Vector2.zero;
+
+            text.transform.SetParent(pillGo.transform, false);
+            text.fontSize = 30f;
+            text.enableAutoSizing = true;
+            text.fontSizeMin = 20f;
+            text.fontSizeMax = 30f;
             text.alignment = TextAlignmentOptions.Center;
-            // Deep navy on the bright sky backdrop — the subtitle's white reads against the
-            // logo art above, not against the ground this line sits on.
-            text.color = new Color(0.11f, 0.17f, 0.33f, 0.85f);
-            text.raycastTarget = false;   // never steal a tap from TAP TO START
+            text.color = new Color(0.97f, 0.97f, 1f);   // light on the navy pill
+            text.raycastTarget = false;                 // never steal a tap from TAP TO START
 
             var rect = text.rectTransform;
             rect.localScale = Vector3.one;
             rect.localRotation = Quaternion.identity;
-            rect.anchorMin = new Vector2(0.1f, 0.15f);
-            rect.anchorMax = new Vector2(0.9f, 0.215f);
-            rect.offsetMin = Vector2.zero;
-            rect.offsetMax = Vector2.zero;
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = new Vector2(16f, 6f);
+            rect.offsetMax = new Vector2(-16f, -6f);
+
+            // The pill only makes sense with a name on it; MainMenu blanks the text when there is
+            // no learner (editor-direct play), so hide the whole chip in that case.
+            pillGo.SetActive(true);
+            _activeLearnerPill = pillGo;
             return text;
         }
 
