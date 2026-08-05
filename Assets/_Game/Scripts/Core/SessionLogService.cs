@@ -26,7 +26,9 @@ namespace SummaRace.Core
         /// shows up in the data rather than in an argument about it.</summary>
         // 4: adds participantCode to every row, so the export joins to the paper pretest/posttest
         // without depending on the companion roster file also being retrieved.
-        private const int SchemaVersion = 4;
+        // 5: adds arrangeOrders — the sequence the learner actually built at Arrange, per verify,
+        // so a wrong order is recoverable as an order and not only as a count of attempts.
+        private const int SchemaVersion = 5;
 
         /// <summary>Hard ceiling on <see cref="SessionLog.racePicks"/>. A well-behaved run
         /// produces at most 5 gates x (1 first pick + MaxRepresentMisses re-presents) = 35
@@ -35,6 +37,18 @@ namespace SummaRace.Core
         /// 2GB device. Overflow drops the newest picks and keeps the earliest, because the
         /// early ones are the first encounters and those are the measure.</summary>
         private const int MaxRacePicks = 64;
+
+        /// <summary>Hard ceiling on <see cref="SessionLog.arrangeOrders"/>, on the same reasoning
+        /// as <see cref="MaxRacePicks"/>. GameRules.ArrangeMaxAttempts is 4, so a real run
+        /// produces at most 4 entries; twelve is headroom for that threshold being retuned
+        /// upward without anyone remembering this line. Overflow drops the NEWEST and keeps the
+        /// earliest, because entry 0 — the board built before the app locked anything green — is
+        /// the measure, and a late attempt on a mostly-locked board is nearly information-free.</summary>
+        private const int MaxArrangeOrders = 12;
+
+        /// <summary>Somebody, Wanted, But, So, Then. Both the number of slots and the number of
+        /// pieces, which is why one constant serves as the length of an arrangeOrders entry.</summary>
+        private const int SwbstSlots = 5;
 
         private const string AbandonLearnerLeftRace = "race_left_by_learner";
 
@@ -311,6 +325,23 @@ namespace SummaRace.Core
         {
             if (_log == null) return;
             _log.arrangeAttempts = evt.attemptCount;
+
+            // WHICH order, not just that it was wrong — see SessionLog.arrangeOrders. Wrapped
+            // and bounded for the same reason racePicks is: the learner is standing in front of
+            // this screen, and a logging fault must cost a row, never the run.
+            try
+            {
+                string order = EncodePlacement(evt.placement);
+                if (order != null && _log.arrangeOrders != null
+                    && _log.arrangeOrders.Count < MaxArrangeOrders)
+                    _log.arrangeOrders.Add(order);
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("SessionLogService: could not record the arranged order ("
+                                 + e.Message + ").");
+            }
+
             // Sticky: a later raise must never clear the fact that the learner was helped.
             if (evt.assisted) _log.arrangeAssisted = true;
             if (evt.correct) _log.arrangeSolved = true;
@@ -323,6 +354,35 @@ namespace SummaRace.Core
                 _log.lastPhase = PhaseSummary;
             }
             _dirtySinceWrite = true;
+        }
+
+        /// <summary>
+        /// One submitted board → one five-character row entry: position = slot, character =
+        /// the element placed there, so <c>"01234"</c> is correct and <c>"01324"</c> is a
+        /// But/So swap. A string rather than a nested list because JsonUtility cannot serialise
+        /// a list of lists at all, and because one short token per attempt stays readable in
+        /// the raw .jsonl and drops straight into a CSV cell.
+        /// <para>
+        /// Returns null for anything that is not a full board — a raiser that cannot say
+        /// (the assist), or a wrong-length array from some future caller. Null is not appended,
+        /// so a malformed attempt leaves a gap rather than a row of lies. An out-of-range slot
+        /// becomes '?' instead of discarding the whole attempt: the other four slots are still
+        /// evidence.
+        /// </para>
+        /// </summary>
+        private static string EncodePlacement(int[] placement)
+        {
+            if (placement == null || placement.Length != SwbstSlots) return null;
+
+            var slots = new char[SwbstSlots];
+            for (int i = 0; i < SwbstSlots; i++)
+            {
+                int element = placement[i];
+                slots[i] = element >= 0 && element < SwbstSlots
+                    ? (char)('0' + element)
+                    : '?';
+            }
+            return new string(slots);
         }
 
         private void OnSummarySubmitted(SummarySubmitted evt)

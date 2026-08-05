@@ -91,6 +91,25 @@ namespace SummaRace.Core
         /// those apart directly; inferring it from the attempt count would silently break
         /// the moment the threshold is retuned.</summary>
         public bool assisted;
+
+        // ---- appended, never reordered (see SessionLog's additive rule) ----
+
+        /// <summary>
+        /// THE ORDER THE LEARNER ACTUALLY PRODUCED on this verify: length 5, indexed by SLOT
+        /// (0 = the Somebody slot .. 4 = the Then slot), each entry the ELEMENT index of the
+        /// piece sitting in that slot. A correct board is therefore 0,1,2,3,4.
+        /// <para>
+        /// Arrange is the sequencing rung of the support-removal ladder, and until this existed
+        /// the log said only THAT the order was wrong, never WHICH wrong order — so the classic
+        /// SWBST finding ("learners swap But and So") was unrecoverable once the study ran. A
+        /// play-through cannot be repeated, so the placement is captured as it happens.
+        /// </para>
+        /// Snapshotted BEFORE verification runs: verifying returns the misplaced pieces to the
+        /// pool, so by the time the coroutine raises this the board no longer holds what the
+        /// learner submitted. <c>null</c> when the raiser cannot say — which is deliberately the
+        /// case for the assist's own raise, because the assist placed those pieces, not the child.
+        /// </summary>
+        public int[] placement;
     }
 
     public struct SummarySubmitted

@@ -19,7 +19,7 @@ DESIGN RULES (do not relax these without thinking about what they protect)
      counted and reported. Every exclusion appears in the printed report.
   3. THE REPORT SAYS WHAT IT READ. Files, lines, learners, runs, kept, skipped, why.
 
-Schema: written against SessionLog schema version 3
+Schema: written against SessionLog schema version 5
 (Assets/_Game/Scripts/Data/SaveModels.cs, written by Core/SessionLogService.cs).
 """
 
@@ -32,7 +32,7 @@ import statistics
 import sys
 from collections import defaultdict, OrderedDict
 
-SCRIPT_SCHEMA = 3
+SCRIPT_SCHEMA = 5
 
 # ---------------------------------------------------------------------------
 # The five SWBST slots, in the fixed order the app writes them.
@@ -63,6 +63,7 @@ OUT_FILES = OrderedDict([
     ("quality", "08_data_quality.csv"),
     ("alignment", "09_story_alignment_audit.csv"),
     ("distractors", "10_distractor_frequency.csv"),
+    ("arrange", "11_arrange_confusion.csv"),
     ("bad", "00_bad_rows.csv"),
     ("report", "00_report.txt"),
 ])
@@ -84,6 +85,8 @@ SCHEMA2_FIELDS = [
     "raceRunSeconds", "raceWrongPicks", "raceFirstOutcome", "arrangeSolved",
 ]
 SCHEMA3_FIELDS = ["racePicks", "racePauseCount", "racePausedSeconds", "abandonReason"]
+SCHEMA4_FIELDS = ["participantCode"]
+SCHEMA5_FIELDS = ["arrangeOrders"]
 
 # Names that look like a tester rather than a Grade-4 learner.
 TEST_NAME_HINTS = [
@@ -643,6 +646,26 @@ def derive(row, options):
                                     and as_int(row.get("arrangeAttempts")) == 1)
                                 if has_solved else "")
 
+    # WHICH order the learner built, not merely that it was wrong (schema 5
+    # `arrangeOrders`). One 5-character entry per VERIFY press: position = slot,
+    # character = the element placed there, so "01234" is correct and "01324" is the
+    # But/So swap. Entry 0 is the measure -- from the second verify on, every slot
+    # already right is locked and pre-filled, so later boards are constrained by the
+    # app's own feedback. Blank = the build never recorded it; an empty list on a row
+    # that HAS the field means the Arrange phase was never reached.
+    has_orders = present("arrangeOrders")
+    orders = [str(v) for v in as_list(row.get("arrangeOrders"))
+              if isinstance(v, str) and len(v) == len(SLOT_KEYS)]
+    out["arrange_orders_captured"] = int(has_orders)
+    out["arrange_n_orders"] = len(orders) if has_orders else ""
+    out["arrange_first_order"] = orders[0] if orders else ""
+    out["arrange_last_order"] = orders[-1] if orders else ""
+    out["arrange_first_n_slots_right"] = (
+        sum(1 for slot, char in enumerate(orders[0]) if char == str(slot))
+        if orders else "")
+    out["arrange_first_exact"] = int(orders[0] == "".join(
+        str(i) for i in range(len(SLOT_KEYS)))) if orders else ""
+
     # ---- summary ----
     text = row.get("summaryText") or ""
     if not isinstance(text, str):
@@ -698,6 +721,8 @@ def derive(row, options):
 
     out["_racePicks"] = as_list(row.get("racePicks")) if has_picks else []
     out["_picksCaptured"] = has_picks
+    out["_arrangeOrders"] = orders
+    out["_arrangeOrdersCaptured"] = has_orders
     out["_summaryText"] = text
     return out
 
@@ -1105,6 +1130,146 @@ def build_distractors(runs):
     return rows
 
 
+def arrange_board(text):
+    """One arrangeOrders entry -> {slot: element}, skipping anything unreadable.
+
+    Position is the SLOT, the character is the ELEMENT placed in it. '?' can appear
+    where the app saw a slot value it did not expect; that one slot is dropped and
+    the other four are still evidence.
+    """
+    board = {}
+    for slot, char in enumerate(str(text)):
+        if slot >= len(SLOT_KEYS) or not char.isdigit():
+            continue
+        element = int(char)
+        if 0 <= element < len(SLOT_KEYS):
+            board[slot] = element
+    return board
+
+
+def build_arrange_confusion(runs):
+    """WHICH order did the learner build -- the sequencing half of the measure.
+
+    `arrangeAttempts` says the order was wrong twice. This says the child put SO in
+    the BUT slot and BUT in the SO slot, which is a claim about how Grade-4 learners
+    hold story structure and is the finding this field exists to enable. Schema 5
+    only (`arrangeOrders`).
+
+    EVERYTHING HERE USES ATTEMPT 1 AND NOTHING ELSE. After the first verify the app
+    locks every slot that was already right and pre-fills it, so a second board is
+    partly the app's answer -- pooling attempts would inflate the diagonal and read
+    as learning that did not happen.
+
+    Four groupings in one file:
+      overall       -- one row: how often the whole sequence was right first time.
+      slot_summary  -- one row per slot: how often the right part landed there.
+      slot_x_element-- the 5x5 confusion matrix: which part went into which slot.
+                       The diagonal is correct; the off-diagonal cells are the finding.
+      swap_pair     -- the 10 two-part swaps (A in B's slot AND B in A's), with an
+                       early (sessions 1-5) / late (6-10) split so a confusion that
+                       faded across the study is visible.
+    """
+    usable = [r for r in runs if r["_arrangeOrdersCaptured"] and r["_arrangeOrders"]]
+    rows = []
+    if not usable:
+        return rows
+
+    n_slots = len(SLOT_KEYS)
+    correct_board = "".join(str(i) for i in range(n_slots))
+
+    cell = defaultdict(lambda: {"n": 0, "early": 0, "late": 0, "learners": set()})
+    swap = defaultdict(lambda: {"n": 0, "early": 0, "late": 0, "learners": set()})
+    slot_total = defaultdict(int)
+    slot_right = defaultdict(int)
+    era_runs = {"early": 0, "late": 0}
+    n_runs = 0
+    n_exact = 0
+
+    for run in usable:
+        board = arrange_board(run["_arrangeOrders"][0])
+        if not board:
+            continue
+        era = "early" if as_int(run["session"]) <= 5 else "late"
+        n_runs += 1
+        era_runs[era] += 1
+        if run["_arrangeOrders"][0] == correct_board:
+            n_exact += 1
+
+        for slot, element in board.items():
+            entry = cell[(slot, element)]
+            entry["n"] += 1
+            entry[era] += 1
+            entry["learners"].add(run["learnerId"])
+            slot_total[slot] += 1
+            if element == slot:
+                slot_right[slot] += 1
+
+        # A mutual swap: the two parts traded places. This is the shape the classic
+        # SWBST confusion takes, and it is stronger evidence than "BUT was wrong",
+        # because a learner who merely guessed rarely produces a clean transposition.
+        for a in range(n_slots):
+            for b in range(a + 1, n_slots):
+                if board.get(a) == b and board.get(b) == a:
+                    entry = swap[(a, b)]
+                    entry["n"] += 1
+                    entry[era] += 1
+                    entry["learners"].add(run["learnerId"])
+
+    if not n_runs:
+        return rows
+
+    def emit(grouping, slot, element, count, out_of, learners,
+             early, late, meaning):
+        rows.append(OrderedDict([
+            ("grouping", grouping),
+            ("slot", SLOT_KEYS[slot] if slot is not None else "ALL"),
+            ("slot_name", SLOT_NAMES[slot] if slot is not None else "ALL"),
+            ("element", SLOT_KEYS[element] if element is not None else ""),
+            ("element_name", SLOT_NAMES[element] if element is not None else ""),
+            ("n", count),
+            ("n_of", out_of),
+            ("pct", pct(count, out_of)),
+            ("n_learners", learners),
+            ("n_early_1to5", early),
+            ("n_late_6to10", late),
+            ("meaning", meaning),
+        ]))
+
+    emit("overall", None, None, n_exact, n_runs, "", "", "",
+         "first attempts where all five parts were already in S-W-B-S-T order")
+
+    for slot in range(n_slots):
+        emit("slot_summary", slot, None, slot_right[slot], slot_total[slot],
+             "", "", "",
+             "first attempts that put the right part in the %s slot"
+             % SLOT_NAMES[slot])
+
+    for slot in range(n_slots):
+        for element in range(n_slots):
+            counts = cell.get((slot, element))
+            count = counts["n"] if counts else 0
+            emit("slot_x_element", slot, element, count, slot_total[slot],
+                 len(counts["learners"]) if counts else 0,
+                 counts["early"] if counts else 0,
+                 counts["late"] if counts else 0,
+                 ("CORRECT: the %s part in the %s slot" % (SLOT_NAMES[element], SLOT_NAMES[slot]))
+                 if slot == element else
+                 ("the %s part was put in the %s slot" % (SLOT_NAMES[element], SLOT_NAMES[slot])))
+
+    for (a, b), counts in sorted(swap.items(), key=lambda kv: -kv[1]["n"]):
+        emit("swap_pair", a, b, counts["n"], n_runs,
+             len(counts["learners"]), counts["early"], counts["late"],
+             "%s and %s traded places (each in the other's slot)"
+             % (SLOT_NAMES[a], SLOT_NAMES[b]))
+    for a in range(n_slots):
+        for b in range(a + 1, n_slots):
+            if (a, b) not in swap:
+                emit("swap_pair", a, b, 0, n_runs, 0, 0, 0,
+                     "%s and %s traded places (each in the other's slot)"
+                     % (SLOT_NAMES[a], SLOT_NAMES[b]))
+    return rows
+
+
 def build_summaries(runs):
     rows = []
     for run in runs:
@@ -1168,6 +1333,8 @@ def build_quality(all_runs, analysed, roster_by_id, roster_dupes, options, extra
     # Blank is "not measured", which is NOT zero. Say how many rows are affected so
     # nobody averages a column that half the data never carried.
     for flag, label, needs in (
+            ("arrange_orders_captured",
+             "arrangeOrders (which order the learner built)", "schema 5"),
             ("picks_captured", "racePicks (which card was chosen)", "schema 3"),
             ("pause_captured", "racePauseCount / racePausedSeconds", "schema 3"),
             ("race_outcome_captured", "raceFirstOutcome (wrong vs missed)", "schema 2"),
@@ -1642,6 +1809,12 @@ def main(argv=None):
          "pct_of_first_picks_at_slot", "n_learners", "n_picks_incl_repeats",
          "n_early_1to5", "n_late_6to10", "pct_early", "pct_late"])
 
+    arrange_confusion = build_arrange_confusion(analysed)
+    written[OUT_FILES["arrange"]] = write_csv(
+        os.path.join(output_dir, OUT_FILES["arrange"]), arrange_confusion,
+        ["grouping", "slot", "slot_name", "element", "element_name", "n", "n_of",
+         "pct", "n_learners", "n_early_1to5", "n_late_6to10", "meaning"])
+
     issues = build_quality(runs, analysed, roster_by_id, roster_dupes, options, quality_extra)
     written[OUT_FILES["quality"]] = write_csv(
         os.path.join(output_dir, OUT_FILES["quality"]), issues,
@@ -1750,8 +1923,69 @@ def main(argv=None):
                           row["read_acc_mean"], row["race_acc_mean"], row["drop_mean"],
                           row["stars_mean"], row["summary_words_mean"]))
 
+    # ---------------- arrange: which ORDER did they build? ----------------
+    report.rule("7. Did they know the ORDER? (schema 5 arrangeOrders)")
+    order_rows = [r for r in analysed if r["_arrangeOrdersCaptured"] and r["_arrangeOrders"]]
+    no_field = [r for r in analysed if not r["_arrangeOrdersCaptured"]]
+    if not order_rows:
+        report.say("  No run in this data carries arrangeOrders, so the sequencing-level")
+        report.say("  analysis is NOT POSSIBLE with this data -- which is not the same as")
+        report.say("  'the learners never made an ordering error'. That needs a schema 5 build.")
+    else:
+        report.say("  %d of %d analysed runs carry the order the learner actually built."
+                   % (len(order_rows), len(analysed)))
+        if no_field:
+            report.say("  %d run(s) came from a build that never recorded it. Those are NOT"
+                       % len(no_field))
+            report.say("  CAPTURED -- not zero -- and are excluded from everything below.")
+        report.say("")
+
+        overall_row = next((r for r in arrange_confusion if r["grouping"] == "overall"), None)
+        if overall_row:
+            report.say("  Correct S-W-B-S-T order on the FIRST attempt: %s%% (%d of %d runs)"
+                       % (overall_row["pct"], overall_row["n"], overall_row["n_of"]))
+        report.say("")
+        report.say("  ATTEMPT 1 ONLY: which PART went into which SLOT (row = slot, col = part)")
+        report.say("  %-14s %8s %8s %8s %8s %8s"
+                   % ("slot", "SOMEBODY", "WANTED", "BUT", "SO", "THEN"))
+        matrix = {(r["slot"], r["element"]): r
+                  for r in arrange_confusion if r["grouping"] == "slot_x_element"}
+        for slot_index, (slot_key, slot_name) in enumerate(SLOTS):
+            cells = []
+            for element_key, _ in SLOTS:
+                row = matrix.get((slot_key, element_key))
+                cells.append("%s%%" % row["pct"] if row and row["pct"] != "" else "-")
+            report.say("  %-14s %8s %8s %8s %8s %8s"
+                       % ("%d %s" % (slot_index + 1, slot_name), *cells))
+        report.say("")
+        report.say("  The DIAGONAL is correct. Every off-diagonal cell is a systematic")
+        report.say("  confusion: the column part being put where the row part belongs.")
+        report.say("  Percentages are of the first attempts that filled that slot.")
+
+        swaps = [r for r in arrange_confusion if r["grouping"] == "swap_pair" and r["n"]]
+        swaps.sort(key=lambda r: -r["n"])
+        if swaps:
+            report.say("")
+            report.say("  Two parts that traded places on the first attempt (a clean swap --")
+            report.say("  stronger evidence than one wrong slot, since guessing rarely")
+            report.say("  produces a clean transposition):")
+            for row in swaps[:6]:
+                report.say("    %-10s <-> %-10s n=%-5d %5s%% of first attempts"
+                           " (early %d / late %d)"
+                           % (row["slot_name"], row["element_name"], row["n"],
+                              row["pct"], row["n_early_1to5"], row["n_late_6to10"]))
+            report.say("")
+            report.say("  early = sessions 1-5, late = 6-10. A swap that shrinks between them")
+            report.say("  is a confusion the intervention resolved; one that does not is a")
+            report.say("  finding for the discussion chapter.")
+        report.say("")
+        report.say("  Full detail: %s. Only the FIRST attempt is used --" % OUT_FILES["arrange"])
+        report.say("  after one verify the app locks every slot already right and pre-fills")
+        report.say("  it, so a later board is partly the app's answer, not the child's.")
+        report.say("  An assisted finish contributes its last real attempt and nothing more.")
+
     # ---------------- quality ----------------
-    report.rule("7. Data quality")
+    report.rule("8. Data quality")
     counts = defaultdict(int)
     for issue in issues:
         counts[issue["severity"]] += 1
@@ -1774,7 +2008,7 @@ def main(argv=None):
         report.say("  >>> There are SERIOUS items. Read them before you analyse anything.")
 
     # ---------------- caveats that must be said every time ----------------
-    report.rule("8. Read this before quoting any number")
+    report.rule("9. Read this before quoting any number")
     report.say("  * A BLANK cell means the field was not recorded by the build that")
     report.say("    produced that row. It does NOT mean zero. Never fill a blank with 0,")
     report.say("    and report n separately for any measure that has blanks -- the")
@@ -1796,6 +2030,11 @@ def main(argv=None):
     report.say("  * nudgeCount is not a summary quality score. The app never grades the")
     report.say("    sentence -- the paper rubric does. 07_summaries.csv has empty")
     report.say("    rubric_score / coder_notes columns for that.")
+    report.say("  * arrangeOrders is only trustworthy at ATTEMPT 1. From the second verify")
+    report.say("    on, every slot already right is locked green and pre-filled, so a later")
+    report.say("    board is partly the app's answer; 11_arrange_confusion.csv therefore")
+    report.say("    uses the first attempt alone. An assisted run contributes its last real")
+    report.say("    attempt -- the pieces the app placed are never logged as the child's.")
     report.say("  * The per-slot Reader/Race contrast assumes the Reader's question on")
     report.say("    page k is about SWBST slot k. The app does not enforce this; it is a")
     report.say("    convention in the story files. Run with --stories to dump all 150")
@@ -1805,7 +2044,7 @@ def main(argv=None):
     report.say("    pretest/posttest scored with the Summary Writing Rubric is the study's")
     report.say("    outcome measure.")
 
-    report.rule("9. Files written")
+    report.rule("10. Files written")
     for name, count in written.items():
         report.say("  %-32s %6d rows" % (name, count))
     report.say("")

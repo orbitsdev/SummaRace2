@@ -242,8 +242,10 @@ namespace SummaRace.Data
         /// <summary>e.g. "samsung SM-T500". For QA of the 2GB device floor.</summary>
         public string deviceModel;
 
-        /// <summary>Wall-clock local time the row itself was appended, for ordering the
-        /// snapshots of one run. <see cref="startedIso"/>/<see cref="finishedIso"/> stay UTC.</summary>
+        /// <summary>UTC time the row itself was appended (<c>DateTime.UtcNow</c>, same clock as
+        /// <see cref="startedIso"/>/<see cref="finishedIso"/>), for ordering the snapshots of one
+        /// run. All three are UTC so rows from tablets in different time zones — or one tablet
+        /// whose clock crossed a DST boundary mid-study — still sort against each other.</summary>
         public string rowWrittenIso;
 
         /// <summary>1..10, copied from the story so the researcher never has to parse an id.</summary>
@@ -332,5 +334,38 @@ namespace SummaRace.Data
         /// only as far as the run got, and elements that were missed and then re-presented but
         /// never re-taken stay empty — <see cref="racePicks"/> is the full account.</summary>
         public string abandonReason;
+
+        // ---------------- schema 5 ----------------
+
+        /// <summary>
+        /// THE ORDER THE LEARNER PRODUCED at Arrange, one entry per VERIFY press, in the order
+        /// they were pressed. Each entry is a five-character string indexed by SLOT, whose
+        /// character is the ELEMENT placed in that slot: <c>"01234"</c> is correct, and
+        /// <c>"01324"</c> is the classic But/So swap (slot 2 = But holds element 3 = So, slot 3
+        /// = So holds element 2 = But).
+        /// <para>
+        /// <see cref="arrangeAttempts"/>, <see cref="arrangeSolved"/> and
+        /// <see cref="arrangeAssisted"/> say only THAT the sequence was wrong and how often. A
+        /// summarising study wants to know WHICH sequence: whether a cohort systematically
+        /// inverts But and So, or trails Then before Somebody, is a finding about how Grade-4
+        /// learners hold story structure, and it is not recoverable from a count. Arrange is the
+        /// sequencing rung of the support-removal ladder and this is the only record of what it
+        /// measured.
+        /// </para>
+        /// <para>
+        /// READ ENTRY 0 AS THE MEASURE. It is the board the learner built with nothing given
+        /// away. From the second verify on, every slot that was already right is locked green
+        /// and pre-filled, so later entries are constrained by the app's own feedback and their
+        /// diagonal is inflated. (Which slots were locked is recoverable: after entry k, slot i
+        /// is locked iff some entry up to k had element i in slot i.)
+        /// </para>
+        /// An assisted finish contributes NO entry for the assist itself — the app placed those
+        /// pieces, so the last entry here is still the learner's last real attempt. An empty
+        /// list on a row that carries the field means the Arrange phase was never reached (an
+        /// abandoned run); the field ABSENT means an older build that never recorded it, which
+        /// is a different thing and must not be read as zero. Capped (see SessionLogService) so
+        /// a stuck screen can never grow one row without bound.
+        /// </summary>
+        public List<string> arrangeOrders = new List<string>();
     }
 }

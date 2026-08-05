@@ -29,9 +29,10 @@ your results chapter: **is the number I need in one of these files?** If it is n
 say so now — the app can still be changed.
 
 The fake data deliberately contains the messes you will really get (a tablet
-exported twice, a test profile, a child who missed two sessions, abandoned runs), so
-you also get to see what the data-quality report looks like when it has something to
-complain about.
+exported twice, a test profile, a child who missed two sessions, abandoned runs, one
+tablet still on an older build whose rows are missing the newest field), so you also
+get to see what the data-quality report looks like when it has something to complain
+about.
 
 ---
 
@@ -123,6 +124,7 @@ python summarace_analyze.py --in C:\thesis\exports --out C:\thesis\analysis --sk
 | `08_data_quality.csv` | *"is anything wrong with my data?"* | Every problem found, with learner ids. **Read this before you analyse anything.** |
 | `09_story_alignment_audit.csv` | *"can I compare Reader and Race slot by slot?"* | All 150 page-question/SWBST-slot pairs side by side. See §5. |
 | `10_distractor_frequency.csv` | *"which wrong idea did they have?"* | **Which specific wrong card** learners chose at each slot. The qualitative half of your results. See §4.3. |
+| `11_arrange_confusion.csv` | *"which parts do they mix up?"* | **Which SWBST part they put in which slot** when ordering the story. Where "learners swap But and So" is either shown or ruled out. See §4.4. |
 | `00_report.txt` | *"what did the script actually do?"* | The full printed report. Methods appendix material. |
 | `00_bad_rows.csv` | only if something failed | Lines that could not be read, and why. |
 
@@ -204,7 +206,39 @@ numbers cannot.
 Re-presented gold cards are excluded: after a wrong pick the app hands the child the
 correct answer, and taking it is not a choice.
 
-### 4.4 A validity check the script runs for you
+### 4.4 Which parts do they mix up? — `11_arrange_confusion.csv`
+
+The Arrange screen is the **sequencing** rung of the ladder: the five parts are
+handed to the child and they put them in order. `arrangeAttempts` tells you they
+got it wrong twice. This file tells you they put the **So** in the **But** slot and
+the **But** in the **So** slot — which is a claim about how Grade-4 learners hold
+story structure, and it is the finding the screen exists to produce.
+
+Four kinds of row, in the `grouping` column:
+
+| `grouping` | One row per | Read it as |
+|---|---|---|
+| `overall` | the whole cohort | how often the full S-W-B-S-T order was right first time |
+| `slot_summary` | slot | how often the right part landed in that slot |
+| `slot_x_element` | slot × part (25 rows) | **the confusion matrix.** `n`/`pct` = how often that part was put in that slot. The diagonal is correct; every off-diagonal cell is a systematic confusion |
+| `swap_pair` | pair of parts (10 rows) | a clean **transposition** — each part in the other's slot. Stronger evidence than one wrong slot, because guessing rarely produces a tidy swap. `n_early_1to5` / `n_late_6to10` show whether it faded across the study |
+
+The `meaning` column spells out what each row counts in plain English, so a row can
+be quoted without decoding the codes.
+
+> ### ⚠️ Only the FIRST attempt is counted, and that is deliberate
+> After the first VERIFY the app **locks every slot that was already right** and
+> leaves it filled in. A second board is therefore partly the app's own answer, and
+> pooling attempts would inflate the diagonal and read as learning that did not
+> happen. `01_runs.csv` still carries `arrange_first_order` and `arrange_last_order`
+> (5-character strings — position = slot, character = the part in it, so `01234` is
+> correct and `01324` is the But/So swap) if you want to look at the recovery.
+>
+> An **assisted** run (the app finished the ordering for the child) contributes the
+> child's last real attempt and nothing more — the pieces the app placed are never
+> logged as theirs.
+
+### 4.5 A validity check the script runs for you
 
 The three answer cards are placed in randomly shuffled lanes, so if the race is
 really measuring comprehension, children's first picks should land in the left,
@@ -279,9 +313,15 @@ Change any of that with `--include-replays`, `--include-time-outliers`,
    cells are left **empty**, never filled with 0, because averaging a 0 that was
    never measured would put an invented number in your thesis. The `*_captured`
    columns in `01_runs.csv` (`picks_captured`, `pause_captured`,
-   `race_outcome_captured`, `phase_clocks_captured`, `read_pages_captured`) say
-   exactly which rows carry which measure, and the data-quality report counts them.
-   **If a measure has blanks, report its n separately.**
+   `race_outcome_captured`, `phase_clocks_captured`, `read_pages_captured`,
+   `arrange_orders_captured`) say exactly which rows carry which measure, and the
+   data-quality report counts them. **If a measure has blanks, report its n
+   separately.**
+
+   Note the two different blanks for the Arrange order. `arrange_orders_captured = 0`
+   means the build never recorded it. `arrange_orders_captured = 1` with
+   `arrange_n_orders = 0` means it *was* recorded and the child never reached the
+   Arrange screen (an abandoned run). Those are different facts.
 
 2. **`timesCaught` is always 0 and always will be.** The patrol is designed never to
    catch the learner — the game must never punish. It is a constant, not a measure.
@@ -300,15 +340,19 @@ Change any of that with `--include-replays`, `--include-time-outliers`,
 5. **`nudgeCount` is not a summary quality score.** The app never grades the
    sentence — your paper rubric does. It just counts how many gentle prompts appeared.
 
-6. **A "missed" gate is not a wrong answer.** `raceFirstOutcome` separates `correct`
+6. **The Arrange order is only clean at attempt 1.** See the warning in §4.4 — the
+   app locks correct slots after each VERIFY, so later boards carry the app's help.
+   `11_arrange_confusion.csv` already restricts itself to the first attempt.
+
+7. **A "missed" gate is not a wrong answer.** `raceFirstOutcome` separates `correct`
    / `wrong` / `missed`; the older `raceFirstPickCorrect` collapses the last two into
    the same `false`. Always use the outcome columns. (If you see the outcome
    `notcorrect`, that row came from a build too old to tell the difference.)
 
-7. **One row is one story, not one classroom session.** A session is three stories.
+8. **One row is one story, not one classroom session.** A session is three stories.
    `02_learner_session.csv` has already aggregated it for you.
 
-8. **These logs are process data and a manipulation check.** Your outcome measure is
+9. **These logs are process data and a manipulation check.** Your outcome measure is
    the paper pretest/posttest scored with the Summary Writing Rubric. These tables
    show that the children actually did the SWBST work, how much, and how it changed
    — they do not replace the rubric.
@@ -384,6 +428,11 @@ sessions minus first three) per child.
 top ten `card_text` values. Those are your qualitative findings — the specific wrong
 ideas Grade-4 learners hold about story structure.
 
+**Step 9** — Open `11_arrange_confusion.csv`. Filter `grouping = swap_pair` and sort
+by `n`: that is your table of which two story parts the cohort mixed up when putting
+the story in order. Then filter `grouping = slot_x_element` for the full 5×5 matrix
+if you want to show it as a figure. The printed report (§7) already has both.
+
 ---
 
 ## 10. Command reference
@@ -414,18 +463,27 @@ python make_test_data.py --out <folder> [options]
 
 ## 11. For whoever maintains this
 
-`summarace_analyze.py` is written against **`SessionLog` schema version 3** —
+`summarace_analyze.py` is written against **`SessionLog` schema version 5** —
 `Assets/_Game/Scripts/Data/SaveModels.cs` (the shape) and
 `Assets/_Game/Scripts/Core/SessionLogService.cs` (what writes it, and when). Those
 two files are the ground truth; `Documentation/SummaRace_Data_Dictionary.md` is the
 researcher-facing description of them.
 
 **If a field is ever added to `SessionLog`:** bump `SchemaVersion` in
-`SessionLogService.cs`, add the field name to `SCHEMA3_FIELDS` (or a new
-`SCHEMA4_FIELDS`) and `SCRIPT_SCHEMA` here, and update the data dictionary — in the
-same commit. Fields are only ever appended, never renamed or removed, because
-analysis already written against a column has to keep working and a play-through
-cannot be repeated.
+`SessionLogService.cs`, add the field name to a new `SCHEMA<n>_FIELDS` list and bump
+`SCRIPT_SCHEMA` here, teach `make_test_data.py` to emit it, and update the data
+dictionary — in the same commit. Fields are only ever appended, never renamed or
+removed, because analysis already written against a column has to keep working and a
+play-through cannot be repeated.
+
+Schema history, so a mixed export can be read: **2** run context, phase clocks,
+per-element race detail · **3** `racePicks`, `racePauseCount`, `racePausedSeconds`,
+`abandonReason` · **4** `participantCode` on every row · **5** `arrangeOrders`.
+
+`make_test_data.py` deliberately writes **one tablet's rows at the previous schema**,
+with the newest field absent, so every run of the rehearsal proves the "blank, never
+0" path still works rather than only exercising the happy case. `--pristine` turns
+that off along with the other messes.
 
 The script reads field **presence**, not `schemaVersion`, to decide whether a measure
 was captured — presence is the fact, the version number is the label — and reports

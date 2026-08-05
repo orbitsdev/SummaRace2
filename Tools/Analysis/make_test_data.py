@@ -25,6 +25,9 @@ WHAT IT SIMULATES (on purpose -- these are the messes you WILL actually get)
   * one learner moved to a spare tablet mid-study
   * one developer test profile that must be spotted and excluded
   * a learner who missed sessions 6 and 7 (absent from school)
+  * one tablet still on an older build, whose rows lack the newest field entirely
+    (the analyser must call that NOT CAPTURED, never 0)
+  * the SWBST ordering errors real learners make -- mostly But/So confusions
 
 Add --corrupt to also write a half-written final line, so you can rehearse what
 the analyser does when a tablet dies mid-save. (It stops and tells you.)
@@ -75,6 +78,62 @@ def iso(when):
 
 def device_token(seed):
     return "%012x" % (abs(hash("dev" + str(seed))) % (16 ** 12))
+
+
+ARRANGE_MAX_ATTEMPTS = 4        # GameRules.ArrangeMaxAttempts -- then the assist fires
+CORRECT_BOARD = [0, 1, 2, 3, 4]
+
+
+def make_arrange(rng, ability):
+    """Simulates the Arrange screen and returns (orders, solved, assisted, attempts).
+
+    `orders` is what schema 5 logs: one 5-character string per VERIFY press, position
+    = slot, character = the element placed in it. "01234" is correct, "01324" is the
+    But/So swap.
+
+    The wrong first boards are deliberately NOT uniform noise. Real Grade-4 learners
+    confuse the middle of SWBST -- the problem (But) with the consequence (So) -- far
+    more often than they misplace Somebody, so the fake data carries that shape and
+    the confusion table has a real pattern to find. Everything after attempt 1 follows
+    the app's own rule: correct slots lock and are pre-filled, the rest come back to
+    the pool, and after ARRANGE_MAX_ATTEMPTS failures the assist finishes it.
+    """
+    board = list(CORRECT_BOARD)
+    if rng.random() >= min(0.90, 0.22 + ability):
+        roll = rng.random()
+        if roll < 0.42:                                  # THE systematic one: But <-> So
+            board[2], board[3] = board[3], board[2]
+        elif roll < 0.60:                                # So <-> Then
+            board[3], board[4] = board[4], board[3]
+        elif roll < 0.72:                                # Somebody <-> Wanted
+            board[0], board[1] = board[1], board[0]
+        elif roll < 0.86:                                # both middle errors at once
+            board[2], board[3] = board[3], board[2]
+            board[3], board[4] = board[4], board[3]
+        else:                                            # no idea at all
+            rng.shuffle(board)
+
+    orders = ["".join(str(e) for e in board)]
+    attempts = 1
+    locked = [i for i in range(5) if board[i] == i]
+
+    while len(locked) < 5 and attempts < ARRANGE_MAX_ATTEMPTS:
+        attempts += 1
+        free = [i for i in range(5) if i not in locked]
+        pieces = list(free)          # the elements still in the pool ARE the free slots
+        if rng.random() >= 0.50 + 0.35 * ability:
+            rng.shuffle(pieces)
+            if pieces == free and len(pieces) > 1:       # a "wrong" try must be wrong
+                pieces = pieces[1:] + pieces[:1]
+        for slot, element in zip(free, pieces):
+            board[slot] = element
+        orders.append("".join(str(e) for e in board))
+        locked = [i for i in range(5) if board[i] == i]
+
+    solved = len(locked) == 5
+    # The assist places the rest FOR the learner and logs no order of its own -- the
+    # last entry above stays the last thing the child actually built.
+    return orders, solved, not solved, attempts
 
 
 def make_summary(rng, quality):
@@ -164,8 +223,7 @@ def make_run(rng, learner, session, difficulty, when, device_id, device_model,
     reading_seconds = round(rng.uniform(110, 300) + (1 - ability) * 90, 2)
     race_run = round(clock - 100, 2)
     race_seconds = round(race_run + rng.uniform(12, 30), 2)
-    arrange_attempts = rng.choice([1, 1, 1, 2, 2, 3, 4])
-    assisted = arrange_attempts >= 4 and rng.random() < 0.6
+    arrange_orders, arrange_solved, assisted, arrange_attempts = make_arrange(rng, ability)
     arrange_seconds = round(rng.uniform(40, 70) * arrange_attempts, 2)
     summary_seconds = round(rng.uniform(35, 150), 2)
     pause_count = 1 if rng.random() < 0.12 else 0
@@ -193,7 +251,7 @@ def make_run(rng, learner, session, difficulty, when, device_id, device_model,
         "summaryText": "" if abandon else make_summary(rng, quality),
         "starsEarned": 0 if abandon else stars,
         "isReplay": False,
-        "schemaVersion": 4,
+        "schemaVersion": 5,
         "appVersion": APP_VERSION,
         "deviceId": device_id,
         "deviceModel": device_model,
@@ -210,11 +268,15 @@ def make_run(rng, learner, session, difficulty, when, device_id, device_model,
         "raceRunSeconds": 0.0 if abandon else race_run,
         "raceWrongPicks": wrong_picks,
         "raceFirstOutcome": outcomes,
-        "arrangeSolved": False if abandon else not assisted,
+        "arrangeSolved": False if abandon else arrange_solved,
         "racePicks": picks,
         "racePauseCount": pause_count,
         "racePausedSeconds": paused_seconds,
         "abandonReason": ("race_left_by_learner" if abandon and rng.random() < 0.5 else ""),
+        # Schema 5. An abandoned run never reached Arrange, so the list is EMPTY --
+        # which is a different fact from the field being absent (an older build), and
+        # the analyser has to keep them apart.
+        "arrangeOrders": [] if abandon else arrange_orders,
     }
 
     partials = []
@@ -226,6 +288,7 @@ def make_run(rng, learner, session, difficulty, when, device_id, device_model,
         snapshot["summaryText"] = ""
         snapshot["arrangeAttempts"] = 0
         snapshot["arrangeSolved"] = False
+        snapshot["arrangeOrders"] = []
         snapshot["raceFirstPickCorrect"] = []
         snapshot["lastPhase"] = "race"
         snapshot["rowWrittenIso"] = iso(when + datetime.timedelta(seconds=total * 0.4))
@@ -291,6 +354,12 @@ def main():
     else:
         tester = None
 
+    # ONE TABLET WAS NEVER RE-FLASHED and still runs the older build, so its rows have
+    # no arrangeOrders at all. This is not decoration: it is the exact case the analyser
+    # must report as NOT CAPTURED rather than as "those children made no ordering
+    # errors", and the only way to see that working is to have it in the rehearsal data.
+    stale_tablet = options.tablets - 1 if options.tablets > 1 else None
+
     # Who missed which sessions.
     absentee = learners[3]
     missed_sessions = {6, 7}
@@ -323,6 +392,10 @@ def main():
                     # Testers tap straight through; the analyser should notice.
                     row["totalSeconds"] = round(rng.uniform(25, 55), 2)
                     row["deviceModel"] = "System manufacturer System Product Name (Windows)"
+                if (not options.pristine) and tablet_index == stale_tablet:
+                    for stale in [row] + partials:
+                        stale["schemaVersion"] = 4
+                        stale.pop("arrangeOrders", None)
                 for extra in partials:
                     rows_by_tablet[tablet_index].append(extra)
                 rows_by_tablet[tablet_index].append(row)
@@ -391,6 +464,9 @@ def main():
         print("  * %s missed sessions 6 and 7" % absentee["displayName"])
         print("  * %s was moved to a spare tablet after session 5" % moved["displayName"])
         print("  * some abandoned runs, some replays, some mid-run snapshots")
+        if stale_tablet is not None:
+            print("  * tablet %02d was never re-flashed: schema 4 rows with NO arrangeOrders"
+                  % (stale_tablet + 1))
     if options.corrupt:
         print("  * a half-written final line on tablet 1 (the analyser should STOP)")
     print("\nNow run:")

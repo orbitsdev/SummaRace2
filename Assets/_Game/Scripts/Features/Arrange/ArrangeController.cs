@@ -57,6 +57,14 @@ namespace SummaRace.Features.Arrange
         private int _attempts;
         private bool _busy;
 
+        /// <summary>The board exactly as the learner submitted it on the current attempt —
+        /// element index per slot. Taken in <see cref="OnVerify"/> because verification empties
+        /// every wrong slot back into the pool, so the coroutine that raises
+        /// <see cref="ArrangeVerified"/> can no longer see what was submitted. A fresh array per
+        /// attempt: the event carries the reference, and reusing one would let a later attempt
+        /// rewrite an order a listener has already been handed.</summary>
+        private int[] _submittedOrder;
+
         private void Start()
         {
             _story = SummaRace.Core.GameManager.Instance != null ? SummaRace.Core.GameManager.Instance.CurrentStory : null;
@@ -195,6 +203,14 @@ namespace SummaRace.Features.Arrange
                 if (_slotContent[i] < 0) { SetStatus(GameText.ArrangeFillFirst); return; }
 
             _attempts++;
+            // Capture WHICH order was produced, not merely that it was wrong. Must happen here:
+            // VerifyRoutine returns every misplaced piece to the pool as it goes, so the board is
+            // already gone by the time it raises. Slots locked green on an earlier attempt carry
+            // their (correct) element, which is why only the FIRST entry is an unconstrained
+            // production — the log's arrangeOrders documents that for the researcher.
+            _submittedOrder = new int[5];
+            for (int i = 0; i < 5; i++) _submittedOrder[i] = _slotContent[i];
+
             StartCoroutine(VerifyRoutine());
         }
 
@@ -246,7 +262,12 @@ namespace SummaRace.Features.Arrange
                 if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxCorrect);
                 SetStatus(SummaRace.Core.Praise.ArrangePerfect());
                 if (SummaRace.Core.GameManager.Instance != null) SummaRace.Core.GameManager.Instance.SetArrangeResult(_attempts);
-                EventBus.Raise(new ArrangeVerified { correct = true, attemptCount = _attempts });
+                EventBus.Raise(new ArrangeVerified
+                {
+                    correct = true,
+                    attemptCount = _attempts,
+                    placement = _submittedOrder
+                });
 
                 yield return new WaitForSeconds(1f);
                 SceneLoader.Go(SceneNames.Summary);
@@ -261,7 +282,12 @@ namespace SummaRace.Features.Arrange
                 yield break;
             }
 
-            EventBus.Raise(new ArrangeVerified { correct = false, attemptCount = _attempts });
+            EventBus.Raise(new ArrangeVerified
+            {
+                correct = false,
+                attemptCount = _attempts,
+                placement = _submittedOrder
+            });
 
             if (_attempts >= GameRules.ArrangeMaxAttempts)
             {
@@ -333,6 +359,12 @@ namespace SummaRace.Features.Arrange
             // researcher must be able to separate "solved it" from "was helped to the end"
             // without inferring it from a threshold that may later be retuned. correct stays
             // false: the learner did not order these themselves, and the log should not say so.
+            //
+            // placement stays NULL on purpose, for the same reason. The board is now the correct
+            // order, but the app put it there — appending it to arrangeOrders would file the
+            // app's own answer as a sixth thing the learner produced, and a per-slot confusion
+            // table built from that would count assisted runs as five slots correct. The
+            // learner's real last attempt is already the final entry.
             EventBus.Raise(new ArrangeVerified
             {
                 correct = false,
