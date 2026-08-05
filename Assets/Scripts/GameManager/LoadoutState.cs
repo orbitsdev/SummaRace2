@@ -90,7 +90,12 @@ public class LoadoutState : AState
         // Reseting the global blinking value. Can happen if the game unexpectedly exited while still blinking
         Shader.SetGlobalFloat("_BlinkingValue", 0.0f);
 
-        if (MusicPlayer.instance.GetStem(0) != menuTheme)
+        // SummaRace guard: Enter() runs from GameManager.OnEnable, which is not ordered against
+        // MusicPlayer.Awake. In their game you always arrive here from another scene where the
+        // DontDestroyOnLoad MusicPlayer already exists, so instance was never null. We load
+        // MainSummaRace cold, so it can be — and this line then throws, which aborts Enter()
+        // and leaves their state machine half-initialised.
+        if (MusicPlayer.instance != null && MusicPlayer.instance.GetStem(0) != menuTheme)
 		{
             MusicPlayer.instance.SetStem(0, menuTheme);
             StartCoroutine(MusicPlayer.instance.RestartAllStems());

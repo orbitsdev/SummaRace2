@@ -11,6 +11,10 @@ namespace SummaRace.Features.Race.Endless
     public class EndlessOptionPickup : MonoBehaviour
     {
         public int elementIndex;
+        /// <summary>Monotonic id of the gate this card belongs to. The element index alone
+        /// cannot identify a gate: a wrong pick re-presents the SAME element immediately, so
+        /// a stale card and the fresh re-present share an index. The id never repeats.</summary>
+        public int gateId;
         public bool isCorrect;
         public bool isFinishGate;
 

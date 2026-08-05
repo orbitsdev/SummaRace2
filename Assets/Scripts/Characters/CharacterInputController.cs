@@ -315,6 +315,12 @@ public class CharacterInputController : MonoBehaviour
 
     public void Jump()
     {
+        // SummaRace: the only obstacle in our race is a wrong answer, so SpawnObstacle is
+        // guarded out and there is nothing to jump over. Their Up-arrow binding therefore just
+        // fired a truncated RunningJump clip -- often in the middle of reading a question.
+        // WASD already dropped W for this reason; the arrows go through here.
+        if (SummaRace.Features.Race.Endless.EndlessRaceMode.Active) return;
+
 	    if (!m_IsRunning)
 		    return;
 	    
@@ -345,6 +351,10 @@ public class CharacterInputController : MonoBehaviour
 
 	public void Slide()
 	{
+        // SummaRace: same as Jump above -- nothing to slide under, and the RunToRolling clip is
+        // 2.4s played over a ~0.64s slide, so it started a forward roll and snapped out ~25% in.
+        if (SummaRace.Features.Race.Endless.EndlessRaceMode.Active) return;
+
 		if (!m_IsRunning)
 			return;
 		

@@ -53,7 +53,21 @@ namespace SummaRace.Features.Race.Endless
         // WRONG ANSWER in the study data (HandleMissedActiveGate records first-pick false),
         // so it is a measurement problem, not just a feel one. The card's visible size is
         // unchanged — F30 sized the card, not the trigger.
-        private const float TriggerDepth = 2.5f;
+        // 1.6, not 2.5: with the runner's own ~0.93m collider that is a ~2.5m catch window,
+        // still 2.5 frames of margin at the worst case (30fps x maxSpeed 30 = 1.0m per sample),
+        // but the card is "collected" only ~0.8m before contact instead of ~1.25m, and the
+        // window in which two lanes' cards can both fire is correspondingly smaller.
+        private const float TriggerDepth = 1.6f;
+        // Catch volume WIDTH, deliberately narrower than the visible card (1.425).
+        // Measured: half a lane is 0.75, but card 1.425/2 + runner 0.576/2 = 1.0005, so a
+        // full-width trigger leaves a 0.5m band each side of every lane centre where the
+        // runner is inside TWO cards at once — about one frame of every lane change, which is
+        // how a learner steering toward the right card could be credited with the distractor
+        // they were leaving. At 0.85: 0.425 + 0.288 = 0.713 < 0.75, so overlapping two lanes
+        // is geometrically impossible. A settled runner sits exactly on the lane centre, so
+        // 0.85 is still ample; a late swipe now gets a friendly miss and a re-present instead
+        // of a phantom wrong answer. The visible card keeps its playtested 1.55x0.85 size.
+        private const float TriggerWidth = 0.85f;
 
         private static readonly System.Reflection.FieldInfo SpeedField =
             typeof(TrackManager).GetField("m_Speed",
@@ -82,6 +96,16 @@ namespace SummaRace.Features.Race.Endless
         private float _activeGateDistance;
         private int _representCount; // consecutive dodged re-presents of the current element
         private float _strandedTimer; // seconds the run has had nothing to present
+        // Identity of the live gate. A monotonic serial, never reused, because the element
+        // index cannot tell a stale gate from its own re-present (a wrong pick re-presents the
+        // SAME element synchronously, so both carry that index). 0 = resolved/none.
+        private int _gateSerial;
+        private int _activeGateId;
+
+        // Lane-change lean, fed into the runLoop blend tree's `LaneSwitch` parameter.
+        private float _laneLean;
+        private float? _lastRunnerX;
+        private const float LeanResponse = 4f; // units/sec toward the target lean
 
         private readonly bool[] _firstPickDone = new bool[5];
         private readonly bool[] _firstPickCorrect = new bool[5];
@@ -261,7 +285,12 @@ namespace SummaRace.Features.Race.Endless
 
             if (_runStartTime < 0f && track.isMoving) _runStartTime = Time.time;
 
-            UpdatePatrol(track);
+            // Patrol placement moved to LateUpdate: it reads the runner's transform, which
+            // TrackManager writes in ITS Update, and no script execution order is defined
+            // between them. Running first meant placing the cop against LAST frame's player
+            // position — a rubber-band while it is on screen, and a one-frame ~100m teleport
+            // on the floating-origin recenter that happens roughly every 100m of run.
+            UpdateRunnerLean(track);
 
             // TDD §11.4 slow-on-wrong: public-API clamp, decays back to their own max.
             if (_slowTimer > 0f)
@@ -362,6 +391,7 @@ namespace SummaRace.Features.Race.Endless
             _activeGateDistance = placeDist;
             _activeElement = element;
             _activeIsRepresent = isRepresent;
+            _activeGateId = ++_gateSerial; // fresh identity; every card below is stamped with it
             _pendingGateDistance = -1f;
 
             float local = placeDist - placeStart;
@@ -408,12 +438,13 @@ namespace SummaRace.Features.Race.Endless
 
                 var trigger = card.gameObject.AddComponent<BoxCollider>();
                 trigger.isTrigger = true;
-                trigger.size = new Vector3(cardWidth, 2.2f, TriggerDepth);
+                trigger.size = new Vector3(TriggerWidth, 2.2f, TriggerDepth);
                 // Card sits on the road now — lift the catch volume over the character's body.
                 trigger.center = new Vector3(0f, 0.6f, 0f);
 
                 var pickup = card.gameObject.AddComponent<EndlessOptionPickup>();
                 pickup.elementIndex = elementIndex;
+                pickup.gateId = _activeGateId;
                 pickup.isCorrect = isCorrect;
             }
             // No in-world type pill: the top SWBST tracker now shows the current element (F40).
@@ -443,11 +474,12 @@ namespace SummaRace.Features.Race.Endless
 
             var trigger = card.gameObject.AddComponent<BoxCollider>();
             trigger.isTrigger = true;
-            trigger.size = new Vector3(cardWidth, 2.2f, TriggerDepth);
+            trigger.size = new Vector3(TriggerWidth, 2.2f, TriggerDepth);
             trigger.center = new Vector3(0f, 0.6f, 0f);
 
             var pickup = card.gameObject.AddComponent<EndlessOptionPickup>();
             pickup.elementIndex = elementIndex;
+            pickup.gateId = _activeGateId;
             pickup.isCorrect = true;
             // No in-world type pill: the top SWBST tracker shows the current element (F40).
         }
@@ -525,7 +557,23 @@ namespace SummaRace.Features.Race.Endless
         {
             if (_finished) return;
             if (pickup.isFinishGate) { StartCoroutine(FinishRoutine()); return; }
-            if (pickup.elementIndex != _activeElement) return; // stray hit on an inactive/destroyed gate
+            // ONE PICK PER GATE, by identity rather than by element index.
+            //
+            // The old `elementIndex != _activeElement` test looked sufficient but had a hole on
+            // the path that actually mattered. A wrong pick calls HitWrong -> ScheduleRepresent
+            // -> TryPlacePending *synchronously, inside this same call stack*, which re-arms
+            // _activeElement to THE SAME index for the new re-present gate. So when the second
+            // trigger event of the dead gate dispatched moments later, it matched, and the
+            // learner got a wrong pick and a correct pick counted back to back — the second one
+            // destroying the re-present gate 18m before they could ever see it. (A simple
+            // "already resolved" latch has the identical hole: the same synchronous call resets
+            // it.) The runner is genuinely inside two lanes' triggers for about one frame of
+            // every lane change, so this fires in normal play, not at the margins.
+            //
+            // A monotonic id is never reused, so every card of a retired gate is permanently
+            // stale no matter what is placed afterwards.
+            if (pickup.gateId != _activeGateId) return;
+            _activeGateId = 0; // this gate is spent; its other cards can no longer register
 
             // Only the FIRST pick at each gate counts for stars (GDD §4.2). A re-present
             // never changes this — it was already recorded false by the pick/miss that
@@ -565,11 +613,21 @@ namespace SummaRace.Features.Race.Endless
             // The collected card flies up and pops away; the rest of the gate goes now.
             var cardT = pickup.transform;
             var root = _activeGateRoot;
+
+            // Kill the WHOLE gate's colliders this instant, not just the card that was hit.
+            // Destroy() below only takes effect at end of frame, so the other two lanes' cards
+            // stayed pickable for the rest of the frame — and a learner is wide enough to
+            // overlap two lanes' triggers at once while changing lane. That is the "double
+            // collection" the owner saw. Disabling only `pickup`'s own collider (as this did)
+            // left exactly that hole.
+            if (root != null)
+                foreach (var c in root.GetComponentsInChildren<Collider>(true)) c.enabled = false;
+            var col = pickup.GetComponent<Collider>();
+            if (col != null) col.enabled = false;
+
             // Keep the flying card parented to the segment: a floating-origin recenter
             // (~every 100m) would teleport a world-space orphan mid-celebration.
             cardT.SetParent(root != null ? root.parent : null, true);
-            var col = pickup.GetComponent<Collider>();
-            if (col != null) col.enabled = false;
             Tween.PositionY(cardT, cardT.position.y + 2.2f, 0.45f, Ease.OutQuad);
             Tween.Scale(cardT, Vector3.zero, 0.5f, Ease.InBack)
                 .OnComplete(() => { if (cardT != null) Destroy(cardT.gameObject); });
@@ -921,8 +979,11 @@ namespace SummaRace.Features.Race.Endless
             var rrt = row.AddComponent<RectTransform>();
             rrt.anchorMin = rrt.anchorMax = new Vector2(0.5f, 1f);
             rrt.pivot = new Vector2(0.5f, 1f);
-            rrt.anchoredPosition = new Vector2(0f, -36f);
-            rrt.sizeDelta = new Vector2(1052f, 168f);
+            // Sized down from 1052x168: on a 1080-wide reference that was running edge to edge
+            // and dominating the screen, which matters more here than on a HUD because the
+            // learner has to watch the road and read a card at the same time.
+            rrt.anchoredPosition = new Vector2(0f, -26f);
+            rrt.sizeDelta = new Vector2(774f, 122f);
 
             var wood = WoodPlaqueSprite();
 
@@ -937,7 +998,7 @@ namespace SummaRace.Features.Race.Endless
             brt.anchorMin = Vector2.zero; brt.anchorMax = Vector2.one;
             brt.offsetMin = Vector2.zero; brt.offsetMax = Vector2.zero;
 
-            const float slotW = 190f, slotH = 132f, gap = 16f;
+            const float slotW = 138f, slotH = 96f, gap = 12f;
             float total = 5f * slotW + 4f * gap;
             float startX = -total * 0.5f + slotW * 0.5f;
 
@@ -963,8 +1024,8 @@ namespace SummaRace.Features.Race.Endless
                 lbl.alignment = TextAlignmentOptions.Center;
                 lbl.fontStyle = FontStyles.Bold;
                 lbl.enableAutoSizing = true;
-                lbl.fontSizeMin = 22f;
-                lbl.fontSizeMax = 70f;
+                lbl.fontSizeMin = 18f;
+                lbl.fontSizeMax = 50f;
                 lbl.raycastTarget = false;
                 var lrt = lbl.rectTransform;
                 lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one;
@@ -1190,7 +1251,19 @@ namespace SummaRace.Features.Race.Endless
                 // Set Running only now: a bool set on an Animator whose GameObject was
                 // inactive at spawn is reset to its default (false) when the object enables,
                 // so the cop stood still. Setting it post-activation makes the run loop play.
-                if (_patrolAnim != null) _patrolAnim.SetBool("Running", true);
+                if (_patrolAnim != null)
+                {
+                    _patrolAnim.SetBool("Running", true);
+                    // The cop spends every clean run hidden behind the camera. Its Animator
+                    // ships as CullUpdateTransforms, which keeps the state machine ticking but
+                    // does NOT write bone transforms while the renderers are invisible — and
+                    // visibility is resolved from the PREVIOUS frame's culling. So the first
+                    // frame it rushed into view it drew in its authored bind pose and snapped
+                    // into the run only on the next frame. That reads as badly here as it
+                    // possibly could: the BitGem cop is rigid-part, not skinned (19 separate
+                    // mesh renderers), so an unposed frame is limbs scattered at bind offsets.
+                    _patrolAnim.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+                }
                 // Lock the cop to the runner's ground height once, so it no longer floats:
                 // following playerPos.y live made it rise with the runner's jumps / any
                 // character y-offset. The road is flat and recentres only in X/Z, so a
@@ -1592,6 +1665,39 @@ namespace SummaRace.Features.Race.Endless
             anim.SetBool("Moving", false);
         }
 
+        /// <summary>
+        /// Feeds the runLoop blend tree so a lane change actually LEANS.
+        ///
+        /// The tree (KidCharacterAnimation runLoop) blends run-left / run-forward / run-right
+        /// on a `LaneSwitch` float at thresholds -1 / 0 / +1 — but nothing in the project ever
+        /// wrote that parameter, so it sat at 0 forever and the tree always played the centre
+        /// child. Their ChangeLane only sets a target position; the actual motion is a
+        /// MoveTowards on the collider's localPosition. So the kid slid 1.5m sideways in 0.107s
+        /// with a completely unchanged forward run — no lean, no weight shift.
+        ///
+        /// Derive the lean from the movement that is really happening: lateral speed as a
+        /// fraction of their laneChangeSpeed, damped so it eases in and out instead of
+        /// snapping between the three clips.
+        /// </summary>
+        private void UpdateRunnerLean(TrackManager track)
+        {
+            var runner = track != null ? track.characterController : null;
+            if (runner == null || runner.character == null || runner.character.animator == null) return;
+            var body = runner.characterCollider != null ? runner.characterCollider.transform : null;
+            if (body == null) return;
+
+            float x = body.localPosition.x;
+            float dt = Time.deltaTime;
+            float target = 0f;
+            if (dt > 0f && _lastRunnerX.HasValue && track.laneChangeSpeed > 0.01f)
+                target = Mathf.Clamp((x - _lastRunnerX.Value) / dt / track.laneChangeSpeed, -1f, 1f);
+            _lastRunnerX = x;
+
+            // Ease toward the target; the raw value is a step function (full speed or zero).
+            _laneLean = Mathf.MoveTowards(_laneLean, target, LeanResponse * dt);
+            runner.character.animator.SetFloat("LaneSwitch", _laneLean);
+        }
+
         /// <summary>Idle -> Run in one clean step on GO! (their default state is runStart).</summary>
         private void StartRunnerRun(TrackManager track)
         {
@@ -1604,8 +1710,13 @@ namespace SummaRace.Features.Race.Endless
 
         private void LateUpdate()
         {
-            if (_runReleased) return;
             var track = TrackManager.instance;
+
+            // After TrackManager.Update has moved the runner, so the cop is placed against
+            // THIS frame's player position rather than last frame's.
+            if (_runReleased && track != null && !_finished) UpdatePatrol(track);
+
+            if (_runReleased) return;
             if (track != null) HoldRunnerPreRace(track); // final word each frame -> no run-back blip
         }
 
