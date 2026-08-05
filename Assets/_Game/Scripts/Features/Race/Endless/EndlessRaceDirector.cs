@@ -44,6 +44,16 @@ namespace SummaRace.Features.Race.Endless
         // treated as stranded and FINISH is forced back. Long enough that no legitimate
         // placement gap can trip it (placements are scheduled in the same frame they clear).
         private const float StrandedSeconds = 2f;
+        // Depth of an answer card's catch volume, along the run. The character is moved in
+        // TrackManager.Update, so triggers are sampled once per RENDERED frame, and their
+        // MusicPlayer.Awake pins targetFrameRate to 30 — at the scene's maxSpeed of 30 that is
+        // a full metre of travel per sample. The old 0.5m (≈1.4m of window once the runner's
+        // own collider is counted) left barely one frame of margin at the last gates, and a
+        // single dropped frame on the 2GB floor device stepped the card over. That reads as a
+        // WRONG ANSWER in the study data (HandleMissedActiveGate records first-pick false),
+        // so it is a measurement problem, not just a feel one. The card's visible size is
+        // unchanged — F30 sized the card, not the trigger.
+        private const float TriggerDepth = 2.5f;
 
         private static readonly System.Reflection.FieldInfo SpeedField =
             typeof(TrackManager).GetField("m_Speed",
@@ -132,6 +142,17 @@ namespace SummaRace.Features.Race.Endless
             if (Instance == this) Instance = null;
             if (_subscribed && TrackManager.instance != null)
                 TrackManager.instance.newSegmentCreated -= OnNewSegment;
+
+            // Never hand the rest of the app a frozen clock. Their GameState.Pause sets
+            // Time.timeScale = 0 and AudioListener.pause = true on focus loss, and the only
+            // thing that undid it was our OnApplicationFocus — which dies with this scene.
+            // SceneLoader's fade runs on unscaledDeltaTime, so a scene change completes
+            // perfectly well while paused: background the tablet during the victory beat or
+            // the load and the learner returns to Arrange with timeScale still 0 — clicks
+            // register, nothing animates, everything is silent, for the rest of the session
+            // until the app is restarted.
+            Time.timeScale = 1f;
+            AudioListener.pause = false;
         }
 
         private IEnumerator Start()
@@ -387,7 +408,7 @@ namespace SummaRace.Features.Race.Endless
 
                 var trigger = card.gameObject.AddComponent<BoxCollider>();
                 trigger.isTrigger = true;
-                trigger.size = new Vector3(cardWidth, 2.2f, 0.5f);
+                trigger.size = new Vector3(cardWidth, 2.2f, TriggerDepth);
                 // Card sits on the road now — lift the catch volume over the character's body.
                 trigger.center = new Vector3(0f, 0.6f, 0f);
 
@@ -422,7 +443,7 @@ namespace SummaRace.Features.Race.Endless
 
             var trigger = card.gameObject.AddComponent<BoxCollider>();
             trigger.isTrigger = true;
-            trigger.size = new Vector3(cardWidth, 2.2f, 0.5f);
+            trigger.size = new Vector3(cardWidth, 2.2f, TriggerDepth);
             trigger.center = new Vector3(0f, 0.6f, 0f);
 
             var pickup = card.gameObject.AddComponent<EndlessOptionPickup>();
@@ -583,7 +604,15 @@ namespace SummaRace.Features.Race.Endless
             if (track != null)
             {
                 if (_savedMaxSpeed < 0f) _savedMaxSpeed = track.maxSpeed;
-                track.maxSpeed = Mathf.Max(track.minSpeed, track.speed * 0.6f);
+                // Never clamp maxSpeed to exactly minSpeed: their speedRatio is
+                // (speed - minSpeed) / (maxSpeed - minSpeed) (TrackManager.cs:72), so an equal
+                // pair divides by zero and returns NaN. At gates 1-3 the run is still under
+                // 16.7 (accel 0.2/s from minSpeed 10), so speed*0.6 falls below minSpeed and
+                // the old Mathf.Max hit exactly that case on essentially every early wrong
+                // pick. NaN then reached jump/slide lengths and the character's localPosition
+                // in CharacterInputController, freezing lane control and spamming the console
+                // for the whole slow window.
+                track.maxSpeed = Mathf.Max(track.minSpeed + 1f, track.speed * 0.6f);
                 _slowTimer = SummaRace.Constants.GameRules.SlowSeconds;
             }
 
@@ -658,13 +687,41 @@ namespace SummaRace.Features.Race.Endless
             if (_strandedTimer < StrandedSeconds) return;
 
             _strandedTimer = 0f;
-            Debug.LogWarning("EndlessRaceDirector: run had nothing to present — recovering to FINISH.");
+
+            // Recover to the element the run was actually on. Always jumping to FINISH would
+            // end the story with the remaining elements unanswered and near-zero stars, which
+            // for a strand at gate 1 quietly throws away four fifths of the measure.
+            // _activeElement survives a gate dying with its segment, so it is still valid.
+            if (_activeElement >= 0 && _activeElement < 5)
+            {
+                Debug.LogWarning("EndlessRaceDirector: nothing to present — re-presenting element "
+                    + _activeElement + ".");
+                int element = _activeElement;
+                _activeElement = -1;
+                ScheduleRepresent(track, element);
+                return;
+            }
+
+            Debug.LogWarning("EndlessRaceDirector: nothing to present — recovering to FINISH.");
             RescheduleFinish(track);
         }
 
         private void DestroyActiveGate()
         {
-            if (_activeGateRoot != null) Destroy(_activeGateRoot.gameObject);
+            if (_activeGateRoot != null)
+            {
+                // Disable the colliders NOW. Destroy only takes effect at end of frame, and the
+                // replacement gate is scheduled with the same element index in this same frame,
+                // so a second card of the dead gate firing later in the frame would still pass
+                // the `elementIndex != _activeElement` guard. That is reachable: adjacent lane
+                // triggers sit 0.075m apart while the runner's collider is 0.576m wide, so a
+                // learner mid-lane-change overlaps two cards at identical z and both
+                // OnTriggerEnter land in one step — double slow, double menace, or a
+                // re-present destroyed 18m before it was ever seen.
+                foreach (var col in _activeGateRoot.GetComponentsInChildren<Collider>(true))
+                    col.enabled = false;
+                Destroy(_activeGateRoot.gameObject);
+            }
             _activeGateRoot = null;
         }
 
@@ -712,16 +769,30 @@ namespace SummaRace.Features.Race.Endless
         }
 
         /// <summary>
-        /// Their MusicPlayer is DontDestroyOnLoad with no singleton guard, so re-entering the
-        /// race stacks another full six-stem set on top of the last one — by the third story
-        /// of a session it is a wall of noise. Keep the first, drop the rest.
+        /// Their MusicPlayer is DontDestroyOnLoad. It DOES have a singleton guard — Awake
+        /// destroys the newcomer — but Destroy is deferred to end of frame, so for one frame
+        /// after a re-entry two exist and both are audible.
+        ///
+        /// This used to drop everything after index 0 of an explicitly UNORDERED
+        /// FindObjectsByType. When the already-doomed instance sorted first, that destroyed
+        /// the live MusicPlayer.instance and kept the one about to delete itself — leaving
+        /// MusicPlayer.instance referencing a destroyed object. TrackManager.Update then
+        /// dereferences it (UpdateVolumes, TrackManager.cs:470) and their GameState.Enter
+        /// does too, so the track never starts, our "wait for TrackManager" loop never exits,
+        /// and the briefing sits on "Getting ready…" forever with no pause and no way back.
+        /// Race 2 or 3 of a session, roughly one time in two.
+        ///
+        /// Keep the one that IS the singleton and drop any other.
         /// </summary>
         private static void DeduplicateTheirMusicPlayer()
         {
+            var keep = MusicPlayer.instance;
+            if (keep == null) return; // their Awake has not run yet; its own guard will handle it
+
             var players = UnityEngine.Object.FindObjectsByType<MusicPlayer>(
                 FindObjectsInactive.Include, FindObjectsSortMode.None);
-            for (int i = 1; i < players.Length; i++)
-                Destroy(players[i].gameObject);
+            foreach (var p in players)
+                if (p != null && p != keep) Destroy(p.gameObject);
         }
 
         private float NextGateGap(TrackManager track)
@@ -1364,8 +1435,17 @@ namespace SummaRace.Features.Race.Endless
 
             Time.timeScale = 1f;
             AudioListener.pause = false;
-            if (_runReleased && TrackManager.instance != null)
+            // Not once the run is over: resuming during the victory beat would restart the
+            // world underneath it.
+            if (_runReleased && !_finished && TrackManager.instance != null)
                 TrackManager.instance.StartMove(false);
+        }
+
+        /// <summary>Some Android devices and split-screen deliver only the pause callback,
+        /// never the focus one, so route it to the same recovery.</summary>
+        private void OnApplicationPause(bool paused)
+        {
+            if (!paused) OnApplicationFocus(true);
         }
 
         private void DismissBriefing()
@@ -1418,7 +1498,12 @@ namespace SummaRace.Features.Race.Endless
             if (TrackManager.instance != null)
             {
                 StartRunnerRun(TrackManager.instance);
-                TrackManager.instance.StartMove(false);
+                // StartMove(true) seeds m_Speed = minSpeed. With false it stays whatever it
+                // was, and it is 0 until THEIR WaitToStart coroutine fires ~3.3s after Begin().
+                // Our briefing can be dismissed much sooner than that, so any learner who taps
+                // START promptly used to get "GO!" followed by a second or so of standing
+                // still, then a lurch to full speed when their timer caught up.
+                TrackManager.instance.StartMove(true);
             }
             UpdateBanner();
 
