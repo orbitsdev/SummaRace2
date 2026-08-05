@@ -1,7 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
-using UnityEditor;
 using UnityEngine.AddressableAssets;
 using UnityEngine.Analytics;
 using UnityEngine.ResourceManagement;

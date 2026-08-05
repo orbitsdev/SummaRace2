@@ -74,6 +74,21 @@ namespace SummaRace.Core
             // bar reads as motion even on near-instant loads. Tip-less fades skip
             // the sweep — nothing visible is animating, so don't hold the load.
             var op = SceneManager.LoadSceneAsync(sceneName);
+            if (op == null)
+            {
+                // LoadSceneAsync returns null when the scene is not in Build Settings. Without
+                // this guard the coroutine died on the next line, leaving _loading stuck true
+                // behind an opaque, raycast-blocking overlay — the learner sees a frozen
+                // loading card forever and every later Go() early-returns on _loading. That is
+                // not hypothetical here: the build list has been wiped twice by imports.
+                Debug.LogError("SceneLoader: scene '" + sceneName +
+                    "' is not in Build Settings. Falling back to the main menu.");
+                _loading = false;
+                yield return Fade(1f, 0f);
+                if (sceneName != SceneNames.MainMenu) Go(SceneNames.MainMenu);
+                yield break;
+            }
+
             if (showTips)
             {
                 op.allowSceneActivation = false;

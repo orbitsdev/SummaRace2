@@ -39,6 +39,13 @@ namespace SummaRace.Data
     [Serializable]
     public class SessionLog
     {
+        /// <summary>Unique per play-through. The app snapshots a run to disk whenever it is
+        /// backgrounded (a 2GB device may be killed while away), so one run can produce
+        /// several rows: keep, per runId, the row with <c>isPartial:false</c> if there is
+        /// one, else the last partial.</summary>
+        public string runId;
+        /// <summary>True for a mid-run snapshot, false for the row written when the run ended.</summary>
+        public bool isPartial;
         public string learnerId;
         public string storyId;
         public string startedIso;
