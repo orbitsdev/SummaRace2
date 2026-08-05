@@ -60,15 +60,22 @@ namespace SummaRace.Features.StorySelect
             {
                 string difficulty = StoryIds.Difficulties[i];
                 string storyId = StoryIds.For(session, difficulty);
-                SetupCard(cards[i], difficulty, storyId, StoryLoader.Load(storyId), unlocked);
-                unlocked = unlocked && IsCleared(storyId);
+                var story = StoryLoader.Load(storyId);
+                SetupCard(cards[i], difficulty, storyId, story, unlocked);
+
+                // A story whose JSON is missing can never be cleared, so gating on it would
+                // lock the whole session behind content the learner cannot reach. Missing
+                // content opens the gate instead of closing it (GDD D7).
+                unlocked = unlocked && (story == null || IsCleared(storyId));
             }
 
+            // The learner arrived MainMenu → SessionMap → here, so back is the map: picking
+            // another story in the same session stays one tap.
             if (backButton != null)
                 backButton.onClick.AddListener(() =>
                 {
                     PlayClick();
-                    SceneLoader.Go(SceneNames.MainMenu);
+                    SceneLoader.Go(SceneNames.SessionMap);
                 });
         }
 
@@ -81,6 +88,10 @@ namespace SummaRace.Features.StorySelect
 
             // A story that fails to load must never present itself as playable.
             bool playable = unlocked && story != null;
+
+            // Missing content is not the learner's doing, so it says so in its own words
+            // instead of borrowing the "finish the story above" hint.
+            string hint = story == null ? GameText.StoryUnavailableHint : GameText.LockedHint;
 
             if (card.titleText != null && story != null) card.titleText.text = story.title;
 
@@ -103,8 +114,15 @@ namespace SummaRace.Features.StorySelect
             }
             if (card.lockedHint != null)
             {
-                card.lockedHint.text = GameText.LockedHint;
+                card.lockedHint.text = hint;
                 card.lockedHint.gameObject.SetActive(!playable);
+            }
+            else if (!playable && card.titleText != null)
+            {
+                // The EASY card was built (F22) as the always-open one, so it carries no lock
+                // icon, label or hint. When its JSON is missing it would otherwise go grey and
+                // untappable in silence — its title is then the only field that can explain it.
+                card.titleText.text = GameText.LockedCardLine(hint);
             }
 
             int best = playable && Core.GameManager.Instance != null

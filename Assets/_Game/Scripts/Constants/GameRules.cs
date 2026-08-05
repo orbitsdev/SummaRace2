@@ -49,6 +49,17 @@ namespace SummaRace.Constants
         public const int StarsThreeMin = 5;
         public const int StarsTwoMin = 4;
 
+        // Arrange (GDD §4.4). Correct slots lock, so every verify makes progress — but the
+        // story cannot continue until the order is right, which makes this the one screen
+        // where being wrong could trap a learner. Two ladders keep it moving:
+        //   a hint appears after this many misses on the same piece...
+        public const int ArrangeHintAfterMisses = 3;
+        //   ...and after this many failed verifies the screen finishes the order WITH the
+        //   learner and continues. 4 rather than the 3 used elsewhere (race auto-resolve,
+        //   summary accept) because the hint needs 3 misses to fire — so a 4th attempt is
+        //   the first one the learner makes with the hint in front of them.
+        public const int ArrangeMaxAttempts = 4;
+
         // Summary light checks (GDD §4.5)
         public const int SummaryMinWords = 5;
         public const int SummaryMaxChars = 200;

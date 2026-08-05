@@ -33,6 +33,7 @@ namespace SummaRace.Features.Race.Endless
         // Warm gold the collect sparkle is retinted to, matching the story-treasure look.
         private static readonly Color StoryGold = new Color(1f, 0.85f, 0.45f);
         private UnityEngine.UI.Image _vignette; // amber screen-edge danger vignette (TDD §11.5)
+        private Sprite _vignetteSprite;        // generated per race entry; freed in OnDestroy
 
         private const float FirstGateDistance = 80f; // clear of their starting safe segments
         private const float FinishGap = 30f;         // FINISH this far after the 5th gate
@@ -106,6 +107,7 @@ namespace SummaRace.Features.Race.Endless
         private float _laneLean;
         private float? _lastRunnerX;
         private const float LeanResponse = 4f; // units/sec toward the target lean
+        private float _worldReapplyTimer;      // throttles the pre-race world re-assert
 
         private readonly bool[] _firstPickDone = new bool[5];
         private readonly bool[] _firstPickCorrect = new bool[5];
@@ -167,6 +169,19 @@ namespace SummaRace.Features.Race.Endless
             if (_subscribed && TrackManager.instance != null)
                 TrackManager.instance.newSegmentCreated -= OnNewSegment;
 
+            // The vignette sprite is generated fresh on every race entry (unlike the wood
+            // plaque, which is statically cached), and its texture is owned by no asset, so
+            // nothing reclaims it until an incidental Resources.UnloadUnusedAssets. Three
+            // stories a session across ten sessions adds up on the 2GB floor device, where
+            // texture memory is the real pressure. Free it explicitly.
+            if (_vignetteSprite != null)
+            {
+                var tex = _vignetteSprite.texture;
+                Destroy(_vignetteSprite);
+                if (tex != null) Destroy(tex);
+                _vignetteSprite = null;
+            }
+
             // Never hand the rest of the app a frozen clock. Their GameState.Pause sets
             // Time.timeScale = 0 and AudioListener.pause = true on focus loss, and the only
             // thing that undid it was our OnApplicationFocus — which dies with this scene.
@@ -227,6 +242,7 @@ namespace SummaRace.Features.Race.Endless
             while (TrackManager.instance == null) yield return null;
             TrackManager.instance.newSegmentCreated += OnNewSegment;
             _subscribed = true;
+            SeedExistingSegments();
             SpawnPatrol();
             // PC: WASD alongside the arrow keys their controller already binds.
             if (GetComponent<EndlessKeyboardInput>() == null)
@@ -257,8 +273,15 @@ namespace SummaRace.Features.Race.Endless
                 // Their theme system writes RenderSettings.fogColor when the track's theme
                 // loads, which lands AFTER our world is applied and repainted a night world's
                 // fog near-white. Re-assert until the run starts, by which point their theme
-                // has settled. Cheap: a handful of global property sets with a cached sun.
-                SummaRace.Features.Race.RaceWorlds.Apply(_story.world, _story.difficulty);
+                // has settled. Throttled: Apply does a GameObject.Find for the sun, and the
+                // briefing can sit on screen for many seconds on the 2GB floor device — four
+                // times a second is plenty to win a race against a one-shot theme load.
+                _worldReapplyTimer -= Time.deltaTime;
+                if (_worldReapplyTimer <= 0f)
+                {
+                    _worldReapplyTimer = 0.25f;
+                    SummaRace.Features.Race.RaceWorlds.Apply(_story.world, _story.difficulty);
+                }
 
                 if (track.isMoving) track.StopMove();
                 // Idle-hold is done in LateUpdate (it must be the final word before the frame
@@ -324,6 +347,30 @@ namespace SummaRace.Features.Race.Endless
         }
 
         // ---------- gate spawning / scheduling ----------
+
+        /// <summary>
+        /// Adopt any segments that already existed when we subscribed.
+        ///
+        /// `_spawnedDistance` assumes we witness EVERY segment from the first one. We subscribe
+        /// after loadout.StartGame(), and today that happens to be safe only by ordering — their
+        /// Begin() activates the TrackManager from a coroutine, so its first Update (which starts
+        /// the spawn coroutines) is a frame later. If that ordering ever shifts and we miss one
+        /// segment, every gate is placed L metres beyond where the miss-check believes it is, so
+        /// gates are destroyed and rescheduled before the learner can reach them — forever, and
+        /// CheckStranded never fires because something is always pending. Cheap insurance.
+        /// </summary>
+        private void SeedExistingSegments()
+        {
+            var track = TrackManager.instance;
+            if (track == null || track.segments == null) return;
+            foreach (var seg in track.segments)
+            {
+                if (seg == null) continue;
+                float start = _spawnedDistance;
+                _spawnedDistance = start + seg.worldLength;
+                _spans.Add((seg, start, _spawnedDistance));
+            }
+        }
 
         private void OnNewSegment(TrackSegment segment)
         {
@@ -957,7 +1004,8 @@ namespace SummaRace.Features.Race.Endless
             var vgo = new GameObject("DangerVignette");
             vgo.transform.SetParent(canvasGo.transform, false);
             _vignette = vgo.AddComponent<UnityEngine.UI.Image>();
-            _vignette.sprite = MakeVignetteSprite();
+            _vignetteSprite = MakeVignetteSprite();
+            _vignette.sprite = _vignetteSprite;
             _vignette.raycastTarget = false;
             _vignette.color = new Color(1f, 0.42f, 0.05f, 0f); // amber, invisible until danger rises
             var vrt = _vignette.rectTransform;
@@ -1540,11 +1588,43 @@ namespace SummaRace.Features.Race.Endless
         /// <summary>3-2-1-GO! with a cinematic camera: while the kid does his funny dance the
         /// camera orbits him from a high front angle, descending, then on GO! it swoops smoothly
         /// into the normal chase pose as the world releases.</summary>
+        /// <summary>The actual "GO!": banner, runner into its run cycle, world released.
+        /// Shared by the countdown and by its malformed-array fallback, so there is exactly one
+        /// definition of what releasing the run means.</summary>
+        private void ReleaseRun(Transform hud, string label)
+        {
+            ShowBigCount(hud, label, true);
+            _runReleased = true; // Update()/LateUpdate() stop holding the pre-race dance
+            if (TrackManager.instance != null)
+            {
+                StartRunnerRun(TrackManager.instance);
+                // StartMove(true) seeds m_Speed = minSpeed. With false it stays whatever it
+                // was, and it is 0 until THEIR WaitToStart coroutine fires ~3.3s after Begin().
+                // Our briefing can be dismissed much sooner than that, so any learner who taps
+                // START promptly used to get "GO!" followed by a second or so of standing
+                // still, then a lurch to full speed when their timer caught up.
+                TrackManager.instance.StartMove(true);
+            }
+            UpdateBanner();
+        }
+
         private IEnumerator CountdownRoutine()
         {
             var steps = SummaRace.Constants.GameText.RaceCountdown;
             var hud = transform.Find("SummaRaceHud");
             var cam = Camera.main;
+
+            // A one-entry (or empty) countdown array would index steps[-1] below and kill this
+            // coroutine — and since the briefing is already hidden and _runReleased is still
+            // false at that point, the learner would be left staring at a frozen world with no
+            // way out. GameText is content, so it is allowed to change; this is not.
+            if (steps == null || steps.Length < 2)
+            {
+                Debug.LogWarning("EndlessRaceDirector: RaceCountdown needs at least 2 entries; " +
+                    "releasing the run without a countdown.");
+                ReleaseRun(hud, steps != null && steps.Length > 0 ? steps[steps.Length - 1] : "GO!");
+                yield break;
+            }
 
             // The resting gameplay pose the swing must settle back onto (camera is parented).
             Vector3 gpPos = cam != null ? cam.transform.localPosition : Vector3.zero;
@@ -1572,19 +1652,7 @@ namespace SummaRace.Features.Race.Endless
             }
 
             // GO! — release the world, kid switches to run, banner reads GO!.
-            ShowBigCount(hud, steps[n - 1], true);
-            _runReleased = true; // Update()/LateUpdate() stop holding the pre-race dance
-            if (TrackManager.instance != null)
-            {
-                StartRunnerRun(TrackManager.instance);
-                // StartMove(true) seeds m_Speed = minSpeed. With false it stays whatever it
-                // was, and it is 0 until THEIR WaitToStart coroutine fires ~3.3s after Begin().
-                // Our briefing can be dismissed much sooner than that, so any learner who taps
-                // START promptly used to get "GO!" followed by a second or so of standing
-                // still, then a lurch to full speed when their timer caught up.
-                TrackManager.instance.StartMove(true);
-            }
-            UpdateBanner();
+            ReleaseRun(hud, steps[n - 1]);
 
             // Swoop the camera from the orbit back onto the exact chase pose.
             float t = 0f;

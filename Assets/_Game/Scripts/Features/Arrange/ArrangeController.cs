@@ -12,8 +12,10 @@ namespace SummaRace.Features.Arrange
     /// <summary>
     /// Order the 5 collected pieces into S-W-B-S-T slots (TDD §10.2).
     /// Tap a piece, then tap a slot. VERIFY locks correct slots green;
-    /// wrong ones wiggle amber and return to the pool. Unlimited retries;
-    /// a hint appears after 3 misses on the same piece.
+    /// wrong ones wiggle amber and return to the pool. Retries never run out and
+    /// never block: a hint appears after GameRules.ArrangeHintAfterMisses misses on
+    /// the same piece, and after GameRules.ArrangeMaxAttempts failed verifies the
+    /// screen finishes the order with the learner (see AssistRoutine).
     /// </summary>
     public class ArrangeController : MonoBehaviour
     {
@@ -57,7 +59,17 @@ namespace SummaRace.Features.Arrange
         {
             _story = SummaRace.Core.GameManager.Instance != null ? SummaRace.Core.GameManager.Instance.CurrentStory : null;
             if (_story == null) _story = StoryLoader.Load("s01_easy"); // editor-direct fallback
-            if (_story == null) { Debug.LogError("Arrange: no story."); return; }
+            if (_story == null)
+            {
+                // Nothing below this line has run yet, so returning would leave the learner
+                // on a screen whose every button is unwired — dead, with no way out. Route
+                // back to Story Select instead, the same friendly fail GameManager uses when
+                // a story won't load (GDD §11.6 / TDD §13).
+                Debug.LogError("Arrange: no story; returning to Story Select.");
+                SetStatus(GameText.ArrangeNoStory);
+                SceneLoader.Go(SceneNames.StorySelect);
+                return;
+            }
 
             // Pieces come from the race result when available (same texts either way).
             var result = SummaRace.Core.GameManager.Instance != null ? SummaRace.Core.GameManager.Instance.LastRaceResult : null;
@@ -161,6 +173,7 @@ namespace SummaRace.Features.Arrange
             _busy = true;
             bool allCorrect = true;
             int hintElement = -1;
+            int hintMisses = 0;
 
             for (int i = 0; i < 5; i++)
             {
@@ -178,7 +191,15 @@ namespace SummaRace.Features.Arrange
                     allCorrect = false;
                     int wrongElement = _slotContent[i];
                     _missCount[wrongElement]++;
-                    if (_missCount[wrongElement] >= 3) hintElement = wrongElement;
+                    // Hint about the part the learner is struggling with MOST, not simply the
+                    // last one in slot order to qualify — otherwise a piece missed eight times
+                    // is shadowed by one that has only just crossed the threshold.
+                    if (_missCount[wrongElement] >= GameRules.ArrangeHintAfterMisses
+                        && _missCount[wrongElement] > hintMisses)
+                    {
+                        hintMisses = _missCount[wrongElement];
+                        hintElement = wrongElement;
+                    }
 
                     if (slotButtons[i] != null) slotButtons[i].image.color = SlotWrong;
                     if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxSlotWiggle);
@@ -202,12 +223,64 @@ namespace SummaRace.Features.Arrange
             else
             {
                 EventBus.Raise(new ArrangeVerified { correct = false, attemptCount = _attempts });
+
+                if (_attempts >= GameRules.ArrangeMaxAttempts)
+                {
+                    // Stays busy on purpose: the assist ends by leaving the scene, so the
+                    // board must not accept taps while it plays out.
+                    yield return StartCoroutine(AssistRoutine());
+                    yield break;
+                }
+
+                // LoadingTips is the S-W-B-S-T definition list in element order — the array
+                // is named for the loading overlay that also shows it, but index i really is
+                // element i. See the note on GameText.LoadingTips before touching either.
                 SetStatus(hintElement >= 0
                     ? GameText.ArrangeHintPrefix + GameText.LoadingTips[hintElement]
                     : GameText.ArrangeAlmost);
             }
 
             _busy = false;
+        }
+
+        /// <summary>
+        /// Anti-frustration path (GDD "never punish the learner" / TDD §13 "never a dead end").
+        /// Arrange is the only screen the story cannot pass until the answer is right, so after
+        /// <see cref="GameRules.ArrangeMaxAttempts"/> failed verifies the remaining parts are
+        /// placed for the learner and the story continues to Summary. In a 55-minute classroom
+        /// session the alternative is the supervising researcher force-quitting the app — which
+        /// files the run as abandoned and loses its data.
+        ///
+        /// The measure stays honest: the last <see cref="ArrangeVerified"/> raised carries
+        /// correct = false and the REAL attempt count, so an assisted finish is visible in the
+        /// log (attempts >= ArrangeMaxAttempts with correct = false) rather than dressed up as
+        /// a solve. Nothing further is raised here — helping must not rewrite the record.
+        /// </summary>
+        private IEnumerator AssistRoutine()
+        {
+            _selectedPiece = -1;
+            SetStatus(GameText.ArrangeAssistIntro);
+            yield return new WaitForSeconds(1.2f);
+
+            for (int i = 0; i < 5; i++)
+            {
+                if (_slotLocked[i]) continue;
+
+                _slotContent[i] = i;    // element i is, by definition, slot i's part
+                _slotLocked[i] = true;
+                RefreshUI();            // skips locked slots, so paint the lock colour after it
+                if (slotButtons[i] != null) slotButtons[i].image.color = SlotLocked;
+                if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxSlotLock);
+                yield return new WaitForSeconds(0.35f);
+            }
+
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxCorrect);
+            SetStatus(GameText.ArrangeAssistDone);
+            if (SummaRace.Core.GameManager.Instance != null)
+                SummaRace.Core.GameManager.Instance.SetArrangeResult(_attempts);
+
+            yield return new WaitForSeconds(1.6f); // time to read the completed order
+            SceneLoader.Go(SceneNames.Summary);
         }
 
         // ---------- helpers ----------

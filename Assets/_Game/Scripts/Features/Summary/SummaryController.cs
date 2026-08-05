@@ -32,7 +32,15 @@ namespace SummaRace.Features.Summary
         {
             _story = SummaRace.Core.GameManager.Instance != null ? SummaRace.Core.GameManager.Instance.CurrentStory : null;
             if (_story == null) _story = StoryLoader.Load("s01_easy"); // editor-direct fallback
-            if (_story == null) { Debug.LogError("Summary: no story."); return; }
+            if (_story == null)
+            {
+                // Without a story the reference list and the submit button would both be
+                // dead, stranding the learner mid-loop — so hand them back to the cards
+                // instead of returning into an empty screen (TDD §13).
+                Debug.LogError("Summary: no story — returning to Story Select.");
+                SceneLoader.Go(SceneNames.StorySelect);
+                return;
+            }
 
             if (referenceText != null)
             {

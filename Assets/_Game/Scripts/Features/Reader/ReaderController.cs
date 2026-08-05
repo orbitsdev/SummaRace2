@@ -69,7 +69,11 @@ namespace SummaRace.Features.Reader
             if (_story == null) _story = StoryLoader.Load("s01_easy");
             if (_story == null)
             {
-                Debug.LogError("Reader: no story available.");
+                // Nothing to read. Bailing out here would leave the scene with no wired
+                // buttons at all — a literal dead end (TDD §13). Hand the learner back to
+                // the story cards, which explain an unplayable story in their own words.
+                Debug.LogError("Reader: no story available — returning to Story Select.");
+                SceneLoader.Go(SceneNames.StorySelect);
                 return;
             }
 

@@ -51,6 +51,12 @@ namespace SummaRace.Constants
         /// <summary>Story Select locks are by DIFFICULTY within the current session, not by
         /// session, so the hint must point at the story above rather than a later day.</summary>
         public const string LockedHint = "Finish the story above first!";
+        /// <summary>A card whose story JSON is missing. The learner did nothing wrong, so it
+        /// points at the grown-ups rather than at them (GDD D7).</summary>
+        public const string StoryUnavailableHint = "This story isn't ready yet — ask your teacher!";
+        /// <summary>One line for a locked card that has only a single text field to say it
+        /// with (the EASY card has no lock label of its own).</summary>
+        public static string LockedCardLine(string hint) => $"{LockedLabel} — {hint}";
 
         /// <summary>Ms. Lumi's cheer on the race mission briefing.</summary>
         public const string RaceBriefingLumi = "Ready, runner?";
@@ -202,7 +208,22 @@ namespace SummaRace.Constants
         public const string ArrangeHintPrefix = "Hint: ";
         public const string ArrangeAlmost = "Almost! The green ones are locked in — try the others again.";
 
-        // SWBST loading tips (SceneLoader shows one at random, GDD §11.5)
+        /// <summary>Shown when the screen finishes the order for a learner who is stuck
+        /// (GameRules.ArrangeMaxAttempts). Deliberately NOT drawn from the praise pools:
+        /// this is not a correct answer, and congratulating a solve the learner did not
+        /// make is the ability-praise trap the tone rules avoid. It says "together",
+        /// names no mistake, and hands the story straight on to the next step.</summary>
+        public const string ArrangeAssistIntro = "This one's tricky — let's put the rest in place together.";
+        public const string ArrangeAssistDone = "There's the whole story! Now tell it in your own words.";
+
+        /// <summary>Shown for the moment before Arrange bounces back to Story Select
+        /// because no story could be loaded — a failure the learner never caused.</summary>
+        public const string ArrangeNoStory = "Let's pick a story first!";
+
+        /// <summary>SWBST definitions in S-W-B-S-T order (SceneLoader shows one at random
+        /// on the loading overlay, GDD §11.5). The Arrange hint indexes this array BY
+        /// ELEMENT INDEX, so the order is load-bearing — add or reorder entries and the
+        /// hint starts explaining the wrong part.</summary>
         public static readonly string[] LoadingTips =
         {
             "SOMEBODY is who the story is about.",

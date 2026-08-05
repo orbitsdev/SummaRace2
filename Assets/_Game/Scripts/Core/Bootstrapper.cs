@@ -11,6 +11,15 @@ namespace SummaRace.Core
     /// </summary>
     public class Bootstrapper : MonoBehaviour
     {
+        // Scene wiring (Boot.unity → SplashCanvas → Bootstrapper). Only `taglineText` is
+        // connected today; the two below are still {fileID: 0}, which is why the F15 splash
+        // bar never appears. To finish them, add under SplashCanvas:
+        //   • "LoadingText"  — TextMeshProUGUI under the lockup → drag onto `loadingText`.
+        //   • "SplashBar"    — Image using Resources UI/bar_bg, with a child "Fill" Image
+        //     using UI/bar_fill, Image Type = Filled, Fill Method = Horizontal, Origin = Left
+        //     → drag the CHILD onto `splashFill`. (SceneLoader builds the same pair in code
+        //     for its transition overlay — copy those proportions.)
+        // All three stay optional: unwired, the splash simply runs without them.
         [SerializeField] private TMP_Text taglineText;
         [SerializeField] private TMP_Text loadingText;
         [SerializeField] private UnityEngine.UI.Image splashFill;
@@ -55,6 +64,9 @@ namespace SummaRace.Core
             while (t < GameRules.SplashSeconds)
             {
                 t += Time.deltaTime;
+                // Real elapsed time against the splash beat — the singletons above are already
+                // built, so there is nothing else left to measure. Unwired, the beat is
+                // unchanged: the splash just holds silently for the same duration.
                 if (splashFill != null) splashFill.fillAmount = Mathf.Clamp01(t / GameRules.SplashSeconds);
                 yield return null;
             }
@@ -62,7 +74,8 @@ namespace SummaRace.Core
             // attributable; afterwards the learner is already named and it is skipped.
             var learner = GameManager.Instance != null ? GameManager.Instance.CurrentLearner : null;
             bool needsName = learner != null && !learner.named;
-            SceneLoader.Instance.Load(needsName ? SceneNames.NameEntry : SceneNames.MainMenu, false);
+            // Via Go, so a Boot re-entry that skipped singleton creation still leaves the splash.
+            SceneLoader.Go(needsName ? SceneNames.NameEntry : SceneNames.MainMenu, false);
         }
     }
 }

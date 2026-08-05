@@ -40,7 +40,15 @@ namespace SummaRace.Features.Results
         {
             _story = SummaRace.Core.GameManager.Instance != null ? SummaRace.Core.GameManager.Instance.CurrentStory : null;
             if (_story == null) _story = StoryLoader.Load("s01_easy"); // editor-direct fallback
-            if (_story == null) { Debug.LogError("Results: no story."); return; }
+            if (_story == null)
+            {
+                // No story means no stars, no main idea and — because the NEXT MISSION
+                // listener is wired below — no way off this screen. Leave for the cards
+                // rather than sitting on a blank result (TDD §13).
+                Debug.LogError("Results: no story — returning to Story Select.");
+                SceneLoader.Go(SceneNames.StorySelect);
+                return;
+            }
 
             int stars = SummaRace.Core.GameManager.Instance != null ? SummaRace.Core.GameManager.Instance.CalculateStars() : 1;
 
