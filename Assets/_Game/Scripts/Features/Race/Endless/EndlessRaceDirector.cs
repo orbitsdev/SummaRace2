@@ -40,6 +40,10 @@ namespace SummaRace.Features.Race.Endless
         private const float RepresentGap = 18f;      // metres ahead for a re-presented gold card
         private const int MaxRepresentMisses = 3;    // consecutive dodges before anti-frustration auto-resolve
         private const float CardY = 0.5f;
+        // Watchdog: seconds with nothing in the world and nothing scheduled before the run is
+        // treated as stranded and FINISH is forced back. Long enough that no legitimate
+        // placement gap can trip it (placements are scheduled in the same frame they clear).
+        private const float StrandedSeconds = 2f;
 
         private static readonly System.Reflection.FieldInfo SpeedField =
             typeof(TrackManager).GetField("m_Speed",
@@ -67,6 +71,7 @@ namespace SummaRace.Features.Race.Endless
         private bool _activeIsRepresent;
         private float _activeGateDistance;
         private int _representCount; // consecutive dodged re-presents of the current element
+        private float _strandedTimer; // seconds the run has had nothing to present
 
         private readonly bool[] _firstPickDone = new bool[5];
         private readonly bool[] _firstPickCorrect = new bool[5];
@@ -74,12 +79,14 @@ namespace SummaRace.Features.Race.Endless
         private float _slowTimer;
         private float _savedMaxSpeed = -1f;
 
-        // TDD §11.4 danger meter. It now drives the patrol: danger climbs on its own
-        // (story mission.dangerPerSecond), jumps on a wrong pick and drops on a correct
-        // one, and the patrol's distance is read straight off it. It still never ends
-        // the run — the chaser is pressure the learner can SEE, never a fail state
-        // (GDD D7, and RaceResult.timesCaught stays 0).
-        private float _danger;
+        // No continuous danger meter on this path. F39 replaced it with "appear only on a
+        // bump": the chaser sits hidden behind the camera through a clean run and rushes
+        // into view for _menaceTimer seconds after a wrong pick. The meter it replaced was
+        // kept as a running float for a while afterwards but nothing ever read it, so the
+        // story's mission.dangerPerSecond/startingDanger are inert here (they are still
+        // live on the legacy RaceController). Difficulty on this path is gate spacing.
+        // The chaser never ends the run either way — pressure the learner can SEE, never a
+        // fail state (GDD D7, and RaceResult.timesCaught stays 0).
         private Transform _patrol;
         private Animator _patrolAnim;
         private float _menaceTimer;
@@ -233,11 +240,6 @@ namespace SummaRace.Features.Race.Endless
 
             if (_runStartTime < 0f && track.isMoving) _runStartTime = Time.time;
 
-            // Baseline pressure: danger climbs on its own so the patrol is always
-            // creeping in, and collecting correctly is what pushes it back.
-            if (!_finished)
-                _danger = Mathf.Clamp(_danger + _story.mission.dangerPerSecond * Time.deltaTime,
-                    0f, SummaRace.Constants.GameRules.DangerMax);
             UpdatePatrol(track);
 
             // TDD §11.4 slow-on-wrong: public-API clamp, decays back to their own max.
@@ -252,13 +254,17 @@ namespace SummaRace.Features.Race.Endless
             }
 
             // Pass-by: the learner ran past the active gate/re-present without collecting it.
-            if (_activeGateRoot != null && _activeElement < 5 &&
+            // FINISH is included: it is a trigger like any other and can be tunnelled through
+            // at top speed, and unlike an answer gate a missed FINISH ends the run nowhere.
+            if (_activeGateRoot != null && _activeElement >= 0 &&
                 track.worldDistance > _activeGateDistance + MissGrace)
             {
-                HandleMissedActiveGate(track);
+                if (_activeElement >= 5) RescheduleFinish(track);
+                else HandleMissedActiveGate(track);
             }
 
             TryPlacePending();
+            CheckStranded(track);
 
             // Their Resume() unconditionally re-shows the pause button after a
             // focus-loss pause cycle — keep it hidden.
@@ -442,7 +448,11 @@ namespace SummaRace.Features.Race.Endless
 
             var trigger = card.gameObject.AddComponent<BoxCollider>();
             trigger.isTrigger = true;
-            trigger.size = new Vector3(laneOffset * 3f + 1f, 3.2f, 0.6f);
+            // 3m deep, not 0.6m. At the scene's maxSpeed of 30 the run covers 0.6m in a single
+            // 0.02s physics step, so a 0.6m-deep trigger could be stepped straight over — and
+            // FINISH is the one trigger whose miss the learner cannot recover from in play.
+            // Answer gates keep their playtested depth; they already re-present when missed.
+            trigger.size = new Vector3(laneOffset * 3f + 1f, 3.2f, 3f);
             trigger.center = new Vector3(0f, -0.4f, 0f);
 
             card.gameObject.AddComponent<EndlessOptionPickup>().isFinishGate = true;
@@ -545,12 +555,9 @@ namespace SummaRace.Features.Race.Endless
 
             if (root != null) Destroy(root.gameObject);
 
-            // TDD §11.4: a correct pick always relieves danger a little; the boost bundle
-            // (sfx + speed) is reserved for a first-hit correct pick — collecting a
-            // re-presented gold card still resolves the element, just without the extra reward.
-            _danger = Mathf.Clamp(_danger - SummaRace.Constants.GameRules.DangerRelief,
-                0f, SummaRace.Constants.GameRules.DangerMax);
-
+            // TDD §11.4: the boost bundle (sfx + speed) is reserved for a first-hit correct
+            // pick — collecting a re-presented gold card still resolves the element, just
+            // without the extra reward.
             if (!wasRepresent && track != null)
             {
                 if (SummaRace.Core.AudioManager.Instance != null)
@@ -570,8 +577,6 @@ namespace SummaRace.Features.Race.Endless
 
             ShowFeedback(SummaRace.Constants.GameText.RaceWrongFeedback, new Color(1f, 0.78f, 0.35f));
 
-            _danger = Mathf.Clamp(_danger + SummaRace.Constants.GameRules.DangerOnWrong,
-                0f, SummaRace.Constants.GameRules.DangerMax);
             // Surge the chaser into view for a beat — the visible half of "not quite".
             _menaceTimer = SummaRace.Constants.GameRules.PatrolMenaceSeconds;
 
@@ -621,6 +626,40 @@ namespace SummaRace.Features.Race.Endless
             }
 
             ScheduleRepresent(track, element);
+        }
+
+        /// <summary>FINISH was run past instead of collected. Nothing about the story is
+        /// affected — no first pick, no stars — so it simply comes back a little way ahead.
+        /// Without this the gate dies with its segment and the learner runs forever.</summary>
+        private void RescheduleFinish(TrackManager track)
+        {
+            DestroyActiveGate();
+            _activeElement = -1;
+            _pendingElement = 5;
+            _pendingIsRepresent = false;
+            _pendingGateDistance = track.worldDistance + RepresentGap;
+            TryPlacePending();
+        }
+
+        /// <summary>Last-resort backstop for "never a dead end" (GDD): if the run ever has no
+        /// gate in the world and none scheduled, there is nothing left that can end it, so
+        /// bring FINISH back. Every normal transition schedules its successor in the same
+        /// frame it clears the old gate, so this should never fire — it exists because the
+        /// failure it catches is unrecoverable for the learner without killing the app.</summary>
+        private void CheckStranded(TrackManager track)
+        {
+            if (_finished || !_runReleased || _activeGateRoot != null || _pendingGateDistance >= 0f)
+            {
+                _strandedTimer = 0f;
+                return;
+            }
+
+            _strandedTimer += Time.deltaTime;
+            if (_strandedTimer < StrandedSeconds) return;
+
+            _strandedTimer = 0f;
+            Debug.LogWarning("EndlessRaceDirector: run had nothing to present — recovering to FINISH.");
+            RescheduleFinish(track);
         }
 
         private void DestroyActiveGate()
