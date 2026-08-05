@@ -24,9 +24,38 @@ namespace SummaRace.Constants
         public const string TeacherEnterPin = "Enter PIN";
         /// <summary>Button under the PIN box — must not repeat the prompt above it.</summary>
         public const string TeacherSubmit = "OK";
-        public const string TeacherSetPin = "Set a PIN (4+ digits)";
         public const string TeacherWrongPin = "That PIN didn't match.";
         public const string TeacherPinTooShort = "Use at least 4 digits.";
+
+        // First-time PIN setup. Two steps on purpose: the PIN box sits behind a button on the
+        // main menu, so a learner could reach it, and whatever was typed used to become the
+        // teacher's PIN on one tap. Typing it twice makes setting it a decision, and catches
+        // the researcher's own typo — a typo is a lockout too.
+        public const string TeacherSetPin = "Teacher setup:\nchoose a PIN (4+ digits)";
+        public const string TeacherConfirmPin = "Type the same PIN again";
+        /// <summary>Submit label on the first setup step — says there is a second one.</summary>
+        public const string TeacherSubmitNext = "NEXT";
+        public const string TeacherPinMismatch = "Those didn't match. Start again.";
+        public const string TeacherPinSaved = "PIN saved. Write it in the study notes — it cannot be read back.";
+        public const string TeacherSaveFailed = "Could not save the PIN on this device.";
+
+        /// <summary>Shown while wrong PINs are being slowed down, e.g. "Too many tries. Wait 30s."</summary>
+        public static string TeacherCooldown(int seconds) => $"Too many tries. Wait {seconds}s.";
+
+        // Device reset — the way back in when the PIN is lost. Reached only by the hidden
+        // gesture on the gate (see TeacherMenuController), so this copy is the first thing the
+        // researcher sees about it: it has to name the cost before anything is erased.
+        public const string TeacherRecoveryTitle = "Reset this tablet?";
+        public const string TeacherRecoveryWarning =
+            "This erases every learner profile, every star and every log on this tablet. " +
+            "They cannot be exported afterwards. You can then set a new PIN.\n" +
+            "Tap Back to leave without erasing.";
+        public const string TeacherRecoveryErase = "ERASE TABLET";
+        public const string TeacherRecoveryConfirm = "Tap again to erase";
+        public const string TeacherRecoveryLastChance =
+            "Last chance — this cannot be undone. Tap Back to leave without erasing.";
+        public const string TeacherRecoveryDone = "Tablet reset. Set a new PIN.";
+
         public const string TeacherUnlockNext = "Unlock next session";
         public const string TeacherExport = "Export logs";
         public const string TeacherDelete = "Delete all data";
@@ -34,6 +63,7 @@ namespace SummaRace.Constants
         public const string TeacherDeleted = "All learner data deleted.";
         public const string TeacherNothingToExport = "No logs to export yet.";
         public const string TeacherAllUnlocked = "All 10 sessions are already open.";
+        public static string TeacherSessionOpened(int session) => $"Session {session} is now open.";
 
         // Session map
         public const string SessionMapTitle = "Choose a Mission";
