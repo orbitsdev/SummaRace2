@@ -86,24 +86,24 @@
       "type": "WANTED",
       "correct": "To find safety and rebuild their lives",
       "distractors": [
-        "To buy a wagon",
-        "To move to another country"
+        "To buy a new wagon and travel faster",
+        "To move to another country and start over"
       ]
     },
     {
       "type": "BUT",
       "correct": "Many things kept going wrong for them",
       "distractors": [
-        "Everything went well for them",
-        "Their house was never damaged"
+        "Many neighbors refused to give them help",
+        "Their father lost hope during the journey"
       ]
     },
     {
       "type": "SO",
       "correct": "They continued moving forward and stayed hopeful",
       "distractors": [
-        "He gave up",
-        "He blamed others"
+        "They waited at the inn until help arrived",
+        "They gave up hope and blamed everyone around them"
       ]
     },
     {

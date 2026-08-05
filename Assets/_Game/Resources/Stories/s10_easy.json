@@ -92,26 +92,26 @@
     },
     {
       "type": "BUT",
-      "correct": "Different forces create different kinds of waves",
+      "correct": "Storms and earthquakes can create dangerous waves",
       "distractors": [
-        "Only the wind can create ocean waves",
-        "Waves always stay exactly the same size"
+        "Cold water can freeze the waves near the shore",
+        "Heavy rain can push the waves back to the shore"
       ]
     },
     {
       "type": "SO",
-      "correct": "Waves form from wind, storms, and earthquakes",
+      "correct": "Waves and tides form from wind, storms, and gravity",
       "distractors": [
-        "Waves form only when boats pass by",
-        "Waves form when clouds touch the water"
+        "Waves and tides form from rain, clouds, and fog",
+        "Waves and tides form when boats cross the ocean"
       ]
     },
     {
       "type": "THEN",
       "correct": "The ocean remains in constant motion",
       "distractors": [
-        "The ocean stops moving",
-        "Tsunamis become tides"
+        "The ocean freezes when the tide goes out",
+        "The ocean grows calm after every storm"
       ]
     }
   ],

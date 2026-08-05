@@ -78,8 +78,8 @@
       "type": "SOMEBODY",
       "correct": "Omar and his family",
       "distractors": [
-        "The lion",
-        "The giraffe"
+        "The ducks and the monkeys",
+        "The zookeeper and a guide"
       ]
     },
     {
@@ -92,10 +92,10 @@
     },
     {
       "type": "BUT",
-      "correct": "They had many animals to explore",
+      "correct": "They had too much to see in only one day",
       "distractors": [
-        "They arrived after the zoo closed",
-        "They lost their tickets at the gate"
+        "They lost their tickets at the front gate",
+        "They had no map to find the animal areas"
       ]
     },
     {
@@ -110,8 +110,8 @@
       "type": "THEN",
       "correct": "They had a fun day and made happy memories",
       "distractors": [
-        "They went home feeling bored",
-        "They forgot most of the visit"
+        "They went home tired and a little bored",
+        "They left early and missed the ice cream"
       ]
     }
   ],

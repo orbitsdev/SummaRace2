@@ -94,24 +94,24 @@
       "type": "BUT",
       "correct": "Skateboarding requires balance and practice",
       "distractors": [
-        "Finding food",
-        "Building a skateboard"
+        "Safe places to practice are hard to find",
+        "Safety gear is heavy and hard to wear"
       ]
     },
     {
       "type": "SO",
       "correct": "The beginner learned the basic moves step by step",
       "distractors": [
-        "Watches television",
-        "Buys a new skateboard every day"
+        "The beginner watched skate videos all afternoon",
+        "The beginner bought new wheels for the skateboard"
       ]
     },
     {
       "type": "THEN",
       "correct": "They became ready to learn more advanced tricks",
       "distractors": [
-        "They gave up before learning to balance",
-        "They never rode the skateboard again"
+        "They joined a skateboard contest in the city",
+        "They sold the skateboard to a younger friend"
       ]
     }
   ],

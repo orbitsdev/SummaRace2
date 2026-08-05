@@ -86,32 +86,32 @@
       "type": "WANTED",
       "correct": "Good luck and for her wishes to come true",
       "distractors": [
-        "A new necklace from her uncle",
-        "A day away from school"
+        "New clothes and a phone for her birthday",
+        "A quiet week with no tests or homework"
       ]
     },
     {
       "type": "BUT",
       "correct": "Her wishes seemed to have unexpected consequences",
       "distractors": [
-        "Her necklace stopped working",
-        "Her classmates took the necklace"
+        "Her uncle asked her to return the necklace at once",
+        "Her necklace stopped working after the first wish"
       ]
     },
     {
       "type": "SO",
       "correct": "She visited a museum to learn about the necklace",
       "distractors": [
-        "She hid the necklace",
-        "She gave it to a friend"
+        "She locked the necklace inside her school locker",
+        "She wrote a letter to Uncle Aaron for advice"
       ]
     },
     {
       "type": "THEN",
       "correct": "She decided to get rid of the necklace",
       "distractors": [
-        "She kept using the necklace",
-        "She wished for even more things"
+        "She hid the necklace and kept wishing",
+        "She made one last wish for her class"
       ]
     }
   ],

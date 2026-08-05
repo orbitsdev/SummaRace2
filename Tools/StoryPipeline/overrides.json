@@ -14,160 +14,487 @@
     "playtested s01 stories. Cards are never enlarged to fit text; text is trimmed",
     "to fit the card. flag.py is the gate."
   ],
-
   "s02_average": {
     "elements": {
-      "SO":   { "distractors": ["Mateo chose another cat", "Mateo left the shelter"] },
-      "THEN": { "distractors": ["He chose another pet", "He went home alone"] }
+      "SO": {
+        "distractors": [
+          "Mateo asked the shelter to find him a kitten",
+          "Mateo looked at every other cage in the room"
+        ]
+      },
+      "THEN": {
+        "distractors": [
+          "He picked a young kitten instead",
+          "He promised to visit the shelter"
+        ]
+      },
+      "WANTED": {
+        "distractors": [
+          "A bike for his birthday",
+          "A trip to the toy store"
+        ]
+      },
+      "BUT": {
+        "distractors": [
+          "Santiago was afraid of every visitor",
+          "Santiago was already promised to someone"
+        ]
+      }
     }
   },
   "s02_easy": {
     "elements": {
-      "WANTED": { "distractors": ["To find a treasure", "To build a puzzle"] },
-      "BUT":    { "distractors": ["The room was completely dark", "The clue sheet was missing"] },
-      "SO":     { "distractors": ["They tried to break the key", "They called for help"] },
-      "THEN":   { "distractors": ["The ice never melted", "The key stayed frozen"] }
+      "WANTED": {
+        "distractors": [
+          "To find a treasure",
+          "To build a puzzle"
+        ]
+      },
+      "BUT": {
+        "distractors": [
+          "The room was completely dark",
+          "The clue sheet was missing"
+        ]
+      },
+      "SO": {
+        "distractors": [
+          "They waited for the ice to melt slowly",
+          "They searched the room for a spare key"
+        ]
+      },
+      "THEN": {
+        "distractors": [
+          "The key snapped inside the lock",
+          "The friends ran out of time to escape"
+        ]
+      }
     }
   },
   "s02_hard": {
     "elements": {
-      "BUT":  {
+      "BUT": {
         "correct": "His selfishness left his friends hungry and upset",
-        "distractors": ["His friends took all of the food", "His shell was too heavy to carry"]
+        "distractors": [
+          "His shell was too heavy for him to move fast",
+          "His friends were faster and reached food first"
+        ]
       },
-      "SO":   {
+      "SO": {
         "correct": "He moved to a new ditch and later helped his friends",
-        "distractors": ["He stayed and kept the food", "He raced the other snails again"]
+        "distractors": [
+          "He stayed in the same ditch and ate all the food",
+          "He raced the other snails to prove he was fastest"
+        ]
       },
-      "THEN": { "distractors": ["He kept the food for himself only", "He left the ditch and never returned"] }
+      "THEN": {
+        "distractors": [
+          "He kept racing ahead and ignored his old friends",
+          "He asked the snails to bring food to him daily"
+        ]
+      },
+      "SOMEBODY": {
+        "distractors": [
+          "Sammy",
+          "Pedro"
+        ]
+      },
+      "WANTED": {
+        "distractors": [
+          "To share the food with every snail",
+          "To find a bigger ditch for everyone"
+        ]
+      }
     }
   },
-
   "s03_average": {
     "elements": {
-      "SO":   { "distractors": ["His friends stopped looking for it", "His teacher gave him a new lunchbox"] },
-      "THEN": { "distractors": ["They never found the lunchbox", "They found only his water bottle"] }
+      "SO": {
+        "distractors": [
+          "His friends stopped looking for it",
+          "His teacher gave him a new lunchbox"
+        ]
+      },
+      "THEN": {
+        "distractors": [
+          "They found the lunchbox in the lost bin",
+          "They gave up and went back to class"
+        ]
+      },
+      "WANTED": {
+        "distractors": [
+          "To share lunch with his friends",
+          "To play outside during recess"
+        ]
+      },
+      "BUT": {
+        "distractors": [
+          "He was late for the lunch bell",
+          "He had no money to buy lunch"
+        ]
+      }
     }
   },
   "s03_easy": {
     "elements": {
-      "BUT": { "distractors": ["Their favorite restaurant was closed", "Their mother forgot about dinner"] }
+      "BUT": {
+        "distractors": [
+          "Their car broke down on the way to dinner",
+          "Their mother said dinner would be too late"
+        ]
+      },
+      "WANTED": {
+        "distractors": [
+          "To cook a big dinner at their house",
+          "To order pizza and stay home tonight"
+        ]
+      },
+      "SO": {
+        "distractors": [
+          "They begged their parents to keep the old plan",
+          "They ordered their usual meals to take home"
+        ]
+      },
+      "THEN": {
+        "distractors": [
+          "They stayed home and ate their usual meal",
+          "They decided new food was not for them"
+        ]
+      }
     }
   },
   "s03_hard": {
     "elements": {
-      "WANTED": { "distractors": ["To share the garden with everyone", "To build a bigger house"] }
+      "WANTED": {
+        "distractors": [
+          "To share the garden with everyone",
+          "To build a bigger house"
+        ]
+      },
+      "THEN": {
+        "distractors": [
+          "The children found a new garden to play in",
+          "The children helped the Giant fix his wall"
+        ]
+      }
     }
   },
-
   "s04_average": {
     "elements": {
-      "WANTED": { "distractors": ["A new necklace from her uncle", "A day away from school"] },
-      "BUT":    { "distractors": ["Her necklace stopped working", "Her classmates took the necklace"] },
-      "SO":     { "correct": "She visited a museum to learn about the necklace" },
-      "THEN":   { "distractors": ["She kept using the necklace", "She wished for even more things"] }
+      "WANTED": {
+        "distractors": [
+          "New clothes and a phone for her birthday",
+          "A quiet week with no tests or homework"
+        ]
+      },
+      "BUT": {
+        "distractors": [
+          "Her uncle asked her to return the necklace at once",
+          "Her necklace stopped working after the first wish"
+        ]
+      },
+      "SO": {
+        "correct": "She visited a museum to learn about the necklace",
+        "distractors": [
+          "She locked the necklace inside her school locker",
+          "She wrote a letter to Uncle Aaron for advice"
+        ]
+      },
+      "THEN": {
+        "distractors": [
+          "She hid the necklace and kept wishing",
+          "She made one last wish for her class"
+        ]
+      }
     }
   },
   "s04_easy": {
     "elements": {
-      "WANTED": { "distractors": ["To go shopping at the mall", "To watch a movie at home"] },
-      "BUT":    { "distractors": ["They arrived after the zoo closed", "They lost their tickets at the gate"] },
-      "SO":     { "distractors": ["They stayed near the entrance", "They skipped most of the exhibits"] },
-      "THEN":   { "distractors": ["They went home feeling bored", "They forgot most of the visit"] }
+      "WANTED": {
+        "distractors": [
+          "To go shopping at the mall",
+          "To watch a movie at home"
+        ]
+      },
+      "BUT": {
+        "distractors": [
+          "They lost their tickets at the front gate",
+          "They had no map to find the animal areas"
+        ],
+        "correct": "They had too much to see in only one day"
+      },
+      "SO": {
+        "distractors": [
+          "They stayed near the entrance",
+          "They skipped most of the exhibits"
+        ]
+      },
+      "THEN": {
+        "distractors": [
+          "They went home tired and a little bored",
+          "They left early and missed the ice cream"
+        ]
+      },
+      "SOMEBODY": {
+        "distractors": [
+          "The ducks and the monkeys",
+          "The zookeeper and a guide"
+        ]
+      }
     }
   },
   "s04_hard": {
     "elements": {
       "SOMEBODY": {
         "correct": "People who visit AgitAgueda and other festivals",
-        "distractors": ["Farmers who work in the countryside", "Sailors who travel along the coast"]
+        "distractors": [
+          "Farmers who grow crops in northern Portugal",
+          "Sailors who sail along the Portuguese coast"
+        ]
       },
-      "BUT":      {
-        "correct": "There are many festivals and attractions to explore",
-        "distractors": ["There is very little to see in Portugal", "There are no festivals during the summer"]
+      "BUT": {
+        "correct": "There are too many festivals to visit in one trip",
+        "distractors": [
+          "There is bad weather during the whole festival",
+          "There are long lines at all the famous landmarks"
+        ]
       },
-      "SO":       {
+      "SO": {
         "correct": "They visited AgitAgueda and its famous landmarks",
-        "distractors": ["They stayed inside their hotel the whole time", "They avoided the local traditions and food"]
+        "distractors": [
+          "They stayed inside their hotel the whole time",
+          "They avoided the local traditions and food"
+        ]
       },
-      "THEN":     {
+      "THEN": {
         "correct": "They discovered Portugal's rich festival traditions",
-        "distractors": ["They left without learning anything new", "They decided never to return to Portugal"]
+        "distractors": [
+          "They visited only the Umbrella Sky Project there",
+          "They spent the whole week resting at their hotel"
+        ]
+      },
+      "WANTED": {
+        "distractors": [
+          "To find a quiet beach far from the festivals",
+          "To study the history of Portuguese farming"
+        ]
       }
     }
   },
-
   "s05_average": {
     "elements": {
-      "SO":   { "distractors": ["Owen ignored Mzee completely", "Owen found a different friend"] },
-      "THEN": { "distractors": ["They never became friends", "They were kept apart"] }
+      "SO": {
+        "distractors": [
+          "Owen ignored Mzee completely",
+          "Owen found a different friend"
+        ]
+      },
+      "THEN": {
+        "distractors": [
+          "They never became friends",
+          "They were kept apart"
+        ]
+      },
+      "WANTED": {
+        "distractors": [
+          "Freedom and the open sea",
+          "Food and a warm cage"
+        ]
+      },
+      "BUT": {
+        "distractors": [
+          "He was hungry and no one fed him",
+          "He was sick and stayed inside a cage"
+        ]
+      }
     }
   },
   "s05_easy": {
     "elements": {
-      "BUT":  { "distractors": ["Their animals ran away from home", "Their village was too far away"] },
-      "THEN": { "distractors": ["They moved to a bigger house", "They kept the animals inside forever"] }
+      "BUT": {
+        "distractors": [
+          "Their animals ran away from home",
+          "Their village was too far away"
+        ]
+      },
+      "THEN": {
+        "distractors": [
+          "They decided to move away into a much larger house",
+          "They kept the relatives and animals inside for good"
+        ]
+      },
+      "WANTED": {
+        "distractors": [
+          "A new house in town",
+          "A bigger barn for animals"
+        ]
+      },
+      "SO": {
+        "distractors": [
+          "They asked the neighbors for more room",
+          "They sent their animals to a neighbor's farm"
+        ]
+      }
     }
   },
   "s05_hard": {
     "elements": {
-      "WANTED": { "distractors": ["To teach them how to drive a car", "To show them a movie about space"] },
-      "BUT":    { "distractors": ["His grandchildren forgot the stories", "His grandchildren disliked old technology"] }
+      "WANTED": {
+        "distractors": [
+          "To teach them how to drive a car",
+          "To show them a movie about space"
+        ]
+      },
+      "BUT": {
+        "distractors": [
+          "His grandchildren forgot the stories",
+          "His grandchildren disliked old technology"
+        ]
+      },
+      "SO": {
+        "distractors": [
+          "He gave them books about old machines",
+          "He asked them to write a report for school"
+        ]
+      },
+      "THEN": {
+        "distractors": [
+          "They forgot most of Grandfather's stories",
+          "They stopped listening and left the house early"
+        ]
+      }
     }
   },
-
   "s06_average": {
     "elements": {
-      "BUT":  { "correct": "She was nervous about making mistakes on stage" },
-      "SO":   { "correct": "She practiced everywhere and stayed confident" },
+      "BUT": {
+        "correct": "She was nervous about making mistakes on stage",
+        "distractors": [
+          "She was late and could not find her dance costume",
+          "She was tired from dancing all week long"
+        ]
+      },
+      "SO": {
+        "correct": "She practiced everywhere and stayed confident",
+        "distractors": [
+          "She stopped dancing and watched from the seats",
+          "She asked her teacher to change her solo"
+        ]
+      },
       "THEN": {
         "correct": "She finished the recital and felt proud",
-        "distractors": ["She quit dancing before her solo", "She forgot her whole routine on stage"]
+        "distractors": [
+          "She quit dancing before her solo",
+          "She forgot her whole routine on stage"
+        ]
+      },
+      "WANTED": {
+        "distractors": [
+          "To win first prize at the singing contest",
+          "To skip the recital and stay at home with Mom"
+        ]
       }
     }
   },
   "s06_easy": {
     "elements": {
-      "WANTED": { "correct": "To find safety and rebuild their lives" },
-      "BUT":    { "distractors": ["Everything went well for them", "Their house was never damaged"] },
-      "THEN":   {
+      "WANTED": {
+        "correct": "To find safety and rebuild their lives",
+        "distractors": [
+          "To buy a new wagon and travel faster",
+          "To move to another country and start over"
+        ]
+      },
+      "BUT": {
+        "distractors": [
+          "Many neighbors refused to give them help",
+          "Their father lost hope during the journey"
+        ]
+      },
+      "THEN": {
         "correct": "They learned their bad luck led to good things",
-        "distractors": ["They stayed unlucky for the whole journey", "They never learned why things went wrong"]
+        "distractors": [
+          "They stayed unlucky for the whole journey",
+          "They never learned why things went wrong"
+        ]
+      },
+      "SO": {
+        "distractors": [
+          "They waited at the inn until help arrived",
+          "They gave up hope and blamed everyone around them"
+        ]
       }
     }
   },
   "s06_hard": {
     "elements": {
-      "WANTED": { "distractors": ["To learn how to build a robot", "To learn how to cook stew"] },
-      "BUT":    {
-        "correct": "Life in the past was nothing like their world",
-        "distractors": ["Life in the past seemed exactly the same", "Life without Mindcaps was easy to imagine"]
+      "WANTED": {
+        "distractors": [
+          "To learn how to build a thinking robot",
+          "To learn how to cook Grandfather's best stew"
+        ]
       },
-      "SO":     { "correct": "Grandfather shared memories from his childhood" },
-      "THEN":   {
-        "correct": "The children gained new respect for the past",
-        "distractors": ["The children decided the old days sounded boring", "The children forgot everything Grandfather told them"]
+      "BUT": {
+        "correct": "Life in the past was nothing like their world",
+        "distractors": [
+          "Life in the past seemed exactly the same",
+          "Life without Mindcaps was easy to imagine"
+        ]
+      },
+      "SO": {
+        "correct": "Grandfather shared memories from his childhood",
+        "distractors": [
+          "Grandfather took them flying in a spaceship",
+          "Grandfather built a new machine for the children"
+        ]
+      },
+      "THEN": {
+        "correct": "The children appreciated how people lived long ago",
+        "distractors": [
+          "The children decided the old days sounded boring",
+          "The children forgot everything Grandfather told them"
+        ]
       }
     }
   },
-
   "s07_average": {
     "pages": {
-      "2": { "text": "Chef Pierre wanted to impress the queen and become her official chef." }
+      "2": {
+        "text": "Chef Pierre wanted to impress the queen and become her official chef."
+      }
     },
     "questions": {
-      "5": { "options": { "1": "Slice and Dice won, and Pierre became Frog Keeper" } }
+      "5": {
+        "options": {
+          "1": "Slice and Dice became Chefs, Pierre the Frog Keeper"
+        }
+      }
     },
     "elements": {
       "WANTED": {
         "correct": "To become the Queen's Chef Royale with frog legs",
-        "distractors": ["To open a small bakery in the village", "To cook oranges for the queen's dinner"]
+        "distractors": [
+          "To open the finest bakery in the whole village",
+          "To cook a grand orange feast for the whole palace"
+        ]
       },
-      "BUT":    { "distractors": ["He could not find his cooking pot", "He arrived late to the palace"] },
-      "SO":     { "distractors": ["Chef Pierre asked the queen for help", "Chef Pierre cooked a different meal"] },
-      "THEN":   {
-        "correct": "Slice and Dice won, Pierre became Frog Keeper",
-        "distractors": ["Chef Pierre became the Queen's Chef Royale", "The frog became the queen's new pet"]
+      "BUT": {
+        "distractors": [
+          "He could not find his largest cooking pot",
+          "He and his assistants arrived late at the palace"
+        ]
+      },
+      "SO": {
+        "distractors": [
+          "Chef Pierre asked the queen for extra help",
+          "Chef Pierre cooked a completely different meal"
+        ]
+      },
+      "THEN": {
+        "correct": "Slice and Dice became Chefs, Pierre the Frog Keeper",
+        "distractors": [
+          "Chef Pierre served his frog legs and won the contest",
+          "Slice and Dice left, Pierre stayed as royal chef"
+        ]
       }
     }
   },
@@ -175,134 +502,353 @@
     "elements": {
       "THEN": {
         "correct": "His classmates admired him and became his friends",
-        "distractors": ["His classmates ignored his ball tricks", "His classmates laughed and walked away"]
+        "distractors": [
+          "His classmates ignored him and walked away quietly",
+          "His classmates laughed and took away his ball"
+        ]
+      },
+      "WANTED": {
+        "distractors": [
+          "To buy a new ball for the playground",
+          "To move back to his old town"
+        ]
+      },
+      "BUT": {
+        "distractors": [
+          "He lost his ball on the way to school",
+          "He was late and missed the school bus"
+        ]
+      },
+      "SO": {
+        "distractors": [
+          "He hid from his classmates all week long",
+          "He went home early and played by himself"
+        ]
       }
     }
   },
   "s07_hard": {
     "pages": {
-      "3": { "text": "The factory work was fast, repetitive, and tiring, making the job difficult." }
+      "3": {
+        "text": "The factory work was fast, repetitive, and tiring, making the job difficult."
+      }
     },
     "elements": {
       "WANTED": {
         "correct": "To do well at his job and support his family",
-        "distractors": ["To quit the factory on his first day", "To become the manager of the factory"]
+        "distractors": [
+          "To quit the factory before his first day was over",
+          "To become the manager of the whole factory"
+        ]
       },
-      "BUT":    {
+      "BUT": {
         "correct": "The work was hard, repetitive, and tiring",
-        "distractors": ["The factory had no work for him", "The other workers refused to help him"]
+        "distractors": [
+          "The factory had no work for him",
+          "The other workers refused to help him"
+        ]
       },
-      "SO":     {
+      "SO": {
         "correct": "He learned his task and worked hard all day",
-        "distractors": ["He refused to work on the assembly line", "He left the factory during his training"]
+        "distractors": [
+          "He refused to work on the assembly line",
+          "He left the factory during his training"
+        ]
       },
-      "THEN":   {
+      "THEN": {
         "correct": "He stayed for his family's better future",
-        "distractors": ["He quit the job before the day ended", "He became the owner of the factory"]
+        "distractors": [
+          "He quit the job before the day ended",
+          "He became the owner of the factory"
+        ]
       }
     }
   },
-
   "s08_average": {
     "elements": {
-      "WANTED": { "distractors": ["To learn how to ride a motorcycle", "To learn how to surf big waves"] },
-      "BUT":    { "correct": "Skateboarding requires balance and practice" },
-      "SO":     { "correct": "The beginner learned the basic moves step by step" },
-      "THEN":   { "distractors": ["They gave up before learning to balance", "They never rode the skateboard again"] }
+      "WANTED": {
+        "distractors": [
+          "To learn how to ride a motorcycle",
+          "To learn how to surf big waves"
+        ]
+      },
+      "BUT": {
+        "correct": "Skateboarding requires balance and practice",
+        "distractors": [
+          "Safe places to practice are hard to find",
+          "Safety gear is heavy and hard to wear"
+        ]
+      },
+      "SO": {
+        "correct": "The beginner learned the basic moves step by step",
+        "distractors": [
+          "The beginner watched skate videos all afternoon",
+          "The beginner bought new wheels for the skateboard"
+        ]
+      },
+      "THEN": {
+        "distractors": [
+          "They joined a skateboard contest in the city",
+          "They sold the skateboard to a younger friend"
+        ]
+      }
     }
   },
   "s08_easy": {
     "questions": {
-      "5": { "options": { "1": "The food stayed fresh, but Doris felt sad" } }
+      "5": {
+        "options": {
+          "1": "The food stayed fresh, but Doris felt sorry for Charlie"
+        }
+      }
     },
     "elements": {
-      "BUT":  {
+      "BUT": {
         "correct": "The icebox could not keep ice in the hot summer",
-        "distractors": ["The ice man stopped coming to their street", "The kitchen was too cold for the food"]
+        "distractors": [
+          "The ice man stopped coming to their street",
+          "The ice man came only once every two weeks"
+        ]
       },
       "THEN": {
-        "correct": "Their food stayed fresh, though Doris felt sad",
-        "distractors": ["Their food spoiled even with the refrigerator", "Their family kept using the old icebox"]
+        "correct": "Food stayed fresh; Doris felt sorry for Charlie",
+        "distractors": [
+          "Food spoiled quickly; Doris missed the icebox",
+          "Papa returned the fridge; Doris felt happy"
+        ]
+      },
+      "SOMEBODY": {
+        "distractors": [
+          "Charlie the ice man",
+          "Papa and the ice man"
+        ]
+      },
+      "WANTED": {
+        "distractors": [
+          "To learn how to make ice at home",
+          "To sell their old icebox for money"
+        ]
+      },
+      "SO": {
+        "distractors": [
+          "Papa carried home a bigger block of ice",
+          "Mama asked Charlie to bring more ice"
+        ]
       }
     }
   },
   "s08_hard": {
     "elements": {
-      "WANTED": { "distractors": ["To cook a big meal for his friends", "To build a new house in the village"] },
-      "BUT":    { "distractors": ["All of the cook pots were empty", "All of his friends stopped cooking"] },
-      "THEN":   {
+      "WANTED": {
+        "distractors": [
+          "To cook a big feast for everyone in the village",
+          "To learn how to make eight pots of soup at once"
+        ]
+      },
+      "BUT": {
+        "distractors": [
+          "All of his friends forgot to cook that morning",
+          "All of the pots were carried away by the river"
+        ]
+      },
+      "THEN": {
         "correct": "His legs stretched out, and he learned about greed",
-        "distractors": ["His legs stayed short and he ate everything", "His friends never noticed what he had done"]
+        "distractors": [
+          "His legs stayed short, and he cooked his own meal",
+          "His webs disappeared, and he ate alone that night"
+        ]
+      },
+      "SO": {
+        "distractors": [
+          "Every web slipped off his legs before the meal",
+          "Every friend carried a full pot to his house"
+        ]
       }
     }
   },
-
   "s09_average": {
     "elements": {
-      "SOMEBODY": { "distractors": ["Asma's mother", "Asma's teacher"] },
-      "BUT":      { "correct": "She became hungry and could not eat until sunset" },
-      "SO":       { "correct": "She kept fasting and followed Ramadan traditions" },
-      "THEN":     {
+      "SOMEBODY": {
+        "distractors": [
+          "Mother",
+          "Teacher"
+        ]
+      },
+      "BUT": {
+        "correct": "She became hungry and could not eat until sunset",
+        "distractors": [
+          "She felt tired during her lessons at school",
+          "She smelled food cooking all through the day"
+        ]
+      },
+      "SO": {
+        "correct": "She kept fasting and followed Ramadan traditions",
+        "distractors": [
+          "She ate small meals whenever she felt hungry",
+          "She rested at home and waited for Ramadan to end"
+        ]
+      },
+      "THEN": {
         "correct": "She celebrated Eid al-Fitr, proud of her first fast",
-        "distractors": ["She gave up fasting before Ramadan ended", "She celebrated without finishing her first fast"]
+        "distractors": [
+          "She ended her fast early and missed the feast",
+          "She celebrated without finishing her first fast"
+        ]
+      },
+      "WANTED": {
+        "distractors": [
+          "To cook the evening meal for her family",
+          "To visit her cousins during Ramadan"
+        ]
       }
     }
   },
   "s09_easy": {
     "elements": {
-      "THEN": { "distractors": ["She changed her mind about the pool", "She sold the pool to Heather"] }
+      "THEN": {
+        "distractors": [
+          "She changed her mind about the pool",
+          "She gave her new pool away to Heather"
+        ]
+      },
+      "WANTED": {
+        "distractors": [
+          "A trip to the beach with her friend Heather",
+          "A garden with shade trees for hot days"
+        ]
+      },
+      "BUT": {
+        "distractors": [
+          "She forgot the name of Heather's pool company",
+          "She had to wait for a builder to call her back"
+        ]
+      },
+      "SO": {
+        "distractors": [
+          "She asked Heather to choose the company for her",
+          "She picked the first company in the phone book"
+        ]
+      }
     }
   },
   "s09_hard": {
     "elements": {
-      "BUT":  { "distractors": ["Baba Yaga hid the key to the house", "Baba Yaga took away her warm clothes"] },
-      "SO":   {
-        "correct": "Marusia and the hedgehog found the magical flower",
-        "distractors": ["Marusia tried to fight Baba Yaga alone", "Marusia hid in the forest until morning"]
+      "BUT": {
+        "distractors": [
+          "Baba Yaga sent her hut walking into the woods",
+          "Baba Yaga hid the forest path under a thick fog"
+        ]
+      },
+      "SO": {
+        "correct": "She told Baba Yaga where the magic flower grew",
+        "distractors": [
+          "She sent the hedgehog to steal the gate key",
+          "She waited for Dmitri to break down the gate"
+        ]
       },
       "THEN": {
         "correct": "Marusia and Dmitri were set free and returned home",
-        "distractors": ["Marusia stayed trapped inside the house forever", "Baba Yaga kept the hedgehog as a servant"]
+        "distractors": [
+          "Marusia stayed trapped inside the house forever",
+          "Baba Yaga followed them back to their village"
+        ]
+      },
+      "WANTED": {
+        "distractors": [
+          "To learn Baba Yaga's magic spells",
+          "To live in the forest with the hedgehog"
+        ]
       }
     }
   },
-
   "s10_average": {
     "elements": {
-      "BUT":  {
+      "BUT": {
         "correct": "Many soldiers and families suffered in the Civil War",
-        "distractors": ["Many hospitals refused to accept her help", "Many families moved away before the war"]
+        "distractors": [
+          "Many hospitals refused to let her bring supplies",
+          "Many doctors told her to stay far from the battle"
+        ]
       },
-      "SO":   {
+      "SO": {
         "correct": "She gathered supplies and cared for soldiers",
-        "distractors": ["She waited at home until the war ended", "She wrote letters instead of helping soldiers"]
+        "distractors": [
+          "She waited at home until the war ended",
+          "She wrote letters instead of helping soldiers"
+        ]
       },
       "THEN": {
         "correct": "She founded the American Red Cross",
-        "distractors": ["She stopped helping people after the war", "She joined the army as a soldier"]
+        "distractors": [
+          "She stopped helping people after the war",
+          "She joined the army as a soldier"
+        ]
       }
     }
   },
   "s10_easy": {
     "elements": {
-      "WANTED": { "distractors": ["To carry fish across the ocean", "To push ships toward the shore"] },
-      "BUT":    {
-        "correct": "Different forces create different kinds of waves",
-        "distractors": ["Only the wind can create ocean waves", "Waves always stay exactly the same size"]
+      "WANTED": {
+        "distractors": [
+          "To carry fish across the ocean",
+          "To push ships toward the shore"
+        ]
       },
-      "SO":     {
-        "correct": "Waves form from wind, storms, and earthquakes",
-        "distractors": ["Waves form only when boats pass by", "Waves form when clouds touch the water"]
+      "BUT": {
+        "correct": "Storms and earthquakes can create dangerous waves",
+        "distractors": [
+          "Cold water can freeze the waves near the shore",
+          "Heavy rain can push the waves back to the shore"
+        ]
+      },
+      "SO": {
+        "correct": "Waves and tides form from wind, storms, and gravity",
+        "distractors": [
+          "Waves and tides form from rain, clouds, and fog",
+          "Waves and tides form when boats cross the ocean"
+        ]
+      },
+      "THEN": {
+        "distractors": [
+          "The ocean freezes when the tide goes out",
+          "The ocean grows calm after every storm"
+        ]
       }
     }
   },
   "s10_hard": {
     "elements": {
-      "BUT":  { "correct": "They faced danger during wars and emergencies" },
-      "SO":   { "distractors": ["They performed tricks for large crowds", "They guarded farms far from danger"] },
+      "BUT": {
+        "correct": "They faced danger during wars and emergencies",
+        "distractors": [
+          "They needed long training before every mission",
+          "They carried loads that were too heavy to lift"
+        ]
+      },
+      "SO": {
+        "distractors": [
+          "They performed clever tricks for cheering crowds",
+          "They guarded quiet farms far away from any danger"
+        ]
+      },
       "THEN": {
         "correct": "They were honored with the Dickin Medal",
-        "distractors": ["They were forgotten after the war ended", "They were never given any award"]
+        "distractors": [
+          "They were forgotten after the war ended",
+          "They were sent to live on quiet farms"
+        ]
+      },
+      "SOMEBODY": {
+        "distractors": [
+          "Farmers who raised animals for work",
+          "Scientists who studied wild animals"
+        ]
+      },
+      "WANTED": {
+        "distractors": [
+          "To keep all animals as pets",
+          "To sell trained animals to zoos"
+        ]
       }
     }
   }

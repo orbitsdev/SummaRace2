@@ -66,7 +66,7 @@
         "text": "What happened in the end?",
         "options": [
           "Chef Pierre became the Queen's Chef Royale",
-          "Slice and Dice won, and Pierre became Frog Keeper",
+          "Slice and Dice became Chefs, Pierre the Frog Keeper",
           "The frog became the queen's pet"
         ],
         "correctIndex": 1
@@ -86,32 +86,32 @@
       "type": "WANTED",
       "correct": "To become the Queen's Chef Royale with frog legs",
       "distractors": [
-        "To open a small bakery in the village",
-        "To cook oranges for the queen's dinner"
+        "To open the finest bakery in the whole village",
+        "To cook a grand orange feast for the whole palace"
       ]
     },
     {
       "type": "BUT",
       "correct": "He and his assistants could not catch the frog",
       "distractors": [
-        "He could not find his cooking pot",
-        "He arrived late to the palace"
+        "He could not find his largest cooking pot",
+        "He and his assistants arrived late at the palace"
       ]
     },
     {
       "type": "SO",
       "correct": "Chef Pierre tried to catch the frog himself",
       "distractors": [
-        "Chef Pierre asked the queen for help",
-        "Chef Pierre cooked a different meal"
+        "Chef Pierre asked the queen for extra help",
+        "Chef Pierre cooked a completely different meal"
       ]
     },
     {
       "type": "THEN",
-      "correct": "Slice and Dice won, Pierre became Frog Keeper",
+      "correct": "Slice and Dice became Chefs, Pierre the Frog Keeper",
       "distractors": [
-        "Chef Pierre became the Queen's Chef Royale",
-        "The frog became the queen's new pet"
+        "Chef Pierre served his frog legs and won the contest",
+        "Slice and Dice left, Pierre stayed as royal chef"
       ]
     }
   ],

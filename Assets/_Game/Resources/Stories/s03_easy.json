@@ -86,32 +86,32 @@
       "type": "WANTED",
       "correct": "To eat at their favorite restaurant",
       "distractors": [
-        "To stay home",
-        "To cook dinner"
+        "To cook a big dinner at their house",
+        "To order pizza and stay home tonight"
       ]
     },
     {
       "type": "BUT",
       "correct": "Their father wanted to try a new restaurant",
       "distractors": [
-        "Their favorite restaurant was closed",
-        "Their mother forgot about dinner"
+        "Their car broke down on the way to dinner",
+        "Their mother said dinner would be too late"
       ]
     },
     {
       "type": "SO",
       "correct": "They agreed to give the new restaurant a chance",
       "distractors": [
-        "They refused to go",
-        "They ordered pizza"
+        "They begged their parents to keep the old plan",
+        "They ordered their usual meals to take home"
       ]
     },
     {
       "type": "THEN",
       "correct": "They became willing to try something new",
       "distractors": [
-        "They stayed at home",
-        "They went to the Italian restaurant"
+        "They stayed home and ate their usual meal",
+        "They decided new food was not for them"
       ]
     }
   ],

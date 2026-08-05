@@ -86,8 +86,8 @@
       "type": "WANTED",
       "correct": "To learn about life in Grandfather's day",
       "distractors": [
-        "To learn how to build a robot",
-        "To learn how to cook stew"
+        "To learn how to build a thinking robot",
+        "To learn how to cook Grandfather's best stew"
       ]
     },
     {
@@ -102,13 +102,13 @@
       "type": "SO",
       "correct": "Grandfather shared memories from his childhood",
       "distractors": [
-        "Flying a spaceship",
-        "Riding a Plugger"
+        "Grandfather took them flying in a spaceship",
+        "Grandfather built a new machine for the children"
       ]
     },
     {
       "type": "THEN",
-      "correct": "The children gained new respect for the past",
+      "correct": "The children appreciated how people lived long ago",
       "distractors": [
         "The children decided the old days sounded boring",
         "The children forgot everything Grandfather told them"

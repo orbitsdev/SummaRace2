@@ -102,16 +102,16 @@
       "type": "SO",
       "correct": "He showed them pictures and told stories",
       "distractors": [
-        "He gave them homework",
-        "He bought them books"
+        "He gave them books about old machines",
+        "He asked them to write a report for school"
       ]
     },
     {
       "type": "THEN",
       "correct": "They appreciated how different life used to be",
       "distractors": [
-        "They ignored Grandfather",
-        "They left early"
+        "They forgot most of Grandfather's stories",
+        "They stopped listening and left the house early"
       ]
     }
   ],

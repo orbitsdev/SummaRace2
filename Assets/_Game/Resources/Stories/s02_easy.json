@@ -102,16 +102,16 @@
       "type": "SO",
       "correct": "They used what Lucy learned in science",
       "distractors": [
-        "They tried to break the key",
-        "They called for help"
+        "They waited for the ice to melt slowly",
+        "They searched the room for a spare key"
       ]
     },
     {
       "type": "THEN",
       "correct": "The ice melted and they escaped",
       "distractors": [
-        "The ice never melted",
-        "The key stayed frozen"
+        "The key snapped inside the lock",
+        "The friends ran out of time to escape"
       ]
     }
   ],

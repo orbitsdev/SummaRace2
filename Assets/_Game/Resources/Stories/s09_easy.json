@@ -86,24 +86,24 @@
       "type": "WANTED",
       "correct": "A pool to stay cool during the summer",
       "distractors": [
-        "A larger house",
-        "More food"
+        "A trip to the beach with her friend Heather",
+        "A garden with shade trees for hot days"
       ]
     },
     {
       "type": "BUT",
       "correct": "She needed to decide which company to buy from",
       "distractors": [
-        "She did not like swimming",
-        "She lost her money"
+        "She forgot the name of Heather's pool company",
+        "She had to wait for a builder to call her back"
       ]
     },
     {
       "type": "SO",
       "correct": "She researched different pool companies and reviews",
       "distractors": [
-        "She guessed",
-        "She asked no questions"
+        "She asked Heather to choose the company for her",
+        "She picked the first company in the phone book"
       ]
     },
     {
@@ -111,7 +111,7 @@
       "correct": "She bought a pool and enjoyed using it",
       "distractors": [
         "She changed her mind about the pool",
-        "She sold the pool to Heather"
+        "She gave her new pool away to Heather"
       ]
     }
   ],

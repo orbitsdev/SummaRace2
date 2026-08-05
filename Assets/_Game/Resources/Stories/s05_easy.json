@@ -86,8 +86,8 @@
       "type": "WANTED",
       "correct": "A less crowded house",
       "distractors": [
-        "A bigger house",
-        "More visitors"
+        "A new house in town",
+        "A bigger barn for animals"
       ]
     },
     {
@@ -102,16 +102,16 @@
       "type": "SO",
       "correct": "They followed Reb Solman's unusual advice",
       "distractors": [
-        "They built a new house",
-        "They sold their animals"
+        "They asked the neighbors for more room",
+        "They sent their animals to a neighbor's farm"
       ]
     },
     {
       "type": "THEN",
       "correct": "They realized their house was not crowded after all",
       "distractors": [
-        "They moved to a bigger house",
-        "They kept the animals inside forever"
+        "They decided to move away into a much larger house",
+        "They kept the relatives and animals inside for good"
       ]
     }
   ],

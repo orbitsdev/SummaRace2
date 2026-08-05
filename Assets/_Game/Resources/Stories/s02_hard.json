@@ -78,40 +78,40 @@
       "type": "SOMEBODY",
       "correct": "Shawn",
       "distractors": [
-        "The hungry snails",
-        "The strongest ditch"
+        "Sammy",
+        "Pedro"
       ]
     },
     {
       "type": "WANTED",
       "correct": "To get all the food and water first",
       "distractors": [
-        "To share with everyone",
-        "To leave the ditch"
+        "To share the food with every snail",
+        "To find a bigger ditch for everyone"
       ]
     },
     {
       "type": "BUT",
       "correct": "His selfishness left his friends hungry and upset",
       "distractors": [
-        "His friends took all of the food",
-        "His shell was too heavy to carry"
+        "His shell was too heavy for him to move fast",
+        "His friends were faster and reached food first"
       ]
     },
     {
       "type": "SO",
       "correct": "He moved to a new ditch and later helped his friends",
       "distractors": [
-        "He stayed and kept the food",
-        "He raced the other snails again"
+        "He stayed in the same ditch and ate all the food",
+        "He raced the other snails to prove he was fastest"
       ]
     },
     {
       "type": "THEN",
       "correct": "He used his speed to help others instead of himself",
       "distractors": [
-        "He kept the food for himself only",
-        "He left the ditch and never returned"
+        "He kept racing ahead and ignored his old friends",
+        "He asked the snails to bring food to him daily"
       ]
     }
   ],

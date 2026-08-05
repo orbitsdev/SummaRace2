@@ -86,16 +86,16 @@
       "type": "WANTED",
       "correct": "To find his missing lunchbox",
       "distractors": [
-        "To buy a new lunchbox",
-        "To go home"
+        "To share lunch with his friends",
+        "To play outside during recess"
       ]
     },
     {
       "type": "BUT",
       "correct": "He could not find it by himself",
       "distractors": [
-        "He forgot his homework",
-        "He lost his backpack"
+        "He was late for the lunch bell",
+        "He had no money to buy lunch"
       ]
     },
     {
@@ -110,8 +110,8 @@
       "type": "THEN",
       "correct": "They found the lunchbox near the swings",
       "distractors": [
-        "They never found the lunchbox",
-        "They found only his water bottle"
+        "They found the lunchbox in the lost bin",
+        "They gave up and went back to class"
       ]
     }
   ],

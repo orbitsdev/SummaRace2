@@ -86,24 +86,24 @@
       "type": "WANTED",
       "correct": "To escape Baba Yaga and return home",
       "distractors": [
-        "To become a witch",
-        "To stay with Baba Yaga"
+        "To learn Baba Yaga's magic spells",
+        "To live in the forest with the hedgehog"
       ]
     },
     {
       "type": "BUT",
       "correct": "Baba Yaga captured her and magically locked the gate",
       "distractors": [
-        "Baba Yaga hid the key to the house",
-        "Baba Yaga took away her warm clothes"
+        "Baba Yaga sent her hut walking into the woods",
+        "Baba Yaga hid the forest path under a thick fog"
       ]
     },
     {
       "type": "SO",
-      "correct": "Marusia and the hedgehog found the magical flower",
+      "correct": "She told Baba Yaga where the magic flower grew",
       "distractors": [
-        "Marusia tried to fight Baba Yaga alone",
-        "Marusia hid in the forest until morning"
+        "She sent the hedgehog to steal the gate key",
+        "She waited for Dmitri to break down the gate"
       ]
     },
     {
@@ -111,7 +111,7 @@
       "correct": "Marusia and Dmitri were set free and returned home",
       "distractors": [
         "Marusia stayed trapped inside the house forever",
-        "Baba Yaga kept the hedgehog as a servant"
+        "Baba Yaga followed them back to their village"
       ]
     }
   ],

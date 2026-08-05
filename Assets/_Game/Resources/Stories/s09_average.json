@@ -78,39 +78,39 @@
       "type": "SOMEBODY",
       "correct": "Asma",
       "distractors": [
-        "Asma's mother",
-        "Asma's teacher"
+        "Mother",
+        "Teacher"
       ]
     },
     {
       "type": "WANTED",
       "correct": "To complete her first Ramadan fast",
       "distractors": [
-        "To eat more snacks",
-        "To stay home from school"
+        "To cook the evening meal for her family",
+        "To visit her cousins during Ramadan"
       ]
     },
     {
       "type": "BUT",
       "correct": "She became hungry and could not eat until sunset",
       "distractors": [
-        "She forgot to eat breakfast",
-        "She lost her gifts"
+        "She felt tired during her lessons at school",
+        "She smelled food cooking all through the day"
       ]
     },
     {
       "type": "SO",
       "correct": "She kept fasting and followed Ramadan traditions",
       "distractors": [
-        "She stopped fasting",
-        "She skipped school"
+        "She ate small meals whenever she felt hungry",
+        "She rested at home and waited for Ramadan to end"
       ]
     },
     {
       "type": "THEN",
       "correct": "She celebrated Eid al-Fitr, proud of her first fast",
       "distractors": [
-        "She gave up fasting before Ramadan ended",
+        "She ended her fast early and missed the feast",
         "She celebrated without finishing her first fast"
       ]
     }

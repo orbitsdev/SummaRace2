@@ -78,32 +78,32 @@
       "type": "SOMEBODY",
       "correct": "Brave animals that served people",
       "distractors": [
-        "Farmers",
-        "Scientists"
+        "Farmers who raised animals for work",
+        "Scientists who studied wild animals"
       ]
     },
     {
       "type": "WANTED",
       "correct": "To help and protect others",
       "distractors": [
-        "To train animals",
-        "To start a zoo"
+        "To keep all animals as pets",
+        "To sell trained animals to zoos"
       ]
     },
     {
       "type": "BUT",
       "correct": "They faced danger during wars and emergencies",
       "distractors": [
-        "They had no homes",
-        "They could not find food"
+        "They needed long training before every mission",
+        "They carried loads that were too heavy to lift"
       ]
     },
     {
       "type": "SO",
       "correct": "They worked loyally and courageously to save lives",
       "distractors": [
-        "They performed tricks for large crowds",
-        "They guarded farms far from danger"
+        "They performed clever tricks for cheering crowds",
+        "They guarded quiet farms far away from any danger"
       ]
     },
     {
@@ -111,7 +111,7 @@
       "correct": "They were honored with the Dickin Medal",
       "distractors": [
         "They were forgotten after the war ended",
-        "They were never given any award"
+        "They were sent to live on quiet farms"
       ]
     }
   ],

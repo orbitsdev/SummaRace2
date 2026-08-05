@@ -86,32 +86,32 @@
       "type": "WANTED",
       "correct": "A pet to bring home",
       "distractors": [
-        "A bicycle",
-        "A rabbit"
+        "A bike for his birthday",
+        "A trip to the toy store"
       ]
     },
     {
       "type": "BUT",
       "correct": "Santiago was old and needed extra care",
       "distractors": [
-        "The shelter was closed",
-        "Santiago was missing"
+        "Santiago was afraid of every visitor",
+        "Santiago was already promised to someone"
       ]
     },
     {
       "type": "SO",
       "correct": "Mateo spent time with him and thought carefully",
       "distractors": [
-        "Mateo chose another cat",
-        "Mateo left the shelter"
+        "Mateo asked the shelter to find him a kitten",
+        "Mateo looked at every other cage in the room"
       ]
     },
     {
       "type": "THEN",
       "correct": "He chose Santiago as his friend",
       "distractors": [
-        "He chose another pet",
-        "He went home alone"
+        "He picked a young kitten instead",
+        "He promised to visit the shelter"
       ]
     }
   ],

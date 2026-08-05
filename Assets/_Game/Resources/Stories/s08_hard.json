@@ -86,32 +86,32 @@
       "type": "WANTED",
       "correct": "To eat food from all of his friends without cooking",
       "distractors": [
-        "To cook a big meal for his friends",
-        "To build a new house in the village"
+        "To cook a big feast for everyone in the village",
+        "To learn how to make eight pots of soup at once"
       ]
     },
     {
       "type": "BUT",
       "correct": "All of the cook pots became ready at the same time",
       "distractors": [
-        "All of the cook pots were empty",
-        "All of his friends stopped cooking"
+        "All of his friends forgot to cook that morning",
+        "All of the pots were carried away by the river"
       ]
     },
     {
       "type": "SO",
       "correct": "Every web attached to his legs was pulled at once",
       "distractors": [
-        "Anansi got all the food",
-        "The webs broke"
+        "Every web slipped off his legs before the meal",
+        "Every friend carried a full pot to his house"
       ]
     },
     {
       "type": "THEN",
       "correct": "His legs stretched out, and he learned about greed",
       "distractors": [
-        "His legs stayed short and he ate everything",
-        "His friends never noticed what he had done"
+        "His legs stayed short, and he cooked his own meal",
+        "His webs disappeared, and he ate alone that night"
       ]
     }
   ],

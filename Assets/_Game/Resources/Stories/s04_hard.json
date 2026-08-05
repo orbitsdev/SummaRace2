@@ -78,24 +78,24 @@
       "type": "SOMEBODY",
       "correct": "People who visit AgitAgueda and other festivals",
       "distractors": [
-        "Farmers who work in the countryside",
-        "Sailors who travel along the coast"
+        "Farmers who grow crops in northern Portugal",
+        "Sailors who sail along the Portuguese coast"
       ]
     },
     {
       "type": "WANTED",
       "correct": "To enjoy music, art, food, and Portuguese culture",
       "distractors": [
-        "To buy a new house",
-        "To build umbrellas"
+        "To find a quiet beach far from the festivals",
+        "To study the history of Portuguese farming"
       ]
     },
     {
       "type": "BUT",
-      "correct": "There are many festivals and attractions to explore",
+      "correct": "There are too many festivals to visit in one trip",
       "distractors": [
-        "There is very little to see in Portugal",
-        "There are no festivals during the summer"
+        "There is bad weather during the whole festival",
+        "There are long lines at all the famous landmarks"
       ]
     },
     {
@@ -110,8 +110,8 @@
       "type": "THEN",
       "correct": "They discovered Portugal's rich festival traditions",
       "distractors": [
-        "They left without learning anything new",
-        "They decided never to return to Portugal"
+        "They visited only the Umbrella Sky Project there",
+        "They spent the whole week resting at their hotel"
       ]
     }
   ],

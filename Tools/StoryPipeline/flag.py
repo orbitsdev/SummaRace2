@@ -14,7 +14,13 @@ import sys
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 STORIES = r"C:\Users\User\Documents\2026\GAME\SummaRace2\Assets\_Game\Resources\Stories"
-GOLD = {"s01_easy", "s01_average", "s01_hard"}   # hand-checked, leave alone
+# s01_* are excluded from GENERATION (emit.py) because they are the hand-checked reference,
+# but they are NOT exempt from the gate. They used to be, and that is exactly how the worst
+# length tell in the corpus stayed invisible: when the character-based rule was finally
+# applied, all 8 sets corpus-wide where `correct` beat its widest distractor by more than 6
+# characters were s01 -- the one session every learner plays first. A gate with a hole in it
+# reports the hole as clean.
+GOLD = set()
 
 # Bare subject pronouns only. Possessive determiners ("their house", "his
 # classmates") head a noun phrase and pattern with names, not with pronouns.
