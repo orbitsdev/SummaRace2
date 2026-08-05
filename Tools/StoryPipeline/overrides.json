@@ -851,5 +851,71 @@
         ]
       }
     }
+  },
+  "s01_easy": {
+    "elements": {
+      "BUT": {
+        "distractors": [
+          "The teacher would not let them swing",
+          "The swing chain snapped in half"
+        ]
+      },
+      "SO": {
+        "distractors": [
+          "Molly asked the teacher to fix the problem for her",
+          "Molly waited quietly for Bella to get bored"
+        ]
+      },
+      "THEN": {
+        "distractors": [
+          "Molly gave up and went home feeling sad",
+          "The teacher came and gave them a new swing"
+        ]
+      }
+    }
+  },
+  "s01_average": {
+    "elements": {
+      "BUT": {
+        "distractors": [
+          "The crayons were broken into tiny pieces",
+          "The crayons were lost under Duncan's bed"
+        ]
+      },
+      "SO": {
+        "distractors": [
+          "Duncan put the letters back in the box",
+          "Duncan ignored what the letters said"
+        ]
+      },
+      "THEN": {
+        "distractors": [
+          "He put the letters away and never colored again",
+          "He threw the crayon box away and stopped coloring"
+        ]
+      }
+    }
+  },
+  "s01_hard": {
+    "elements": {
+      "WANTED": {
+        "distractors": [
+          "To visit the zoo with his whole class",
+          "To draw a picture of his favorite animal"
+        ]
+      },
+      "BUT": {
+        "distractors": [
+          "His teacher changed the assignment rules",
+          "The library had no books about animals"
+        ]
+      },
+      "SO": {
+        "distractors": [
+          "He asked his classmates to choose for him",
+          "He ignored the work and played outside"
+        ]
+      }
+    }
   }
 }

@@ -94,24 +94,24 @@
       "type": "BUT",
       "correct": "The crayons quit because they were unhappy",
       "distractors": [
-        "The crayons were broken",
-        "The crayons were lost"
+        "The crayons were broken into tiny pieces",
+        "The crayons were lost under Duncan's bed"
       ]
     },
     {
       "type": "SO",
       "correct": "Duncan listened to their complaints",
       "distractors": [
-        "Duncan threw the crayons away",
-        "Duncan ignored the letters"
+        "Duncan put the letters back in the box",
+        "Duncan ignored what the letters said"
       ]
     },
     {
       "type": "THEN",
       "correct": "He tried to make them happy so they could color again",
       "distractors": [
-        "The crayons disappeared",
-        "Duncan gave up coloring"
+        "He put the letters away and never colored again",
+        "He threw the crayon box away and stopped coloring"
       ]
     }
   ],

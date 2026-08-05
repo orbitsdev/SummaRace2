@@ -94,24 +94,24 @@
       "type": "BUT",
       "correct": "Bella would not get off the swing",
       "distractors": [
-        "It started to rain",
-        "The swing was broken"
+        "The teacher would not let them swing",
+        "The swing chain snapped in half"
       ]
     },
     {
       "type": "SO",
       "correct": "Molly used an \"I message\" to tell Bella how she felt",
       "distractors": [
-        "Molly told the teacher right away",
-        "Molly walked away and gave up"
+        "Molly asked the teacher to fix the problem for her",
+        "Molly waited quietly for Bella to get bored"
       ]
     },
     {
       "type": "THEN",
       "correct": "Bella got off and Molly happily took her turn",
       "distractors": [
-        "Molly went home feeling sad",
-        "The teacher gave them a new swing"
+        "Molly gave up and went home feeling sad",
+        "The teacher came and gave them a new swing"
       ]
     }
   ],

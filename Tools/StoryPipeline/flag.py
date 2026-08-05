@@ -29,9 +29,12 @@ MAX_CARD_WORDS = 12
 
 # Race answer cards are a fixed 1.55 x 0.85 world units with font autosize capped
 # at 2.4 (F30), and the learner reads them while running. The only stories ever
-# playtested are s01_*, whose longest option is 53 characters, so 52 is "no wider
-# than a card we know is readable". Every option is a card, correct or not.
-MAX_CARD_CHARS = 52
+# playtested are s01_*, whose longest option is 53 characters, so the budget is
+# "no wider than a card we know is readable" = 53. Every option is a card, correct
+# or not. (This was 52, which contradicted the sentence above it and permanently
+# flagged s01_average's own THEN line -- a string that has actually been read on a
+# real card in a playtest. The playtested width wins over the rounder number.)
+MAX_CARD_CHARS = 53
 
 # How much longer (in characters) `correct` may be than its longest distractor before
 # the card itself gives the answer away, and how far it may sit from the distractor
