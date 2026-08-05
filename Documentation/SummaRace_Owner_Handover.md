@@ -1,6 +1,11 @@
 # SummaRace — Owner Handover
 
-**Written 2026-08-06 · branch `experiment/endless-override-2` · HEAD `de63a3d`**
+**Written 2026-08-06 · branch `experiment/endless-override-2` · re-verified against HEAD `63e1be3`**
+
+*(First written at `de63a3d`; six commits have landed since — `e5966be` atomic saves, `06f1778`
+colour-only instructions, `38fe7ee` audio feedback, `46bbb90` BACK guard, `9d839ba` participant
+codes, `4a78905` story alignment, `63e1be3` race worlds. Everything below reflects them; §4d records
+what each one made stale elsewhere.)*
 
 **Read this first. It is the front door to every other document.** A lot landed in the last
 day across many parallel passes; this page tells you what is true, what to do next, what only
@@ -110,22 +115,49 @@ Full checklist in `SummaRace_Build_And_Release.md` §8. The four that matter mos
 - **The full loop on a story that is not `s01`.** 27 of the 30 have never been played once.
   This is the single most valuable hour you can spend before day 1.
 
-### 7. Set the teacher PIN on every tablet, before any child touches it
+### 7. Set the teacher PIN **and each learner's participant code**, before any child touches it
 
-Main Menu ▸ teacher corner ▸ *"Teacher setup: choose a PIN"* ▸ 4+ digits ▸ confirm.
-**Write the PIN down per tablet, tied to an asset tag.** The raw PIN is never stored, only a
-salted hash — it cannot be read back.
+**7a — the PIN.** Main Menu ▸ teacher corner ▸ *"Teacher setup: choose a PIN"* ▸ 4+ digits ▸
+confirm. **Write the PIN down per tablet, tied to an asset tag.** The raw PIN is never stored, only
+a salted hash — it cannot be read back.
 
 If a curious child reaches the tablet first, they can set the PIN, and you have lost teacher
 control of that device. The only way back is the hidden recovery gesture, **which erases every
 profile and every log on that tablet permanently.** Procedure in
 `SummaRace_Study_Operations_Runbook.md` §6.1.
 
+**7b — the participant code (new in `9d839ba`; this changes the install procedure).** Each learner
+now carries a **participant code — your own id from that child's paper booklet** — set by *you*
+behind the PIN, never typed by the child. It is the **join key between the app's logs and the paper
+pretest/posttest**, and it is stamped on **every log row** as well as the export roster.
+
+Why it exists: before this, the only human-readable link was `displayName`, *a name a nine-year-old
+typed*. A child who spells their name differently from the booklet, abbreviates it, or shares
+"Maria R." with a classmate produces rows that cannot be matched to their own pretest score —
+and nothing detects it at the time. It surfaces during analysis, when the study is over and the
+data cannot be re-collected.
+
+Where it is asked for:
+- **Passing the PIN** on a tablet whose active learner has no code diverts straight to the prompt.
+- **"+ New learner"** asks for the code *before* Name Entry, so the adult step happens first.
+- **Duplicates are refused** (`"That code is already used by <name>."`) while you still hold both
+  booklets. Format: 2–12 letters or numbers, e.g. `P07`.
+- **Export warns you** if any learner on that tablet lacks a code, or if two share one.
+
+**Do this at install, tablet by tablet, with the booklets in front of you.** A run logged without a
+code is not lost, but it can only be re-joined by name — which is exactly the failure this closes.
+Exact tap paths: `SummaRace_Study_Operations_Runbook.md` §1.2b.
+
 ### 8. Pull one export over USB **before day 1**, not after
 
 Teacher menu ▸ Export logs → writes `export_<stamp>.jsonl` plus
-`export_<stamp>_learners.json` (the roster — without it the data is anonymous GUIDs) to
-`Application.persistentDataPath`.
+`export_<stamp>_learners.json` (the roster: `learnerId`, `displayName`, `participantCode`,
+`unlockedSession`, `storiesCompleted`) to `Application.persistentDataPath`.
+
+**Read the status line after tapping Export.** It prints the full on-device path *and* now warns if
+any learner has no participant code or if two share one (§7b). Since `9d839ba` the code is also on
+every log row, so the join survives even if only the `.jsonl` is retrieved — but pull **both** files
+anyway; the roster is the only thing that maps a code back to a child's name.
 
 Do this once, on a test learner, and actually get the files onto a PC before the study starts.
 On **Android 11+ the `Android/data` folder is frequently hidden from MTP**, so dragging it over
@@ -246,7 +278,8 @@ HARD — no code change.
 | 3 | **27 of 30 stories, end to end** | Never played once, by anyone, in any mode. |
 | 4 | **Every tween and pop-in outside the race** | `PanelIntro`, `UIFloat`, `ButtonSquash`, PrimeTween only run in Play mode. F36–F47 changed many of them. |
 | 5 | **Which tablet the study uses** | The readability audit's type-size verdicts swing on 7" vs 10.1". Knowing the panel size retires or confirms a third of that document. Cheapest unknown to resolve. |
-| 6 | **End-to-end session timing** | The 15–25 min/session planning figure in the runbook is an estimate. Do one timed dry run. |
+| 6 | **End-to-end session timing** | The 15–25 min/session planning figure in the runbook is an estimate; Pro Review derives 21–39 min. Do one timed dry run. |
+| 7 | **The race's draw-call cost after `63e1be3`** | The world pass added roadside trees and grass and switched two worlds to the `NightTime` theme. Author's own estimate: **up to +200 draw calls worst case, unmeasured on any device.** RAM is unchanged (one theme loads per race; NightTime substitutes rather than adds). If the race misses 30fps, **halve `GameRules.RaceMaxSceneryPerSegment` (currently 14) first** — it is the documented first lever. |
 
 ### 4b. Known limitations that will still be there on day 1
 
@@ -285,20 +318,31 @@ HARD — no code change.
   domain reload; delete it with the Editor closed if you want it gone. The preflight will keep
   reporting it.
 
-### 4c. Readability fixes that were recommended and are **still open** — verified in source today
+### 4c. Readability fixes — what has landed and what is still open (re-verified at HEAD `63e1be3`)
 
-The audit's top four pre-study items are done (option preview, tap-to-move, far-lane
-reachability, "CHECK ORDER"). Items 5 and 6 are not. Each is a one-line change:
+The audit's top **five** pre-study items are now done: option preview, tap-to-move, far-lane
+reachability, "CHECK ORDER", and the two colour-name instructions (`06f1778`). Item 6 — the
+contrast failures — is the one still open.
+
+**Closed, verified in source:**
+
+| Item | Now reads |
+|---|---|
+| `GameText.ReaderWrongFeedback` | *"Not quite — here is the answer!"* (`GameText.cs:309`). The correct option is highlighted **and** punch-scaled, so motion carries it independently of colour. Deliberately **not** a ✓ glyph — there is no tick in `ReaderController`'s UI to point at, and naming one would have been a worse lie than naming the colour. |
+| `GameText.ArrangeAlmost` | *"Almost! The parts already in place are right — try the others again."* (`GameText.cs:414`). A correct slot is physically locked and stops responding to taps, which every learner can perceive. |
+
+**Still open — four contrast failures, each a one-line colour change.** ⚠️ *Another pass may be
+landing on these while you read this; check the file before you edit it.* Verified at HEAD:
 
 | Item | Current state, verified | Fix |
 |---|---|---|
-| Two strings instruct by **colour name** | `GameText.ReaderWrongFeedback` = *"Not quite — the green one is the answer!"*; `GameText.ArrangeAlmost` = *"Almost! The green ones are right…"* | ~8% of boys have a red–green deficiency; in 40 learners that is 1–2 children told to find a colour they cannot name. Reword to *"This one is the answer!"* / *"The ✓ ones are right."* |
-| Reader "Not quite" feedback contrast | `ReaderController.FeedbackNotQuite` = `(0.85, 0.50, 0.15)` on white = **2.99:1** | `(0.62, 0.32, 0.02)` → 5.6:1. This is the sentence that tells a learner what went wrong. |
-| Summary reference SWBST words | `SummaryController` uses `SwbstPalette.HexForIndex` — WANTED **2.34:1**, SO **2.10:1** on white | Use `DeepForIndex`. It is the project's own dark-on-light helper and already exists. |
-| FINISH card label | `Color.white` on `(1, 0.72, 0.15)` amber = **1.74:1** | Deep brown `(0.30, 0.18, 0.02)` → 8.9:1 |
+| Reader "Not quite" feedback | `ReaderController.cs:65` `FeedbackNotQuite = (0.85, 0.50, 0.15)` on white = **2.99:1** | `(0.62, 0.32, 0.02)` → 5.6:1. This is the sentence that tells a learner what went wrong. |
+| Summary reference SWBST words | `SummaryController.cs:65` uses `SwbstPalette.HexForIndex` — WANTED **2.34:1**, SO **2.10:1** on white | Use `DeepForIndex`. It is the project's own dark-on-light helper and already exists. |
+| FINISH card label | `EndlessRaceDirector.cs:778` `Color.white` on `(1, 0.72, 0.15)` amber = **1.74:1** | Deep brown `(0.30, 0.18, 0.02)` → 8.9:1 |
+| StorySelect locked-card hint | **2.6:1** where the scrim has faded out (audit §2.3) — the fourth failure, omitted from earlier versions of this table | Put the label on the kit's `bar_bg` pill, or darken the type. |
 
-Half an hour of work, all in `GameText.cs`, `ReaderController.cs`, `SummaryController.cs` and
-one line of `EndlessRaceDirector.PlaceFinishGate`. Worth doing before the build.
+Half an hour of work, in `ReaderController.cs`, `SummaryController.cs`, one line of
+`EndlessRaceDirector.PlaceFinishGate` and one StorySelect label. Worth doing before the build.
 
 ### 4d. Where the documents disagree — and which one is right
 
@@ -307,13 +351,20 @@ source rather than reconciled on the page.
 
 | Disagreement | Which is right | Evidence |
 |---|---|---|
-| **`SummaRace_Data_Dictionary.md` documents schema **2** and states "No item-level record of the race distractor chosen"** | **The code is right; the Data Dictionary is one commit stale.** `SessionLogService.cs:27` = `SchemaVersion = 3`. Schema 3 adds `racePicks` (element, option index, exact card text, **lane**, correct, represent, atSeconds), `racePauseCount`, `racePausedSeconds`, `abandonReason` — none of which are in the dictionary. **This is the most important contradiction on this page**, because the researcher analyses from that document and will otherwise not know the misconception-level data exists. |
-| `SummaRace_Study_Operations_Runbook.md` §7.5 and the old Finalization Plan: *"the race has no in-run pause/back/quit"* | **Stale — the race has a pause chip and a two-tap leave** (`dca9b27`, verified in Play in `de63a3d`). Leaving routes through the partial-run mechanism and flushes immediately. The runbook is explicitly grounded at commit `f044d39`, one commit earlier. |
-| `SummaRace_Content_QA_Report.md` §5 P1: *"`SOMEBODY` is truncated in the race tracker — open"* | **Closed.** Plaques widened 138→160 in `dca9b27`; "SOMEBODY now fits its plaque" asserted in Play in `de63a3d`. |
-| `SummaRace_Build_And_Release.md` §9 quotes *"Race.unity ~23MB"*, *"~36MB of Vorbis DecompressOnLoad"*, and offers *"Bloom in `_Game/Art/RacePostFx.asset`"* as a frame-rate lever | **`SummaRace_Device_Budget.md` is right on all three** — it read the files, Build & Release quoted the older CLAUDE.md figures. Measured: **51.5MB** exclusive to `Race.unity` (12–20MB APK), **178.2MB** DecompressOnLoad / **156.5MB** genuinely resident, and `RacePostFx.asset` has an **empty component list** with **zero** post-processing cameras in `MainSummaRace` — the Bloom lever does not exist on the shipping path. |
-| `SummaRace_Readability_And_Accessibility_Audit.md` "Fix these before the study" items 1–3 | **Done since the audit was written** (screen-space option preview, tap-to-any-lane, far lane now reachable in one tap). Items 5 and 6 are **not** — see §4c above, verified in source today. |
-| `CLAUDE.md`'s own NEXT list item ③ still says the race has no pause | Internally inconsistent with its own F47 row ⓓ, which records the pause as closing that item. **F47 is right.** |
+| **`SummaRace_Data_Dictionary.md` documents schema `2`** and states "No item-level record of the race distractor chosen" | **The code is right; the dictionary is now TWO schemas behind.** `SessionLogService.cs:29` = `SchemaVersion = 4`. **Schema 3** (`dca9b27`) added `racePicks` (element, option index, exact card text, **lane**, correct, represent, atSeconds), `racePauseCount`, `racePausedSeconds`, `abandonReason`. **Schema 4** (`9d839ba`) added `participantCode` **to every row**. Neither is in the dictionary. **This is still the most important contradiction on this page** — the researcher analyses from that document and will otherwise not know the misconception-level data, or the paper-test join key, exists. ⚠️ A **schema 5** (`arrangeOrders` — the sequence the learner actually built at Arrange, per verify press) is **uncommitted in the working tree as this is written**; treat the dictionary's schema number as the thing to check against the code, not against this page. |
+| `SummaRace_Study_Operations_Runbook.md` §6.2/§6.5/appendix-5 and the old Finalization Plan: *"the race has no in-run pause/back/quit"* | **Stale — corrected in the runbook.** The race has a pause chip in the top-right gutter (`BuildPauseChip`), a full-screen pause overlay with **KEEP RUNNING** and a two-tap **LEAVE RACE** (auto-disarming after `RaceLeaveConfirmSeconds = 4s`), and leaving routes to Story Select through the existing partial-run mechanism, flushing immediately (`dca9b27`, asserted in Play in `de63a3d`). Resume uses `StartMove(false)`, so a pause never reseeds `minSpeed` and is never a penalty. |
+| Was there any way to leave a **story** before the race? | **Yes, since `ca6e39c`:** the Reader has a two-tap back button, offered **only while a page is being read and before the first committed answer** (`ReaderController.RefreshSecondaryControls`, `mayLeave = readingPage && !_answerCommitted`). After one answer the run carries a measure and is study data; before it, `SessionLogService.HasData` is false and the row is dropped. Both exits go to Story Select. |
+| Anything about the Android **BACK** button | **BACK no longer closes the app** (`46bbb90`). `Core/BackButtonGuard` on `[Core]` swallows it app-wide. It is deliberately **not** an in-game "back" — each leavable screen has its own control with its own rules, and a hardware button on those would reopen the dead-end and data-loss paths those rules exist to close. An adult can still leave via the app switcher. |
+| `SummaRace_Content_QA_Report.md` §5 P1: *"`SOMEBODY` is truncated in the race tracker — open"* | **Closed, and the report now says so.** Plaques widened 138→160 in `dca9b27`; "SOMEBODY now fits its plaque" asserted in Play in `de63a3d`. |
+| `SummaRace_Build_And_Release.md` §9 quoted *"Race.unity ~23MB"*, *"~36MB of Vorbis DecompressOnLoad"*, and offered *"Bloom in `_Game/Art/RacePostFx.asset`"* as a frame-rate lever | **`SummaRace_Device_Budget.md` is right on all three** — it read the files; Build & Release had quoted the older CLAUDE.md figures. **Corrected in place.** Measured: **51.5MB** of source assets exclusive to `Race.unity` (⇒ 12–20MB of APK; the scene *file* is only 119KB, and `BuildPreflight.cs` still prints the old ~23MB estimate), **178.2MB** DecompressOnLoad of which **156.5MB** is genuinely resident, and `RacePostFx.asset`'s `components:` holds a single **null** entry with **zero** post-processing cameras in `MainSummaRace` — **the Bloom lever does not exist on the shipping path.** |
+| `SummaRace_Readability_And_Accessibility_Audit.md` "Fix these before the study" items 1–6 | **1–5 are done** (screen-space option preview, tap-to-any-lane, far lane reachable in one tap, "CHECK ORDER", and the two colour-name instructions in `06f1778`). **Item 6, the four contrast failures, is still open** — see §4c, verified in source at HEAD. |
+| `SummaRace_Pro_Review.md` §6 item 10 says the two colour-name strings are *"still open, verified today"* | **Stale by one commit.** Pro Review was written at `46bbb90`, but `06f1778` had already reworded both. Its *other* half — the four contrast failures — is still correct and still open. |
+| `SummaRace_Pro_Review.md` §6 item 9 proposes logging Arrange placements as *"schema 3 → 4"* | **The recommendation stands; the numbering does not.** Schema 4 was spent on `participantCode` (`9d839ba`). Arrange placements land as **schema 5**, uncommitted in the working tree as this is written. |
+| `SummaRace_Pro_Review.md` §5 describes an *"F48 world-dressing pass landing while I write this"* | **It landed, as commit `63e1be3`**, and it turned out to be more than dressing: all thirty races had been opening on the *identical* Industrial alley, and a complete second theme (`NightTime`) had never been instantiated. `CLAUDE.md` records it as **F54**. Pro Review's substantive warning still stands: it adds up to **+200 draw calls worst case, unmeasured on device**. |
+| `SummaRace_Audio_Audit.md` §3 — *"races 2 and 3 of every session have no music"* | **Fixed in `63e1be3`** and verified live (6 sources → stopped → 0 → restarted → 6). `MusicPlayer.RestartAllStems` runs once per app launch and their only other restart was gated on a condition true only the first time, so the director's FINISH silence was never undone. |
+| `CLAUDE.md`'s NEXT list once said the race has no pause, contradicting its own F47 row ⓓ | **Fixed in `06f1778`.** F47 was right. |
 | Study Ops §1.1 says debug signing needs no setup | True but incomplete. **`SummaRace_Build_And_Release.md` §5 is the fuller account**: the debug keystore is per-machine, and a mid-study rebuild elsewhere forces an uninstall that destroys that tablet's unexported logs. |
+| Anything claiming a saved profile can be lost to a crash | **`e5966be` closed it.** Profile writes are atomic (temp → `File.Replace`, previous good copy kept as `.bak`, reads fall back to it). A plain `File.WriteAllText` truncates first, and the read path's parse-failure fallback returned an **empty list** — a learner silently rebooting as a brand-new child, with nothing on screen to say so. `DeleteAllData` now removes the `.bak`/`.tmp` siblings too, because the post-study wipe *is* the consent promise. |
 
 ---
 
@@ -325,7 +376,7 @@ source rather than reconciled on the page.
 | **`SummaRace_Finalization_Plan.md`** | The live plan: what is done, what remains, realistic effort. | Right after this page. It is the only doc that is meant to change as work lands. |
 | **`SummaRace_Build_And_Release.md`** | Toolchain install → preflight → Addressables → APK → sideload → smoke test. Has a printable build-day checklist. | On build day. §5 (signing) before you build the *first* APK, not after. |
 | **`SummaRace_Study_Operations_Runbook.md`** | The classroom side: PIN setup, running a session, unlocking, exporting, recovering. Written for someone under time pressure. | Before day 1, and hand a copy to whoever supervises sessions. |
-| **`SummaRace_Data_Dictionary.md`** | Every field in the exported `.jsonl`, what it means, cleaning rules, pandas/R loaders. **Currently documents schema 2; the build writes schema 3** (see §4d). | Give it to whoever analyses the data — with §4d's correction attached. |
+| **`SummaRace_Data_Dictionary.md`** | Every field in the exported `.jsonl`, what it means, cleaning rules, pandas/R loaders. **Currently documents schema 2; the build writes schema 4** (see §4d). | Give it to whoever analyses the data — with §4d's correction attached. |
 | **`SummaRace_Device_Budget.md`** | Measured RAM / APK / render-pipeline reality on the 2GB floor, with a prioritised remediation table and an Editor script. | Before the build (step 4 of §2), and again if the race misses 30fps. |
 | **`SummaRace_Content_QA_Report.md`** | All 30 stories measured against the geometry they render into, plus the corpus validity audit (can a gate be passed without reading?). | If anyone questions the content, or before a researcher sign-off conversation. |
 | **`SummaRace_Readability_And_Accessibility_Audit.md`** | Type size in arcmin, WCAG contrast on real colours, tap targets in dp, colour-only channels, and the race time-pressure derivation. | Its top items are triaged in §4c above. Read in full only if you have a spare hour. |
@@ -333,12 +384,15 @@ source rather than reconciled on the page.
 | `SummaRace_Final_GDD.docx` | The design bible. Decisions D1–D18 are locked. Intent, not implementation. | For design arguments the code has not already answered. |
 | `SummaRace_Technical_Design_Document.md` | Original implementation spec (scenes, scripts, events). | Reference; the build has deliberately diverged from it. |
 | `SummaRace_Project_Brief.md` | Orientation, one read. | If someone new joins. |
+| **`SummaRace_Audio_Audit.md`** | Every interactive moment in the loop, judged against a **muted classroom tablet**: did my tap do anything, did I get it right, is this thing broken. Also clip provenance, duplicates and the Trash Dash music state machine. | If a sound is wrong, or before deciding what to cut from the audio budget. Its one open defect (races 2 and 3 silent) is now fixed — see §4d. |
+| **`SummaRace_Pro_Review.md`** | An outside pre-ship read of the *product* — content, teaching design, fun, fragility. It disagrees with several decisions recorded in `CLAUDE.md` and argues them. Its §1.1 ("there is no passage to summarize, anywhere") is the most important thing in it and is a **researcher** question, not a build one. | Once, in full, when you have an hour. **Its ranked list is superseded by §2 of this page** and three of its items have since been closed (§4d). |
+| **`SummaRace_Story_Alignment_Audit.md`** | Whether page *n* actually teaches SWBST slot *n* across all 150 pairs — the assumption the whole support-removal ladder rests on. Verdict: 135 aligned / 8 weak / 7 misaligned, so the per-slot contrast can be reported. | Before the researcher sign-off conversation, alongside the Content QA report. |
 | `SummaRace_Build_Guide.md`, `SummaRace_Asset_Requirements_List.md` | Historical phase plan and original bill of materials. | Superseded by the Finalization Plan and the Shopping List. |
-| `CLAUDE.md` | The engineering log — every pass F1…F47 with the reasoning. Not a plan. | When you need to know *why* something is the way it is. |
+| `CLAUDE.md` | The engineering log — every pass F1…F54 with the reasoning. Not a plan. **Rows F1–F31 describe the legacy `Race.unity` race, which no longer ships**; the file now says so at the top of the table. | When you need to know *why* something is the way it is. |
 
-Two further documents (`SummaRace_Audio_Audit.md`, `SummaRace_Pro_Review.md`) were in progress
-when this page was written and are not on disk yet. If they appear, read them the same way as
-the audits above — a dated snapshot, triaged against §4c and §4d, not a to-do list.
+*(`Documentation/Art_Generation_Prompts.md` was deleted — its three story-picture prompts have been
+generated and its "later, the other 27" note is fully covered by `SummaRace_Asset_Shopping_List.md`
+§2, which has real paths, the exact spec and all 27 prompts.)*
 
 **Rule of thumb:** this page and the Finalization Plan are the only two that claim to be current.
 Everything else is a snapshot with a date on it, and §4d lists the places where a snapshot has

@@ -1,147 +1,432 @@
 fileFormatVersion: 2
 guid: c9da341d2d3a64cf8b2adc9bba8ec9ec
+AssetOrigin:
+  serializedVersion: 1
+  productId: 252960
+  packageName: "PrimeTween \xB7 High-Performance Animations and Sequences"
+  packageVersion: 1.4.8
+  assetPath: Assets/Plugins/PrimeTween/Demo/Stylized Cartoon Van by Fero Andezo/Van.fbx
+  uploadId: 937466
 ModelImporter:
-  serializedVersion: 23
-  fileIDToRecycleName:
-    100000: animationAnchor
-    100002: animationAnchor.001
-    100004: animationAnchor.002
-    100006: animationAnchor.003
-    100008: baggage
-    100010: baggage.001
-    100012: door_ext_l
-    100014: door_l
-    100016: door_r
-    100018: exterior
-    100020: exterior.001
-    100022: highlightAnchor
-    100024: highlightAnchor.001
-    100026: highlightAnchor.002
-    100028: highlightAnchor.003
-    100030: highlightAnchor.004
-    100032: highlightAnchor.005
-    100034: interior
-    100036: model
-    100038: sliding_door
-    100040: trunk
-    100042: trunk_model
-    100044: //RootNode
-    100046: Wheels
-    100048: Wheels.001
-    100050: Wheels.002
-    100052: Wheels.003
-    100054: Wheels.004
-    100056: windows
-    100058: wnd
-    100060: wnd_r
-    100062: wnd_sliding_door
-    100064: wnd_trunk
-    100066: exterior.002
-    100068: Headlights
-    400000: animationAnchor
-    400002: animationAnchor.001
-    400004: animationAnchor.002
-    400006: animationAnchor.003
-    400008: baggage
-    400010: baggage.001
-    400012: door_ext_l
-    400014: door_l
-    400016: door_r
-    400018: exterior
-    400020: exterior.001
-    400022: highlightAnchor
-    400024: highlightAnchor.001
-    400026: highlightAnchor.002
-    400028: highlightAnchor.003
-    400030: highlightAnchor.004
-    400032: highlightAnchor.005
-    400034: interior
-    400036: model
-    400038: sliding_door
-    400040: trunk
-    400042: trunk_model
-    400044: //RootNode
-    400046: Wheels
-    400048: Wheels.001
-    400050: Wheels.002
-    400052: Wheels.003
-    400054: Wheels.004
-    400056: windows
-    400058: wnd
-    400060: wnd_r
-    400062: wnd_sliding_door
-    400064: wnd_trunk
-    400066: exterior.002
-    400068: Headlights
-    2300000: baggage.001
-    2300002: door_ext_l
-    2300004: exterior
-    2300006: exterior.001
-    2300008: interior
-    2300010: model
-    2300012: trunk_model
-    2300014: Wheels.001
-    2300016: Wheels.002
-    2300018: Wheels.003
-    2300020: Wheels.004
-    2300022: windows
-    2300024: wnd
-    2300026: wnd_r
-    2300028: wnd_sliding_door
-    2300030: wnd_trunk
-    2300032: exterior.002
-    3300000: baggage.001
-    3300002: door_ext_l
-    3300004: exterior
-    3300006: exterior.001
-    3300008: interior
-    3300010: model
-    3300012: trunk_model
-    3300014: Wheels.001
-    3300016: Wheels.002
-    3300018: Wheels.003
-    3300020: Wheels.004
-    3300022: windows
-    3300024: wnd
-    3300026: wnd_r
-    3300028: wnd_sliding_door
-    3300030: wnd_trunk
-    3300032: exterior.002
-    4300000: windows
-    4300002: exterior
-    4300004: interior
-    4300006: door_ext_l
-    4300008: wnd
-    4300010: model
-    4300012: wnd_sliding_door
-    4300014: baggage.001
-    4300016: exterior.001
-    4300018: wnd_r
-    4300020: Wheels.001
-    4300022: Wheels.002
-    4300024: Wheels.003
-    4300026: Wheels.004
-    4300028: trunk_model
-    4300030: wnd_trunk
-    4300032: exterior.002
-    6400000: baggage.001
-    6400002: door_ext_l
-    6400004: exterior
-    6400006: exterior.001
-    6400008: interior
-    6400010: model
-    6400012: trunk_model
-    6400014: Wheels.001
-    6400016: Wheels.002
-    6400018: Wheels.003
-    6400020: Wheels.004
-    6400022: windows
-    6400024: wnd
-    6400026: wnd_r
-    6400028: wnd_sliding_door
-    6400030: wnd_trunk
-    6400032: exterior.002
-    9500000: //RootNode
+  serializedVersion: 24200
+  internalIDToNameTable:
+  - first:
+      1: 100000
+    second: animationAnchor
+  - first:
+      1: 100002
+    second: animationAnchor.001
+  - first:
+      1: 100004
+    second: animationAnchor.002
+  - first:
+      1: 100006
+    second: animationAnchor.003
+  - first:
+      1: 100008
+    second: baggage
+  - first:
+      1: 100010
+    second: baggage.001
+  - first:
+      1: 100012
+    second: door_ext_l
+  - first:
+      1: 100014
+    second: door_l
+  - first:
+      1: 100016
+    second: door_r
+  - first:
+      1: 100018
+    second: exterior
+  - first:
+      1: 100020
+    second: exterior.001
+  - first:
+      1: 100022
+    second: highlightAnchor
+  - first:
+      1: 100024
+    second: highlightAnchor.001
+  - first:
+      1: 100026
+    second: highlightAnchor.002
+  - first:
+      1: 100028
+    second: highlightAnchor.003
+  - first:
+      1: 100030
+    second: highlightAnchor.004
+  - first:
+      1: 100032
+    second: highlightAnchor.005
+  - first:
+      1: 100034
+    second: interior
+  - first:
+      1: 100036
+    second: model
+  - first:
+      1: 100038
+    second: sliding_door
+  - first:
+      1: 100040
+    second: trunk
+  - first:
+      1: 100042
+    second: trunk_model
+  - first:
+      1: 100044
+    second: //RootNode
+  - first:
+      1: 100046
+    second: Wheels
+  - first:
+      1: 100048
+    second: Wheels.001
+  - first:
+      1: 100050
+    second: Wheels.002
+  - first:
+      1: 100052
+    second: Wheels.003
+  - first:
+      1: 100054
+    second: Wheels.004
+  - first:
+      1: 100056
+    second: windows
+  - first:
+      1: 100058
+    second: wnd
+  - first:
+      1: 100060
+    second: wnd_r
+  - first:
+      1: 100062
+    second: wnd_sliding_door
+  - first:
+      1: 100064
+    second: wnd_trunk
+  - first:
+      1: 100066
+    second: exterior.002
+  - first:
+      1: 100068
+    second: Headlights
+  - first:
+      4: 400000
+    second: animationAnchor
+  - first:
+      4: 400002
+    second: animationAnchor.001
+  - first:
+      4: 400004
+    second: animationAnchor.002
+  - first:
+      4: 400006
+    second: animationAnchor.003
+  - first:
+      4: 400008
+    second: baggage
+  - first:
+      4: 400010
+    second: baggage.001
+  - first:
+      4: 400012
+    second: door_ext_l
+  - first:
+      4: 400014
+    second: door_l
+  - first:
+      4: 400016
+    second: door_r
+  - first:
+      4: 400018
+    second: exterior
+  - first:
+      4: 400020
+    second: exterior.001
+  - first:
+      4: 400022
+    second: highlightAnchor
+  - first:
+      4: 400024
+    second: highlightAnchor.001
+  - first:
+      4: 400026
+    second: highlightAnchor.002
+  - first:
+      4: 400028
+    second: highlightAnchor.003
+  - first:
+      4: 400030
+    second: highlightAnchor.004
+  - first:
+      4: 400032
+    second: highlightAnchor.005
+  - first:
+      4: 400034
+    second: interior
+  - first:
+      4: 400036
+    second: model
+  - first:
+      4: 400038
+    second: sliding_door
+  - first:
+      4: 400040
+    second: trunk
+  - first:
+      4: 400042
+    second: trunk_model
+  - first:
+      4: 400044
+    second: //RootNode
+  - first:
+      4: 400046
+    second: Wheels
+  - first:
+      4: 400048
+    second: Wheels.001
+  - first:
+      4: 400050
+    second: Wheels.002
+  - first:
+      4: 400052
+    second: Wheels.003
+  - first:
+      4: 400054
+    second: Wheels.004
+  - first:
+      4: 400056
+    second: windows
+  - first:
+      4: 400058
+    second: wnd
+  - first:
+      4: 400060
+    second: wnd_r
+  - first:
+      4: 400062
+    second: wnd_sliding_door
+  - first:
+      4: 400064
+    second: wnd_trunk
+  - first:
+      4: 400066
+    second: exterior.002
+  - first:
+      4: 400068
+    second: Headlights
+  - first:
+      23: 2300000
+    second: baggage.001
+  - first:
+      23: 2300002
+    second: door_ext_l
+  - first:
+      23: 2300004
+    second: exterior
+  - first:
+      23: 2300006
+    second: exterior.001
+  - first:
+      23: 2300008
+    second: interior
+  - first:
+      23: 2300010
+    second: model
+  - first:
+      23: 2300012
+    second: trunk_model
+  - first:
+      23: 2300014
+    second: Wheels.001
+  - first:
+      23: 2300016
+    second: Wheels.002
+  - first:
+      23: 2300018
+    second: Wheels.003
+  - first:
+      23: 2300020
+    second: Wheels.004
+  - first:
+      23: 2300022
+    second: windows
+  - first:
+      23: 2300024
+    second: wnd
+  - first:
+      23: 2300026
+    second: wnd_r
+  - first:
+      23: 2300028
+    second: wnd_sliding_door
+  - first:
+      23: 2300030
+    second: wnd_trunk
+  - first:
+      23: 2300032
+    second: exterior.002
+  - first:
+      33: 3300000
+    second: baggage.001
+  - first:
+      33: 3300002
+    second: door_ext_l
+  - first:
+      33: 3300004
+    second: exterior
+  - first:
+      33: 3300006
+    second: exterior.001
+  - first:
+      33: 3300008
+    second: interior
+  - first:
+      33: 3300010
+    second: model
+  - first:
+      33: 3300012
+    second: trunk_model
+  - first:
+      33: 3300014
+    second: Wheels.001
+  - first:
+      33: 3300016
+    second: Wheels.002
+  - first:
+      33: 3300018
+    second: Wheels.003
+  - first:
+      33: 3300020
+    second: Wheels.004
+  - first:
+      33: 3300022
+    second: windows
+  - first:
+      33: 3300024
+    second: wnd
+  - first:
+      33: 3300026
+    second: wnd_r
+  - first:
+      33: 3300028
+    second: wnd_sliding_door
+  - first:
+      33: 3300030
+    second: wnd_trunk
+  - first:
+      33: 3300032
+    second: exterior.002
+  - first:
+      43: 4300000
+    second: windows
+  - first:
+      43: 4300002
+    second: exterior
+  - first:
+      43: 4300004
+    second: interior
+  - first:
+      43: 4300006
+    second: door_ext_l
+  - first:
+      43: 4300008
+    second: wnd
+  - first:
+      43: 4300010
+    second: model
+  - first:
+      43: 4300012
+    second: wnd_sliding_door
+  - first:
+      43: 4300014
+    second: baggage.001
+  - first:
+      43: 4300016
+    second: exterior.001
+  - first:
+      43: 4300018
+    second: wnd_r
+  - first:
+      43: 4300020
+    second: Wheels.001
+  - first:
+      43: 4300022
+    second: Wheels.002
+  - first:
+      43: 4300024
+    second: Wheels.003
+  - first:
+      43: 4300026
+    second: Wheels.004
+  - first:
+      43: 4300028
+    second: trunk_model
+  - first:
+      43: 4300030
+    second: wnd_trunk
+  - first:
+      43: 4300032
+    second: exterior.002
+  - first:
+      64: 6400000
+    second: baggage.001
+  - first:
+      64: 6400002
+    second: door_ext_l
+  - first:
+      64: 6400004
+    second: exterior
+  - first:
+      64: 6400006
+    second: exterior.001
+  - first:
+      64: 6400008
+    second: interior
+  - first:
+      64: 6400010
+    second: model
+  - first:
+      64: 6400012
+    second: trunk_model
+  - first:
+      64: 6400014
+    second: Wheels.001
+  - first:
+      64: 6400016
+    second: Wheels.002
+  - first:
+      64: 6400018
+    second: Wheels.003
+  - first:
+      64: 6400020
+    second: Wheels.004
+  - first:
+      64: 6400022
+    second: windows
+  - first:
+      64: 6400024
+    second: wnd
+  - first:
+      64: 6400026
+    second: wnd_r
+  - first:
+      64: 6400028
+    second: wnd_sliding_door
+  - first:
+      64: 6400030
+    second: wnd_trunk
+  - first:
+      64: 6400032
+    second: exterior.002
+  - first:
+      95: 9500000
+    second: //RootNode
   externalObjects:
   - first:
       type: UnityEngine:Material
@@ -164,7 +449,7 @@ ModelImporter:
       name: interior
     second: {fileID: 2100000, guid: 004ae8b11200d44ac83be82a3ee1ebb8, type: 2}
   materials:
-    importMaterials: 0
+    materialImportMode: 0
     materialName: 0
     materialSearch: 1
     materialLocation: 0
@@ -173,9 +458,8 @@ ModelImporter:
     bakeSimulation: 0
     resampleCurves: 1
     optimizeGameObjects: 0
+    removeConstantScaleCurves: 0
     motionNodeName: 
-    rigImportErrors: 
-    rigImportWarnings: 
     animationImportErrors: 
     animationImportWarnings: 
     animationRetargetingWarnings: 
@@ -190,32 +474,46 @@ ModelImporter:
     extraExposedTransformPaths: []
     extraUserProperties: []
     clipAnimations: []
-    isReadable: 1
+    isReadable: 0
   meshes:
     lODScreenPercentages: []
     globalScale: 1
     meshCompression: 0
     addColliders: 1
     useSRGBMaterialColor: 1
+    sortHierarchyByName: 1
+    importPhysicalCameras: 1
     importVisibility: 0
     importBlendShapes: 0
     importCameras: 0
     importLights: 0
+    nodeNameCollisionStrategy: 0
+    fileIdsGeneration: 1
     swapUVChannels: 0
     generateSecondaryUV: 0
     useFileUnits: 1
-    optimizeMeshForGPU: 1
     keepQuads: 0
     weldVertices: 1
+    bakeAxisConversion: 0
     preserveHierarchy: 0
+    skinWeightsMode: 0
+    maxBonesPerVertex: 4
+    minBoneWeight: 0.001
+    optimizeBones: 1
+    generateMeshLods: 0
+    meshLodGenerationFlags: 0
+    maximumMeshLod: -1
+    meshOptimizationFlags: -1
     indexFormat: 0
     secondaryUVAngleDistortion: 8
     secondaryUVAreaDistortion: 15.000001
     secondaryUVHardAngle: 88
+    secondaryUVMarginMethod: 0
+    secondaryUVMinLightmapResolution: 40
+    secondaryUVMinObjectScale: 1
     secondaryUVPackMargin: 4
     useFileScale: 0
-    previousCalculatedGlobalScale: 1
-    hasPreviousCalculatedGlobalScale: 1
+    strictVertexDataChecks: 0
   tangentSpace:
     normalSmoothAngle: 60
     normalImportMode: 0
@@ -224,10 +522,10 @@ ModelImporter:
     legacyComputeAllNormalsFromSmoothingGroupsWhenMeshHasBlendShapes: 0
     blendShapeNormalImportMode: 1
     normalSmoothingSource: 0
+  referencedClips: []
   importAnimation: 0
-  copyAvatar: 0
   humanDescription:
-    serializedVersion: 2
+    serializedVersion: 3
     human: []
     skeleton: []
     armTwist: 0.5
@@ -237,21 +535,20 @@ ModelImporter:
     armStretch: 0.05
     legStretch: 0.05
     feetSpacing: 0
+    globalScale: 1
     rootMotionBoneName: 
     hasTranslationDoF: 0
     hasExtraRoot: 1
     skeletonHasParents: 1
   lastHumanDescriptionAvatarSource: {instanceID: 0}
+  autoGenerateAvatarMappingIfUnspecified: 1
   animationType: 0
   humanoidOversampling: 1
+  avatarSetup: 0
+  addHumanoidExtraRootOnlyWhenUsingAvatar: 0
+  importBlendShapeDeformPercent: 0
+  remapMaterialsIfMaterialImportModeIsNone: 1
   additionalBone: 0
   userData: 
   assetBundleName: 
   assetBundleVariant: 
-AssetOrigin:
-  serializedVersion: 1
-  productId: 252960
-  packageName: "PrimeTween \xB7 High-Performance Animations and Sequences"
-  packageVersion: 1.4.8
-  assetPath: Assets/Plugins/PrimeTween/Demo/Stylized Cartoon Van by Fero Andezo/Van.fbx
-  uploadId: 937466

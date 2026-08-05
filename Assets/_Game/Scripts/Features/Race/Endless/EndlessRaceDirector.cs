@@ -774,8 +774,16 @@ namespace SummaRace.Features.Race.Endless
             _activeGateRoot = root;
 
             float laneOffset = TrackManager.instance.laneOffset;
+            // DEEP BROWN ON GOLD, NOT WHITE ON GOLD. The card was white text on amber, which
+            // measures 1.74:1 — WCAG AA wants 3:1 even for large text, so this was the least
+            // legible thing in the race and it is the one card the learner has to spot at top
+            // speed, at distance, through fog, on a bent horizon. The gold stays exactly as it
+            // was (gold IS "this is the finish", and F20's treasure metaphor rests on it); only
+            // the ink changes, to the same deep brown the briefing already puts on its gold
+            // title pill (F35), which measures 6.8:1 — AA at any size, AAA at this one.
             var card = BuildCard(root, new Vector3(0f, 1.6f, 0f), new Vector2(3.4f, 0.9f),
-                SummaRace.Constants.GameText.RaceFinishCard, Color.white, new Color(1f, 0.72f, 0.15f), 3.2f);
+                SummaRace.Constants.GameText.RaceFinishCard,
+                new Color(0.32f, 0.19f, 0.02f), new Color(1f, 0.72f, 0.15f), 3.2f);
 
             var trigger = card.gameObject.AddComponent<BoxCollider>();
             trigger.isTrigger = true;

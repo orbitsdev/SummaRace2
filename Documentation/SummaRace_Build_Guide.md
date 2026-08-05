@@ -1,5 +1,13 @@
 # SummaRace — Solo Developer Build Guide
 
+> ⚠️ **HISTORICAL — phases A–J are done or superseded. Do not plan from this file.**
+> It was written before any code existed and describes building the game from an empty project.
+> The current plan is `SummaRace_Owner_Handover.md` (ordered critical path) and
+> `SummaRace_Finalization_Plan.md` (remaining work with effort). The biggest divergence: the race
+> described here is the park/trail race in `Race.unity`, which **no longer ships** — the game's race
+> is Trash Dash's `MainSummaRace`. Kept for the reasoning behind the phase ordering and the
+> grey-box-first rule, which are still the project's working method.
+
 **How to build SummaRace from an empty Unity project, step by step, alone.**
 Companion to the *SummaRace Final GDD* (the "what"). This guide is the "how" and the "in what order."
 

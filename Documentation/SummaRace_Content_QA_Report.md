@@ -47,13 +47,20 @@ Two further defects found, one of them a code bug that no content edit can fix:
 | # | Defect | Severity |
 |---|---|---|
 | 1 | Reader option length tell, 81.3% (above) | **critical — FIXED** |
-| 2 | `SOMEBODY` is ellipsised in the race SWBST tracker (needs 128px in a 118px plaque) | **high — needs a 1-line code fix, not mine to make** |
+| 2 | `SOMEBODY` is ellipsised in the race SWBST tracker (needs 128px in a 118px plaque) | ~~high — needs a 1-line code fix~~ → **FIXED in `dca9b27`**, differently and better: the plaques were widened 138→**160** (gap 12→10, board 774→880) rather than dropping the font floor, so the word fits at the full 24pt. Asserted in play mode in `de63a3d`: *"SOMEBODY now fits its plaque."* |
 | 3 | `apply.py` could silently overwrite a *correct* answer if an override index was one digit off — it happened twice during this pass | **high — FIXED (guard added)** |
 | 4 | The whole pipeline pointed at `C:\Users\User\...`, a path that does not exist in this repo — `flag.py`, `apply.py`, `emit.py` could not run at all here | **high — FIXED** |
 | 5 | Two stories share a title, characters and premise (`s05_hard` / `s06_hard`, "In Grandfather's Day") | informational — it is in the researcher's source doc |
 
 Gates as they stand now: `flag.py` **0 of 150**; `fit.py` **0 of 1930 strings fail**, one
-non-content failure (defect 2); `qa.py` structure **30/30 pass**.
+non-content failure (defect 2, since fixed); `qa.py` structure **30/30 pass**.
+
+> **Update 2026-08-06 (HEAD `63e1be3`).** Two things in this report have moved since the audit date.
+> **Defect 2 is closed** — see the row above and §5 P1. And commit `4a78905` audited something this
+> report did not cover: whether page *n* actually teaches SWBST slot *n*. It found **two of our own
+> regressions** — the P7 card-shortening pass had changed what `s04_easy` BUT and `s10_easy` SO
+> *mean* — and restored the researcher's wording. Read `SummaRace_Story_Alignment_Audit.md`
+> alongside this document before any sign-off conversation; neither is complete without the other.
 
 ---
 
@@ -325,7 +332,16 @@ below **43pt** of their 26–44 band, so the lengthened distractors cost no legi
 
 ## 5. Remaining defects, in priority order
 
-### P1 — `SOMEBODY` is truncated in the race SWBST tracker *(open; needs a code change)*
+### P1 — `SOMEBODY` is truncated in the race SWBST tracker — ✅ **CLOSED in `dca9b27`**
+
+> **Resolved, and not by the fix proposed below.** Dropping `fontSizeMin` to 20pt would have made
+> the framework's own first word the smallest text on the HUD. Instead the plaques were widened
+> **138→160** (gap 12→10, board 774→880), so `SOMEBODY` fits at the full 24pt floor. Verified in
+> play mode in `de63a3d`. The measurement below is kept because it is the evidence, and because it
+> also flags `WANTED` and `THEN` as having been *exactly* on the 118px edge — a reason not to
+> narrow the plaques again.
+
+*Original finding, as measured on 2026-08-05:*
 
 `EndlessRaceDirector.BuildTracker` gives each plaque a 138×96 rect with a (10,8) inset, i.e.
 a **118×80** label, `TextWrappingModes.NoWrap`, `TextOverflowModes.Ellipsis`,

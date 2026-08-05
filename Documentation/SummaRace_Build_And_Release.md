@@ -1,8 +1,10 @@
 # SummaRace — Build & Release
 
-**From this repo to 40 tablets.** Written 2026-08-05, against the working tree of
-`experiment/endless-override-2`. Every number below was read out of the actual file named
-beside it, not from memory.
+**From this repo to 40 tablets.** Written 2026-08-05 against the working tree of
+`experiment/endless-override-2`; **§8, §9 and §11 corrected 2026-08-06 at HEAD `63e1be3`.**
+Every number below was read out of the actual file named beside it, not from memory — and where
+this document once quoted an older figure (Race.unity's weight, the resident-audio total, a Bloom
+lever that does not exist), `SummaRace_Device_Budget.md` measured it and this page now follows it.
 
 **Scope.** This is the engineering side: install the toolchain, prove the project is
 buildable, produce the APK, get it onto tablets, and measure the two acceptance numbers.
@@ -319,13 +321,25 @@ It should take under 10 minutes.
    *27 of the 30 stories have never been played through even once.* Pick one of those.
 6. **Audio.** Narration, correct/wrong stings, race music. Music must stop at FINISH so the
    victory sting owns Results.
-7. **The race is playable by touch.** Swipe left/right to change lanes. This is the path that
-   breaks if Active Input Handling is ever set to "New only" (§2).
+7. **The race is playable by touch.** Two separate paths, test both: **tap** the left / middle /
+   right third of the screen (should move straight to that lane, one tap) and **swipe** left/right
+   (one lane per swipe). The swipe path is the one that breaks if Active Input Handling is ever set
+   to "New only" (§2). Tap-to-lane has been verified only by code path and compile — **never by a
+   finger on a tablet** — so it belongs at the top of this list.
 8. **Interruption.** Press Home mid-race, wait 10 seconds, come back. The race must resume, not
    freeze; audio must return. Then check the log file still grows — backgrounding once
    discarded the rest of a run's data.
-9. **Teacher gate.** Set a PIN (Runbook §1.2), unlock a session, run an export, and confirm the
-   file exists at the path the screen prints.
+8b. **The BACK button must not close the app.** With the tablet on gesture navigation, edge-swipe
+   back mid-story; with three-button navigation, tap ◁. Nothing should happen. This is worth a
+   deliberate check because on gesture nav the back gesture **is the same motion the race asks
+   for**, so a regression here would fire many times a day across 40 tablets.
+8c. **The race pause works and costs nothing.** Tap the chip in the top-right gutter: the world,
+   audio and clock freeze. **KEEP RUNNING** must resume at the speed you left, not from a standing
+   start. Then re-enter and confirm **LEAVE RACE** needs two taps and lands on Story Select.
+9. **Teacher gate.** Set a PIN (Runbook §1.2), **set a participant code** (Runbook §1.2b), unlock a
+   session, run an export, and confirm both the `.jsonl` and the `_learners.json` roster exist at
+   the path the screen prints — and that the status line's participant-code warning behaves
+   (it should warn while a second test learner has no code, and stop once one is set).
 10. **Storage headroom.** `Settings ▸ Storage` — leave the tablet with room to spare; a device
     that fills up mid-study loses logs.
 
@@ -342,12 +356,19 @@ Estimate on record: ~190–230MB (≈143MB shipped asset payload + 55–90MB eng
 Measure: the size of the `.apk` on disk, and confirm it on the tablet under
 `Settings ▸ Apps ▸ SummaRace ▸ Storage` (installed size exceeds APK size).
 
-If it comes in over budget, these are known-free reductions, in order of return:
+If it comes in over budget, these are known-free reductions, in order of return.
+**`SummaRace_Device_Budget.md` is the authority on every figure here** — it read the files; earlier
+versions of this section quoted older estimates and were wrong:
 
-- Drop the legacy `Assets/_Game/Scenes/Race.unity` from Build Settings — **~23MB**, nothing
-  routes to it (removing `SceneNames.Race` too, or the preflight will flag the constant).
-- `music_race.ogg` is byte-identical to Trash Dash's `STEMSMainTrackMono.ogg` and **both ship**
-  — ~6.9MB.
+- Drop the legacy `Assets/_Game/Scenes/Race.unity` from Build Settings — **51.5MB of source
+  assets are exclusive to it** (not the ~23MB previously recorded here; **29MB of that is
+  `Ch46_nonPBR.fbx`**, the kid Aj replaced in F38), which the Device Budget estimates at
+  **12–20MB of APK**. Nothing routes to it. Remove `SceneNames.Race` too, or the preflight will
+  flag the constant. *(The scene file itself is only 119KB — the 51.5MB is its dependency closure.
+  `BuildPreflight.cs` still prints the stale ~23MB estimate in its own report; ignore that line.)*
+- `music_race.ogg` is byte-identical to Trash Dash's `STEMSMainTrackMono.ogg` (MD5
+  `ab3867fa20ede410335dcc707675cc16`, 7,277,424 bytes each) and **both ship** — ~6.9MB.
+  `sfx_coin.ogg` and `sfx_collect.ogg` are likewise identical, but only ~25KB each.
 - Three textures import uncompressed, ~9MB (`UISpritesheet.png` alone is 6MB).
 - `TextMesh Pro/Examples & Extras` ships through its own `Resources/` folder — 2.7MB.
 - Deleting unused Addressables groups saves **≈0** — their meshes and textures are shared with
@@ -362,19 +383,36 @@ Measure with a **Development Build + Autoconnect Profiler** over USB, then **reb
 it** for the study.
 
 Watch: race frame time, GC allocations per frame, and total memory. **RAM is the real pressure
-here, not polygons** — the whole Daytime theme is ~80k verts, while ~36MB of Vorbis music is
-imported `DecompressOnLoad` and expands to raw PCM in memory.
+here, not polygons** — the whole Daytime theme is ~80k verts, while **178.2MB of audio is imported
+`DecompressOnLoad`, of which ~156.5MB of raw PCM is genuinely resident** once the race has been
+entered (measured in `SummaRace_Device_Budget.md` §2; **not** the "~36MB" this section used to
+quote). Their `MusicPlayer` is `DontDestroyOnLoad` and plays six 4-minute stems at once, so it
+stays for the whole session. **Run `SummaRace ▸ Device Budget ▸ Apply ALL safe fixes` before you
+profile** — it recovers ~122MB in ten minutes, is idempotent and look-preserving, and has not been
+run.
 
-If the race misses 30fps, the first lever is documented and deliberate: every quality level has
-`customRenderPipeline: {fileID: 0}` and `GraphicsSettings` points at **Trash Dash's**
-`Assets/RenderingPipeline.asset` with `Assets/UIRenderer.asset` as its renderer, at
-`renderScale 1.0`, main-light shadows on with a 2048 map and 4 cascades, and
-`m_IntermediateTextureMode: Always`. `Mobile_RPAsset` / `Mobile_Renderer` are assigned to
-nothing. **Do not simply reassign the Mobile asset** — the entire race look (curved/unlit
-materials) was built and playtested against their pipeline, so swapping it is a visual change
-that needs its own playtest, not a config tidy. Prefer, in order: drop `renderScale` to 0.8 on
-the *live* pipeline asset, then shadow resolution / cascades, then Bloom in
-`_Game/Art/RacePostFx.asset`.
+**Also unmeasured:** commit `63e1be3` added roadside greenery and a second theme to the race, at an
+author-estimated **+200 draw calls worst case**. If the race misses 30fps, **halve
+`GameRules.RaceMaxSceneryPerSegment` (currently 14) first** — that is the cheapest lever and the one
+its author nominated.
+
+If it still misses 30fps: every quality level has `customRenderPipeline: {fileID: 0}` and
+`GraphicsSettings` points at **Trash Dash's** `Assets/RenderingPipeline.asset` with
+`Assets/UIRenderer.asset` as its renderer, at `renderScale 1.0`, main-light shadows on with a 2048
+map and 4 cascades, and `m_IntermediateTextureMode: Always`. `Mobile_RPAsset` / `Mobile_Renderer`
+are assigned to nothing. **Do not simply reassign the Mobile asset** — the entire race look
+(curved/unlit materials) was built and playtested against their pipeline, so swapping it is a
+visual change that needs its own playtest, not a config tidy. Prefer, in order: shadow cascades
+4→1 and shadowmap 2048→512 (nothing in the corridor can receive a shadow — every material is
+single-pass unlit), `m_IntermediateTextureMode` Always→Auto, `GameRules.TargetFrameRate` 60→30,
+then `renderScale` 1.0→0.8 on the *live* pipeline asset as a last resort, because that one is
+visible.
+
+> ⚠️ **Bloom is not a lever — there is nothing to turn off.** An earlier version of this section
+> offered "Bloom in `_Game/Art/RacePostFx.asset`". Measured: that profile's `components:` list holds
+> a single **null** entry, and `MainSummaRace.unity` has **zero** cameras with
+> `m_RenderPostProcessing: 1`. The only camera with post-processing enabled anywhere in the build
+> list is in the dead legacy `Race.unity`, pointing at the same empty profile.
 
 Record both numbers in the study notes with the tablet model beside them. They are acceptance
 criteria, not trivia.
@@ -457,3 +495,6 @@ Print this.
 - [ ] APK size and race fps recorded in the study notes with the tablet model (§9)
 - [ ] The **same single APK file** installed on all 40 tablets (§4, §7)
 - [ ] Teacher PIN set on every tablet **before any child touches it** — Runbook §1.2
+- [ ] **Participant code set for every learner** — Runbook §1.2b. This is the join key to the paper
+      pretest/posttest and cannot be added to rows already written.
+- [ ] `SummaRace ▸ Device Budget ▸ Apply ALL safe fixes` run (~122MB of resident RAM, §9)

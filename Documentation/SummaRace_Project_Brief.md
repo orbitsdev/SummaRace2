@@ -75,9 +75,21 @@ Golden rule: *playable ugly before pretty; one story before thirty.*
 | **Build Guide** | *What order* to build in, solo workflow (phases A–J) | Planning your work |
 | **Technical Design Document (TDD)** | *How* to build each piece in code: scenes, scripts, classes, the Race system, MVP | Writing code |
 
-Plus the thesis materials (manuscript, 10 intervention plans, 30 stories, tests, validation tools) and the asset requirements list.
+Plus the thesis materials (manuscript, 10 intervention plans, 30 stories, tests, validation tools).
 
-**If you're picking this up to build it:** read this brief → skim the GDD §2 (the walkthrough) → open the Build Guide "what to do next" → keep the TDD beside you while coding.
+> **⚠️ The four documents above are the *original design set*, and the game has since been built.**
+> The Build Guide's phases A–J are done or superseded, the asset requirements list is superseded by
+> `SummaRace_Asset_Shopping_List.md`, and the TDD's race is the park/trail race in `Race.unity`,
+> **which no longer ships** — the game's race is now Trash Dash's `MainSummaRace`.
+>
+> **If you are picking this up to *work on* it, not to learn what it is, start at
+> `SummaRace_Owner_Handover.md`** — the maintained front door: current state, ordered critical path,
+> the owner's open decisions, and §4d listing every place two documents disagree and which one is
+> right. Then `SummaRace_Finalization_Plan.md` for the remaining work, and `CLAUDE.md` for *why*
+> anything is the way it is.
+
+**If you're reading this to understand the project:** this brief → GDD §2 (the walkthrough) → the
+TDD for the original architecture, remembering the build has deliberately diverged from it.
 
 ---
 

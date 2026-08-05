@@ -165,6 +165,23 @@ namespace SummaRace.Constants
         // three integer increments, twelve times a minute.
         public const float RaceZoneHoldSeconds = 5f;
 
+        // MIXING ZONE FAMILIES (F49). Holding one family for the whole run was right about place
+        // and wrong about variety: the families are 3 / 4 / 14 prefabs, a ~840m race lays about
+        // 55 segments, and five of the ten worlds were drawing all 55 from the same four Suburbs
+        // pieces. RaceWorlds now gives each world a primary family plus one or two accents, laid
+        // as alternating BLOCKS (see RaceWorlds.Mix for why blocks and not a per-segment draw).
+        //
+        // The block length in a recipe is a target, not a constant — every block is jittered by
+        // this fraction so a race never falls into an audible rhythm, and the three stories of a
+        // session (which share a world) do not lay the same street in the same order. The jitter
+        // is drawn from the story-seeded RNG, so any one story is still perfectly reproducible,
+        // which matters for a thesis instrument: two learners on the same story see the same run.
+        public const float RaceZoneMixJitter = 0.28f;
+        // Floor under a jittered block, so a bad draw can never produce a one-piece "block" that
+        // would read as the per-segment flicker the block design exists to avoid. 27m is the
+        // longest single segment in either theme (IndustrialWarehouse02), i.e. one piece minimum.
+        public const float RaceZoneMixMinBlockMetres = 28f;
+
         // REPAINTING THE SKY. Their sky is a vertex-coloured MESH with two variants in the whole
         // project (Day, NightTime), so eight of the ten worlds were showing the identical bright
         // blue sky however the recipe was written — overcast, misty, golden and sunset were all

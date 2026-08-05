@@ -50,10 +50,23 @@ namespace SummaRace.Features.Race
 
             // ---- Place (F48). Everything above is light; everything below is where you are.
             public string theme;    // ThemeDay / ThemeNight
-            public int zone;        // Zone* above — held for the whole run, never rotated
+            public int zone;        // Zone* above — the family this world is MOSTLY built from
             public bool nightSky;   // sky dome, chosen independently of the theme (see below)
             public int trees;       // roadside Tree01 per track segment, both sides (0 = none)
             public int grass;       // roadside GrassClump01 per track segment
+
+            // ---- Mix (F49). A world is mostly `zone`, with blocks of one or two other
+            // families cut into it. weight <= 0 means "no accent", which reproduces F48's
+            // single-family behaviour exactly, so an un-mixed row is unchanged.
+            public int accentA;
+            public int accentAWeight;
+            public int accentB;
+            public int accentBWeight;
+            public float primaryRunMetres;  // roughly how far the primary family runs
+            public float accentRunMetres;   // roughly how far an accent block runs
+
+            /// <summary>True when this world has anything to mix in at all.</summary>
+            public bool HasAccents { get { return accentAWeight > 0 || accentBWeight > 0; } }
         }
 
         // Ordered deliberately: day -> sunset -> night -> mist -> finale, so session 10 feels
@@ -99,60 +112,120 @@ namespace SummaRace.Features.Race
             return w;
         }
 
+        /// <summary>
+        /// The third part of a row: WHAT ELSE this place is made of (F49).
+        ///
+        /// THE BUG THIS EXISTS TO FIX. F48 gave each world one zone family and then held it for
+        /// the whole run, which was right about place and wrong about variety, because the three
+        /// families are wildly uneven: Industrial has 3 segment prefabs, Suburbs 4, Urban 14. A
+        /// five-gate race is ~840m and the pieces are 9–27m long, so a run lays roughly 55
+        /// segments — and five of the ten worlds (morning_suburbs, bright_park,
+        /// blue_hour_suburbs, autumn_lane, starlit_finale) were drawing all 55 of them from the
+        /// same four Suburbs prefabs. One garage and three houses, each seen a dozen times per
+        /// race, for half the study's sessions. Urban's fourteen pieces were reachable by only
+        /// three worlds. The owner reported the race as repetitive twice, and was right.
+        ///
+        /// THE FIX IS A POOL, NOT A PREFAB. Nothing new is imported and the live segment count is
+        /// untouched (their k_DesiredSegmentCount stays 10): a world now lays a BLOCK of its
+        /// primary family, then a shorter block of an accent family, and alternates. Blocks are
+        /// measured in metres of laid track, so they read the same whether the pieces are 9m
+        /// walls or 27m warehouses. Suburbs worlds can now show up to 18 distinct segment
+        /// prefabs in one race instead of 4.
+        ///
+        /// WHY BLOCKS AND NOT A PER-SEGMENT DRAW. A weighted coin flip per segment would put a
+        /// warehouse between two houses every few seconds and the world would stop reading as
+        /// one place — the thing F48 was built to fix. A block is long enough to be a stretch of
+        /// street you travel down (roughly 3–8 seconds at race speed) and the accent is always
+        /// the minority, so the primary family still owns the run.
+        ///
+        /// Every world gets a DIFFERENT mix and different block lengths, which is what keeps the
+        /// five Suburbs worlds from becoming the same world with different lighting.
+        /// </summary>
+        private static World Mix(World w, int accentA, int weightA, int accentB, int weightB,
+                                 float primaryRunMetres, float accentRunMetres)
+        {
+            w.accentA = accentA;
+            w.accentAWeight = weightA;
+            w.accentB = accentB;
+            w.accentBWeight = weightB;
+            w.primaryRunMetres = primaryRunMetres;
+            w.accentRunMetres = accentRunMetres;
+            return w;
+        }
+
         public static World For(string worldId)
         {
             switch (worldId)
             {
                 case "morning_suburbs":     // fresh, gentle, low sun
-                    return Place(Make(1.00f, 0.94f, 0.82f, 1.05f, 22f, 340f,
+                    // Session 1: houses, with the walls and corner shops of the next street over.
+                    return Mix(Place(Make(1.00f, 0.94f, 0.82f, 1.05f, 22f, 340f,
                                 0.52f, 0.55f, 0.62f, 0.72f, 0.80f, 0.88f, 60f, 160f,
                                 0.56f, 0.74f, 0.92f),
-                                ThemeDay, ZoneSuburbs, false, 2, 6);
+                                ThemeDay, ZoneSuburbs, false, 2, 6),
+                                ZoneUrban, 3, ZoneIndustrial, 1, 95f, 40f);
                 case "bright_park":         // open and sunny, air is clear
-                    return Place(Make(1.00f, 0.98f, 0.90f, 1.25f, 55f, 330f,
+                    // The Industrial pieces are the widest-sky ones in the set, which is the
+                    // closest thing the art has to open ground — so they carry "park" here.
+                    return Mix(Place(Make(1.00f, 0.98f, 0.90f, 1.25f, 55f, 330f,
                                 0.58f, 0.62f, 0.66f, 0.70f, 0.85f, 0.95f, 90f, 260f,
                                 0.35f, 0.65f, 0.95f),
-                                ThemeDay, ZoneSuburbs, false, 5, 12);
+                                ThemeDay, ZoneSuburbs, false, 5, 12),
+                                ZoneIndustrial, 2, ZoneUrban, 1, 105f, 45f);
                 case "sunset_town":         // warm gold, long light
-                    return Place(Make(1.00f, 0.72f, 0.42f, 1.10f, 14f, 300f,
+                    return Mix(Place(Make(1.00f, 0.72f, 0.42f, 1.10f, 14f, 300f,
                                 0.55f, 0.44f, 0.42f, 0.95f, 0.62f, 0.42f, 45f, 150f,
                                 0.98f, 0.60f, 0.42f),
-                                ThemeDay, ZoneUrban, false, 1, 2);
+                                ThemeDay, ZoneUrban, false, 1, 2),
+                                ZoneSuburbs, 3, ZoneIndustrial, 1, 90f, 45f);
                 case "blue_hour_suburbs":   // cool dusk, lights coming on
-                    return Place(Make(0.62f, 0.68f, 0.92f, 0.75f, 10f, 290f,
+                    // The most urban of the suburbs worlds: dusk is when the street lights and
+                    // lit windows of the Urban pieces do the most work.
+                    return Mix(Place(Make(0.62f, 0.68f, 0.92f, 0.75f, 10f, 290f,
                                 0.34f, 0.38f, 0.52f, 0.30f, 0.36f, 0.56f, 40f, 130f,
                                 0.24f, 0.30f, 0.52f),
-                                ThemeDay, ZoneSuburbs, true, 3, 4);
+                                ThemeDay, ZoneSuburbs, true, 3, 4),
+                                ZoneUrban, 4, ZoneIndustrial, 1, 80f, 55f);
                 case "overcast_industrial": // flat, heavy, close
-                    return Place(Make(0.82f, 0.84f, 0.86f, 0.70f, 60f, 20f,
+                    // Its own family has only THREE prefabs, so this is the world that needs the
+                    // mix most: shortest primary block, longest accent block.
+                    return Mix(Place(Make(0.82f, 0.84f, 0.86f, 0.70f, 60f, 20f,
                                 0.48f, 0.50f, 0.53f, 0.62f, 0.64f, 0.67f, 30f, 95f,
                                 0.60f, 0.63f, 0.66f),
-                                ThemeDay, ZoneIndustrial, false, 0, 1);
+                                ThemeDay, ZoneIndustrial, false, 0, 1),
+                                ZoneUrban, 3, ZoneSuburbs, 1, 70f, 60f);
                 case "golden_fields":       // wide and hopeful
-                    return Place(Make(1.00f, 0.86f, 0.58f, 1.15f, 28f, 315f,
+                    return Mix(Place(Make(1.00f, 0.86f, 0.58f, 1.15f, 28f, 315f,
                                 0.58f, 0.52f, 0.42f, 0.92f, 0.80f, 0.55f, 70f, 200f,
                                 0.86f, 0.78f, 0.52f),
-                                ThemeDay, ZoneIndustrial, false, 2, 14);
+                                ThemeDay, ZoneIndustrial, false, 2, 14),
+                                ZoneSuburbs, 2, ZoneUrban, 2, 75f, 55f);
                 case "night_city":          // electric, dark, glowing
-                    return Place(Make(0.48f, 0.56f, 0.85f, 0.45f, 35f, 200f,
+                    // Already the richest family (14 pieces), so it needs the least help — the
+                    // longest primary block of the ten, with warehouse districts cut through it.
+                    return Mix(Place(Make(0.48f, 0.56f, 0.85f, 0.45f, 35f, 200f,
                                 0.20f, 0.22f, 0.32f, 0.10f, 0.12f, 0.20f, 35f, 110f,
                                 0.05f, 0.06f, 0.12f),
-                                ThemeNight, ZoneUrban, true, 0, 0);
+                                ThemeNight, ZoneUrban, true, 0, 0),
+                                ZoneIndustrial, 2, ZoneSuburbs, 1, 110f, 40f);
                 case "misty_morning":       // quiet, the fog IS the world
-                    return Place(Make(0.94f, 0.94f, 0.90f, 0.80f, 18f, 350f,
+                    return Mix(Place(Make(0.94f, 0.94f, 0.90f, 0.80f, 18f, 350f,
                                 0.62f, 0.64f, 0.64f, 0.86f, 0.88f, 0.86f, 18f, 70f,
                                 0.82f, 0.85f, 0.86f),
-                                ThemeDay, ZoneUrban, false, 3, 5);
+                                ThemeDay, ZoneUrban, false, 3, 5),
+                                ZoneSuburbs, 2, ZoneIndustrial, 1, 95f, 45f);
                 case "autumn_lane":         // crisp russet
-                    return Place(Make(1.00f, 0.82f, 0.60f, 0.95f, 30f, 310f,
+                    return Mix(Place(Make(1.00f, 0.82f, 0.60f, 0.95f, 30f, 310f,
                                 0.52f, 0.46f, 0.40f, 0.80f, 0.66f, 0.48f, 45f, 140f,
                                 0.74f, 0.66f, 0.52f),
-                                ThemeDay, ZoneSuburbs, false, 6, 8);
+                                ThemeDay, ZoneSuburbs, false, 6, 8),
+                                ZoneUrban, 2, ZoneIndustrial, 1, 100f, 40f);
                 case "starlit_finale":      // deep navy, celebratory
-                    return Place(Make(0.60f, 0.66f, 0.95f, 0.55f, 40f, 220f,
+                    return Mix(Place(Make(0.60f, 0.66f, 0.95f, 0.55f, 40f, 220f,
                                 0.24f, 0.26f, 0.40f, 0.12f, 0.14f, 0.28f, 45f, 150f,
                                 0.06f, 0.08f, 0.20f),
-                                ThemeNight, ZoneSuburbs, true, 2, 3);
+                                ThemeNight, ZoneSuburbs, true, 2, 3),
+                                ZoneUrban, 3, ZoneIndustrial, 2, 85f, 50f);
                 default:
                     return For("bright_park");
             }

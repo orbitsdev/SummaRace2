@@ -1,6 +1,23 @@
 # SummaRace — Pre-ship Review
 
-**Written:** 2026-08-06 · **Branch:** `experiment/endless-override-2` · **Two days before 40 children use this.**
+**Written:** 2026-08-06 at commit `46bbb90` · **Branch:** `experiment/endless-override-2` ·
+**Two days before 40 children use this.**
+
+> **Read §6's ranked list against `SummaRace_Owner_Handover.md` §2, not on its own.** That page is
+> the maintained critical path; this one is a dated outside opinion, and three of its items moved
+> within hours of it being written. Re-verified at HEAD `63e1be3`:
+>
+> | §6 item | Status now |
+> |---|---|
+> | 1 — build an APK on the actual tablet | **Still item 1, still unstarted.** Both blockers confirmed: no Android module in either installed Editor, and `m_BuildAddressablesWithPlayerBuild: 2` with no `aa/` folder for any platform. |
+> | 9 — log the Arrange placements (*"schema 3 → 4"*) | **Recommendation taken; the numbering was already stale.** Schema 4 was spent on `participantCode` (`9d839ba`). Arrange orders land as **schema 5**, uncommitted in the working tree as this note is written. |
+> | 10 — colour-only instructions + four contrast failures | **Half done.** The two colour-name strings were reworded in `06f1778`, one commit *before* this review was written — the "still open, verified today" line is stale. The **four contrast failures remain open** and the argument for them stands. |
+> | 11 — render and frame settings | Unchanged, and now more relevant: the F48 pass this review warned about **landed as `63e1be3`**, at an author-estimated **+200 draw calls worst case, still unmeasured on any device**. |
+>
+> Also stale by construction: the line "5,058 lines across 13 markdown files" (now ~6,900 across 16,
+> minus one deleted) and the "F48" label for the world pass, which `CLAUDE.md` records as **F54**.
+> The substance of §5's complaint — *stop adding to the race and go build the APK* — is unaffected,
+> and is still the single most useful sentence in this document.
 
 This is an outside read of the whole product — content, teaching design, fun, fragility — not a
 code review. Where I measured something I say so and give the file. Where I am giving an

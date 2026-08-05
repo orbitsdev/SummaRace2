@@ -93,8 +93,15 @@ Arrange slot, locked StorySelect card) and are verified still correct.
 
 ## 2. Defects, ranked
 
-### D1 — Races 2 and 3 of every session have NO MUSIC ⚠️ open, not mine to fix
-`Features/Race/*` is owned by another agent this pass; this is the handover.
+### D1 — Races 2 and 3 of every session have NO MUSIC ✅ **FIXED in `63e1be3`**
+
+> **Closed.** The handover below was taken, essentially as written, in commit `63e1be3`, and
+> verified live: **6 sources → stopped → 0 → restarted → 6.** The diagnosis stood up exactly.
+> Keep the analysis — it is the only written record of why their music state machine behaves this
+> way, and anything that stops those sources again has to restart them the same way.
+
+*Original finding and handover (audit date 2026-08-06, when `Features/Race/*` was owned by another
+agent this pass):*
 
 Trash Dash's `MusicPlayer` is a `DontDestroyOnLoad` **static singleton**, and the director stops
 its `AudioSource`s in two places so the music does not follow the learner out

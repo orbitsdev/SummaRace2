@@ -291,7 +291,13 @@ namespace SummaRace.EditorTools
                 Info("Legacy Race.unity is still in the build list",
                      "Nothing routes to it (the shipping race is " + SrConst.SceneNames.RaceEndless + "), " +
                      "but SceneNames.Race still names it, so removing it needs the constant removed too. " +
-                     "Worth ~23MB of APK if size becomes the binding constraint.");
+                     // ~23MB was an early estimate and is wrong. Documentation/SummaRace_Device_Budget.md
+                     // measured the exclusive asset closure at 51.5MB of source (12-20MB once Android
+                     // texture/audio compression is applied), 29MB of it Ch46_nonPBR.fbx -- the runner
+                     // Aj replaced in F38. Dropping the scene also retires six otherwise-dead AudioKeys
+                     // and a 6.9MB music track that is byte-identical to one already shipping.
+                     "Worth ~51.5MB of source assets (roughly 12-20MB of APK) if size becomes the " +
+                     "binding constraint -- see Documentation/SummaRace_Device_Budget.md for the measurement.");
         }
 
         // ------------------------------------------------------------------ 3. SceneNames coverage

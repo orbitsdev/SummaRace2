@@ -5,17 +5,28 @@ tablets, running sessions, unlocking sessions, exporting data, and recovering fr
 written for someone under classroom time pressure. It does not re-argue design; it tells you
 what to tap.
 
-**Grounded in the code as of branch `experiment/endless-override-2`, commit `f044d39`**
-(`Features/TeacherMenu/TeacherMenuController.cs`, `Core/TeacherGate.cs`, `Core/SaveManager.cs`,
-`Core/Bootstrapper.cs`, `Core/GameManager.cs`, `Core/SessionLogService.cs`,
-`Features/NameEntry/NameEntryController.cs`, `Features/SessionMap/SessionMapController.cs`,
+**Originally grounded at commit `f044d39`; re-verified against HEAD `63e1be3`** on branch
+`experiment/endless-override-2` (`Features/TeacherMenu/TeacherMenuController.cs`,
+`Core/TeacherGate.cs`, `Core/SaveManager.cs`, `Core/Bootstrapper.cs`, `Core/GameManager.cs`,
+`Core/SessionLogService.cs`, `Core/BackButtonGuard.cs`, `Data/SaveModels.cs`,
+`Features/NameEntry/NameEntryController.cs`, `Features/Reader/ReaderController.cs`,
+`Features/Race/Endless/EndlessRaceDirector.cs`, `Features/SessionMap/SessionMapController.cs`,
 `Constants/GameRules.cs`, `Constants/GameText.cs`, `Constants/PrefKeys.cs`, and the 30 files in
 `Assets/_Game/Resources/Stories/`). Where the code could not answer a question, that is called
 out explicitly rather than guessed — see the **"Verify before the study"** checklist in §7.
 
-Other agents may still be touching the teacher-menu / learner-switching screens while this
-document is written. If a step below stops matching what you see on a tablet, trust the tablet
-and re-read the relevant `.cs` file before assuming the runbook is wrong.
+> **Three things changed after this runbook was first written. If you read an old copy, read these:**
+> 1. **§1.2b is new and is not optional** — every learner needs a **participant code**, set by the
+>    teacher behind the PIN. It is the join key between the app's logs and your paper
+>    pretest/posttest (commit `9d839ba`).
+> 2. **The race now has a pause and a way out** (`dca9b27`), and the Reader has a back button before
+>    the first answer (`ca6e39c`). §6.2 and §6.5 have been rewritten; the old "no way out" warning
+>    is gone.
+> 3. **The Android BACK button no longer closes the app** (`46bbb90`). It used to, mid-story, which
+>    filed the run as abandoned.
+
+If a step below stops matching what you see on a tablet, trust the tablet and re-read the relevant
+`.cs` file before assuming the runbook is wrong.
 
 ---
 
@@ -35,6 +46,10 @@ and re-read the relevant `.cs` file before assuming the runbook is wrong.
    There is no cloud backup and no second copy anywhere. If the PIN is lost *and* you have to
    use recovery, every log on that tablet is gone, permanently, with no way to get it back.
    **Export before you ever need recovery, not after.**
+4. **The app's logs only become useful research data if they can be joined to your paper test.**
+   That join is the **participant code** (§1.2b) — your own id from each child's booklet, typed by
+   you behind the PIN. A tablet set up without codes still records everything, but the rows can
+   then only be matched by a name a nine-year-old typed. **Set the codes at install.**
 
 ---
 
@@ -42,30 +57,34 @@ and re-read the relevant `.cs` file before assuming the runbook is wrong.
 
 ### 1.1 Get an APK onto the tablet
 
-⚠️ **Verify-before-study item — no APK has ever been built from this project.**
-`Documentation/SummaRace_Finalization_Plan.md` (P6) states Android Build Support is not
-installed in the project's Unity Editor, so the two device numbers the study depends on — APK
-size and frame rate on the target tablets — are estimates, not measurements, as of this
-writing. Before day 1 you must:
+⚠️ **Verify-before-study item — no APK has ever been built from this project**, and there are
+**two** hard blockers, not one. This section is a summary; the full procedure is
+`SummaRace_Build_And_Release.md` and it is not restated here.
 
-1. In Unity Hub, add the **Android Build Support** module (with **OpenJDK** and **Android SDK
-   & NDK Tools** sub-modules) to the Unity version this project uses.
-2. Open the project, **File → Build Settings → Android → Switch Platform**.
-3. Confirm the scene list starts with `Boot` at index 0 (CLAUDE.md records this as already
-   correct — Boot creates the `[Core]` singletons everything else depends on; if some other
-   scene is index 0, the app will not boot correctly).
-4. **File → Build Settings → Build** to produce a debug-signed APK (Unity self-signs debug
-   builds automatically — no keystore setup is required for sideloading). Do this once, then
-   reuse the same APK file for every tablet — do not rebuild per tablet, so every learner runs
-   identical content and code.
-5. Copy the `.apk` to each tablet (USB cable + file manager, or `adb install path\to\app.apk`
-   with the tablet in Developer Mode / USB debugging on) and install it. Android will warn
-   about "unknown sources" for a sideloaded debug APK — allow the install anyway.
-6. **Do a smoke test on the actual tablet hardware before day 1**: launch, get through the
-   name screen, play one story end to end, confirm sound plays and the screen stays portrait.
-   The 2GB/Android-8 floor device is explicitly called out in CLAUDE.md as unverified for
-   frame rate — if a tablet chugs or the race is unplayably slow, that is a today problem, not
-   a during-the-study problem.
+1. **Android Build Support is not installed** (verified: `Editor/Data/PlaybackEngines` holds only
+   `windowsstandalonesupport`). Unity Hub → add **Android Build Support** + **OpenJDK** +
+   **Android SDK & NDK Tools**, with the Editor **closed**. Then switch platform to Android once
+   — **the day before build day**, because the first switch re-imports a 945MB `Assets/` folder.
+2. **Addressables content has never been built for Android**, and the project is set not to build
+   it with the player (`m_BuildAddressablesWithPlayerBuild: 2`, no `aa/Android` folder). The race
+   loads its **road, scenery and runner** through Addressables, which resolve off the Asset
+   Database in the Editor — so it looks perfect there and ships **a race with no world at all**.
+   Turn on Addressables ▸ Settings ▸ **Build Addressables on Player Build**.
+3. Run **`SummaRace ▸ Build Preflight`** and fix every ✖. It checks both of the above plus the
+   scene list, index 0, player settings, the app icon, all 30 stories through the real loader,
+   banned packages and offline violations — and it runs *before* the Android module is installed.
+4. Build **one** debug-signed APK (Unity self-signs; no keystore setup needed for sideloading) and
+   reuse that **same file** for every tablet, so every learner runs identical content and code.
+   ⚠️ Build every study APK on the **same machine** — the debug keystore is per-machine, and a
+   rebuild elsewhere will not install over the deployed app; the only way through is an uninstall,
+   which erases that tablet's profiles and every unexported log.
+5. Copy the `.apk` to each tablet (USB + file manager, or `adb install path\to\app.apk` with USB
+   debugging on) and install it. Android will warn about "unknown sources" — allow it anyway.
+6. **Smoke test on the actual tablet hardware before day 1**: launch, get through the name screen,
+   play one story end to end **on a story other than `s01`**, confirm sound plays, the screen stays
+   portrait, and the launcher icon is our crown — **not a cat**. The 2GB/Android-8 floor device is
+   unverified for frame rate; if a tablet chugs, that is a today problem, not a during-the-study
+   problem.
 
 ### 1.2 Set the teacher PIN — do this before the tablet reaches any child
 
@@ -100,6 +119,48 @@ have no way to find out what they typed.
 always asks "Enter PIN" first — there is no way to change or clear a PIN except the destructive
 recovery gesture in §6.1, which also deletes every learner's progress and logs on that tablet.
 Setting the PIN correctly, once, before a child touches the device, avoids that entirely.
+
+### 1.2b Give every learner a participant code — the join to your paper test
+
+**New, and it changes the install procedure.** Do this at the same sitting as the PIN, with the
+children's booklets in front of you.
+
+**Why it exists.** The study's *outcome* measure is your paper pretest/posttest; the app's logs are
+the *process* data, and your results chapter depends on joining the two. Until commit `9d839ba`
+the only human-readable link was **`displayName` — a name typed by a nine-year-old**. `learnerId`
+is a GUID minted on the tablet and appears nowhere on paper. So a child who spells their name
+differently from the booklet, abbreviates it, or shares "Maria R." with a classmate produces rows
+that **cannot be matched to their own pretest score** — and nothing tells you at the time. It
+surfaces during analysis, when the study is over and the data cannot be re-collected.
+
+The **participant code** is your own id for that child, from their booklet (`P07`, `C14`, whatever
+your scheme is). **The teacher types it, behind the PIN. The learner never sees it and never types
+it** — their experience is byte-identical to before.
+
+**Where the app asks for it** (you cannot easily miss it, by design):
+
+- **On passing the PIN**, if the currently active learner has no code, you are taken straight to the
+  prompt rather than the actions screen.
+- **On "+ New learner"** (§1.3), the code is asked for **before** Name Entry — the adult step first,
+  then the child names their runner.
+- You can set or change it any time from the Teacher actions screen (the participant button).
+
+**Rules the app enforces:**
+
+| Rule | What you see |
+|---|---|
+| 2–12 letters or numbers only | *"Use 2–12 letters or numbers, like P07."* — nothing is saved |
+| Codes are normalised | whitespace stripped, upper-cased, so `p07 ` and `P07` are the same code |
+| **Duplicates are refused** | *"That code is already used by \<name\>."* — nothing is saved. This fires **while you still hold both booklets**, which is the whole point |
+| Export warns | after **Export logs** the status line adds *"N learners on this tablet still have no participant code"*, or names a duplicate |
+
+**Where it lands in the data:** the code is written onto **every log row** (`participantCode`, log
+schema 4) *and* into the export roster. Both, deliberately: the roster is a separate file you have
+to remember to pull off the tablet, and if only the `.jsonl` is retrieved the join would be severed
+again. Rows stay pseudonymous — a participant code is your pseudonym, not a name.
+
+**A run logged before a code is set is not lost**, but it can then only be re-joined by name, which
+is the failure this closes. **Set the codes at install, not later.**
 
 ### 1.3 Decide: one tablet per learner, or a shared tablet?
 
@@ -138,8 +199,10 @@ self-advance sessions). Exact tap path, from the Main Menu:
    whoever is currently active (that row is greyed out — you cannot re-select the child already
    active).
 4. **To bring in a learner who has never used this tablet**: tap **"+ New learner"**. This
-   creates a blank profile and sends you to the Name Entry screen (§2) to name it and pick an
-   avatar; confirming there returns you to the Main Menu with the new learner now active.
+   creates a blank profile and **asks you for that child's participant code first** (§1.2b) —
+   still on the teacher side, still behind the PIN. Saving the code then sends you to the Name
+   Entry screen (§2) for the child to type a name and pick an avatar; confirming there returns you
+   to the Main Menu with the new learner active.
 5. **To switch to a learner who has used this tablet before**: tap their row. Status text
    confirms **"Now playing: <name>"**, and you're returned to the actions screen.
 6. Tap **Back** twice to reach the Main Menu. **Before starting the session, check the Main
@@ -202,11 +265,15 @@ after Average. This progression is automatic and needs no teacher action — onl
    five questions come back in the Race with the story text no longer visible.
 5. **Race (endless runner)** — a short mission briefing (names the story, shows the 5 SWBST
    chips) → **START** → 3-2-1-GO countdown → the runner auto-runs down a track, and the learner
-   swipes/taps or uses arrow keys/WASD to change lanes and collect the card matching each SWBST
-   element as it comes up, while a friendly police-car "chaser" visually closes in after a wrong
-   pick (it can never actually catch the learner — GDD D7, always 0 catches by design). The
-   race always ends at a FINISH gate now (an earlier gap where a missed finish trapped the
-   learner has been fixed; if it still happens, that's a "Verify" item, see §7).
+   **taps the left / middle / right third of the screen** to move straight to that lane (a swipe
+   still works, but moves one lane at a time; on a PC, arrow keys or WASD) and collects the card
+   matching each SWBST element as it comes up, while a friendly "chaser" visually closes in after
+   a wrong pick (it can never actually catch the learner — GDD D7, always 0 catches by design).
+   **The three answer options are shown as normal-sized text in the sky band above the road** —
+   the moving cards are too small to read at speed, so the panel is the reading surface and the
+   cards are the target. The race always ends at a FINISH gate (an earlier gap where a missed
+   finish trapped the learner is fixed).
+   **There is a pause chip in the top-right corner** — see §6.5.
 6. **Arrange** — drag/tap the 5 collected SWBST pieces into S-W-B-S-T order. Getting a slot
    wrong just wiggles it back to the pool — retries never run out; after repeated misses a hint
    appears, and after enough failed attempts the app finishes the order with the learner rather
@@ -305,12 +372,17 @@ timestamped file, written to the root of the app's private storage
 Android version):
 
 - `export_YYYYMMDD_HHmm.jsonl` — every learner's log rows, one JSON object per line. Rows are
-  **pseudonymised**: each row carries a `learnerId` (an internal GUID), never a name.
+  **pseudonymised**: each row carries a `learnerId` (an internal GUID) and, since log schema 4,
+  that learner's **`participantCode`** — never a name.
 - `export_YYYYMMDD_HHmm_learners.json` — the **companion roster**, written alongside it in the
   same step: one entry per learner on that tablet with `learnerId`, `displayName`,
-  `unlockedSession`, and `storiesCompleted`. **You need this file to map the pseudonymous log
-  rows back to a child's name.** Without it, the `.jsonl` alone is 40 devices' worth of
-  unlabeled GUIDs.
+  `participantCode`, `unlockedSession`, and `storiesCompleted`. **You need this file to map a code
+  back to a child's name.** Without it the `.jsonl` still joins to your paper test by
+  `participantCode`, but nothing on the tablet says which child that was.
+
+**After tapping Export, read the status line.** As well as the file path it now warns if any
+learner on that tablet has no participant code, or if two share one (§1.2b). Fix it before the next
+session — codes cannot be back-filled onto rows already written.
 
 **Both files land in the same folder, at the same time, from the one "Export logs" tap.**
 Retrieve them over USB (connect the tablet, enable file transfer / MTP, browse to the path
@@ -375,12 +447,16 @@ gesture in step 3 above still works during that wait.
 - **Wrong difficulty card, before playing**: no consequence — tapping a locked card (one whose
   prerequisite isn't finished) just gives a friendly nudge sound and does not open anything.
   Tapping the correct unlocked card is the only way forward.
-- **Realizes mid-story they're in the wrong place**: there is currently **no in-story way to
-  back out** of the Reader/Race/Arrange/Summary sequence — this is a known open item (see §7).
-  The practical options are: let them finish it (a wrong-but-completed run against the wrong
-  story is retrievable later — the log records which `storyId` was played, so it can be
-  identified and excluded during analysis if needed) or force-quit the app (§6.4) if the class
-  cannot wait.
+- **Realizes mid-story they're in the wrong place**: there are now **two places they can back out**,
+  and both go to Story Select.
+  - **In the Reader**, a back button is shown **only while a page is being read and only before the
+    first answer is committed.** That is deliberate: before the first answer the run carries no
+    measure and its row is simply dropped; after it, the run is study data. Two taps (the second
+    confirms; it disarms itself after 4 seconds).
+  - **In the Race**, the pause chip → **LEAVE RACE**, two taps (§6.5).
+  - **In Arrange or Summary there is still no way back** — by then the run has real data in it. Let
+    them finish (a wrong-but-completed run is retrievable: the log records which `storyId` was
+    played, so it can be excluded at analysis) or force-quit (§6.4) if the class cannot wait.
 - **Replays a story they already finished**: allowed, and recorded — `SessionLog.isReplay` is
   set to true for that run, and `CompleteStory` never *reduces* a previously earned star count
   (only raises it), so a replay cannot erase a learner's prior result. A replay is still logged
@@ -409,6 +485,13 @@ gesture in step 3 above still works during that wait.
   is recognisable in the exported data by an **empty `finishedIso`** field — that is the signal
   a researcher should use to identify and separately handle incomplete attempts.
 
+- **The learner's profile itself survives a crash mid-write.** Profiles are written atomically
+  (temp file → single replace, with the previous good copy kept as a backup the app falls back to),
+  fixed in `e5966be`. Before that, a tablet dying inside the write window left the file truncated
+  and the learner silently rebooted as a **brand-new child** — name, avatar, every star and every
+  unlock gone, with nothing on screen to say so. If you ever see a tablet come back "empty", that
+  is not expected behaviour any more; note it and tell the developer.
+
 **What to actually do in the room**: if a tablet dies mid-story, don't panic about the data —
 restart the tablet, relaunch the app (it should resume showing the correct learner and their
 correct `unlockedSession`), and either let them redo that one story or move on; at most one
@@ -427,11 +510,23 @@ continue (this should not change on its own, but it's a one-second check worth m
 - **Finishes a full session (all 3 difficulties) early**: nothing more to do until you (the
   teacher) unlock the next session (§4) at the appropriate scheduled time — the app will not
   let them skip ahead even if they try, by design.
-- **Runs out of time partway through a story**: there's no in-app "save and exit" for a story
-  in progress (see §7's open item about no pause/back/quit in the race specifically). If you
-  must stop, force-quitting is safe per §6.3 — you'll lose at most the current story's data, and
-  the learner can redo that difficulty next time (StorySelect always shows it, whether or not a
-  prior attempt was abandoned).
+- **Runs out of time partway through a story**: there is still no "save and resume" for a story in
+  progress, but there is now a clean way to stop.
+  - **In the race**, tap the **pause chip in the top-right corner** (a small wooden plaque with two
+    bars — no words, so nothing to translate). Everything freezes: the world stops, the audio
+    pauses, the clock stops. Two choices: **KEEP RUNNING**, which resumes without any speed
+    penalty (a pause costs the learner nothing), or the quiet **LEAVE RACE** chip, which needs a
+    **second tap to confirm** — it re-labels itself "LEAVE?" and disarms after 4 seconds if you
+    change your mind. Leaving goes to Story Select, and the partial run is written to disk
+    immediately, marked with why it ended.
+  - **In the Reader**, before the first answer, the back button does the same (§6.2).
+  - **Anywhere else**, force-quitting is safe per §6.3 — you lose at most the current story's data,
+    and the learner can redo that difficulty next time (Story Select always offers it, whether or
+    not a prior attempt was abandoned).
+  - **The Android BACK button will not close the app** (`46bbb90`). It used to — mid-story, with
+    nothing handling it — which mattered because on gesture navigation BACK is an edge swipe, *the
+    same motion the race asks for*. It is now swallowed everywhere. To leave the app deliberately,
+    use the app switcher.
 - **Runs out of time between stories** (e.g. just finished Easy, no time for Average): this is
   clean — Easy's completion is already saved, and Average will simply be waiting, unlocked, the
   next time they get the tablet. No teacher action is needed for this (progressing between
@@ -452,6 +547,10 @@ continue (this should not change on its own, but it's a one-second check worth m
       on low-end hardware).
 - [ ] Teacher PIN is **set** (§1.2) and **written down in your study notes**, tied to that
       tablet's identifier (e.g. an asset tag or a piece of tape with a number on it).
+- [ ] **Every learner on this tablet has a participant code** (§1.2b), matching their paper
+      booklet. Tap **Export logs** once and read the status line — it names any learner without a
+      code, and any duplicate.
+- [ ] The Android **BACK** button (gesture or three-button) does **not** close the app mid-story.
 - [ ] If tablets are shared, confirm the "Switch learner" flow works on this tablet (§1.3) —
       tap through creating one throwaway test learner and switching back, then decide whether
       to leave that test profile or wipe the tablet clean before day 1 (a wipe here is fine,
@@ -474,7 +573,8 @@ continue (this should not change on its own, but it's a one-second check worth m
       (§4) — do this before the tablet is put away, so you don't have to remember which
       learners still need unlocking later.
 - [ ] Periodically (at least every few sessions, not just at the very end) export logs (§5)
-      and copy them off-device. **Do not wait until the last day.**
+      and copy them off-device. **Do not wait until the last day.** Read the status line each
+      time — it warns about missing or duplicate participant codes (§1.2b).
 - [ ] If anything went wrong this session (§6), make a note of which learner/tablet/story was
       affected — the exported data can usually tell you what survived, but a contemporaneous
       note is faster to reconcile than reverse-engineering it from `isPartial`/`finishedIso`
@@ -495,13 +595,17 @@ These are called out inline above; collected here for a final pre-study check:
 3. **End-to-end session timing has not been measured on real hardware or with real content**
    — 27 of 30 stories have never been played through once, per the project's own build-state
    table. Do a timed dry run yourself before relying on any duration estimate (§3.2).
-4. **The learner-switching screen (§1.3) may still be in flux** — the task that produced this
-   document was written while another pass was actively touching the teacher-menu/learner
-   screens. Re-check the exact button labels and flow on the actual build you ship, not just
-   against this document, if it was generated significantly before day 1.
-5. **The race has no in-run pause/back/quit** (confirmed current limitation, not a bug to
-   "fix" here) — factor this into how you brief teachers about interrupting a session (§6.5).
-6. **Content sign-off**: `s01_easy`'s questions are AI-authored (by design, per CLAUDE.md's
+4. ~~The learner-switching screen may still be in flux~~ — **settled.** The flow in §1.3 was
+   re-verified against `TeacherMenuController.cs` at HEAD `63e1be3`, including the new participant
+   -code step that now precedes Name Entry on "+ New learner". Still worth one tap-through on the
+   actual build you ship.
+5. ~~The race has no in-run pause/back/quit~~ — **closed** (`dca9b27`, verified in play mode in
+   `de63a3d`). The race has a pause chip and a two-tap **LEAVE RACE**; the Reader has a back button
+   before the first answer; Android BACK no longer quits the app. §6.2 and §6.5 carry the tap paths.
+6. **Participant codes must be set before any learner plays** (§1.2b) — the app warns at Export,
+   but a row written without a code cannot have one added afterwards. This is the one *operational*
+   item on this list that silently damages the dataset rather than the app.
+7. **Content sign-off**: `s01_easy`'s questions are AI-authored (by design, per CLAUDE.md's
    known flags) and the other 29 stories' distractors have had an editorial pass but are still
    flagged in the Finalization Plan as wanting a researcher sign-off pass (GDD D6). This is a
    content-validity question for the researcher, not an operational one, but it should be

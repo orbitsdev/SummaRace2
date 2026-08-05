@@ -1,5 +1,13 @@
 # SummaRace — Asset & Requirements List (Bill of Materials)
 
+> ⚠️ **HISTORICAL — superseded by `SummaRace_Asset_Shopping_List.md`.** Its own status line below
+> still reads *"Planning — nothing downloaded yet"*; in fact 13 third-party packs are in
+> `Assets/Plugins/`, all 150 narration clips and all 21 sound effects exist, and 30/30 hero images
+> resolve. **The only art still genuinely outstanding is the 27 placeholder hero images**, specified
+> with real paths, exact sizes and 27 ready-to-paste prompts in the Shopping List §2. Kept for the
+> licensing rules (CC0 preferred, no attribution-in-UI — there is no credits screen), which still
+> bind.
+
 > **Purpose:** One list of *everything* the game needs (art, audio, fonts, VFX), where to get it **free**, and what we **already own** so we never download twice.
 > **Budget rule:** ₱0 — everything must be free for commercial/academic use (CC0 preferred). **Always confirm each asset's license before shipping** — this is a thesis, so credit and licensing matter.
 > **Theme locked:** Summer / green / playground (matches final mockups & stories). ❄️ Snow assets are **not** needed.

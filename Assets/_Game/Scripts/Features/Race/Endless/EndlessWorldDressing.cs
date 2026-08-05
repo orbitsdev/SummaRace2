@@ -19,6 +19,11 @@ namespace SummaRace.Features.Race.Endless
     ///   1. THEME     <c>PlayerData.usedTheme</c>, set before their <c>Begin()</c> reads it.
     ///   2. ZONE      <c>TrackManager.ChangeZone()</c>, stepped to the family the world wants and
     ///                then held there (see GameRules.RaceZoneHoldSeconds for the no-op trick).
+    ///                F49: no longer ONE family for the whole run. A world lays alternating
+    ///                BLOCKS of its primary family and one or two accents, because the three
+    ///                families hold 3 / 4 / 14 segment prefabs and five of the ten worlds were
+    ///                building all ~55 of a race's segments out of the same four Suburbs pieces.
+    ///                See RaceWorlds.Mix for the recipe and AdvanceMix below for the sequencer.
     ///   3. SKY DOME  <c>TrackManager.skyMeshFilter</c> is a public field, so the dome can be
     ///                chosen independently of the theme — daytime houses under a dusk sky is what
     ///                blue hour actually looks like, and neither theme ships that combination.
@@ -66,6 +71,11 @@ namespace SummaRace.Features.Race.Endless
         private System.Random _rng;
         private readonly List<Bounds> _blockers = new List<Bounds>();
 
+        // ---- zone mix (F49). The family currently being laid, and how much of it is left.
+        private int _blockZone = -1;
+        private float _blockMetresLeft;
+        private bool _inAccent;
+
         /// <summary>Fraction of a blocker's renderer bounds treated as solid — see Blocked().</summary>
         private const float BlockerSolidity = 0.62f;
 
@@ -112,6 +122,16 @@ namespace SummaRace.Features.Race.Endless
             _world = world;
             _art = art;
             _rng = new System.Random(seed);
+
+            // The run always OPENS on the world's own family — the first block is primary. That
+            // is not only taste: their first Update starts all ten spawn coroutines in one go and
+            // each reads m_CurrentZone before its first yield, so the opening ~150m is a single
+            // family whatever we do. Making that family the primary one is what lets the opening
+            // establish the place before anything else is cut into it.
+            _blockZone = world.zone;
+            _inAccent = false;
+            _blockMetresLeft = JitterBlock(world.primaryRunMetres);
+
             _configured = true;
         }
 
@@ -154,7 +174,8 @@ namespace SummaRace.Features.Race.Endless
 
         private void HoldZone(TrackManager track, ThemeData theme)
         {
-            int want = Mathf.Clamp(_world.zone, 0, theme.zones.Length - 1);
+            int want = Mathf.Clamp(_blockZone < 0 ? _world.zone : _blockZone,
+                                   0, theme.zones.Length - 1);
 
             if (track.currentZone != want)
             {
@@ -207,7 +228,80 @@ namespace SummaRace.Features.Race.Endless
 
         private void OnNewSegment(TrackSegment segment)
         {
+            AdvanceMix(segment);
             Dress(segment);
+        }
+
+        // ------------------------------------------------------------------ zone mix (F49)
+
+        /// <summary>
+        /// Bills a freshly laid segment against the current block and starts the next block when
+        /// this one runs out. Called from their <c>newSegmentCreated</c>, which is the only event
+        /// that reports what was ACTUALLY laid — the alternative, counting segments, would make a
+        /// block of 9m brick walls a third the length of a block of 27m warehouses.
+        ///
+        /// WHY THIS IS SAFE AGAINST THEIR SPAWN ORDER. After the opening batch their Update lays
+        /// at most ONE segment per frame (the while loop refills to k_DesiredSegmentCount and the
+        /// count only drops when the runner passes a segment), and our Update runs first at
+        /// execution order -2000. So the zone this decides is always the zone their next spawn
+        /// reads. During the opening batch every callback lands after all ten have already read
+        /// the zone; the block simply goes overdrawn and the next block starts immediately, which
+        /// is the correct behaviour rather than a special case.
+        ///
+        /// A world with no accents never leaves its primary family — F48's behaviour, unchanged.
+        /// </summary>
+        private void AdvanceMix(TrackSegment segment)
+        {
+            if (!_world.HasAccents || segment == null) return;
+
+            _blockMetresLeft -= Mathf.Max(1f, segment.worldLength);
+            if (_blockMetresLeft > 0f) return;
+
+            if (_inAccent)
+            {
+                _inAccent = false;
+                _blockZone = _world.zone;
+                _blockMetresLeft = JitterBlock(_world.primaryRunMetres);
+                return;
+            }
+
+            int accent = DrawAccent();
+            if (accent < 0 || accent == _world.zone)
+            {
+                // Nothing to cut in (or the recipe names the primary as its own accent) — stay
+                // put rather than emitting a zero-length block that would spin this every frame.
+                _blockMetresLeft = JitterBlock(_world.primaryRunMetres);
+                return;
+            }
+
+            _inAccent = true;
+            _blockZone = accent;
+            _blockMetresLeft = JitterBlock(_world.accentRunMetres);
+        }
+
+        /// <summary>Weighted pick between the world's two accent families; -1 when it has none.</summary>
+        private int DrawAccent()
+        {
+            int a = Mathf.Max(0, _world.accentAWeight);
+            int b = Mathf.Max(0, _world.accentBWeight);
+            int total = a + b;
+            if (total <= 0) return -1;
+            return _rng.Next(total) < a ? _world.accentA : _world.accentB;
+        }
+
+        /// <summary>
+        /// A recipe's block length is a target, not a constant. Without the jitter the three
+        /// stories of a session — which share a world and therefore share every block length —
+        /// would lay their families on the same metre marks, and the second and third races of a
+        /// session would feel like the first with different lighting. The draw comes from the
+        /// story-seeded RNG, so one story still plays identically every time it is run.
+        /// </summary>
+        private float JitterBlock(float target)
+        {
+            if (target <= 0f) return GameRules.RaceZoneMixMinBlockMetres;
+            float j = GameRules.RaceZoneMixJitter;
+            return Mathf.Max(GameRules.RaceZoneMixMinBlockMetres,
+                             target * (1f + Range(-j, j)));
         }
 
         /// <summary>

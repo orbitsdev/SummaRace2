@@ -16,6 +16,19 @@ poor summarising, which is a threat to internal validity, not a polish item.
 
 ## Fix these before the study
 
+> **STATUS, re-verified in source at HEAD `63e1be3` (2026-08-06): items 1–5 are DONE. Item 6 is
+> still open.** The table below is kept as written, because the *reasoning* is the evidence for
+> why each change was made; the status column says what actually happened.
+>
+> | # | State | What landed |
+> |---|---|---|
+> | 1 | ✅ `dca9b27` | The cards stopped being the reading surface — `BuildOptionPreview` shows the three options as normal UI text in the sky band (y 0.745–0.885, which can never cover road, runner, lane halo or tracker), filled from the *same shuffled array* the world cards get so nothing marks the correct one. Gate 1 lengthened 80→130m. **Reading time 0.28–0.50s → 9.0–13.7s per gate.** |
+> | 2 | ✅ `dca9b27` | Tap-to-lane implemented, not just reworded — `EndlessTouchInput`, tap a third of the screen. `RaceBriefingBody` now names tap **first**. |
+> | 3 | ✅ `dca9b27` | Same change: **one tap reaches any lane**, so the far-lane-unreachable case is gone. (A swipe still moves one lane; the two gestures cannot be merged — a tap needs <2% drag and their swipe fires at 1%.) |
+> | 4 | ✅ `04c6cf4` | "VERIFY ORDER" → **"CHECK ORDER"**, and the Arrange instruction dropped "its place in the order". Same pass fixed "Locked in" (which meant *correct* while "Locked" everywhere else means *you can't have this*), "Your Mission" (mission = *session* on four other screens), and nine idioms an ESL reader has no reason to know. |
+> | 5 | ✅ `06f1778` | Both colour-name instructions reworded — `ReaderWrongFeedback` = *"Not quite — here is the answer!"*, `ArrangeAlmost` = *"the parts already in place are right"*. Deliberately **not** a ✓ glyph: there is no tick in the Reader's UI to point at, and naming one would be a worse lie than naming the colour. Motion (punch-scale) and a locked, unresponsive slot carry the meaning instead. |
+> | 6 | ⬜ **open** | All four contrast failures verified still present at HEAD: FINISH card `Color.white` on amber (`EndlessRaceDirector.cs:778`) **1.74:1**; Reader `FeedbackNotQuite` (`ReaderController.cs:65`) **2.99:1**; Summary `HexForIndex` (`SummaryController.cs:65`) WANTED **2.34** / SO **2.10:1**; StorySelect locked-card hint **2.6:1**. Exact replacement colours in `SummaRace_Owner_Handover.md` §4c. ⚠️ A pass may be landing on these — check the files before editing. |
+
 Ruthlessly ordered. Items 1–3 change what the instrument measures. Items 4–6 are cheap and
 remove real blockers. Everything else in this document can wait until after data collection.
 
@@ -675,17 +688,27 @@ MainMenu `Subtitle`. The main reading surfaces are all on opaque cards and are u
 **[NOT MEASURED]** — needs an offscreen portrait render to confirm which bands the labels
 actually land on. CLAUDE.md's MCP gotcha #5 describes exactly the recipe.
 
-### 6.4 MEDIUM — the race cannot be left, and there is no pause
+### 6.4 ~~MEDIUM — the race cannot be left, and there is no pause~~ — ✅ **CLOSED in `dca9b27`**
 
-Already on the project's own NEXT list, restated here because it is an accessibility issue as
-well as a design one. `HideTheirChrome` hides the pause button and `Update` re-hides it every
-frame; the pause menu's Exit is hidden because it dead-ends into the Trash Dash loadout. A
-learner who is overwhelmed, distressed, or simply needs to stop has **no in-game way out** of a
-~60-second run. In a classroom with a supervising researcher this is survivable, but it is a
-poor fit for "never punish the learner".
+*Original finding:* `HideTheirChrome` hid the pause button and `Update` re-hid it every frame; the
+pause menu's Exit was hidden because it dead-ended into the Trash Dash loadout. A learner who was
+overwhelmed, distressed, or simply needed to stop had **no in-game way out** of a ~60-second run —
+a poor fit for "never punish the learner".
 
-**Minimum fix for the study:** a small pause pill that stops the world and offers "Keep going"
-only (no quit) — the child gets control of the clock without breaking the run's data.
+**What was built** (verified in source, and asserted in play mode in `de63a3d`): our own pause chip
+in the top-right gutter — a wooden plaque with a two-bar glyph and **no text**, so nothing to
+translate or misread — opening a full-screen overlay above the HUD with a large green **KEEP
+RUNNING** and a small, quiet **LEAVE RACE**. It went slightly further than the "minimum fix"
+recommended here, and the extra was justified: leaving needs **two taps** (the chip re-labels itself
+"LEAVE?" and disarms after 4 seconds), goes to Story Select rather than the Trash Dash loadout, and
+routes through the existing partial-run mechanism, flushing to disk immediately because the next
+learner may be a different child. Resume calls `StartMove(false)`, so **a pause never reseeds
+`minSpeed` and is never a penalty** — measured: resume restored 18.6 m/s. `timeScale` and
+`AudioListener.pause` are restored on every exit path including focus loss and `OnDestroy`.
+
+Related and also closed: **Android BACK no longer closes the app** (`46bbb90`), and the **Reader**
+has a two-tap back button offered only before the first committed answer (`ca6e39c`) — after that
+the run is study data. Arrange and Summary still have no way back, deliberately.
 
 ### 6.5 LOW–MEDIUM — motion behind and around text
 

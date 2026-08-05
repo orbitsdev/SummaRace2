@@ -15,15 +15,17 @@ safely skip.
 sound effect and every hero image already resolves at runtime. The game is playable end-to-end
 today. So treat this list as *"make it look like a finished product"*, not *"make it work"*.
 
-There is exactly **one genuinely blocking item**, and it is not art:
+There are **two genuinely blocking items**, and neither is art:
 
 | # | Item | Why it blocks |
 |---|---|---|
 | **B1** | **Unity Android Build Support module** (+ SDK/NDK/JDK) | `BuildPipeline.IsBuildTargetSupported(Android)` returns **false** in this Unity install. **No APK can be produced at all.** Nothing else on this list matters if the game cannot be installed on a tablet. |
+| **B2** | **Addressables content built for Android** | Added here 2026-08-06, after this list was first written. `m_BuildAddressablesWithPlayerBuild: 2` and there is no `aa/` folder for any platform, so the APK would ship **without the race's road, scenery or runner** — they all load through Addressables, which resolve off the Asset Database in the Editor and therefore look perfect there. Turn on Addressables ▸ Settings ▸ *Build Addressables on Player Build*. |
 
-**Get B1 first.** Unity Hub → Installs → the Unity 6 entry → gear icon → *Add modules* → tick
-**Android Build Support**, **Android SDK & NDK Tools**, **OpenJDK**. It is a ~2 GB download and
-needs no licence hunting. Do this before you go looking for pictures.
+**Get B1 and B2 first.** B1: Unity Hub → Installs → the Unity 6 entry → gear icon → *Add modules*
+→ tick **Android Build Support**, **Android SDK & NDK Tools**, **OpenJDK**. ~2 GB, no licence
+hunting. Do both before you go looking for pictures. Full procedure:
+`SummaRace_Build_And_Release.md` §1 and §3.
 
 After that, in value order:
 
@@ -56,9 +58,10 @@ After that, in value order:
 Verified directly on disk while writing this, so you are not misled while shopping:
 
 - **`s01_easy/average/hard.png` are NOT "temp crops from a mockup".** They are full
-  1536×1024 illustrations, clearly generated from the prompts in
-  `Documentation/Art_Generation_Prompts.md`. **They are the style reference for the other 27.**
-  Do not replace them.
+  1536×1024 illustrations, generated from the three prompts that used to live in
+  `Documentation/Art_Generation_Prompts.md` (that file has been deleted as fully superseded by
+  §2 of this document, which carries all 27 remaining prompts in the same house style).
+  **The three `s01` images are the style reference for the other 27.** Do not replace them.
 - **The 27 placeholders are blank.** `s02_easy.png` (and its 26 siblings) is a smooth blue-to-green
   gradient with nothing drawn on it. There is no partial art to "improve" — you are starting from
   nothing on those 27.
