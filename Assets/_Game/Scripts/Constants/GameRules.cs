@@ -10,6 +10,23 @@ namespace SummaRace.Constants
         public const float BoostSeconds = 2f;
         public const float SlowSeconds = 1.5f;
 
+        /// <summary>
+        /// Whether the 3D patrol cop spawns at all. OFF: three separate placements each fixed one
+        /// property and broke another (behind = intersected the runner; shoulder = read as a
+        /// jogging companion and sat half off a portrait screen; bounds-following = chased its own
+        /// run animation and slid back and forth). The cause is the approved chase camera — 5m
+        /// back, 4m up, ~15deg — under which a ground-level figure behind the runner is either
+        /// inside him or below the frame, and that camera is not up for change.
+        /// It carries no rule (it never catches — GDD D7, timesCaught stays 0) and the wrong-answer
+        /// beat is already carried by the amber vignette and the feedback line, so nothing is lost.
+        /// Turn on only together with a camera change; the tuning constants below are kept so that
+        /// work does not start from nothing.
+        /// </summary>
+        /// <remarks>static readonly, not const: a const false makes every line after the guard
+        /// provably unreachable, and the compiler warns on all of it — which would bury the real
+        /// warnings in this file behind noise about code we are deliberately keeping.</remarks>
+        public static readonly bool RacePatrolEnabled = false;
+
         // Patrol chaser (visual pressure only — it never catches, GDD D7).
         // "Appear only on a bump": out of frame through a clean run, closes in for
         // PatrolMenaceSeconds after a wrong pick, then drops back out. Placed relative to the

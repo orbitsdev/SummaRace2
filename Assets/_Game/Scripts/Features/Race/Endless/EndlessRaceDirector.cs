@@ -2259,6 +2259,25 @@ namespace SummaRace.Features.Race.Endless
         /// </summary>
         private void SpawnPatrol()
         {
+            // The 3D chaser is off. Three attempts each fixed one property and broke another, and
+            // the owner reported it broken after every one:
+            //   behind the runner  -> its bounds intersected the kid and it drew as a blob
+            //                         growing out of his back;
+            //   out on the shoulder-> it ran level with him and read as a jogging companion,
+            //                         and sat half off the right edge of a portrait screen;
+            //   placed from live renderer bounds -> the bounds are produced BY the run animation
+            //                         and swing with the stride, so the placement chased its own
+            //                         animation and it visibly slid back and forth.
+            // The geometry is the root cause and it is not tunable: the approved chase camera is
+            // 5m back and 4m up at ~15deg, so a ground-level figure behind the runner is either
+            // inside him or under the frame, and the camera is off-limits.
+            // Nothing is lost by cutting it. It never catches anyone (D7 — timesCaught stays 0),
+            // it carries no rule, and the wrong-answer beat is already carried by the amber
+            // vignette and the feedback line. Two days from a study, a character that reads as a
+            // rendering fault is worse than no character. Flip this to true only alongside a
+            // camera change, and re-read the three failures above first.
+            if (!SummaRace.Constants.GameRules.RacePatrolEnabled) return;
+
             var runner = TrackManager.instance != null ? TrackManager.instance.characterController : null;
             if (runner == null) return;
 
