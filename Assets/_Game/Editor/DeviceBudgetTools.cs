@@ -207,7 +207,15 @@ namespace SummaRace.EditorTools
                 string reason;
 
                 bool isStem = path.StartsWith(StemFolder, StringComparison.OrdinalIgnoreCase);
-                bool isNarration = path.IndexOf("/Stories/Narration/", StringComparison.OrdinalIgnoreCase) >= 0;
+                // Voice, wherever it lives. The 150 story pages sit in Stories/Narration, but the
+                // instructional lines (AudioKeys.Vo*) are AudioKeys-named clips, so they live in
+                // Resources/Audio beside the SFX. Without the vo_ prefix they fall through to the
+                // "short SFX" rule below on length alone (2-7s, all under ShortClipSeconds) and a
+                // run of "Apply ALL safe fixes" would flip them from CompressedInMemory back to
+                // DecompressOnLoad with preload on — the exact setting this tool exists to remove.
+                bool isNarration =
+                    path.IndexOf("/Stories/Narration/", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    System.IO.Path.GetFileName(path).StartsWith("vo_", StringComparison.OrdinalIgnoreCase);
 
                 if (isStem)
                 {

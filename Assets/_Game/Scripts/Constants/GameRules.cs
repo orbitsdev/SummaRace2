@@ -347,7 +347,25 @@ namespace SummaRace.Constants
         public const int SessionCount = 10;
 
         // App
-        public const int TargetFrameRate = 60;
+        /// <summary>
+        /// 30, matching the acceptance target and the race, not 60.
+        ///
+        /// The device floor is a 2GB Android 8 tablet and the acceptance criterion is 30fps
+        /// IN THE RACE — which is the heaviest scene by a wide margin and the only one that
+        /// matters. Asking for 60 everywhere else does not make the menus better: nothing on
+        /// them moves faster than a tween, and the cost is real. A tablet that renders Boot,
+        /// the Session Map, the Reader and Story Select at 60 has been running the SoC hot for
+        /// several minutes before the learner ever taps into a story, and a passively-cooled
+        /// tablet answers that by throttling — so the frames get spent on the screens that do
+        /// not need them and are then unavailable to the one that does.
+        ///
+        /// It was also already a half-measure: Trash Dash's MusicPlayer forces
+        /// Application.targetFrameRate = 30 the moment the race scene loads, and never puts it
+        /// back. So the app has been running at two different frame rates depending on which
+        /// scene you were in, with the switch owned by a third-party script nobody wired.
+        /// This makes the intended rate the one the app actually asks for, everywhere.
+        /// </summary>
+        public const int TargetFrameRate = 30;
         public const float SplashSeconds = 2f;
     }
 }

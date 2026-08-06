@@ -60,11 +60,21 @@ namespace SummaRace.Core
             if (_tipCard != null) _tipCard.SetActive(showTips);
             if (_barRoot != null) _barRoot.SetActive(showTips);
             if (_loadingLabel != null) _loadingLabel.SetActive(showTips);
-            _tipText.text = GameText.LoadingTips[Random.Range(0, GameText.LoadingTips.Length)];
+            int tip = Random.Range(0, GameText.LoadingTips.Length);
+            _tipText.text = GameText.LoadingTips[tip];
             if (AudioManager.Instance != null)
             {
                 AudioManager.Instance.StopNarration(); // voice never bleeds into the next scene
-                if (showTips) AudioManager.Instance.PlaySfx(AudioKeys.SfxTransition);
+                if (showTips)
+                {
+                    AudioManager.Instance.PlaySfx(AudioKeys.SfxTransition);
+                    // The tip is where the framework is TAUGHT, and it is pure interface text —
+                    // a learner who cannot read it loses the definition entirely. Bounds-checked
+                    // against the voice array's own length so adding a written tip without a
+                    // clip degrades to silence rather than throwing mid-scene-change.
+                    if (tip < AudioKeys.VoLoadingTips.Length)
+                        AudioManager.Instance.PlayVoice(AudioKeys.VoLoadingTips[tip], true);
+                }
             }
 
             _barFill.fillAmount = 0f;

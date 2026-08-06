@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using SummaRace.Data;
 using UnityEngine;
@@ -60,7 +61,76 @@ namespace SummaRace.Core
 
         public void StopNarration()
         {
+            // Anything still waiting its turn dies with the line that is speaking. Without
+            // this a tip queued during a scene change would surface seconds later, over the
+            // next screen — SceneLoader calls this on every load precisely so the voice
+            // cannot follow the learner out of a screen.
+            _voiceQueue.Clear();
+            if (_voicePump != null) { StopCoroutine(_voicePump); _voicePump = null; }
             if (_voiceSource != null && _voiceSource.isPlaying) _voiceSource.Stop();
+        }
+
+        // ---------- instructional narration ----------
+        // Interface lines (Arrange/Summary/loading tip/race briefing) read aloud in the same
+        // voice as the story pages. They share the story's AudioSource ON PURPOSE: one voice
+        // channel is the only way two lines can never talk over each other, and it means
+        // PlayNarration — which starts with StopNarration — always outranks an instruction.
+        // Nothing scored is ever spoken here; see AudioKeys' vo_* block.
+
+        private readonly Queue<string> _voiceQueue = new();
+        private Coroutine _voicePump;
+
+        /// <summary>The learner's VOICE ON/OFF choice (Reader toggle, PrefKeys.NarrationOn).
+        /// Read live rather than cached — it can be changed mid-story, and a teacher who
+        /// turns the voice off means off on every screen, not just the Reader.</summary>
+        public static bool NarrationEnabled =>
+            PlayerPrefs.GetInt(SummaRace.Constants.PrefKeys.NarrationOn, 1) == 1;
+
+        /// <summary>
+        /// Speaks an instructional line by AudioKeys key (Resources/Audio). Silent when the
+        /// VOICE toggle is off, and silent — never an error — when the clip is missing, so
+        /// call sites are safe before the audio exists.
+        /// </summary>
+        /// <param name="queue">
+        /// true = wait for whatever is speaking to finish instead of cutting it off. That is
+        /// the normal case for a screen that opens while the loading overlay's tip is still
+        /// talking: the tip was started ~a second earlier and interrupting it mid-sentence
+        /// teaches the learner nothing and sounds broken.
+        /// </param>
+        public void PlayVoice(string key, bool queue = false)
+        {
+            if (string.IsNullOrEmpty(key)) return;
+            if (!NarrationEnabled) { StopNarration(); return; }
+
+            if (!queue)
+            {
+                StopNarration();
+                Speak(GetClip(key));
+                return;
+            }
+
+            _voiceQueue.Enqueue(key);
+            if (_voicePump == null && isActiveAndEnabled) _voicePump = StartCoroutine(PumpVoiceQueue());
+        }
+
+        private IEnumerator PumpVoiceQueue()
+        {
+            while (_voiceQueue.Count > 0)
+            {
+                while (_voiceSource != null && _voiceSource.isPlaying) yield return null;
+                Speak(GetClip(_voiceQueue.Dequeue()));
+                yield return null; // let Play() register before the wait above re-tests it
+            }
+            _voicePump = null;
+        }
+
+        private void Speak(AudioClip clip)
+        {
+            if (clip == null || _voiceSource == null) return; // missing clip = silence
+            if (_voiceSource.isPlaying) _voiceSource.Stop();
+            _voiceSource.clip = clip;
+            _voiceSource.volume = _voiceVolume;
+            _voiceSource.Play();
         }
 
         public void PlaySfx(string key)

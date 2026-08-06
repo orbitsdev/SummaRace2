@@ -30,6 +30,21 @@ FONTS = os.path.join(PROJECT, "Assets", "Art", "Fonts", "TMP")
 SCENES = os.path.join(PROJECT, "Assets", "_Game", "Scenes")
 
 
+SCRIPTS = os.path.join(PROJECT, "Assets", "_Game", "Scripts")
+RACE_DIRECTOR = os.path.join(
+    SCRIPTS, "Features", "Race", "Endless", "EndlessRaceDirector.cs")
+
+
 def story_paths():
     import glob
     return sorted(glob.glob(os.path.join(STORIES, "s*.json")))
+
+
+def race_director_source():
+    """The shipping race's source, for tools that must read runtime geometry rather than
+    restate it. Returns '' if the file has moved, so a caller can fail loudly."""
+    try:
+        with open(RACE_DIRECTOR, encoding="utf-8") as fh:
+            return fh.read()
+    except OSError:
+        return ""

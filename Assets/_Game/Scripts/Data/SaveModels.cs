@@ -223,10 +223,24 @@ namespace SummaRace.Data
         // lack these keys (JsonUtility fills the type default on read).
         // ------------------------------------------------------------------
 
-        /// <summary>Shape of this row. 1 = the original TDD §6.2 fields only; 2 = adds the
-        /// run context, per-phase timing and per-element race detail below. Bump it whenever a
-        /// field is added so a mid-study build change is visible in the data instead of being
-        /// discovered during analysis.</summary>
+        /// <summary>
+        /// Shape of this row. Bump it whenever a field is added, so a mid-study build change is
+        /// visible in the data instead of being discovered during analysis.
+        /// <list type="bullet">
+        /// <item>1 — the original TDD §6.2 fields only.</item>
+        /// <item>2 — adds run context, per-phase timing and per-element race detail.</item>
+        /// <item>3 — adds <see cref="racePicks"/> (WHICH distractor was chosen, not merely that
+        /// the pick was wrong), <see cref="racePauseCount"/>, <see cref="racePausedSeconds"/>
+        /// and <see cref="abandonReason"/>.</item>
+        /// <item>4 — adds <see cref="participantCode"/> to every row, so the export joins to the
+        /// paper pretest/posttest without the companion roster also being retrieved.</item>
+        /// <item>5 — adds <see cref="arrangeOrders"/>, the sequence the learner actually built.</item>
+        /// </list>
+        /// This list was stale at "1 and 2" for three versions. It is the comment a reader opens
+        /// first, so keep it current — but the AUTHORITY is
+        /// <c>SessionLogService.SchemaVersion</c> and <c>SummaRace_Data_Dictionary.md</c>, which
+        /// is what the researcher actually analyses from.
+        /// </summary>
         public int schemaVersion;
 
         /// <summary><c>Application.version</c> of the build that produced the row. Two builds

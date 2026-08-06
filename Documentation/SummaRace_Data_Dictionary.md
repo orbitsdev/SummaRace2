@@ -4,9 +4,14 @@
 No programming knowledge assumed. Everything below describes the files a tablet produces,
 what each variable means, and the traps to avoid when you load them.
 
-- Schema version described here: **5**
-- Source of truth in code: `Assets/_Game/Scripts/Data/SaveModels.cs` (`SessionLog`) and
-  `Assets/_Game/Scripts/Core/SessionLogService.cs` (what writes it, and when).
+- Schema version described here: **5** — **verified field by field against commit `04a4040`
+  on 2026-08-06**, by reading what the code writes rather than what the previous version of this
+  document said. All 41 keys `SessionLog` emits are documented below; none is undocumented and
+  none is documented that the code does not write.
+- Source of truth in code: `Assets/_Game/Scripts/Data/SaveModels.cs` (`SessionLog`, `RacePick`) and
+  `Assets/_Game/Scripts/Core/SessionLogService.cs` (what writes it, and when — `SchemaVersion`
+  is the one authority on the number at the top of this list). The export files themselves are
+  written by `Assets/_Game/Scripts/Core/SaveManager.cs` (`AppendLog`, `ExportLogs`, `WriteRoster`).
 - If a field is ever added, the schema version is raised and this file is updated in the same
   change. **Fields are never renamed or removed** — analysis already written against a column
   must keep working.
@@ -53,6 +58,18 @@ on screen — copy it exactly):
 |---|---|
 | `export_YYYYMMDD_HHMM.jsonl` | **The data.** Every learner on that tablet, one play-through per line. |
 | `export_YYYYMMDD_HHMM_learners.json` | **The roster.** Maps `learnerId` → the child's name/alias. |
+
+> **The timestamp in the filename is the tablet's LOCAL time; every timestamp inside a row is
+> UTC.** The export stamp comes from the device clock as the teacher sees it, while
+> `startedIso` / `finishedIso` / `rowWrittenIso` are all UTC. In the Philippines that is an
+> **8-hour offset**, so an export named `..._0900` contains rows stamped `01:00Z`. Order exports
+> by `rowWrittenIso`, never by filename.
+
+> **The roster is best-effort; the data file is not.** If the roster cannot be written the export
+> still succeeds and returns the `.jsonl` path, and no roster appears beside it. It is also
+> skipped entirely when the tablet has no learner profiles. **A missing `_learners.json` is
+> therefore not a sign the data file is bad** — and since schema 4 it is not fatal either, because
+> every row carries its own `participantCode`. Notice it and chase it, but do not discard the data.
 
 `.jsonl` = "JSON Lines": a plain text file where **each line is one complete JSON record**.
 It is not a single JSON document — do not try to parse the whole file at once; read it line by
@@ -110,7 +127,7 @@ which version brought each one in.
 | `finishedIso` | string, **UTC** ISO-8601 | Results screen | When the run completed. **Empty string = the run never reached Results** (abandoned) — see §5. |
 | `rowWrittenIso` | string, **UTC** ISO-8601 | on write | When this line hit the disk. Use it to order several snapshots of the same run. |
 | `lastPhase` | string | continuously | How far the run got: `reading`, `race`, `arrange`, `summary`, `results`, `complete`. On an abandoned row, this is where the learner stopped. |
-| `abandonReason` | string | on leaving | **Schema 3.** Why a run ended without finishing. `"race_left_by_learner"` = the learner chose to leave from the race's pause screen. **Empty on a completed run and also on a run that simply stopped** — a killed app, a flat battery, a tablet taken away — which stays recognisable by an empty `finishedIso`. This is the only thing that separates a deliberate exit from a dead device (§5.2). |
+| `abandonReason` | string | on leaving | **Schema 3.** Why a run ended without finishing. Two tokens today: `"race_left_by_learner"` = the learner chose to leave from the race's pause screen; `"learner_switched"` = the tablet was handed to a different child with a run still open. **Empty on a completed run and also on a run that simply stopped** — a killed app, a flat battery, a tablet taken away — which stays recognisable by an empty `finishedIso`. This is the only thing that separates a deliberate exit from a dead device (§5.2). |
 
 ### 3.2 Reading phase (support present)
 
@@ -139,13 +156,23 @@ All five-element lists are in fixed **S-W-B-S-T order**:
 | Field | Type | Meaning |
 |---|---|---|
 | `raceFirstPickCorrect` | list of 5 booleans | Was the learner's **first** encounter with each gate the correct card. **This is the star measure** (§4). Empty list if the race never finished. |
-| `raceFirstOutcome` | list of 5 strings | What actually happened at that first encounter: `correct`, `wrong` (they chose a distractor — a comprehension error) or `missed` (they touched no card at all and steered past the gate — an attention/motor event). Empty string = the element was never reached. **Use this rather than `raceFirstPickCorrect` whenever "did not know" and "did not hit it" must be told apart** — the boolean collapses `wrong` and `missed` into the same `false`. |
+| `raceFirstOutcome` | list of 5 strings | What actually happened at that first encounter: `correct`, `wrong` (they chose a distractor — a comprehension error) or `missed` (they touched no card at all and steered past the gate — an attention/motor event). Empty string = **no free pick was recorded for that slot, and the run never reached the finish line to have the gaps resolved** — see the note below. **Use this rather than `raceFirstPickCorrect` whenever "did not know" and "did not hit it" must be told apart** — the boolean collapses `wrong` and `missed` into the same `false`. |
 | `raceWrongPicks` | list of 5 integers | How many wrong cards were picked at each element in total, including any after the first. A wrong pick makes the correct card come back, so this can exceed 1. |
 | `raceRunSeconds` | float, seconds | Duration of the race itself, from the world starting to move to the finish line. Excludes the mission briefing and the 3-2-1 countdown. |
 | `timesCaught` | integer | **Always `0`. This is by design, not a bug** (GDD decision D7): the patrol is a friendly chase that can never catch the learner, because the game must never punish. The field exists because the design document lists it; treat it as a constant and do not model it. |
 | `racePicks` | list of objects | **Schema 3. Every card touched in the race, in the order it happened** — the item-level record. See below. |
 | `racePauseCount` | integer | **Schema 3.** How many times the race was paused. Pausing is not a fail state and costs the learner nothing, but an interrupted run is not comparable to an uninterrupted one, and a teacher stepping in is exactly the classroom event that should be visible rather than inferred from an odd duration. |
 | `racePausedSeconds` | float, seconds | **Schema 3.** Total real seconds spent paused. `raceSeconds` and `totalSeconds` are real elapsed time and therefore **include** this — subtract it for time actually on task. |
+
+> **An empty `raceFirstOutcome` slot means the row is a partial or abandoned one — nothing else.**
+> The `correct` / `missed` verdicts are only resolved when the race reaches the finish line; up to
+> that moment the app can fill in a slot the learner *picked at* (`correct` or `wrong`) but has no
+> way to know whether an untouched slot was driven past or simply never arrived. On a **completed**
+> run all five entries are therefore non-empty. On a **partial or abandoned** row an empty entry
+> conflates "never reached that gate" with "reached it and drove past it", and the two cannot be
+> separated after the fact. `racePicks` is the fuller account of what the learner actually touched.
+> Deduplicate (§5.1) before reading this field, or a mid-run snapshot of a run that finished
+> perfectly well will look like a run with unreached gates.
 
 #### `racePicks` — which card, not just right or wrong
 
@@ -208,7 +235,7 @@ part placed in it**:
 | Reading it | How |
 |---|---|
 | Was the whole order right first time | `arrangeOrders[0] == "01234"` |
-| Which part went into slot *k* | `int(arrangeOrders[0][k])` |
+| Which part went into slot *k* | `int(arrangeOrders[0][k])` — **guard with `.isdigit()` first**, see the `?` note below |
 | How many slots were right | count the positions where character == position |
 | A clean two-part swap of *a* and *b* | `order[a] == str(b) and order[b] == str(a)` |
 
@@ -219,8 +246,18 @@ part placed in it**:
 > slots were locked is still recoverable: after entry *k*, slot *i* is locked if any entry up to
 > *k* had part *i* in slot *i*.)
 
-Three more things to know before quoting it:
+Five more things to know before quoting it:
 
+- **A character can be `?`, not only `0`–`4`.** If the app is ever handed a slot value outside
+  `0..4` it writes `?` in that one position rather than discarding the whole attempt, because the
+  other four slots are still evidence. This should never occur in the shipping build and a `?` in
+  real data is worth reporting — but **any code that does `int(order[k])` will crash on it**, so
+  test `order[k].isdigit()` first and drop that single slot. (`Tools/Analysis/summarace_analyze.py`
+  already does exactly this.)
+- **`len(arrangeOrders)` can be less than `arrangeAttempts`, and never more.** The assist's own
+  raise contributes nothing (below), and any board the app could not encode is dropped rather than
+  guessed at. **Do not index this list by attempt number** — entry `0` is the first *recorded*
+  board, which is what you want, but entry `n` is not reliably attempt `n+1`.
 - **An assisted finish contributes no entry of its own.** When the app places the remaining
   pieces, that board is *not* appended — the last entry is still the last thing the child
   actually built. Otherwise every assisted run would look like five slots correct.
@@ -347,6 +384,11 @@ killed while the app is away), so **one play-through can appear as several lines
 
 Never sum or average across rows sharing a `runId` — you would count one child twice.
 
+**Do this before §5.2.** A mid-run snapshot has an empty `finishedIso` and `starsEarned == 0`,
+exactly like a genuinely abandoned run, because at the moment it was written the run genuinely had
+not finished. Testing for abandonment before deduplicating counts a backgrounded-then-completed
+run as a dropout.
+
 ### 5.2 Identify abandoned runs
 
 A run that never reached the Results screen has:
@@ -357,15 +399,34 @@ A run that never reached the Results screen has:
 
 **`abandonReason` is the only way to separate a deliberate exit from a dead device.**
 `"race_left_by_learner"` means the child chose to leave from the race's pause screen — a
-disengagement event you can count. **Empty** means the run simply stopped: the app was killed,
-the battery died, the tablet was taken away, the session ended. Do not read an empty reason as
-"finished normally" — a completed run is identified by `finishedIso`, not by this field.
+disengagement event you can count. `"learner_switched"` means the tablet changed hands with a
+run still open; on a shared-tablet install that is routine housekeeping and **must not be
+counted as a dropout**. **Empty** means the run simply stopped: the app was killed, the battery
+died, the tablet was taken away, the session ended. Do not read an empty reason as "finished
+normally" — a completed run is identified by `finishedIso`, not by this field.
 
 Abandoned rows are kept on purpose (a failing tablet then costs at most one screen of data),
 but they are **not completed play-throughs**. Decide explicitly whether your analysis uses
 them; for anything involving `starsEarned`, `summaryText` or phase durations, exclude them.
 On an abandoned row `raceFirstOutcome` only reaches as far as the learner got, and
 `arrangeOrders` is `[]` if they never got to Arrange.
+
+**Two things about abandoned rows that are easy to get wrong:**
+
+- **Handing the tablet to another child closes the run in flight.** Teacher-gated learner
+  switching writes out whatever the previous child had done, as an abandoned row with an **empty
+  `abandonReason: "learner_switched"`**, stamped with the *previous* learner's id — which is
+  correct, but it means a **shared tablet manufactures abandoned rows that are not dropouts**.
+  Filter that token out before computing any dropout figure. (Rows written by builds before this
+  token existed carry an empty reason instead and are indistinguishable from a dead device; if a
+  tablet's rows show abandonment clustered at learner handovers, that is the mechanism, not
+  disengagement.) On a one-learner-per-tablet install it cannot happen.
+- **Not every abandonment produces a row at all.** A run that recorded *nothing* — no reading
+  answer, no race first-pick, no stars — is deliberately dropped rather than written, because a
+  double-tapped story card would otherwise put a row in the study data indistinguishable from a
+  real dropout. **So you cannot count "how many times a story was opened" from these rows**, only
+  how many times one was opened *and something happened*. A child who opened a story and backed
+  straight out is invisible in this dataset by design.
 
 ### 5.3 Separate first attempts from replays
 
@@ -409,9 +470,13 @@ rows in its data-quality report; do the same if you load the files yourself.
 **Aligning the Reader with the Race (important assumption).** The five reading questions
 pre-teach the five SWBST slots in order, so reading page `i` corresponds to race element `i`
 (`readingPageIndices` gives the page for each answer). This is a **content convention** in the
-story files, not a field the app enforces — the researchers should confirm it holds for the
-stories they intend to compare slot by slot before reporting a per-slot Reader→Race contrast.
-The whole-story contrast (4/5 vs 3/5 above) does not depend on the assumption.
+story files, not a field the app enforces.
+
+**That check has already been done** — all 150 page/slot pairs were audited and the result is in
+`SummaRace_Story_Alignment_Audit.md`: **135 aligned, 8 weak, 7 misaligned**. Read it before making
+any slot-level claim, and exclude the pairs it names rather than assuming the convention holds
+everywhere. `Wanted` is the weak point (4 of the 7 misalignments, all on page 2). The whole-story
+contrast (4/5 vs 3/5 above) does not depend on the assumption at all.
 
 ---
 

@@ -114,6 +114,17 @@ namespace SummaRace.Features.Arrange
 
             RefreshUI();
             SetStatus(GameText.ArrangeIntroStatus);
+
+            // Read the screen's title and its instruction aloud. Both are pure interface text:
+            // a learner who cannot read "Tap a story part, then tap where it goes" is stuck on
+            // HOW to answer rather than on the story, which is the one thing this instrument
+            // must not measure. The five collected parts stay unspoken — those are the answer.
+            // Queued, so the loading overlay's SWBST tip finishes its sentence first.
+            if (AudioManager.Instance != null)
+            {
+                AudioManager.Instance.PlayVoice(AudioKeys.VoArrangeTitle, true);
+                AudioManager.Instance.PlayVoice(AudioKeys.VoArrangeHow, true);
+            }
         }
 
         // ---------- interactions ----------

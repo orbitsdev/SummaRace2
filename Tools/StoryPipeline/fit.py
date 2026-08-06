@@ -59,13 +59,86 @@ LEGIBLE_CAP_PX = 20.0
 # ~60-90s run sit around here, so this is the speed the card is closing at.
 GATE_RUN_SPEED = 14.0
 
-# EndlessRaceDirector.FlyCollectedToSlot: pill 600x180, text inset 18/14, autosize 26-58.
-TOKEN_W, TOKEN_H = 600.0 - 36.0, 180.0 - 28.0
-TOKEN_MIN, TOKEN_MAX = 26.0, 58.0
+# ---------------------------------------------------------------- HUD geometry, READ
+# These two blocks are built in C#, not in a scene, so scenegeom cannot see them. They used
+# to be transcribed here as literals -- and they DRIFTED: F47 widened the tracker plaque
+# 138 -> 160 to stop "SOMEBODY" ellipsising in slot 1 of all 30 races, and this file kept
+# reporting the failure against the old 138 long after the game had been fixed. A checker
+# that guards readability is worthless if its own numbers are a snapshot, and a stale FAIL
+# is worse than no check: it trains the reader to ignore the one line that matters.
+#
+# So parse them out of the source. If the shape of that source changes the regex misses,
+# and `_read` raises rather than silently falling back to a literal -- the failure mode has
+# to be loud, because the quiet one is what happened here.
+_RACE_SRC = paths.race_director_source()
 
-# EndlessRaceDirector.BuildTracker: slot 138x96, label inset 10/8, NoWrap, 24-50, Ellipsis.
-SLOT_W, SLOT_H = 138.0 - 20.0, 96.0 - 16.0
-SLOT_MIN, SLOT_MAX = 24.0, 50.0
+
+def _method(name):
+    """The body of one method of EndlessRaceDirector, by brace matching.
+
+    Every pattern below MUST be scoped to its own method. The first attempt at this
+    searched the whole 2400-line file and matched `lbl.fontSizeMin` from a completely
+    different widget (the option preview, 26-44) while reporting it as the tracker's
+    (24-50) -- a checker confidently measuring the wrong box, which is worse than the
+    stale literal it replaced."""
+    if not _RACE_SRC:
+        raise RuntimeError(
+            "fit.py: EndlessRaceDirector.cs not found at %s" % paths.RACE_DIRECTOR)
+    # The DECLARATION, not a call site: `FlyCollectedToSlot` is invoked before it is
+    # declared, and taking the first occurrence scoped the search to the calling method.
+    import re
+    decl = re.search(r"^\s*(?:private|public|protected|internal)[^\n;]*\b%s\s*\(" % name,
+                     _RACE_SRC, re.M)
+    if not decl:
+        raise RuntimeError("fit.py: method %s no longer exists in EndlessRaceDirector.cs" % name)
+    open_brace = _RACE_SRC.find("{", decl.end())
+    depth, i = 0, open_brace
+    while i < len(_RACE_SRC):
+        if _RACE_SRC[i] == "{":
+            depth += 1
+        elif _RACE_SRC[i] == "}":
+            depth -= 1
+            if depth == 0:
+                return _RACE_SRC[open_brace:i]
+        i += 1
+    raise RuntimeError("fit.py: unbalanced braces reading %s" % name)
+
+
+def _read(scope, pattern, what, count=1):
+    """Pull float literals out of one method's body. Raises if the pattern no longer
+    matches, so a refactor over there fails this tool instead of quietly stale-ing it."""
+    import re
+    m = re.search(pattern, scope)
+    if not m or len(m.groups()) < count:
+        raise RuntimeError(
+            "fit.py: cannot read %s from EndlessRaceDirector.cs. The code moved; fix the "
+            "pattern rather than hardcoding the number -- that is what went stale before."
+            % what)
+    return [float(g) for g in m.groups()[:count]]
+
+
+# FlyCollectedToSlot: the pill, its text inset and its autosize bounds.
+_fly = _method("FlyCollectedToSlot")
+_tw, _th = _read(_fly, r"pillRt\.sizeDelta\s*=\s*new Vector2\(([\d.]+)f,\s*([\d.]+)f\)",
+                 "collect-token pill size", 2)
+_tix, _tiy = _read(_fly, r"trt\.offsetMin\s*=\s*new Vector2\(([\d.]+)f,\s*([\d.]+)f\)",
+                   "collect-token text inset", 2)
+TOKEN_W, TOKEN_H = _tw - 2 * _tix, _th - 2 * _tiy
+TOKEN_MIN, TOKEN_MAX = _read(
+    _fly, r"tmp\.fontSizeMin\s*=\s*([\d.]+)f;\s*\n\s*tmp\.fontSizeMax\s*=\s*([\d.]+)f",
+    "collect-token autosize bounds", 2)
+
+# BuildTracker: `const float slotW = 160f, slotH = 96f, gap = 10f;`, the label's
+# offsetMin inset, then its autosize floor/ceiling.
+_trk = _method("BuildTracker")
+_sw, _sh = _read(_trk, r"const float slotW\s*=\s*([\d.]+)f,\s*slotH\s*=\s*([\d.]+)f",
+                 "tracker slot size", 2)
+_ix, _iy = _read(_trk, r"lrt\.offsetMin\s*=\s*new Vector2\(([\d.]+)f,\s*([\d.]+)f\)",
+                 "tracker label inset", 2)
+SLOT_W, SLOT_H = _sw - 2 * _ix, _sh - 2 * _iy
+SLOT_MIN, SLOT_MAX = _read(
+    _trk, r"lbl\.fontSizeMin\s*=\s*([\d.]+)f;\s*\n\s*lbl\.fontSizeMax\s*=\s*([\d.]+)f",
+    "tracker autosize bounds", 2)
 
 # ReaderController: options are rendered as "A. " + <indent=9%>text</indent>.
 READER_INDENT = 0.09

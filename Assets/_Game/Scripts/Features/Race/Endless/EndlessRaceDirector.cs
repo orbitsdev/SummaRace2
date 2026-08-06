@@ -2784,6 +2784,15 @@ namespace SummaRace.Features.Race.Endless
 
             card.transform.localScale = Vector3.one * 0.85f;
             Tween.Scale(card.transform, Vector3.one, 0.4f, Ease.OutBack);
+
+            // The briefing read aloud — the one screen that explains how the race is CONTROLLED
+            // (tap or swipe to change lane). A learner who cannot read that line does not
+            // mis-summarise, they mis-steer, and every gate they drift past is logged as a wrong
+            // first pick. The clip speaks the instruction only, never the story title above it.
+            // Queued so the loading overlay's tip finishes first.
+            if (SummaRace.Core.AudioManager.Instance != null)
+                SummaRace.Core.AudioManager.Instance.PlayVoice(
+                    SummaRace.Constants.AudioKeys.VoRaceBriefing, true);
         }
 
         /// <summary>Their Loadout/HUD is hidden and the track exists — the learner may now
@@ -2871,7 +2880,13 @@ namespace SummaRace.Features.Race.Endless
             if (_briefingDismissed || !_bootReady) return;
             _briefingDismissed = true;
             if (SummaRace.Core.AudioManager.Instance != null)
+            {
+                // The learner has read enough to tap START, so the briefing's voice goes with
+                // the briefing itself — it must not still be explaining the controls over the
+                // 3-2-1, when the world is about to move.
+                SummaRace.Core.AudioManager.Instance.StopNarration();
                 SummaRace.Core.AudioManager.Instance.PlaySfx(SummaRace.Constants.AudioKeys.SfxClick);
+            }
             if (_briefingRoot != null) _briefingRoot.SetActive(false);
             StartCoroutine(CountdownRoutine());
         }

@@ -34,5 +34,52 @@ namespace SummaRace.Constants
         public const string MusicMenu = "music_menu";
         public const string MusicRace = "music_race";
         public const string MusicVictory = "music_victory";
+
+        // ---------- Instructional narration (vo_*) ----------
+        // Read aloud in the SAME voice as the 150 story pages (edge-tts
+        // en-PH-RosaNeural, --rate=-10%), through the SAME AudioSource, and behind the
+        // SAME VOICE toggle — see AudioManager.PlayVoice.
+        //
+        // These narrate INTERFACE instructions only. Nothing a learner is scored on is
+        // spoken: no story page, no answer option, no SWBST element, no praise line. A
+        // learner who cannot read the Arrange instruction was failing an INTERFACE task
+        // rather than a comprehension one, which is the opposite of what the instrument
+        // measures; every scored item stays unnarrated, so the measure itself is untouched.
+        //
+        // A missing clip is silence, never an error (AudioManager.GetClip warns once and
+        // caches the miss), so the wiring is safe ahead of the audio.
+
+        /// <summary>"Put the story parts in order!" (GameText.ArrangeTitle)</summary>
+        public const string VoArrangeTitle = "vo_arrange_title";
+        /// <summary>"Tap a story part, then tap where it goes." (GameText.ArrangeIntroStatus)</summary>
+        public const string VoArrangeHow = "vo_arrange_how";
+
+        /// <summary>"Write your summary!" (GameText.SummaryTitle)</summary>
+        public const string VoSummaryTitle = "vo_summary_title";
+        /// <summary>GameText.SummaryHint. The written "___" is a visual blank, so it is
+        /// spoken as "blank" — what a screen reader does, and what the learner fills in.</summary>
+        public const string VoSummaryHint = "vo_summary_hint";
+
+        /// <summary>The race briefing's instruction (GameText.RaceBriefingBody) WITHOUT the
+        /// story title: the title is story content and differs every run, so it stays on
+        /// screen only. Says "Collect the 5 story parts in order. Tap or swipe left and
+        /// right to move!"</summary>
+        public const string VoRaceBriefing = "vo_race_briefing";
+
+        // The five SWBST definitions on the loading overlay (GameText.LoadingTips).
+        public const string VoTipSomebody = "vo_tip_somebody";
+        public const string VoTipWanted = "vo_tip_wanted";
+        public const string VoTipBut = "vo_tip_but";
+        public const string VoTipSo = "vo_tip_so";
+        public const string VoTipThen = "vo_tip_then";
+
+        /// <summary>Voice key for GameText.LoadingTips[i]. Indexed in the SAME S-W-B-S-T
+        /// order as that array — the two are read together by SceneLoader, so a reorder of
+        /// one without the other makes the overlay say a different part than it shows.
+        /// Callers must bounds-check against this array's own Length, not LoadingTips'.</summary>
+        public static readonly string[] VoLoadingTips =
+        {
+            VoTipSomebody, VoTipWanted, VoTipBut, VoTipSo, VoTipThen,
+        };
     }
 }

@@ -98,6 +98,16 @@ namespace SummaRace.Features.Summary
             }
             if (submitButton != null) submitButton.onClick.AddListener(OnSubmit);
 
+            // Title and sentence-frame read aloud. The frame ("Somebody wanted ___, but ___...")
+            // is the instruction for HOW to write a summary, not any part of this story's
+            // answer — the five SWBST parts on the reference card are deliberately NOT spoken,
+            // because reading them back is the task. Queued behind the loading tip.
+            if (AudioManager.Instance != null)
+            {
+                AudioManager.Instance.PlayVoice(AudioKeys.VoSummaryTitle, true);
+                AudioManager.Instance.PlayVoice(AudioKeys.VoSummaryHint, true);
+            }
+
             EnsureDoneTypingChip();
             if (doneTypingButton != null)
             {

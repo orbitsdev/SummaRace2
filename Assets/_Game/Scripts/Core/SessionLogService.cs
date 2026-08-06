@@ -52,6 +52,14 @@ namespace SummaRace.Core
 
         private const string AbandonLearnerLeftRace = "race_left_by_learner";
 
+        /// <summary>The tablet was handed to a different child while a run was open. Its own
+        /// token, because otherwise this row is byte-identical to a dead battery: both are a
+        /// partial with an empty <c>abandonReason</c>. On a shared tablet the handover is
+        /// SYSTEMATIC — it happens every time a learner finishes — so leaving it unnamed would
+        /// manufacture a steady stream of false dropouts in exactly the configuration where
+        /// dropout rate is a number someone might report.</summary>
+        private const string AbandonLearnerSwitched = "learner_switched";
+
         private const string PhaseReading = "reading";
         private const string PhaseRace = "race";
         private const string PhaseArrange = "arrange";
@@ -107,7 +115,15 @@ namespace SummaRace.Core
         /// open would let the NEXT StoryStarted's Flush write it long after the fact, with a
         /// totalSeconds that includes however long the tablet sat in the teacher's hand.
         /// </summary>
-        private void OnLearnerChanged(LearnerChanged evt) => Flush();
+        private void OnLearnerChanged(LearnerChanged evt)
+        {
+            // Name it before flushing, so the row says WHY it is partial. Only when nothing
+            // else already has: if the learner had left the race a moment earlier, that is the
+            // truer reason and OnRunAbandoned has already flushed anyway.
+            if (_log != null && string.IsNullOrEmpty(_log.abandonReason))
+                _log.abandonReason = AbandonLearnerSwitched;
+            Flush();
+        }
 
         private void OnStoryStarted(StoryStarted evt)
         {
@@ -436,10 +452,29 @@ namespace SummaRace.Core
             _log = null;
         }
 
-        /// <summary>Anything the researcher could analyse: a page answered, a race pick, or stars.</summary>
+        /// <summary>
+        /// Anything the researcher could analyse: a page answered, a race pick, an arrange
+        /// attempt, or stars.
+        ///
+        /// This is the one place allowed to DISCARD a play-through, so it has to be a superset
+        /// of everything a run can record. It was not: it gated on reading answers, race
+        /// first-picks and stars only, while the log also carries <c>racePicks</c> (schema 3 —
+        /// which distractor was chosen) and <c>arrangeOrders</c> (schema 5 — the order the
+        /// learner actually built). A run holding only those would have been thrown away as
+        /// "empty" by the very check whose comment promises abandoned runs always carry
+        /// something.
+        ///
+        /// That is probably unreachable today, because the race is only entered through the
+        /// Reader and the Reader records first — but "probably unreachable" is not a property
+        /// worth resting irreplaceable data on, and nothing enforces the ordering. Widen the
+        /// check instead: the cost of keeping a thin row is a row the analyst filters out; the
+        /// cost of dropping a real one is a child's session that no longer exists.
+        /// </summary>
         private static bool HasData(SessionLog log) =>
             log.readingFirstChoices.Count > 0
             || log.raceFirstPickCorrect.Count > 0
+            || log.racePicks.Count > 0
+            || log.arrangeOrders.Count > 0
             || log.starsEarned > 0;
 
         /// <summary>Seconds spent in the phase that just ended, and start the clock on the next.</summary>
