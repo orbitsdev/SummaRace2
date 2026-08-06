@@ -25,6 +25,11 @@ namespace SummaRace.Core
         private GameObject _loadingLabel;
         private bool _loading;
 
+        /// <summary>A scene requested while a load was already running, honoured when it ends.
+        /// See <see cref="Load"/> for why dropping it was not survivable.</summary>
+        private string _pendingScene;
+        private bool _pendingShowTips;
+
         private void Awake()
         {
             if (Instance != null && Instance != this) { Destroy(gameObject); return; }
@@ -48,9 +53,39 @@ namespace SummaRace.Core
 
         /// <summary>Change scene with the tip-card loading overlay. Pass showTips=false for a
         /// plain quiet fade (used Boot→MainMenu so the splash never doubles as two loading pages).</summary>
+        /// <remarks>
+        /// A request that arrives while a load is running is REMEMBERED, not dropped.
+        ///
+        /// It used to be dropped, and the comment that justified it — "the new scene's Start()
+        /// has already run by the time we clear the flag" — was wrong about Unity's player
+        /// loop. Async scene integration and the new scene's `Start()` both run in EarlyUpdate
+        /// (`UpdatePreloading`, then `ScriptRunDelayedStartupFrame`); a coroutine resumed by
+        /// `yield return null` continues later the same frame, in the Update group. So clearing
+        /// the flag anywhere inside this coroutine cannot beat a `Start()` — the ordering is
+        /// structural, not a matter of how early in the routine you clear it.
+        ///
+        /// What that dropped: the four "never a dead end" rescues, which are the whole reason
+        /// this matters. `ReaderController`, `ArrangeController`, `SummaryController` and
+        /// `ResultsController` each call `SceneLoader.Go(StorySelect)` from `Start()` when their
+        /// story is missing, and each `return`s immediately after — past the code that wires
+        /// their buttons. Dropping that call leaves a fully drawn screen on which nothing works
+        /// and, since `BackButtonGuard` swallows Android BACK, nothing the learner can do.
+        /// `MainMenuController`'s Name Entry redirect is the same shape.
+        ///
+        /// Remembering it (rather than allowing a second concurrent load) keeps exactly one
+        /// routine touching the overlay at a time, so the fade and the progress bar cannot be
+        /// driven from two places at once.
+        /// </remarks>
         public void Load(string sceneName, bool showTips = true)
         {
-            if (_loading) return;
+            if (_loading)
+            {
+                // Last request wins: a rescue raised by the scene we just loaded is more
+                // current than anything queued before it.
+                _pendingScene = sceneName;
+                _pendingShowTips = showTips;
+                return;
+            }
             StartCoroutine(LoadRoutine(sceneName, showTips));
         }
 
@@ -93,8 +128,8 @@ namespace SummaRace.Core
                 // not hypothetical here: the build list has been wiped twice by imports.
                 Debug.LogError("SceneLoader: scene '" + sceneName +
                     "' is not in Build Settings. Falling back to the main menu.");
-                _loading = false;
                 yield return Fade(1f, 0f);
+                _loading = false;   // after the fade, so nothing starts a second routine over it
                 if (sceneName != SceneNames.MainMenu) Go(SceneNames.MainMenu);
                 yield break;
             }
@@ -112,13 +147,33 @@ namespace SummaRace.Core
             }
             while (!op.isDone) yield return null;
 
-            // Cleared the moment the load is done, BEFORE the fade — the new scene's Start()
-            // has already run by then, and that is exactly where the four "never a dead end"
-            // rescues live (Reader/Arrange/Summary/Results bail to Story Select when their
-            // story is missing). With the flag still set through the fade, Load() early-returned
-            // and the rescue was silently dropped, stranding the learner on the broken screen.
-            _loading = false;
+            // The scene we just loaded may have asked to go somewhere else from its own Start()
+            // — that is the "never a dead end" rescue path. Go straight there WITHOUT fading in
+            // first: the learner has no business seeing a broken screen for half a second, and
+            // the overlay is already opaque, so this reads as one continuous load.
+            //
+            // _loading deliberately stays true across the fade below, so a request arriving
+            // during it is queued rather than starting a second routine that would drive the
+            // same fade group in the opposite direction.
+            if (StartPending()) yield break;
+
             yield return Fade(1f, 0f);
+
+            _loading = false;
+            StartPending();
+        }
+
+        /// <summary>Hands the routine over to a queued request, if there is one. Returns true if
+        /// it did, in which case the caller must stop — the new routine owns the overlay.</summary>
+        private bool StartPending()
+        {
+            if (string.IsNullOrEmpty(_pendingScene)) return false;
+            var next = _pendingScene;
+            bool nextTips = _pendingShowTips;
+            _pendingScene = null;
+            _loading = false;               // so Load() actually starts rather than re-queueing
+            Load(next, nextTips);
+            return true;
         }
 
         private IEnumerator Fade(float from, float to)

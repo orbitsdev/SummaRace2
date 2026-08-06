@@ -53,13 +53,17 @@ namespace SummaRace.Features.MainMenu
             // "+ New learner" abandoned by killing the app at Name Entry, and the blank profile
             // that a tablet reset or a post-study wipe leaves behind. It cannot loop: Name Entry
             // always sets `named`, including when the box is left empty (that is not an error).
-            if (learner != null && !learner.named && !_nameEntryOffered)
-            {
-                _nameEntryOffered = true;
-                SceneLoader.Go(SceneNames.NameEntry);
-                return;
-            }
-            _nameEntryOffered = false;
+            //
+            // NOTE THE ORDER. This used to `return` here, before a single button was wired, on
+            // the assumption that the redirect always takes. It does not have to: any dropped or
+            // deferred scene change leaves a fully drawn Main Menu on which TAP TO START and the
+            // teacher corner are both inert and there is no music — and since BackButtonGuard
+            // swallows Android BACK, nothing the learner or the teacher can do. That is reachable
+            // from the post-study wipe and from the documented PIN-recovery reset, both of which
+            // mint a blank unnamed profile and then return here. So: dress and wire the screen
+            // first, and let the redirect be an optimisation rather than a load-bearing step.
+            bool needsNaming = learner != null && !learner.named && !_nameEntryOffered;
+            _nameEntryOffered = needsNaming;
 
             if (startLabel != null) startLabel.text = GameText.TapToStart;
             if (subtitleText != null) subtitleText.text = GameText.BootTagline;
@@ -88,6 +92,9 @@ namespace SummaRace.Features.MainMenu
                         AudioManager.Instance.PlaySfx(AudioKeys.SfxClick);
                     SceneLoader.Go(SceneNames.TeacherMenu);
                 });
+
+            // Now that the screen works on its own, take the naming detour.
+            if (needsNaming) SceneLoader.Go(SceneNames.NameEntry);
         }
 
         /// <summary>

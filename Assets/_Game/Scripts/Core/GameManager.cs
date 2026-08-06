@@ -19,6 +19,13 @@ namespace SummaRace.Core
         Invalid,
         /// <summary>Another learner on this tablet already has it.</summary>
         Duplicate,
+        /// <summary>The code was accepted but did not reach disk. Distinct from every outcome
+        /// above, because those are all "try again with a different code" and this one is "the
+        /// code was fine and is nonetheless not saved". It used to be indistinguishable from
+        /// <see cref="Saved"/> — the screen said "Saved" whatever the write did — and this is the
+        /// key that joins a child's logs to their paper pretest, so a silent loss here surfaces
+        /// during analysis, when nothing can be done about it.</summary>
+        SaveFailed,
     }
 
     /// <summary>
@@ -247,9 +254,12 @@ namespace SummaRace.Core
             EventBus.Raise(new LearnerChanged { learnerId = learner.id });
         }
 
-        public void PersistProfiles()
+        /// <summary>Writes every profile. Returns false if the change did not reach disk — see
+        /// <see cref="SaveManager.SaveProfiles"/>. Callers that TELL SOMEONE the save happened
+        /// must check it; callers that merely keep the file current need not.</summary>
+        public bool PersistProfiles()
         {
-            if (SaveManager.Instance != null) SaveManager.Instance.SaveProfiles(_profiles);
+            return SaveManager.Instance != null && SaveManager.Instance.SaveProfiles(_profiles);
         }
 
         // ---------- The participant code: the study's join key ----------
@@ -281,8 +291,18 @@ namespace SummaRace.Core
                 return ParticipantCodeResult.Duplicate;
             }
 
+            // Written to the profile first, then persisted — and the write is CHECKED, because
+            // this is the one field whose loss cannot be repaired after the tablets are
+            // collected. On failure the in-memory value is rolled back so the screen and the
+            // disk cannot disagree: a teacher who is told it did not save must not find it
+            // apparently set when they look again.
+            string previous = learner.participantCode;
             learner.participantCode = normalized;
-            PersistProfiles();
+            if (!PersistProfiles())
+            {
+                learner.participantCode = previous;
+                return ParticipantCodeResult.SaveFailed;
+            }
             return ParticipantCodeResult.Saved;
         }
 

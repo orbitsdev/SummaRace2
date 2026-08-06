@@ -132,6 +132,16 @@ namespace SummaRace.Constants
         public const string TeacherNothingToExport = "No logs to export yet.";
 
         /// <summary>
+        /// Distinct from <see cref="TeacherNothingToExport"/> on purpose. Both used to be shown
+        /// for the same null return, so a write that FAILED — disk full, permission denied, the
+        /// file locked — told the researcher the tablet simply had no data on it. The logs are
+        /// the whole dataset and there is no second chance to collect them, so this outcome has
+        /// to be unmistakable and has to say that the data is still there.
+        /// </summary>
+        public const string TeacherExportFailed =
+            "Export failed. The logs are still on this tablet — check free space and try again.";
+
+        /// <summary>
         /// What the researcher reads off the screen and then goes looking for over USB, so it
         /// carries the whole path on its own line. It also names the second file: the export
         /// itself is pseudonymised (every row keys on a learnerId guid), and the roster written
@@ -363,6 +373,18 @@ namespace SummaRace.Constants
         /// <summary>Shown on the START button while the race world is still assembling —
         /// tapping through before then would reveal the runner-kit menus underneath.</summary>
         public const string RaceBriefingWait = "Getting ready...";
+
+        /// <summary>
+        /// The race world never finished building, so the briefing turns into a way out
+        /// (EndlessRaceDirector.ShowBriefingEscape). Two rules the wording has to keep: it is
+        /// never the child's fault, and it must not pretend the race is about to start. It says
+        /// what will happen next instead of what went wrong, because "what went wrong" is a
+        /// content-build problem no nine-year-old can act on — the diagnosis goes to the log.
+        /// </summary>
+        public const string RaceBootFailedBody =
+            "This race is not ready yet. Let's go back and pick a story.";
+
+        public const string RaceBootFailedButton = "GO BACK";
 
         /// <summary>Briefing body. Names the story so the learner knows the run is about what
         /// they just read. Tap is named FIRST because it is the input a struggling learner should

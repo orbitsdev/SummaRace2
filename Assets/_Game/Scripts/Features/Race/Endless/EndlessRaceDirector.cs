@@ -53,7 +53,23 @@ namespace SummaRace.Features.Race.Endless
         // Distance to gate 1, and the reason it is not 80 any more, live on
         // GameRules.RaceFirstGateDistance (80m from a standing start was 7.4s — the shortest
         // approach in the race, on the one gate whose options the learner has never seen).
-        private const float FinishGap = 30f;         // FINISH this far after the 5th gate
+        /// <summary>
+        /// How long the run-out to FINISH should last, in SECONDS at the speed actually being
+        /// run — not the 30 METRES it used to be.
+        ///
+        /// Every other gap moved to a seconds-derived formula (see <see cref="NextGateGap"/>)
+        /// precisely because their track accelerates: 10 m/s at the start, ~29 m/s by gate 5.
+        /// This one was missed, so a fixed 30m shrank from a comfortable run-out into roughly one
+        /// second. That is not merely abrupt — <c>FinishRoutine</c> sets <c>_finished</c>, and
+        /// the answer-reveal loop exits on it, so a learner who got the LAST element wrong saw
+        /// the correct answer for well under its intended <see cref="AnswerRevealSeconds"/>.
+        /// The final slot is "Then", which is the one the written summary most depends on.
+        ///
+        /// Long enough to read the reveal and still feel like an ending; the floor keeps it sane
+        /// at the slow speeds an early wrong pick produces.
+        /// </summary>
+        private const float FinishSeconds = 3.4f;
+        private const float FinishMinGap = 30f;
         private const float MissGrace = 5f;          // metres past a gate before it counts as missed
         // Seconds of runway a re-presented gold card gets, rather than a fixed 18 metres. 18m
         // was under a second of warning: the runner is already 2m into the segment, so the card
@@ -247,6 +263,29 @@ namespace SummaRace.Features.Race.Endless
         private bool _bootReady;
         private UnityEngine.UI.Button _startButton;
         private TextMeshProUGUI _startLabel;
+        private TextMeshProUGUI _briefingBody;
+
+        /// <summary>
+        /// How long the boot chain gets before the briefing offers a way out.
+        ///
+        /// Both of the waits this bounds used to be `while (x == null) yield return null` — no
+        /// timeout, on a screen that has NO working control until they finish. The briefing's
+        /// START is non-interactable until MarkBriefingReady, the pause chip is not shown until
+        /// the run is released, the touch input no-ops without a TrackManager, and Android BACK
+        /// is swallowed app-wide. So a stall there is a total dead end: the only exit is an adult
+        /// force-quitting from Recents, which files the run as abandoned.
+        ///
+        /// And it is not a remote possibility. TrackManager's GameObject is activated only at the
+        /// END of their Begin(), which `yield break`s early if the Addressables character load
+        /// returns null — and Addressables content has never been built for Android, so the FIRST
+        /// APK takes exactly that path on every learner's first race. The same wait also covers a
+        /// failed load on the 2GB floor device.
+        ///
+        /// Generous, because a slow first Addressables load on a cheap tablet is normal and
+        /// bailing out early would be its own bug. The neighbouring ThemeDatabase wait was
+        /// already bounded for the same reason; these two were simply missed.
+        /// </summary>
+        private const float BootWaitSeconds = 8f;
         private GameState _gameState; // cached by HideTheirChrome for the Update() re-hide guard
 
         private void Awake()
@@ -329,7 +368,10 @@ namespace SummaRace.Features.Race.Endless
             BuildBriefing();
 
             // Skip their FTUE/tutorial run.
-            while (PlayerData.instance == null) yield return null;
+            float pdWait = 0f;
+            while (PlayerData.instance == null && pdWait < BootWaitSeconds)
+            { pdWait += Time.deltaTime; yield return null; }
+            if (PlayerData.instance == null) { ShowBriefingEscape("PlayerData"); yield break; }
             PlayerData.instance.tutorialDone = true;
             if (PlayerData.instance.ftueLevel < 2) PlayerData.instance.ftueLevel = 2;
 
@@ -366,7 +408,10 @@ namespace SummaRace.Features.Race.Endless
 
             // Safe to subscribe here: instance is set by Awake on activation, and the first
             // newSegmentCreated fires at least a frame later (Addressables instantiation).
-            while (TrackManager.instance == null) yield return null;
+            float tmWait = 0f;
+            while (TrackManager.instance == null && tmWait < BootWaitSeconds)
+            { tmWait += Time.deltaTime; yield return null; }
+            if (TrackManager.instance == null) { ShowBriefingEscape("TrackManager"); yield break; }
             TrackManager.instance.newSegmentCreated += OnNewSegment;
             _subscribed = true;
             SeedExistingSegments();
@@ -1133,6 +1178,14 @@ namespace SummaRace.Features.Race.Endless
             return Mathf.Max(RepresentMinGap, runSpeed * RepresentSeconds);
         }
 
+        /// <summary>Run-out from the last answer gate to FINISH — see <see cref="FinishSeconds"/>
+        /// for why this is a time and not a distance.</summary>
+        private float FinishRunway(TrackManager track)
+        {
+            float runSpeed = track != null ? Mathf.Max(track.speed, track.minSpeed) : 10f;
+            return Mathf.Max(FinishMinGap, runSpeed * FinishSeconds);
+        }
+
         /// <summary>Last-resort backstop for "never a dead end" (GDD): if the run ever has no
         /// gate in the world and none scheduled, there is nothing left that can end it, so
         /// bring FINISH back. Every normal transition schedules its successor in the same
@@ -1223,7 +1276,7 @@ namespace SummaRace.Features.Race.Endless
             {
                 _pendingElement = 5;
                 _pendingIsRepresent = false;
-                _pendingGateDistance = track.worldDistance + FinishGap;
+                _pendingGateDistance = track.worldDistance + FinishRunway(track);
                 _preparedElement = -1;   // FINISH has no options and no panel
             }
 
@@ -2674,6 +2727,7 @@ namespace SummaRace.Features.Race.Endless
             body.text = SummaRace.Constants.GameText.RaceBriefingBody(_story.title);
             body.color = new Color(0.35f, 0.25f, 0.10f);
             body.rectTransform.sizeDelta = new Vector2(760f, 300f);
+            _briefingBody = body;   // rewritten by ShowBriefingEscape if the kit never boots
 
             // The five parts, in the colours they will wear on the gates (F18 palette),
             // so the run's cards are already familiar when the first one arrives.
@@ -2807,6 +2861,46 @@ namespace SummaRace.Features.Race.Endless
                 _startLabel.fontSize = 62f;
                 Tween.PunchScale(_startButton.transform, Vector3.one * 0.14f, 0.45f);
             }
+        }
+
+        /// <summary>
+        /// The runner kit never finished booting, so this race cannot start. Turn the briefing's
+        /// dead START button into a working way back to Story Select.
+        ///
+        /// Deliberately NOT "enable START anyway": with no TrackManager there is nothing to
+        /// start, so that would trade a frozen screen for a frozen screen that also lies. The
+        /// learner is offered the one thing that is true — go and pick a story again — in the
+        /// game's own voice, because from where they are sitting nothing has gone wrong that is
+        /// their fault. The reason is logged for whoever is holding the tablet.
+        /// </summary>
+        private void ShowBriefingEscape(string what)
+        {
+            Debug.LogError("EndlessRaceDirector: " + what + " never appeared within " +
+                BootWaitSeconds + "s — the runner kit did not finish booting. Offering the " +
+                "learner a way back to Story Select. If this is a device build, the most likely " +
+                "cause is that Addressables content was never built for this platform.");
+
+            _bootReady = true;   // the briefing is no longer waiting on anything
+
+            if (_startLabel != null)
+            {
+                _startLabel.text = SummaRace.Constants.GameText.RaceBootFailedButton;
+                _startLabel.fontSize = 46f;
+            }
+            if (_startButton != null)
+            {
+                _startButton.onClick.RemoveAllListeners();
+                _startButton.onClick.AddListener(() =>
+                {
+                    if (SummaRace.Core.AudioManager.Instance != null)
+                        SummaRace.Core.AudioManager.Instance.PlaySfx(SummaRace.Constants.AudioKeys.SfxClick);
+                    SummaRace.Core.SceneLoader.Go(SummaRace.Constants.SceneNames.StorySelect);
+                });
+                _startButton.interactable = true;
+                Tween.PunchScale(_startButton.transform, Vector3.one * 0.14f, 0.45f);
+            }
+            if (_briefingBody != null)
+                _briefingBody.text = SummaRace.Constants.GameText.RaceBootFailedBody;
         }
 
         private void MakeChip(RectTransform row, int index, string type)

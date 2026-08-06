@@ -500,6 +500,11 @@ namespace SummaRace.Features.TeacherMenu
                 case ParticipantCodeResult.NoLearner:
                     Reject(GameText.TeacherSaveFailed);
                     return;
+                case ParticipantCodeResult.SaveFailed:
+                    // The code was fine; the disk was not. Previously indistinguishable from
+                    // success, on the field that joins this child's logs to their paper test.
+                    Reject(GameText.TeacherSaveFailed);
+                    return;
             }
 
             if (_codeThenNameEntry)
@@ -560,10 +565,13 @@ namespace SummaRace.Features.TeacherMenu
         {
             Click();
             Disarm();
-            int session = TeacherGate.UnlockNextSession();
+            int session = TeacherGate.UnlockNextSession(out bool saveFailed);
             if (session == 0)
             {
-                Reject(GameText.TeacherAllUnlocked);
+                // "Nothing left to open" and "it did not save" are opposite facts and used to
+                // produce the same sentence. A teacher told the former hands over a tablet that
+                // is still on the previous session.
+                Reject(saveFailed ? GameText.TeacherSaveFailed : GameText.TeacherAllUnlocked);
                 return;
             }
             // sfx_unlock is specified in the asset list but not yet produced; the rising star
@@ -576,7 +584,10 @@ namespace SummaRace.Features.TeacherMenu
         {
             Click();
             Disarm();
-            string path = SaveManager.Instance != null ? SaveManager.Instance.ExportLogs() : null;
+            var status = SaveManager.ExportStatus.Failed;
+            string path = SaveManager.Instance != null
+                ? SaveManager.Instance.ExportLogs(out status)
+                : null;
             // Show the full path: the researcher has to find this file over USB. The bare path
             // was not enough — the export is deliberately pseudonymised, so the companion roster
             // written beside it has to be pulled too or the rows cannot be tied to a child.
@@ -585,7 +596,14 @@ namespace SummaRace.Features.TeacherMenu
                 // Nothing was written. That is the one outcome here a researcher must not read
                 // past — "exported" and "there was nothing to export" are one line of text apart
                 // and only one of them means the study data is on the tablet's file system.
-                Reject(GameText.TeacherNothingToExport);
+                //
+                // And they must be told WHICH. An empty tablet and a failed write used to give
+                // the same message, so a disk-full or permission failure read as "this device
+                // has no data" — on the single action that retrieves the dataset, with no second
+                // chance to collect it once the study ends.
+                Reject(status == SaveManager.ExportStatus.NoLogs
+                    ? GameText.TeacherNothingToExport
+                    : GameText.TeacherExportFailed);
                 return;
             }
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxStar);

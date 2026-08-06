@@ -97,9 +97,23 @@ namespace SummaRace.Core
             return new List<LearnerProfile>();
         }
 
-        public void SaveProfiles(List<LearnerProfile> profiles)
+        /// <summary>
+        /// Persists every learner profile. Returns false if nothing reached disk.
+        ///
+        /// It used to return void, and <see cref="TryWrite"/> swallows a total failure into a
+        /// <see cref="SaveFailed"/> event that — checked across the whole project — has eight
+        /// raise sites and NOT ONE subscriber. So four screens told the user something was saved
+        /// without ever finding out: the teacher's "participant code saved", the teacher's
+        /// "session opened", the learner's stars, and Name Entry's name and avatar. The
+        /// participant code is the key that joins these logs to the child's paper pretest, and a
+        /// silently-lost one is discovered during analysis, when the study is over.
+        /// <see cref="TeacherGate.SetPin"/> already re-read from disk to confirm; this gives the
+        /// rest of the app the same honesty for one line at each call site.
+        /// </summary>
+        public bool SaveProfiles(List<LearnerProfile> profiles)
         {
-            TryWrite(PrefKeys.ProfilesFile, JsonUtility.ToJson(new ProfileList { profiles = profiles }, true));
+            return TryWrite(PrefKeys.ProfilesFile,
+                JsonUtility.ToJson(new ProfileList { profiles = profiles }, true));
         }
 
         /// <summary>Appends one SessionLog line to logs/&lt;learnerId&gt;.jsonl and flushes now.</summary>
@@ -126,29 +140,66 @@ namespace SummaRace.Core
         }
 
         /// <summary>
+        /// Why an export produced no file. The distinction matters more than it looks: an empty
+        /// tablet and a failed write are the same `null` return, and the UI turned both into
+        /// "No logs to export yet." So on the one action that retrieves the entire dataset, a
+        /// disk-full or permission failure was diagnosed to the researcher as "this tablet has
+        /// nothing" — and they would move on to the next tablet believing it.
+        /// </summary>
+        public enum ExportStatus { Ok, NoLogs, Failed }
+
+        /// <summary>
         /// Combines every learner's log into one timestamped file at the root of
         /// persistentDataPath and returns its full path, so the researcher can pull a single
-        /// file per device over USB. Returns null when there is nothing to export.
+        /// file per device over USB. Returns null when nothing was written; pass
+        /// <paramref name="status"/> to find out whether that was because there was nothing to
+        /// export or because the write failed.
         /// </summary>
-        public string ExportLogs()
+        public string ExportLogs() => ExportLogs(out _);
+
+        public string ExportLogs(out ExportStatus status)
         {
+            status = ExportStatus.Failed;
             try
             {
                 var dir = PathFor(PrefKeys.LogsFolder);
-                if (!Directory.Exists(dir)) return null;
+                if (!Directory.Exists(dir)) { status = ExportStatus.NoLogs; return null; }
 
                 // One file per learner (AppendLog names it after the learnerId), so a tablet
                 // shared by two children exports both — the rows stay separable because every
                 // row carries its own learnerId.
                 var files = Directory.GetFiles(dir, "*.jsonl");
-                if (files.Length == 0) return null;
+                if (files.Length == 0) { status = ExportStatus.NoLogs; return null; }
 
                 var stamp = string.Format("{0:yyyyMMdd_HHmm}", DateTime.Now);
                 var target = PathFor("export_" + stamp + ".jsonl");
+                var codes = ParticipantCodesByLearner();
+                int backfilled = 0;
                 using (var writer = new StreamWriter(target, false))
                     foreach (var file in files)
+                    {
+                        // AppendLog names each file after the learnerId, so the owner of every
+                        // line in it is known without parsing the line.
+                        var owner = Path.GetFileNameWithoutExtension(file);
+                        string code = null;
+                        if (owner != null) codes.TryGetValue(owner, out code);
+
                         foreach (var line in File.ReadAllLines(file))
-                            if (!string.IsNullOrWhiteSpace(line)) writer.WriteLine(line);
+                        {
+                            if (string.IsNullOrWhiteSpace(line)) continue;
+                            var outLine = line;
+                            if (!string.IsNullOrEmpty(code) && line.Contains(EmptyCodeToken))
+                            {
+                                outLine = line.Replace(EmptyCodeToken,
+                                    "\"participantCode\":\"" + code + "\"");
+                                backfilled++;
+                            }
+                            writer.WriteLine(outLine);
+                        }
+                    }
+                if (backfilled > 0)
+                    Debug.Log("SaveManager: filled participantCode on " + backfilled +
+                              " exported row(s) that were written before the code was set.");
 
                 // Every log row is keyed by learnerId (a guid) and deliberately carries no
                 // name, so the rows stay pseudonymised at rest. That left the export
@@ -157,13 +208,67 @@ namespace SummaRace.Core
                 // researcher gets the mapping without de-pseudonymising the data itself.
                 WriteRoster(PathFor("export_" + stamp + "_learners.json"));
 
+                status = ExportStatus.Ok;
                 return target;
             }
             catch (Exception e)
             {
                 EventBus.Raise(new SaveFailed { reason = "export: " + e.Message });
+                Debug.LogError("SaveManager: export failed — " + e);
+                status = ExportStatus.Failed;
                 return null;
             }
+        }
+
+        /// <summary>
+        /// Exactly how JsonUtility renders an unset participant code, so the backfill in
+        /// <see cref="ExportLogs(out ExportStatus)"/> can be a targeted string replace rather
+        /// than a parse-and-reserialise. Re-serialising would be the more obvious approach and
+        /// is the more dangerous one: a row written by an OLDER build carries fields this build's
+        /// SessionLog may not declare, and round-tripping it through JsonUtility would silently
+        /// drop them. Study data is append-only for exactly that reason — the export must copy
+        /// rows, not rewrite them, and this touches one key and nothing else.
+        /// <para>
+        /// `JsonUtility.ToJson(log)` is called without prettyPrint in <see cref="AppendLog"/>,
+        /// so there is no whitespace to account for. If that ever changes, this stops matching
+        /// and the backfill quietly does nothing — which is the safe direction to fail in, but
+        /// keep the two together.
+        /// </para>
+        /// </summary>
+        private const string EmptyCodeToken = "\"participantCode\":\"\"";
+
+        /// <summary>
+        /// learnerId → participant code, for every learner on this tablet that has one.
+        ///
+        /// The code is stamped on a row when the run STARTS, and a teacher who follows the
+        /// install checklist sets it before that. When they do not — a fresh device routes
+        /// straight to Name Entry, the child plays session 1, an adult sets the code afterwards —
+        /// every row already written carries an empty code and nothing backfills it. Those rows
+        /// are then joinable only through the companion roster file, which is the precise failure
+        /// stamping the code on every row was added to remove. Filling it in at export time
+        /// closes that window, using the same profiles the roster is written from, so the two can
+        /// never disagree.
+        /// </summary>
+        private Dictionary<string, string> ParticipantCodesByLearner()
+        {
+            var map = new Dictionary<string, string>();
+            try
+            {
+                foreach (var profile in LoadProfiles())
+                {
+                    if (profile == null || string.IsNullOrEmpty(profile.id)) continue;
+                    var code = ParticipantCodes.Of(profile);
+                    if (!string.IsNullOrEmpty(code)) map[profile.id] = code;
+                }
+            }
+            catch (Exception e)
+            {
+                // Best effort: an unreadable profile list must never cost the researcher the
+                // export itself. Without codes the rows still join via the roster, as before.
+                Debug.LogWarning("SaveManager: could not read participant codes for the export (" +
+                                 e.Message + ").");
+            }
+            return map;
         }
 
         /// <summary>Writes the learnerId → participantCode → displayName roster beside an
@@ -260,7 +365,9 @@ namespace SummaRace.Core
         /// The swap keeps the previous good copy as a .bak, which <see cref="ReadWithRecovery"/>
         /// falls back to, so a corrupt primary costs at most the last write instead of everything.
         /// </summary>
-        private void TryWrite(string file, string json)
+        /// <returns>True if the content reached disk, by either the atomic swap or the
+        /// last-resort direct write. False means the change is lost.</returns>
+        private bool TryWrite(string file, string json)
         {
             var path = PathFor(file);
             var tmp = path + ".tmp";
@@ -288,7 +395,8 @@ namespace SummaRace.Core
                 catch (Exception inner)
                 {
                     EventBus.Raise(new SaveFailed { reason = file + ": " + inner.Message });
-                    return;
+                    Debug.LogError("SaveManager: could not write " + file + " — " + inner);
+                    return false;
                 }
                 EventBus.Raise(new SaveFailed { reason = file + " (non-atomic fallback): " + e.Message });
             }
@@ -296,6 +404,7 @@ namespace SummaRace.Core
             {
                 try { if (File.Exists(tmp)) File.Delete(tmp); } catch { /* best effort */ }
             }
+            return true;
         }
 
         /// <summary>Reads a save file, falling back to the .bak written by <see cref="TryWrite"/>

@@ -63,15 +63,33 @@ namespace SummaRace.Core
 
         /// <summary>
         /// Opens the next session for the active learner. Returns the session now unlocked, or 0
-        /// when nothing changed (no learner, or all ten already open).
+        /// when nothing changed (no learner, all ten already open, or the write failed).
+        /// <para>
+        /// The write is checked and rolled back on failure. Session gating is an internal-validity
+        /// control (GDD §8.3): a teacher told "Session 4 is open" who then hands over a tablet
+        /// that is still on 3 has a child unable to do the day's work, and the teacher has no
+        /// reason to doubt the screen. Unlocking is also not idempotent from the teacher's side —
+        /// they would simply tap it again and, on a working write, skip a session.
+        /// </para>
         /// </summary>
-        public static int UnlockNextSession()
+        public static int UnlockNextSession() => UnlockNextSession(out _);
+
+        /// <param name="saveFailed">True when the unlock was legitimate but did not reach disk.
+        /// Without this the caller cannot tell that from "all ten are already open" and would
+        /// tell the teacher the opposite of what happened.</param>
+        public static int UnlockNextSession(out bool saveFailed)
         {
+            saveFailed = false;
             var learner = GameManager.Instance != null ? GameManager.Instance.CurrentLearner : null;
             if (learner == null || learner.unlockedSession >= GameRules.SessionCount) return 0;
 
             learner.unlockedSession++;
-            GameManager.Instance.PersistProfiles();
+            if (!GameManager.Instance.PersistProfiles())
+            {
+                learner.unlockedSession--;
+                saveFailed = true;
+                return 0;
+            }
             EventBus.Raise(new SessionUnlocked { sessionNumber = learner.unlockedSession });
             return learner.unlockedSession;
         }
