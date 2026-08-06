@@ -84,9 +84,9 @@
     },
     {
       "type": "WANTED",
-      "correct": "To complete her first Ramadan fast",
+      "correct": "To fast all through Ramadan with her family",
       "distractors": [
-        "To cook the evening meal for her family",
+        "To cook the evening meal for her whole family",
         "To visit her cousins during Ramadan"
       ]
     },
@@ -100,7 +100,7 @@
     },
     {
       "type": "SO",
-      "correct": "She kept fasting and followed Ramadan traditions",
+      "correct": "She fasted every day along with her family",
       "distractors": [
         "She ate small meals whenever she felt hungry",
         "She rested at home and waited for Ramadan to end"
@@ -108,7 +108,7 @@
     },
     {
       "type": "THEN",
-      "correct": "She celebrated Eid al-Fitr, proud of her first fast",
+      "correct": "She finished her fast and joined the Eid feast",
       "distractors": [
         "She ended her fast early and missed the feast",
         "She celebrated without finishing her first fast"

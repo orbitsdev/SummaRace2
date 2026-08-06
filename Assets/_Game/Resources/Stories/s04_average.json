@@ -92,7 +92,7 @@
     },
     {
       "type": "BUT",
-      "correct": "Her wishes seemed to have unexpected consequences",
+      "correct": "Each wish hurt someone without her meaning to",
       "distractors": [
         "Her uncle asked her to return the necklace at once",
         "Her necklace stopped working after the first wish"
@@ -108,7 +108,7 @@
     },
     {
       "type": "THEN",
-      "correct": "She decided to get rid of the necklace",
+      "correct": "She gave up the magic necklace for good",
       "distractors": [
         "She hid the necklace and kept wishing",
         "She made one last wish for her class"

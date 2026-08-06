@@ -41,17 +41,42 @@ namespace SummaRace.Constants
         // every gap set on the transform was up to 0.8m tighter than it read — and always in the
         // direction of the kid. UpdatePatrol now positions the measured BODY, so these numbers
         // mean what they say. Anything derivable from live bounds is no longer a constant here.
-        public const float PatrolSurgeGap = 1.75f;      // metres between BODY CENTRES, along the run
-        // Floor under that gap: the two half-depths plus this, worked out from the live bounds
-        // each frame. Separated along the run by more than their own depths, the cop and the kid
-        // cannot intersect at any lane, stride or lateral offset — so the chase can never clip
-        // through the learner's character however anything else is retuned.
+        // ⚠️ F55: PatrolSurgeScreenX (0.80 of the half-width AT HIS DEPTH) was measured in play
+        // mode and it is the reason the owner kept reporting the cop "inside" something. At the
+        // then-shipping gap of 1.75m he sat 3.25m from the lens, where the visible half-width is
+        // only 1.03m — so "80% of the half-width" is x = 0.82m, INSIDE the kid's own arm swing
+        // (his live bounds are +/-0.84m). Measured during a surge, before the fix:
+        //     cop bounds x[0.43,1.25] vs kid x[-0.87,0.87]  => 0.44m of LATERAL OVERLAP
+        //     separation along the run: 0.22m  (Bounds.Intersects false, but only just)
+        //     screen rects overlapped by 14.4% of the width and 28.7% of the height
+        //     only ~27% of the cop was on screen at all (21% off the right edge, 58% below)
+        // Two bodies drawn 22cm apart with overlapping silhouettes read as one fused body. The
+        // placement is now anchored on the KID (with clearance from live bounds) and on his own
+        // SCREEN EDGE, never on a fraction of the road's half-width — see UpdatePatrol.
+        //
+        // Floor under the along-run gap: the two half-depths plus this, worked out from the live
+        // bounds each frame; also the lateral floor (kid half-width + cop half-width + this), so
+        // the two can never intersect at any lane, stride or lateral offset.
         public const float PatrolBodyMargin = 0.15f;
-        // Where he sits ACROSS the frame, as a fraction of the view's half-width at his depth —
-        // read off the LIVE camera, so a camera retune (this one has had three) carries him with
-        // it instead of silently stranding him off screen or on top of the kid.
-        public const float PatrolSurgeScreenX = 0.80f;  // in shot, at the kid's shoulder
-        public const float PatrolRestScreenX = 2.20f;   // parked well outside the frame
+        // Rest position, still a fraction of the view half-width at his depth (read off the LIVE
+        // camera, so a camera retune carries him with it). 2.20 parked him 3.7m off the centre
+        // line at the new depth, which is out among the roadside fences and bins; 1.35 is clear
+        // of the frame (1.0 is the edge) while staying on the road surface he runs on.
+        public const float PatrolRestScreenX = 1.35f;
+        // Surge position: instead of a fraction of the half-width, he is placed so his NEAR
+        // SILHOUETTE EDGE clears the kid's far silhouette edge by this much, in normalised
+        // half-width units (0.05 = 2.5% of the screen width). Expressed on the screen because
+        // the defect was a screen-space one; the world-space floor above is the safety net.
+        public const float PatrolScreenClearance = 0.05f;
+        // Where his FEET should land in the frame, as a viewport y (0 = bottom edge). The camera
+        // pitches 15deg down, so anything closer than ~4.1m in front of the lens is cropped off
+        // the bottom — the old 1.75m gap put him at 3.25m and cut 58% of him away. Solving the
+        // camera's own projection for "feet at this viewport y" gives a gap of ~0.65m at the
+        // shipped camera, i.e. he runs almost abreast of the kid but well out to one side, and
+        // the whole cop is in frame instead of a floating head. Derived live, never hard-coded.
+        public const float PatrolFeetScreenY = 0.04f;
+        public const float PatrolMinGap = 0.30f;        // never in front of the kid's own body
+        public const float PatrolMaxGap = 3.00f;        // never so far back he is at the lens
         // Which shoulder: whichever side the kid is NOT on. Lanes are 1.5m apart, so below this
         // much lane offset the kid counts as centred and the cop keeps the side he already had —
         // otherwise a lane change would send him sliding across the screen and back.
@@ -69,7 +94,13 @@ namespace SummaRace.Constants
         // Thinking time between answer gates. The gate distance is derived from this against
         // the run's top speed, then clamped, so every item has enough runway to appear and be
         // read/collected (endless race; tuned per playtest). Run speed itself is left alone.
-        public const float RaceSecondsPerGate = 12f;
+        // F55: 12 -> 20. This is a track-LENGTH change (the kind F40c sanctioned); run speed is
+        // untouched. It exists to buy the quiet stretch the owner asked for — "only show the hint
+        // options when near collection so player can enjoy the game". With the reading window
+        // fixed at RacePreviewLeadSeconds, a gate every 12s left 12s of reading in a 12s gap, i.e.
+        // the panel was up for the whole run. 20s leaves the window intact AND gives the learner
+        // real running: see RaceQuietRunSeconds.
+        public const float RaceSecondsPerGate = 20f;
 
         // Difficulty in a reading game is how long you get to read before choosing, so the
         // thinking time above is scaled per difficulty. This is the ONLY thing that made
@@ -85,7 +116,46 @@ namespace SummaRace.Constants
         // one thing that makes them differ was inert exactly where it is most felt. 110 lets them
         // separate (15 / 12 / 11s at the start) while still leaving room for a card to appear.
         public const float RaceMinGateGap = 110f; // never shorter than this (always room to appear)
-        public const float RaceMaxGateGap = 300f; // never absurdly long
+        // 300 was sized for 12-second gates. With 20-second gates at the run's top speed a gap is
+        // 20 x 1.25 x 30 = 750m, so a 300m clamp would bind on every late gate and silently undo
+        // both the reading window and the quiet stretch. The seconds formula already bounds this;
+        // 800 is only a backstop against a nonsensical speed.
+        public const float RaceMaxGateGap = 800f; // never absurdly long
+
+        // ------------------------------------------------------------------------------
+        // THE READING WINDOW (F55). The option preview used to appear the moment its gate was
+        // PLACED and stay up until the gate resolved. Measured live over a real s01_easy run:
+        //     gate 1  panel up 15.02s   (revealed 13.00s before the gate)
+        //     gate 2  panel up 10.61s   (revealed 11.87s before the gate)
+        //     gate 3  panel up 11.24s   (revealed  6.68s before the gate)
+        //     gate 4                    (revealed  9.77s before the gate)
+        // — 71% of the whole run with the panel up, which is the owner's complaint; and the lead
+        // time was NOT under anyone's control. Placement waits for TrackManager to spawn the
+        // segment covering the gate, and it only spawns ~137m ahead, so at gate 3 the learner got
+        // 6.68s against the ~11.6s that 102 characters need at 100wpm. The panel was up almost
+        // always and still sometimes too briefly.
+        //
+        // So the preview is now armed when the gate is SCHEDULED (its three options are shuffled
+        // then, not at placement) and revealed on a distance derived from the live run speed.
+        // That decouples it from the spawn horizon, which is what makes a guaranteed window
+        // possible at all.
+        //
+        // 12s is the 100wpm budget (11.6s) with a little margin. It does NOT meet the ~16.5s a
+        // 70wpm reader needs — that remains the owner's open call, but it is now a ONE-CONSTANT
+        // change: raise this and the gap floor below follows automatically.
+        public const float RacePreviewLeadSeconds = 12f;
+        // Seconds of running with NOTHING to read, guaranteed between one gate resolving and the
+        // next preview arriving. Enforced as a floor on the gate gap (lead + quiet), so no
+        // difficulty setting and no speed can take the breather away — at hard the multiplier
+        // would otherwise drop the gap below the reading window itself.
+        public const float RaceQuietRunSeconds = 6f;
+
+        // Attention cue when the window opens (F55). The panel arriving silently mid-run can be
+        // missed, and missing it costs exactly the reading seconds the panel exists to give. Two
+        // soft pulses on the panel's BORDER only — never on the words, which must be legible and
+        // motionless from their first rendered frame — over this long. Two peaks in 1.23s is
+        // 1.63Hz, well under the 3Hz photosensitivity ceiling; nothing here may ever be a strobe.
+        public const float RacePreviewCueSeconds = 1.23f;
 
         // ------------------------------------------------------------------------------
         // RACE LEGIBILITY. The world cards cannot be read, and the numbers say so.
@@ -127,7 +197,12 @@ namespace SummaRace.Constants
         // of the whole race, on the one gate where the learner has never seen a card before.
         // 130m is 11.6s, which is exactly the 100wpm budget above. This is a track-length
         // change, which is the kind F40c sanctioned.
-        public const float RaceFirstGateDistance = 130f;
+        //
+        // F55: 130 -> 200. At 130 the whole approach to gate 1 WAS the reading window, so the
+        // race opened with the panel already up — the learner's first frame of the race was a
+        // wall of text. 200m from a standing start is 17.1s, so the run opens with ~5s of pure
+        // running before the first window opens. Still a length change, not a speed change.
+        public const float RaceFirstGateDistance = 200f;
 
         // Seconds the race's LEAVE chip stays armed before it disarms itself. Same two-tap
         // shape as the Reader's back button and the teacher screen's destructive actions: one

@@ -84,7 +84,7 @@
     },
     {
       "type": "WANTED",
-      "correct": "To help and protect others",
+      "correct": "To keep people safe in hard times",
       "distractors": [
         "To keep all animals as pets",
         "To sell trained animals to zoos"
@@ -108,9 +108,9 @@
     },
     {
       "type": "THEN",
-      "correct": "They were honored with the Dickin Medal",
+      "correct": "They received the Dickin Medal for bravery",
       "distractors": [
-        "They were forgotten after the war ended",
+        "They were forgotten soon after the war ended",
         "They were sent to live on quiet farms"
       ]
     }

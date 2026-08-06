@@ -84,7 +84,7 @@
     },
     {
       "type": "WANTED",
-      "correct": "To eat food from all of his friends without cooking",
+      "correct": "To taste every cook pot without doing any work",
       "distractors": [
         "To cook a big feast for everyone in the village",
         "To learn how to make eight pots of soup at once"
@@ -92,10 +92,10 @@
     },
     {
       "type": "BUT",
-      "correct": "All of the cook pots became ready at the same time",
+      "correct": "Every meal finished cooking at the same moment",
       "distractors": [
-        "All of his friends forgot to cook that morning",
-        "All of the pots were carried away by the river"
+        "Every friend forgot to cook a meal that morning",
+        "Every pot was carried away by the river"
       ]
     },
     {

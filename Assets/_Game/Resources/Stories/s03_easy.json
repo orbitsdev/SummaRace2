@@ -84,18 +84,18 @@
     },
     {
       "type": "WANTED",
-      "correct": "To eat at their favorite restaurant",
+      "correct": "To go back to the Italian place they love",
       "distractors": [
-        "To cook a big dinner at their house",
+        "To cook a big Italian dinner in the kitchen",
         "To order pizza and stay home tonight"
       ]
     },
     {
       "type": "BUT",
-      "correct": "Their father wanted to try a new restaurant",
+      "correct": "Their father picked a place they did not know",
       "distractors": [
         "Their car broke down on the way to dinner",
-        "Their mother said dinner would be too late"
+        "Their mother said dinner would be far too late"
       ]
     },
     {

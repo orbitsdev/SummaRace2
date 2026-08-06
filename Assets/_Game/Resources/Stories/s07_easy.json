@@ -84,7 +84,7 @@
     },
     {
       "type": "WANTED",
-      "correct": "To make friends at his new school",
+      "correct": "To get to know the other children",
       "distractors": [
         "To buy a new ball for the playground",
         "To move back to his old town"
@@ -92,7 +92,7 @@
     },
     {
       "type": "BUT",
-      "correct": "He was new and did not know anyone",
+      "correct": "He was the new boy in a strange class",
       "distractors": [
         "He lost his ball on the way to school",
         "He was late and missed the school bus"
@@ -100,10 +100,10 @@
     },
     {
       "type": "SO",
-      "correct": "He showed his ball tricks during recess",
+      "correct": "He used the tricks he had practiced all summer",
       "distractors": [
         "He hid from his classmates all week long",
-        "He went home early and played by himself"
+        "He went home early and played on his own street"
       ]
     },
     {

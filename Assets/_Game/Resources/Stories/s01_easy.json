@@ -84,10 +84,10 @@
     },
     {
       "type": "WANTED",
-      "correct": "She wanted a turn on the swing",
+      "correct": "She wanted to swing after counting to 100",
       "distractors": [
-        "She wanted to go home early",
-        "She wanted a brand new swing"
+        "She wanted to go home early from school",
+        "She wanted a brand new swing set at home"
       ]
     },
     {
@@ -108,7 +108,7 @@
     },
     {
       "type": "THEN",
-      "correct": "Bella got off and Molly happily took her turn",
+      "correct": "Molly solved the problem all by herself",
       "distractors": [
         "Molly gave up and went home feeling sad",
         "The teacher came and gave them a new swing"

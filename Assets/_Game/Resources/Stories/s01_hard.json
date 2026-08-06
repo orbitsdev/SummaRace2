@@ -84,10 +84,10 @@
     },
     {
       "type": "WANTED",
-      "correct": "To choose an animal for his assignment",
+      "correct": "To decide which animal he would write about",
       "distractors": [
         "To visit the zoo with his whole class",
-        "To draw a picture of his favorite animal"
+        "To draw a large picture of his favorite animal"
       ]
     },
     {
@@ -100,7 +100,7 @@
     },
     {
       "type": "SO",
-      "correct": "He kept researching and thinking carefully",
+      "correct": "He looked up more facts and thought it over",
       "distractors": [
         "He asked his classmates to choose for him",
         "He ignored the work and played outside"
@@ -108,10 +108,10 @@
     },
     {
       "type": "THEN",
-      "correct": "He chose to stay human",
+      "correct": "He wrote about being a human instead",
       "distractors": [
-        "He chose to be a dolphin",
-        "He did not finish the assignment"
+        "He chose to write about being a dolphin",
+        "He never finished the assignment"
       ]
     }
   ],

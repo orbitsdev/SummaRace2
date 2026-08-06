@@ -84,10 +84,10 @@
     },
     {
       "type": "WANTED",
-      "correct": "To move energy across the water",
+      "correct": "To move energy from place to place",
       "distractors": [
-        "To carry fish across the ocean",
-        "To push ships toward the shore"
+        "To carry fish across the deep ocean",
+        "To push ships toward the sandy shore"
       ]
     },
     {

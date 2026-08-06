@@ -92,15 +92,15 @@
     },
     {
       "type": "BUT",
-      "correct": "Their house felt too small and cramped",
+      "correct": "There was no room left for the family",
       "distractors": [
-        "Their animals ran away from home",
+        "Their animals ran away from the village",
         "Their village was too far away"
       ]
     },
     {
       "type": "SO",
-      "correct": "They followed Reb Solman's unusual advice",
+      "correct": "They did everything the wise man told them",
       "distractors": [
         "They asked the neighbors for more room",
         "They sent their animals to a neighbor's farm"

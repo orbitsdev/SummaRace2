@@ -84,10 +84,10 @@
     },
     {
       "type": "WANTED",
-      "correct": "To find his missing lunchbox",
+      "correct": "To get his lunchbox back",
       "distractors": [
-        "To share lunch with his friends",
-        "To play outside during recess"
+        "To share lunch with a friend",
+        "To play outside at recess"
       ]
     },
     {

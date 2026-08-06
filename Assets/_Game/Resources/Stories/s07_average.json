@@ -84,10 +84,10 @@
     },
     {
       "type": "WANTED",
-      "correct": "To become the Queen's Chef Royale with frog legs",
+      "correct": "To impress the queen with his frog legs",
       "distractors": [
-        "To open the finest bakery in the whole village",
-        "To cook a grand orange feast for the whole palace"
+        "To open the finest bakery in the village",
+        "To cook a grand feast of oranges"
       ]
     },
     {
@@ -100,7 +100,7 @@
     },
     {
       "type": "SO",
-      "correct": "Chef Pierre tried to catch the frog himself",
+      "correct": "Chef Pierre went to the pond after it himself",
       "distractors": [
         "Chef Pierre asked the queen for extra help",
         "Chef Pierre cooked a completely different meal"
@@ -108,7 +108,7 @@
     },
     {
       "type": "THEN",
-      "correct": "Slice and Dice became Chefs, Pierre the Frog Keeper",
+      "correct": "His helpers got the job and he kept the frog",
       "distractors": [
         "Chef Pierre served his frog legs and won the contest",
         "Slice and Dice left, Pierre stayed as royal chef"

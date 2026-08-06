@@ -84,7 +84,7 @@
     },
     {
       "type": "WANTED",
-      "correct": "To keep their food fresh and cold",
+      "correct": "To stop their food from spoiling",
       "distractors": [
         "To learn how to make ice at home",
         "To sell their old icebox for money"
@@ -92,7 +92,7 @@
     },
     {
       "type": "BUT",
-      "correct": "The icebox could not keep ice in the hot summer",
+      "correct": "The hot weather melted the ice too fast",
       "distractors": [
         "The ice man stopped coming to their street",
         "The ice man came only once every two weeks"
@@ -108,7 +108,7 @@
     },
     {
       "type": "THEN",
-      "correct": "Food stayed fresh; Doris felt sorry for Charlie",
+      "correct": "Doris was happy but sad for the ice man",
       "distractors": [
         "Food spoiled quickly; Doris missed the icebox",
         "Papa returned the fridge; Doris felt happy"

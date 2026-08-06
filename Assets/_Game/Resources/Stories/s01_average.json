@@ -84,10 +84,10 @@
     },
     {
       "type": "WANTED",
-      "correct": "To color with his crayons",
+      "correct": "To use his crayons and color a picture",
       "distractors": [
-        "To throw the crayons away",
-        "To buy new crayons"
+        "To throw his whole crayon box in the bin",
+        "To buy a brand new box of crayons"
       ]
     },
     {
@@ -108,7 +108,7 @@
     },
     {
       "type": "THEN",
-      "correct": "He tried to make them happy so they could color again",
+      "correct": "He looked for a way to keep every crayon happy",
       "distractors": [
         "He put the letters away and never colored again",
         "He threw the crayon box away and stopped coloring"

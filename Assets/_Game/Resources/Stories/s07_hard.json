@@ -84,7 +84,7 @@
     },
     {
       "type": "WANTED",
-      "correct": "To do well at his job and support his family",
+      "correct": "To earn enough to take care of his family",
       "distractors": [
         "To quit the factory before his first day was over",
         "To become the manager of the whole factory"
@@ -92,15 +92,15 @@
     },
     {
       "type": "BUT",
-      "correct": "The work was hard, repetitive, and tiring",
+      "correct": "The same task all day long wore him out",
       "distractors": [
         "The factory had no work for him",
-        "The other workers refused to help him"
+        "The other workers refused to show him how"
       ]
     },
     {
       "type": "SO",
-      "correct": "He learned his task and worked hard all day",
+      "correct": "He followed the instructions all day long",
       "distractors": [
         "He refused to work on the assembly line",
         "He left the factory during his training"

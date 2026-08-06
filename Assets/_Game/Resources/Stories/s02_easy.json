@@ -84,10 +84,10 @@
     },
     {
       "type": "WANTED",
-      "correct": "To escape the room",
+      "correct": "To unlock the door and get outside",
       "distractors": [
-        "To find a treasure",
-        "To build a puzzle"
+        "To find the hidden treasure chest",
+        "To build a puzzle for the team"
       ]
     },
     {

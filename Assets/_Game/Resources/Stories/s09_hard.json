@@ -84,10 +84,10 @@
     },
     {
       "type": "WANTED",
-      "correct": "To escape Baba Yaga and return home",
+      "correct": "To get out of the witch's house and go home",
       "distractors": [
         "To learn Baba Yaga's magic spells",
-        "To live in the forest with the hedgehog"
+        "To live in the deep forest with the hedgehog"
       ]
     },
     {
@@ -108,7 +108,7 @@
     },
     {
       "type": "THEN",
-      "correct": "Marusia and Dmitri were set free and returned home",
+      "correct": "Baba Yaga let both children go back home",
       "distractors": [
         "Marusia stayed trapped inside the house forever",
         "Baba Yaga followed them back to their village"

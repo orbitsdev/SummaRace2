@@ -84,10 +84,10 @@
     },
     {
       "type": "WANTED",
-      "correct": "To help people in need",
+      "correct": "To care for the sick and wounded",
       "distractors": [
-        "To become rich",
-        "To become famous"
+        "To become a wealthy businesswoman",
+        "To become a famous newspaper writer"
       ]
     },
     {
@@ -100,7 +100,7 @@
     },
     {
       "type": "SO",
-      "correct": "She gathered supplies and cared for soldiers",
+      "correct": "She brought medicine and nursed the wounded",
       "distractors": [
         "She waited at home until the war ended",
         "She wrote letters instead of helping soldiers"
@@ -108,9 +108,9 @@
     },
     {
       "type": "THEN",
-      "correct": "She founded the American Red Cross",
+      "correct": "She started the Red Cross to help more people",
       "distractors": [
-        "She stopped helping people after the war",
+        "She stopped helping people once the war was over",
         "She joined the army as a soldier"
       ]
     }

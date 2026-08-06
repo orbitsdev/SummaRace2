@@ -84,7 +84,7 @@
     },
     {
       "type": "WANTED",
-      "correct": "Comfort and friendship",
+      "correct": "A companion to comfort him",
       "distractors": [
         "Freedom and the open sea",
         "Food and a warm cage"
@@ -100,18 +100,18 @@
     },
     {
       "type": "SO",
-      "correct": "Owen kept staying close to Mzee",
+      "correct": "Owen followed the tortoise every day",
       "distractors": [
-        "Owen ignored Mzee completely",
-        "Owen found a different friend"
+        "Owen ignored the tortoise completely",
+        "Owen found a different friend to follow"
       ]
     },
     {
       "type": "THEN",
-      "correct": "They became close friends",
+      "correct": "The two spent every day together",
       "distractors": [
-        "They never became friends",
-        "They were kept apart"
+        "The two never spent time together",
+        "The two were kept far apart"
       ]
     }
   ],

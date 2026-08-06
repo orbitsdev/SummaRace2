@@ -84,7 +84,7 @@
     },
     {
       "type": "WANTED",
-      "correct": "A pool to stay cool during the summer",
+      "correct": "Her own pool for the hot summer days",
       "distractors": [
         "A trip to the beach with her friend Heather",
         "A garden with shade trees for hot days"
@@ -108,10 +108,10 @@
     },
     {
       "type": "THEN",
-      "correct": "She bought a pool and enjoyed using it",
+      "correct": "She got her own pool and thanked Heather",
       "distractors": [
         "She changed her mind about the pool",
-        "She gave her new pool away to Heather"
+        "She gave her brand new pool away to Heather"
       ]
     }
   ],

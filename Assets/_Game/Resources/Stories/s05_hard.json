@@ -84,18 +84,18 @@
     },
     {
       "type": "WANTED",
-      "correct": "To share memories of life in the past",
+      "correct": "To tell them how he lived when he was young",
       "distractors": [
-        "To teach them how to drive a car",
-        "To show them a movie about space"
+        "To teach them how to drive an old car",
+        "To show them a long movie about space travel"
       ]
     },
     {
       "type": "BUT",
-      "correct": "His grandchildren found it hard to imagine",
+      "correct": "His grandchildren could not picture that world",
       "distractors": [
         "His grandchildren forgot the stories",
-        "His grandchildren disliked old technology"
+        "His grandchildren disliked the old machines too"
       ]
     },
     {

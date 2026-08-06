@@ -84,15 +84,15 @@
     },
     {
       "type": "WANTED",
-      "correct": "To perform her tap dance solo successfully",
+      "correct": "To do her best at the tap dance recital",
       "distractors": [
         "To win first prize at the singing contest",
-        "To skip the recital and stay at home with Mom"
+        "To skip the recital and go home early"
       ]
     },
     {
       "type": "BUT",
-      "correct": "She was nervous about making mistakes on stage",
+      "correct": "She worried the crowd would notice a slip",
       "distractors": [
         "She was late and could not find her dance costume",
         "She was tired from dancing all week long"
@@ -100,7 +100,7 @@
     },
     {
       "type": "SO",
-      "correct": "She practiced everywhere and stayed confident",
+      "correct": "She kept dancing after her small mistake",
       "distractors": [
         "She stopped dancing and watched from the seats",
         "She asked her teacher to change her solo"

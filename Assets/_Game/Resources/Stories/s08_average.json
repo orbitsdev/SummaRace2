@@ -84,9 +84,9 @@
     },
     {
       "type": "WANTED",
-      "correct": "To learn how to skateboard",
+      "correct": "To ride a board without getting hurt",
       "distractors": [
-        "To learn how to ride a motorcycle",
+        "To learn how to ride a fast motorcycle",
         "To learn how to surf big waves"
       ]
     },
@@ -108,7 +108,7 @@
     },
     {
       "type": "THEN",
-      "correct": "They became ready to learn more advanced tricks",
+      "correct": "They felt sure enough to try harder moves",
       "distractors": [
         "They joined a skateboard contest in the city",
         "They sold the skateboard to a younger friend"

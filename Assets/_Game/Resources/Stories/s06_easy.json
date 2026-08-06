@@ -84,15 +84,15 @@
     },
     {
       "type": "WANTED",
-      "correct": "To find safety and rebuild their lives",
+      "correct": "To reach a safe place and start over",
       "distractors": [
         "To buy a new wagon and travel faster",
-        "To move to another country and start over"
+        "To move to another country far away"
       ]
     },
     {
       "type": "BUT",
-      "correct": "Many things kept going wrong for them",
+      "correct": "Trouble followed them everywhere they went",
       "distractors": [
         "Many neighbors refused to give them help",
         "Their father lost hope during the journey"

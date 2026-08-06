@@ -92,7 +92,7 @@
     },
     {
       "type": "BUT",
-      "correct": "Santiago was old and needed extra care",
+      "correct": "Santiago was old and had health problems",
       "distractors": [
         "Santiago was afraid of every visitor",
         "Santiago was already promised to someone"
@@ -108,7 +108,7 @@
     },
     {
       "type": "THEN",
-      "correct": "He chose Santiago as his friend",
+      "correct": "He took the old cat home with him",
       "distractors": [
         "He picked a young kitten instead",
         "He promised to visit the shelter"

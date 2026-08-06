@@ -118,6 +118,19 @@ namespace SummaRace.Features.Race.Endless
         private int _pendingElement;
         private bool _pendingIsRepresent;
 
+        // The upcoming gate's three options, DECIDED WHEN THE GATE IS SCHEDULED rather than when
+        // it is placed. The shuffle used to live in PlaceAnswerGate, which meant nothing knew the
+        // options until TrackManager had spawned the segment covering the gate — and it only
+        // spawns ~137m ahead, so the reading panel could not be shown earlier than that however
+        // long the gap was (measured: 6.68s of reading at gate 3 of a real run). Deciding here
+        // lets the panel open on a clock instead of on the spawn horizon. The gate builder
+        // consumes these arrays verbatim, so panel and road cannot disagree.
+        private readonly string[] _gateTexts = new string[3];
+        private readonly bool[] _gateCorrect = new bool[3];
+        private readonly int[] _gateOptionIndex = new int[3];
+        private int _preparedElement = -1;      // which element the arrays above describe
+        private bool _preparedIsRepresent;
+
         // "You are here" marker on the live gate — see BuildLaneSelector.
         private Transform _laneSelector;
         private SpriteRenderer _laneSelectorSr;
@@ -128,7 +141,6 @@ namespace SummaRace.Features.Race.Endless
         private int _activeElement = -1;
         private bool _activeIsRepresent;
         private float _activeGateDistance;
-        private int _representCount; // consecutive dodged re-presents of the current element
         private float _strandedTimer; // seconds the run has had nothing to present
         // Identity of the live gate. A monotonic serial, never reused, because the element
         // index cannot tell a stale gate from its own re-present (a wrong pick re-presents the
@@ -168,6 +180,7 @@ namespace SummaRace.Features.Race.Endless
         private float _patrolGap = 30f;    // metres the cop trails behind the player (constant once running)
         private float _patrolMoveVel;      // SmoothDamp velocity for his slide in/out of frame
         private float _patrolSide = 1f;    // which shoulder he takes: +1 right, -1 left
+        private bool _wasSurging;          // so the shoulder is chosen once per surge, never mid-slide
         private Renderer[] _patrolRenderers; // cached for the per-frame body measurement
         private Renderer[] _kidRenderers;
 
@@ -182,7 +195,27 @@ namespace SummaRace.Features.Race.Endless
         private GameObject _previewRoot;
         private readonly TextMeshProUGUI[] _previewLabel = new TextMeshProUGUI[3];
         private readonly UnityEngine.UI.Image[] _previewPlaque = new UnityEngine.UI.Image[3];
+        private readonly RectTransform[] _previewColumn = new RectTransform[3];
         private bool _previewWanted;
+        // Armed = there is an upcoming gate whose options are known but whose reading window has
+        // not opened yet. The window opens RacePreviewLeadSeconds before the gate (UpdatePreviewWindow).
+        private bool _previewArmed;
+        private readonly string[] _previewTexts = new string[3];
+        private bool _previewIsRepresent;
+        private UnityEngine.UI.Image _previewGlow;   // border-only attention cue; never the words
+        private Coroutine _previewCue;
+
+        // The answer reveal that replaced the re-presented pickup. A wrong pick used to bring the
+        // correct card back alone for the learner to drive into — which is not a choice, teaches
+        // nothing, lengthens the run for the learner who is already struggling, and (the owner's
+        // words) "doesn't make sense": one lone card rendered as three columns with two dimmed
+        // reads as a question that has lost its options, not as an answer. Nothing downstream
+        // needed it either — ArrangeController falls back to the story's own text for any piece
+        // that was never collected — and it could never count for the measure, because the wrong
+        // pick has already closed _firstPickDone. So the answer is simply SHOWN for a beat.
+        private Coroutine _answerReveal;
+        private bool _revealing;                     // suppresses the normal window while shown
+        private const float AnswerRevealSeconds = 2.2f;
 
         // Pause. Never a fail state and never an ending — see OpenPause.
         private GameObject _pauseRoot;      // full-screen overlay, its own canvas above everything
@@ -287,6 +320,8 @@ namespace SummaRace.Features.Race.Endless
             _pendingElement = 0;
             _pendingIsRepresent = false;
             BuildHud();
+            // After BuildHud, because arming fills the panel it just built.
+            PrepareGateOptions(0, false);
             UpdateBanner();
             // Up before their Loadout/track boot so the learner never sees the spin-up:
             // the scrim doubles as the mask for it (the old MaskLoadoutFlash only hides
@@ -456,6 +491,10 @@ namespace SummaRace.Features.Race.Endless
                 UpdateLaneSelector(track);
 
             TryPlacePending();
+            // After TryPlacePending, so a gate that was just placed can open its own window in
+            // the same frame — that is the case where the track spawned late and the learner is
+            // already inside the reading distance.
+            UpdatePreviewWindow(track);
             CheckStranded(track);
 
             // Their Resume() unconditionally re-shows the pause button after a
@@ -561,8 +600,10 @@ namespace SummaRace.Features.Race.Endless
             _pendingGateDistance = -1f;
 
             float local = placeDist - placeStart;
+            // No re-present branch any more: a wrong pick or a missed gate now shows the answer
+            // on the panel (ShowAnswerReveal) instead of sending a lone gold card back down the
+            // road, so every gate placed here is a real three-option gate.
             if (element >= 5) PlaceFinishGate(placeSeg, local);
-            else if (isRepresent) PlaceRepresentGate(placeSeg, local, element);
             else PlaceAnswerGate(placeSeg, local, element);
         }
 
@@ -579,27 +620,17 @@ namespace SummaRace.Features.Race.Endless
 
             float laneOffset = TrackManager.instance.laneOffset;
             float cardWidth = Mathf.Min(1.55f, laneOffset * 0.95f);
-            var element = _story.elements[elementIndex];
 
-            // Shuffle the correct answer and its two distractors across the three lanes.
-            // This used to be a fixed 1,0,2,1,0 pattern, identical for every story and every
-            // run, which let a learner score 5/5 by position without reading a card. The race
-            // is a measure (raceFirstPickCorrect is logged research data), so position must
-            // carry no information. Same Fisher-Yates the legacy RaceController used.
-            string[] texts = { element.correct, element.distractors[0], element.distractors[1] };
-            bool[] correctFlags = { true, false, false };
-            // Carried through the same swaps: which option of the STORY JSON each lane ended up
-            // holding (0 = correct, 1/2 = distractors). Without it the log can say the learner
-            // was wrong at "But" but never which wrong idea they took — and that is the half of
-            // a summarising study that cannot be reconstructed afterwards.
-            int[] optionIndices = { 0, 1, 2 };
-            for (int i = 2; i > 0; i--)
-            {
-                int j = UnityEngine.Random.Range(0, i + 1);
-                var tmpText = texts[i]; texts[i] = texts[j]; texts[j] = tmpText;
-                var tmpFlag = correctFlags[i]; correctFlags[i] = correctFlags[j]; correctFlags[j] = tmpFlag;
-                var tmpOpt = optionIndices[i]; optionIndices[i] = optionIndices[j]; optionIndices[j] = tmpOpt;
-            }
+            // The lane shuffle happened when this gate was SCHEDULED (PrepareGateOptions), so the
+            // reading panel could open long before the segment carrying the gate existed. Re-run
+            // it here only if something scheduled a gate without preparing it — the arrays are
+            // the single source of truth for both the road and the panel.
+            if (_preparedElement != elementIndex || _preparedIsRepresent)
+                PrepareGateOptions(elementIndex, false);
+
+            var texts = _gateTexts;
+            var correctFlags = _gateCorrect;
+            var optionIndices = _gateOptionIndex;
 
             for (int lane = 0; lane < 3; lane++)
             {
@@ -625,52 +656,67 @@ namespace SummaRace.Features.Race.Endless
             BuildLaneSelector(root, elementIndex, new Vector2(cardWidth, 0.85f), laneOffset, false);
             // The cards themselves are physically unreadable at any distance worth reading them
             // at (the derivation is on GameRules.RaceFirstGateDistance) — the HUD preview is
-            // where the learner actually reads the three options.
-            ShowOptionPreview(texts);
+            // where the learner actually reads the three options. It was ARMED when this gate was
+            // scheduled and may already be on screen; arming again is a no-op that keeps the
+            // panel correct if a gate ever reaches the world without having been scheduled.
+            ArmOptionPreview(texts, false);
             // No in-world type pill: the top SWBST tracker now shows the current element (F40).
         }
 
-        /// <summary>TDD §11.4 re-presentation: ONE gold glowing card, center lane, standing in
-        /// for the whole gate after a wrong pick or a miss. Collecting it resolves the element
-        /// with the normal celebration but no boost and no first-pick change.</summary>
-        private void PlaceRepresentGate(TrackSegment segment, float localDist, int elementIndex)
+        /// <summary>
+        /// Decides the three options for a gate — WHICH lane holds the correct answer and which
+        /// distractor sits where — at SCHEDULING time, so the reading panel can be filled long
+        /// before TrackManager has spawned the segment the gate will live in.
+        ///
+        /// The shuffle itself is unchanged and must stay: it used to be a fixed 1,0,2,1,0 pattern,
+        /// identical for every story and every run, which let a learner score 5/5 by position
+        /// without reading a card. The race is a measure (raceFirstPickCorrect is logged research
+        /// data), so position must carry no information. Same Fisher-Yates the legacy
+        /// RaceController used. `_gateOptionIndex` carries which option of the STORY JSON each
+        /// lane ended up holding (0 = correct, 1/2 = distractors) through the same swaps: without
+        /// it the log can say the learner was wrong at "But" but never which wrong idea they took.
+        /// </summary>
+        private void PrepareGateOptions(int elementIndex, bool isRepresent)
         {
-            Vector3 pos; Quaternion rot;
-            segment.GetPointAtInWorldUnit(localDist, out pos, out rot);
-
-            var root = new GameObject("SwbstRepresent_" + elementIndex).transform;
-            root.SetParent(segment.transform, true);
-            root.SetPositionAndRotation(pos, rot);
-            root.gameObject.AddComponent<EndlessCurveDip>();
-            _activeGateRoot = root;
-
-            float laneOffset = TrackManager.instance.laneOffset;
-            float cardWidth = Mathf.Min(1.55f, laneOffset * 0.95f);
+            _preparedElement = elementIndex;
+            _preparedIsRepresent = isRepresent;
+            if (_story == null || elementIndex < 0 || elementIndex >= _story.elements.Length)
+            {
+                _gateTexts[0] = _gateTexts[1] = _gateTexts[2] = null;
+                return;
+            }
             var element = _story.elements[elementIndex];
-            var goldColor = new Color(1f, 0.85f, 0.35f);
 
-            var card = BuildCard(root, new Vector3(0f, CardY, 0f), new Vector2(cardWidth, 0.85f),
-                element.correct, Color.black, goldColor, 2.4f);
+            if (isRepresent)
+            {
+                // A re-present is ONE card in the centre lane. The panel says so honestly rather
+                // than pretending there are still three options (see ArmOptionPreview).
+                _gateTexts[0] = null; _gateTexts[1] = element.correct; _gateTexts[2] = null;
+                _gateCorrect[0] = false; _gateCorrect[1] = true; _gateCorrect[2] = false;
+                _gateOptionIndex[0] = -1; _gateOptionIndex[1] = 0; _gateOptionIndex[2] = -1;
+                ArmOptionPreview(_gateTexts, true);
+                return;
+            }
 
-            var trigger = card.gameObject.AddComponent<BoxCollider>();
-            trigger.isTrigger = true;
-            trigger.size = new Vector3(TriggerWidth, 2.2f, TriggerDepth);
-            trigger.center = new Vector3(0f, 0.6f, 0f);
-
-            var pickup = card.gameObject.AddComponent<EndlessOptionPickup>();
-            pickup.elementIndex = elementIndex;
-            pickup.gateId = _activeGateId;
-            pickup.isCorrect = true;
-            pickup.optionIndex = 0;   // a re-present is always the correct card
-            pickup.lane = 1;          // centre
-            pickup.isRepresent = true;
-            pickup.optionText = element.correct;
-            BuildLaneSelector(root, elementIndex, new Vector2(cardWidth, 0.85f), laneOffset, true);
-            // No in-world type pill: the top SWBST tracker shows the current element (F40).
-            // One card, centre lane only — the preview shows that honestly rather than
-            // re-listing three options the gate no longer has.
-            ShowOptionPreview(new string[] { null, element.correct, null });
+            _gateTexts[0] = element.correct;
+            _gateTexts[1] = element.distractors[0];
+            _gateTexts[2] = element.distractors[1];
+            _gateCorrect[0] = true; _gateCorrect[1] = false; _gateCorrect[2] = false;
+            _gateOptionIndex[0] = 0; _gateOptionIndex[1] = 1; _gateOptionIndex[2] = 2;
+            for (int i = 2; i > 0; i--)
+            {
+                int j = UnityEngine.Random.Range(0, i + 1);
+                var tmpText = _gateTexts[i]; _gateTexts[i] = _gateTexts[j]; _gateTexts[j] = tmpText;
+                var tmpFlag = _gateCorrect[i]; _gateCorrect[i] = _gateCorrect[j]; _gateCorrect[j] = tmpFlag;
+                var tmpOpt = _gateOptionIndex[i]; _gateOptionIndex[i] = _gateOptionIndex[j]; _gateOptionIndex[j] = tmpOpt;
+            }
+            ArmOptionPreview(_gateTexts, false);
         }
+
+        // PlaceRepresentGate is GONE (F55). It built the "one gold card in the centre lane" that
+        // came back after a wrong pick. See HitWrong for why that mechanic could not justify
+        // itself; the answer is now shown on the reading panel instead of staged as a pickup
+        // nobody could get wrong.
 
         /// <summary>
         /// The "you are here" marker: a SWBST-coloured frame that sits behind whichever card is
@@ -947,13 +993,38 @@ namespace SummaRace.Features.Race.Endless
             else { _activeGateRoot = null; _activeElement = -1; _activeIsRepresent = false; }
         }
 
+        /// <summary>
+        /// A WRONG PICK NOW SHOWS THE ANSWER INSTEAD OF STAGING A FAKE ONE.
+        ///
+        /// Until F55 this scheduled a "re-present": the correct card came back alone, in gold, in
+        /// the centre lane, and the learner drove into it. The owner asked twice what it was for,
+        /// and it could not answer:
+        ///   * it is not a choice — one card, and it is the answer, so steering into it decides
+        ///     and teaches nothing;
+        ///   * nothing downstream needs it. RaceResult.collectedPieces[i] is filled with
+        ///     _story.elements[i].correct at the finish line unconditionally (see FinishRoutine),
+        ///     and ArrangeController falls back to the same string anyway, so the learner reaches
+        ///     Arrange holding all five pieces whether or not a card was ever collected;
+        ///   * it cannot count for the measure — _firstPickDone is already closed by this very
+        ///     pick — so it was ceremony;
+        ///   * and it added distance to the run for exactly the learner already struggling.
+        ///
+        /// What replaces it is the honest version of the same intention: the answer is SHOWN,
+        /// clearly, for a beat, and the run moves on to the next gate. Unchanged, deliberately:
+        /// _firstPickDone/_firstPickCorrect (the study's headline measure), the friendly slow, the
+        /// chaser beat, and the rule that nothing here can ever end the run (GDD D7).
+        /// </summary>
         private void HitWrong(EndlessOptionPickup pickup)
         {
             var track = TrackManager.instance;
             if (SummaRace.Core.AudioManager.Instance != null)
                 SummaRace.Core.AudioManager.Instance.PlaySfx(SummaRace.Constants.AudioKeys.SfxNotQuite);
 
-            ShowFeedback(SummaRace.Constants.GameText.RaceWrongFeedback, new Color(1f, 0.78f, 0.35f));
+            // The answer itself, in the feedback pill. It is story content, not a UI string, so
+            // it needs no GameText constant — and GameText.RaceWrongFeedback ("Not quite - get the
+            // glowing card!") is now false, since there is no card to get. See the report: the
+            // framing wording is a GameText change for whoever owns that file.
+            ShowFeedback(_story.elements[pickup.elementIndex].correct, new Color(1f, 0.85f, 0.45f));
 
             // Surge the chaser into view for a beat — the visible half of "not quite".
             _menaceTimer = SummaRace.Constants.GameRules.PatrolMenaceSeconds;
@@ -974,11 +1045,49 @@ namespace SummaRace.Features.Race.Endless
             }
 
             int element = pickup.elementIndex;
-            // The WHOLE gate (both distractors + the correct card) goes now — TDD §11.4:
-            // the correct answer comes back on its own as a single glowing re-present.
-            DestroyActiveGate();
+            DestroyActiveGate();               // the whole gate goes; nothing replaces it
+            if (track != null) AdvanceToNext(track, element);
+            else { _activeGateRoot = null; _activeElement = -1; }
+            ShowAnswerReveal(element);         // after AdvanceToNext, so it overrides the re-arm
+        }
 
-            if (track != null) ScheduleRepresent(track, element);
+        /// <summary>
+        /// The answer, shown plainly for a beat on the panel the learner already reads from: one
+        /// full-width card in the gold the re-presented pickup used to wear, so the moment still
+        /// says "here is the right one" without pretending to be a question. The next gate is
+        /// already scheduled and armed underneath; when the beat ends the panel returns to
+        /// waiting, and its normal reading window opens on its own clock.
+        /// </summary>
+        private void ShowAnswerReveal(int element)
+        {
+            if (_previewRoot == null || _story == null || element < 0 || element >= _story.elements.Length) return;
+            if (_answerReveal != null) StopCoroutine(_answerReveal);
+            _answerReveal = StartCoroutine(AnswerRevealRoutine(_story.elements[element].correct));
+        }
+
+        private IEnumerator AnswerRevealRoutine(string correct)
+        {
+            _revealing = true;
+            PaintPreview(new string[] { null, correct, null }, true);
+            _previewWanted = true;
+            ApplyPreviewVisibility();
+            if (_previewRoot.activeSelf)
+            {
+                if (_previewCue != null) StopCoroutine(_previewCue);
+                _previewCue = StartCoroutine(PulseArrivalGlow());
+            }
+
+            float t = 0f;
+            while (t < AnswerRevealSeconds && !_finished && !_leaving)
+            {
+                if (!_paused) t += Time.deltaTime;
+                yield return null;
+            }
+
+            _revealing = false;
+            _previewWanted = false;             // back to "armed, waiting for its window"
+            ApplyPreviewVisibility();
+            _answerReveal = null;
         }
 
         /// <summary>A gate or re-present the player ran past without any hit. First-pick is
@@ -994,24 +1103,12 @@ namespace SummaRace.Features.Race.Endless
                 _firstPickCorrect[element] = false;
             }
 
-            bool wasRepresent = _activeIsRepresent;
             DestroyActiveGate();
-
-            if (wasRepresent)
-            {
-                _representCount++;
-                if (_representCount >= MaxRepresentMisses)
-                {
-                    // Anti-frustration floor: the card is center-lane and glowing, so 3
-                    // dodges means the learner is deliberately avoiding it. Not learner-facing.
-                    Debug.Log("EndlessRaceDirector: element " + element +
-                        " auto-resolved after " + MaxRepresentMisses + " dodged re-presents.");
-                    AdvanceToNext(track, element);
-                    return;
-                }
-            }
-
-            ScheduleRepresent(track, element);
+            // Same treatment as a wrong pick: show what the answer was and move on. There is no
+            // second attempt to dodge any more, so the old dodge counter and its anti-frustration
+            // auto-resolve have nothing left to count.
+            AdvanceToNext(track, element);
+            ShowAnswerReveal(element);
         }
 
         /// <summary>FINISH was run past instead of collected. Nothing about the story is
@@ -1024,6 +1121,7 @@ namespace SummaRace.Features.Race.Endless
             _pendingElement = 5;
             _pendingIsRepresent = false;
             _pendingGateDistance = track.worldDistance + RepresentDistance(track);
+            _preparedElement = -1;   // FINISH has no options and no panel
             TryPlacePending();
         }
 
@@ -1059,21 +1157,20 @@ namespace SummaRace.Features.Race.Endless
             // _activeElement survives a gate dying with its segment, so it is still valid.
             if (_activeElement >= 0 && _activeElement < 5)
             {
-                Debug.LogWarning("EndlessRaceDirector: nothing to present — re-presenting element "
-                    + _activeElement + ".");
+                Debug.LogWarning("EndlessRaceDirector: nothing to present — resolving element "
+                    + _activeElement + " and moving on.");
                 int element = _activeElement;
                 _activeElement = -1;
-                // Close the first pick before re-presenting. A re-present card is always the
-                // correct one, so without this a strand — a fault on OUR side, where the learner
-                // never got to choose — would be collected and recorded as a CORRECT first pick.
-                // raceFirstPickCorrect is the thesis measure and the star count; it must never be
-                // credited for an answer nobody gave. Treated as a miss, same as a run-past gate.
+                // Close the first pick as a MISS. A strand is a fault on our side and the learner
+                // never got to choose, so it must not be credited: raceFirstPickCorrect is the
+                // thesis measure and the star count. Same treatment as a run-past gate.
                 if (!_firstPickDone[element])
                 {
                     _firstPickDone[element] = true;
                     _firstPickCorrect[element] = false;
                 }
-                ScheduleRepresent(track, element);
+                AdvanceToNext(track, element);
+                ShowAnswerReveal(element);
                 return;
             }
 
@@ -1104,11 +1201,10 @@ namespace SummaRace.Features.Race.Endless
         }
 
         /// <summary>Element fully resolved (correct first hit, re-present collected, or
-        /// auto-resolved after 3 dodges) — clears the active slot and schedules the next
-        /// answer gate, or FINISH once element 4 is done, through the same pending mechanism.</summary>
+        /// resolved either way — clears the active slot and schedules the next answer gate, or
+        /// FINISH once element 4 is done, through the same pending mechanism.</summary>
         private void AdvanceToNext(TrackManager track, int completedElement)
         {
-            _representCount = 0;
             _activeGateRoot = null;
             _activeElement = -1;
             _activeIsRepresent = false;
@@ -1119,12 +1215,16 @@ namespace SummaRace.Features.Race.Endless
                 _pendingElement = next;
                 _pendingIsRepresent = false;
                 _pendingGateDistance = track.worldDistance + NextGateGap(track);
+                // Options decided now, not at placement — this is what lets the reading window
+                // open on a clock instead of when the track happens to spawn far enough.
+                PrepareGateOptions(next, false);
             }
             else
             {
                 _pendingElement = 5;
                 _pendingIsRepresent = false;
                 _pendingGateDistance = track.worldDistance + FinishGap;
+                _preparedElement = -1;   // FINISH has no options and no panel
             }
 
             UpdateBanner();
@@ -1183,9 +1283,17 @@ namespace SummaRace.Features.Race.Endless
             float runSpeed = Mathf.Max(track.speed, track.minSpeed);
             float bySpeed = SummaRace.Constants.GameRules.RaceSecondsPerGate
                 * DifficultyGateTime() * runSpeed;
-            float floor = Mathf.Max(_story.mission.checkpointSpacing,
-                SummaRace.Constants.GameRules.RaceMinGateGap);
-            return Mathf.Clamp(bySpeed, floor, SummaRace.Constants.GameRules.RaceMaxGateGap);
+            // THE LEGIBILITY FLOOR, in seconds and therefore in metres at the speed being run:
+            // the reading window plus the quiet stretch. Difficulty scales thinking time, but it
+            // may never scale it below the window itself — at hard (x0.8) it otherwise would, and
+            // a gate that arrives before its options have been readable for 12s is the F47
+            // validity failure returning through the difficulty setting.
+            float secondsFloor = (SummaRace.Constants.GameRules.RacePreviewLeadSeconds
+                + SummaRace.Constants.GameRules.RaceQuietRunSeconds) * runSpeed;
+            float floor = Mathf.Max(Mathf.Max(_story.mission.checkpointSpacing,
+                SummaRace.Constants.GameRules.RaceMinGateGap), secondsFloor);
+            return Mathf.Clamp(Mathf.Max(bySpeed, floor), floor,
+                SummaRace.Constants.GameRules.RaceMaxGateGap);
         }
 
         /// <summary>Easy gets more runway to read a card, hard gets less.</summary>
@@ -1204,6 +1312,7 @@ namespace SummaRace.Features.Race.Endless
             _pendingElement = element;
             _pendingIsRepresent = true;
             _pendingGateDistance = track.worldDistance + RepresentDistance(track);
+            PrepareGateOptions(element, true);
             UpdateBanner();
             TryPlacePending();
         }
@@ -1378,6 +1487,28 @@ namespace SummaRace.Features.Race.Endless
             brt.anchorMax = new Vector2(0.97f, 0.885f);
             brt.offsetMin = Vector2.zero; brt.offsetMax = Vector2.zero;
 
+            // ATTENTION CUE, AND WHY IT IS A BORDER. Now that the panel only appears near its
+            // gate, its arrival has to be noticed — a child watching the road can miss a silent
+            // fade, and missing the start of the window costs exactly the reading seconds the
+            // panel exists to provide. It is deliberately NOT the words that move: the three
+            // options must be legible and motionless from their first rendered frame, or the cue
+            // destroys the thing it is announcing. So this is a rim BEHIND the board (first
+            // sibling, inset negative so it sticks out), pulsed twice and gone. It is one ring
+            // around all three columns, so it can never favour one option — the F44 validity
+            // crisis was a surface cue worth 84.7% against 33% for guessing, and a cue that
+            // landed differently on the correct column would be that failure in a new costume.
+            var glow = new GameObject("ArrivalGlow");
+            glow.transform.SetParent(board.transform, false);
+            var gimg = glow.AddComponent<UnityEngine.UI.Image>();
+            gimg.sprite = WoodPlaqueSprite();
+            gimg.type = UnityEngine.UI.Image.Type.Sliced;
+            gimg.color = new Color(1f, 0.84f, 0.35f, 0f); // warm gold, invisible at rest
+            gimg.raycastTarget = false;
+            var grt = gimg.rectTransform;
+            grt.anchorMin = Vector2.zero; grt.anchorMax = Vector2.one;
+            grt.offsetMin = new Vector2(-16f, -16f); grt.offsetMax = new Vector2(16f, 16f);
+            _previewGlow = gimg;
+
             // Three equal columns: left/centre/right, exactly the lanes they stand for.
             const float pad = 0.014f;
             float w = (1f - 4f * pad) / 3f;
@@ -1396,6 +1527,7 @@ namespace SummaRace.Features.Race.Endless
                 rt.anchorMax = new Vector2(x0 + w, 0.93f);
                 rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
                 _previewPlaque[i] = img;
+                _previewColumn[i] = rt;
 
                 var lblGo = new GameObject("Text");
                 lblGo.transform.SetParent(col.transform, false);
@@ -1423,31 +1555,139 @@ namespace SummaRace.Features.Race.Endless
             board.SetActive(false);
         }
 
-        /// <summary>Fills the preview from a gate's cards, indexed BY LANE (0 left, 1 centre,
-        /// 2 right) so the panel and the road agree. A null entry means that lane has no card —
-        /// which is the honest picture of a re-present, where only the centre lane is offered.</summary>
-        private void ShowOptionPreview(string[] textsByLane)
+        /// <summary>Remembers a gate's three options, indexed BY LANE (0 left, 1 centre, 2 right)
+        /// so the panel and the road agree, and ARMS the reading window. It does not put anything
+        /// on screen: UpdatePreviewWindow opens the window RacePreviewLeadSeconds before the gate.
+        /// Idempotent, because both scheduling and placement call it for the same gate.</summary>
+        private void ArmOptionPreview(string[] textsByLane, bool isRepresent)
         {
-            if (_previewRoot == null || textsByLane == null) return;
+            if (textsByLane == null) return;
             for (int i = 0; i < 3; i++)
-            {
-                string text = i < textsByLane.Length ? textsByLane[i] : null;
-                bool has = !string.IsNullOrEmpty(text);
-                if (_previewLabel[i] != null) _previewLabel[i].text = has ? text : "";
-                // An empty lane fades rather than vanishes, so the three columns keep standing
-                // for the three lanes and the remaining card does not slide across the panel.
-                if (_previewPlaque[i] != null)
-                    _previewPlaque[i].color = has
-                        ? new Color(0.98f, 0.97f, 0.93f)
-                        : new Color(0.98f, 0.97f, 0.93f, 0.18f);
-            }
+                _previewTexts[i] = i < textsByLane.Length ? textsByLane[i] : null;
+            _previewIsRepresent = isRepresent;
+            _previewArmed = true;
+        }
+
+        /// <summary>
+        /// Opens the reading window when the gate is near enough — the whole point of F55.
+        ///
+        /// The trigger is a DISTANCE derived from the live run speed rather than a timer, so a
+        /// boost, a wrong-pick slow or a pause cannot eat the window. It reads the pending gate's
+        /// distance when the gate has not been placed yet, which is the case for most of the
+        /// window: TrackManager only spawns ~137m ahead, and at 20 m/s that is under 7 seconds.
+        /// </summary>
+        private void UpdatePreviewWindow(TrackManager track)
+        {
+            if (!_previewArmed || _previewWanted || track == null) return;
+            if (!_runReleased || _finished || _paused || _leaving) return;
+            // An answer reveal owns the panel for its beat. The next gate is already scheduled and
+            // armed underneath, and at the speeds this runs at its window can open while the
+            // reveal is still on screen — which would swap the answer the learner is reading for
+            // the next question mid-sentence. The reveal clears _revealing when it ends, and the
+            // window then opens on its own clock.
+            if (_revealing) return;
+
+            float target = _activeGateRoot != null ? _activeGateDistance : _pendingGateDistance;
+            if (target < 0f) return;
+
+            float speed = Mathf.Max(track.speed, track.minSpeed);
+            float lead = speed * SummaRace.Constants.GameRules.RacePreviewLeadSeconds;
+            if (target - track.worldDistance > lead) return;
+
+            RevealOptionPreview();
+        }
+
+        /// <summary>Paints the armed options onto the panel, shows it, and plays the arrival cue
+        /// (border pulse + the tracker's own SWBST pulse + a pop). The cue teaches WHICH part of
+        /// the framework is coming, not merely that something is — the tracker slot for this
+        /// element is what pulses, in its own SWBST colour.</summary>
+        private void RevealOptionPreview()
+        {
+            if (_previewRoot == null) return;
+            PaintPreview(_previewTexts, false);
             _previewWanted = true;
             ApplyPreviewVisibility();
+
+            if (_previewRoot.activeSelf)
+            {
+                if (_previewCue != null) StopCoroutine(_previewCue);
+                _previewCue = StartCoroutine(PulseArrivalGlow());
+                RefreshTracker();   // re-pulses the upcoming element's slot in its SWBST colour
+                if (SummaRace.Core.AudioManager.Instance != null)
+                    SummaRace.Core.AudioManager.Instance.PlaySfx(SummaRace.Constants.AudioKeys.SfxPop);
+            }
+        }
+
+        /// <summary>Fills the three columns. `single` is the answer-reveal form: one full-width
+        /// card in the gold the world's correct card wears, with the other two columns switched
+        /// OFF rather than ghosted — a nine-year-old reads two faded columns as a question that
+        /// has lost two options, which is precisely the confusion the re-present used to cause.
+        /// In the normal form all three columns are identical in size, colour and type: nothing
+        /// may mark the correct one (F44 — a surface cue was worth 84.7% against 33% guessing).</summary>
+        private void PaintPreview(string[] texts, bool single)
+        {
+            const float pad = 0.014f;
+            float w = (1f - 4f * pad) / 3f;
+            for (int i = 0; i < 3; i++)
+            {
+                string text = i < texts.Length ? texts[i] : null;
+                bool has = !string.IsNullOrEmpty(text);
+                if (_previewLabel[i] != null) _previewLabel[i].text = has ? text : "";
+                if (_previewColumn[i] != null)
+                {
+                    _previewColumn[i].gameObject.SetActive(has);
+                    float x0 = single ? pad : pad + i * (w + pad);
+                    float x1 = single ? 1f - pad : x0 + w;
+                    _previewColumn[i].anchorMin = new Vector2(x0, 0.07f);
+                    _previewColumn[i].anchorMax = new Vector2(x1, 0.93f);
+                    _previewColumn[i].offsetMin = Vector2.zero;
+                    _previewColumn[i].offsetMax = Vector2.zero;
+                }
+                if (_previewPlaque[i] != null)
+                    _previewPlaque[i].color = single
+                        ? new Color(1f, 0.85f, 0.35f)          // "this is the answer" gold
+                        : new Color(0.98f, 0.97f, 0.93f);      // the answer card's white
+            }
+        }
+
+        /// <summary>Two soft pulses on the panel's border and then gone. Deliberately a coroutine
+        /// with the shape written out, so the frequency is checkable rather than taken on trust:
+        /// peaks at 0.24s and 0.78s = a 0.54s period = <b>1.85Hz</b>, and only two of them. The
+        /// photosensitivity ceiling is 3Hz; nothing in this game may ever approach a strobe, and a
+        /// gentle beat reads better to a nine-year-old than an alarm anyway (GDD D7 — nothing here
+        /// is a warning). The words are untouched throughout.</summary>
+        private IEnumerator PulseArrivalGlow()
+        {
+            if (_previewGlow == null) yield break;
+            const float peak = 0.85f;
+            // (from, to, seconds) — 0.24 up, 0.30 down, 0.24 up, 0.45 out = 1.23s total.
+            float[,] legs = { { 0f, peak, 0.24f }, { peak, 0.18f, 0.30f },
+                              { 0.18f, peak, 0.24f }, { peak, 0f, 0.45f } };
+            for (int leg = 0; leg < 4; leg++)
+            {
+                float t = 0f, dur = legs[leg, 2];
+                while (t < dur)
+                {
+                    t += Time.deltaTime;
+                    var c = _previewGlow.color;
+                    c.a = Mathf.Lerp(legs[leg, 0], legs[leg, 1], Mathf.Clamp01(t / dur));
+                    _previewGlow.color = c;
+                    yield return null;
+                }
+            }
+            var end = _previewGlow.color; end.a = 0f; _previewGlow.color = end;
+            _previewCue = null;
         }
 
         private void HideOptionPreview()
         {
             _previewWanted = false;
+            _previewArmed = false;
+            if (_previewCue != null) { StopCoroutine(_previewCue); _previewCue = null; }
+            if (_previewGlow != null)
+            {
+                var c = _previewGlow.color; c.a = 0f; _previewGlow.color = c;
+            }
             ApplyPreviewVisibility();
         }
 
@@ -2046,8 +2286,10 @@ namespace SummaRace.Features.Race.Endless
             // Station him out of shot at the depth he will run at for the whole race: the bump
             // moves him sideways, never forward, so there is nothing to ease in from behind.
             var p = runner.transform.position;
-            _patrolGap = SummaRace.Constants.GameRules.PatrolSurgeGap;
-            _patrol.position = new Vector3(LateralTarget(p, false), p.y, p.z - _patrolGap);
+            _patrolGap = SummaRace.Constants.GameRules.PatrolBodyMargin + 1f;
+            // Well outside the frame; UpdatePatrol re-derives both axes from the live camera and
+            // the live bounds on its first frame, before he is ever visible.
+            _patrol.position = new Vector3(p.x + _patrolSide * 6f, p.y, p.z - _patrolGap);
             _patrol.rotation = Quaternion.identity; // faces down the road, same as the runner
             go.SetActive(_runReleased);
         }
@@ -2118,7 +2360,7 @@ namespace SummaRace.Features.Race.Endless
                 // wherever he was left would walk him across the frame in full view of the
                 // learner, which is the one thing "appear only on a bump" must never do.
                 var startPos = runner.transform.position;
-                _patrol.position = new Vector3(LateralTarget(startPos, false),
+                _patrol.position = new Vector3(startPos.x + _patrolSide * 6f,
                     _patrolGroundY, startPos.z - _patrolGap);
                 _patrolMoveVel = 0f;
             }
@@ -2127,6 +2369,7 @@ namespace SummaRace.Features.Race.Endless
             if (surging) _menaceTimer -= Time.deltaTime;
 
             var playerPos = runner.transform.position;
+            var cam = Camera.main;
             // The kid's LANE lives on the character, not on the controller's own transform:
             // characterController.transform.position.x is 0 for the whole run (measured), the
             // 1.5m lane offset is on characterCollider/character. So the old "lane-match
@@ -2139,8 +2382,18 @@ namespace SummaRace.Features.Race.Endless
 
             // Which shoulder: the one the kid is NOT on, so the two never share a screen column.
             // Sticky through the middle lane, or he would slide across and back on every pass.
-            if (kidX > SummaRace.Constants.GameRules.PatrolSideDeadband) _patrolSide = -1f;
-            else if (kidX < -SummaRace.Constants.GameRules.PatrolSideDeadband) _patrolSide = 1f;
+            //
+            // CHOSEN AT REST OR ON THE FIRST FRAME OF A SURGE, NEVER MID-SURGE. He now runs almost
+            // abreast of the kid (see the framing gap below), so a side flip while he is on screen
+            // would sweep him straight THROUGH the runner. Off screen the choice is free; once he
+            // is in shot he keeps his shoulder and simply slides outward if the kid changes lane
+            // into him.
+            if (!surging || !_wasSurging)
+            {
+                if (kidX > SummaRace.Constants.GameRules.PatrolSideDeadband) _patrolSide = -1f;
+                else if (kidX < -SummaRace.Constants.GameRules.PatrolSideDeadband) _patrolSide = 1f;
+            }
+            _wasSurging = surging;
 
             // EVERYTHING BELOW POSITIONS HIS VISIBLE BODY, NOT HIS PIVOT. His rendered mass is not
             // centred on his transform and the offset MOVES: measured live it reaches 0.79m
@@ -2155,21 +2408,39 @@ namespace SummaRace.Features.Race.Endless
             bool haveKid = BodyBounds(bodyT, ref _kidRenderers, out kidB);
             Vector3 bodyOffset = haveCop ? copB.center - _patrol.position : Vector3.zero;
 
-            // Depth is CONSTANT — he is out of shot at rest because he is out to the SIDE, not
-            // because he is behind the camera, so nothing about the bump moves him toward the lens.
-            // Held at least the two half-depths apart, so the two bodies cannot intersect at any
-            // lane, stride or lateral offset: separation along the run is the guarantee, and it
-            // does not depend on anything the framing does.
-            float minGap = haveCop && haveKid
-                ? copB.extents.z + kidB.extents.z + SummaRace.Constants.GameRules.PatrolBodyMargin
-                : 0f; // nothing rendered to measure — the tuned gap stands on its own
-            _patrolGap = Mathf.Max(SummaRace.Constants.GameRules.PatrolSurgeGap, minGap);
+            // ---- DEPTH: how far back he runs, solved from the camera's own projection ----
+            //
+            // The old rule was "hold him a fixed 1.75m behind". Measured in play mode that put his
+            // body 3.25m from the lens, where the camera's 15deg downward pitch crops everything
+            // nearer than ~4.1m off the BOTTOM of the frame: 58% of him was below the screen and
+            // 21% off the right edge, i.e. ~27% of the cop was visible, and what was visible was
+            // drawn on top of the runner. Solving "put his feet just inside the bottom edge"
+            // instead gives ~0.6m at the shipped camera — he runs almost abreast of the kid but
+            // well out to the side, and the WHOLE cop is in frame. Separation is then guaranteed
+            // sideways (below) rather than along the run, which is the axis the frame can afford.
+            _patrolGap = FramingGap(cam, playerPos, copB, haveCop);
 
-            float targetX = LateralTarget(playerPos, surging);
+            // ---- SIDEWAYS: anchored on the KID and on his own SCREEN EDGE ----
+            float targetX = LateralTarget(cam, playerPos, kidX, copB, kidB, haveCop && haveKid, surging);
             // SmoothDamp so he slides in on a bump and drifts back out after — natural, not snappy.
             float bodyX = _patrol.position.x + bodyOffset.x;
             float newBodyX = Mathf.SmoothDamp(bodyX, targetX, ref _patrolMoveVel,
                 SummaRace.Constants.GameRules.PatrolMoveSmoothTime);
+
+            // HARD CLAMP, not a tuned gap. With the two of them nearly level along the run, the
+            // ONLY thing keeping their bounds apart is this: he may never come within the two
+            // half-widths of the kid, whatever the smoothing lag, however fast the lane change,
+            // and whatever any of the numbers above are retuned to. Applied on the side he is
+            // actually on (not the side he is heading for), so it can never teleport him across.
+            if (haveCop && haveKid)
+            {
+                float minSep = kidB.extents.x + copB.extents.x
+                             + SummaRace.Constants.GameRules.PatrolBodyMargin;
+                float side = newBodyX >= kidX ? 1f : -1f;
+                newBodyX = side > 0f ? Mathf.Max(newBodyX, kidX + minSep)
+                                     : Mathf.Min(newBodyX, kidX - minSep);
+            }
+
             float groundY = _patrolGrounded ? _patrolGroundY : playerPos.y;
             // y is deliberately NOT offset-corrected: his feet belong on the road, and the
             // transform is the thing that stands on it.
@@ -2196,28 +2467,97 @@ namespace SummaRace.Features.Race.Endless
         }
 
         /// <summary>
-        /// Where the chaser belongs sideways: parked outside the frame at rest, in at the kid's
-        /// shoulder during a bump. Expressed as a fraction of the view's half-width AT HIS OWN
-        /// DEPTH and read off the live camera, so he lands in the same place in frame whatever
-        /// the camera is doing — a hard-coded metre offset means something completely different
-        /// at 2m and at 4m through a 35deg horizontal FOV.
+        /// How far back he runs. Solved from the camera's own projection rather than tuned: find
+        /// the distance at which his FEET land on viewport y = PatrolFeetScreenY, so the whole cop
+        /// is inside the frame instead of a head floating over the bottom edge. Anything nearer
+        /// than that is cropped away by the camera's downward pitch — which is what the shipped
+        /// 1.75m gap was doing (58% of him below the screen, measured).
+        ///
+        /// Derived live off the camera basis, so the three camera retunes this race has already
+        /// had would each have carried him with them instead of silently re-breaking this.
         /// </summary>
-        private float LateralTarget(Vector3 playerPos, bool surging)
+        private float FramingGap(Camera cam, Vector3 playerPos, Bounds copB, bool haveCop)
         {
-            var cam = Camera.main;
-            float fraction = surging
-                ? SummaRace.Constants.GameRules.PatrolSurgeScreenX
-                : SummaRace.Constants.GameRules.PatrolRestScreenX;
-            if (cam == null) return _patrolSide * fraction; // mid-swap: something sane, off centre
+            float fallback = SummaRace.Constants.GameRules.PatrolBodyMargin
+                           + (haveCop ? copB.extents.z : 1f);
+            if (cam == null || !haveCop) return fallback;
 
-            float bodyDepth = Mathf.Max(0.5f, playerPos.z - _patrolGap - cam.transform.position.z);
-            float halfWidth = Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad) * cam.aspect * bodyDepth;
+            var f = cam.transform.forward;
+            var u = cam.transform.up;
+            float k = (2f * SummaRace.Constants.GameRules.PatrolFeetScreenY - 1f)
+                    * Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad);
+            float denom = u.z - k * f.z;
+            if (Mathf.Abs(denom) < 0.0001f) return fallback;
 
-            // Anchored on the CAMERA (i.e. the centre of the road), not on the kid: the camera
-            // does not follow lanes, so the kid himself swings almost to the screen edge in an
-            // outside lane (measured). Anchoring on him would drag the cop back across the frame
-            // and put them in the same column again — the very thing this placement avoids.
-            return cam.transform.position.x + _patrolSide * fraction * halfWidth;
+            float dy = copB.min.y - cam.transform.position.y;   // his feet, relative to the lens
+            float dz = dy * (k * f.y - u.y) / denom;            // …the depth that frames them
+            float gap = playerPos.z - cam.transform.position.z - dz;
+            return Mathf.Clamp(gap, SummaRace.Constants.GameRules.PatrolMinGap,
+                                    SummaRace.Constants.GameRules.PatrolMaxGap);
+        }
+
+        /// <summary>
+        /// Where the chaser belongs sideways: parked outside the frame at rest, beside the kid
+        /// during a bump.
+        ///
+        /// THIS IS THE FIX FOR "HE APPEARS INSIDE". It used to be a fraction of the view's
+        /// half-width AT HIS OWN DEPTH, anchored on the camera. At his depth the half-width is
+        /// barely a metre, so 0.80 of it is x = 0.82m — inside the kid's own arm swing (live
+        /// bounds +/-0.84m). Measured mid-surge: 0.44m of lateral overlap, 0.22m of separation
+        /// along the run, and screen rects overlapping by 14.4% x 28.7%. Two bodies drawn that
+        /// close with crossing silhouettes read as one fused body, whatever Bounds.Intersects says.
+        ///
+        /// Now the surge position is whichever is further out of:
+        ///   * SCREEN: his near silhouette edge clears the kid's far silhouette edge by
+        ///     PatrolScreenClearance — computed at each body's OWN depth, because they are not at
+        ///     the same distance from the lens and the kid is much wider in frame than in metres;
+        ///   * WORLD: the two half-widths plus PatrolBodyMargin, so their bounds cannot touch.
+        /// Both are read from the live camera and the live bounds, so a camera retune or a
+        /// character swap carries them instead of stranding him.
+        /// </summary>
+        private float LateralTarget(Camera cam, Vector3 playerPos, float kidX,
+                                    Bounds copB, Bounds kidB, bool haveBodies, bool surging)
+        {
+            if (cam == null)
+                return kidX + _patrolSide * (surging ? 1.6f : 3f); // mid-swap: sane and off centre
+
+            float camX = cam.transform.position.x;
+            float tanHalf = Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad);
+            float copHalfWidth = Mathf.Max(0.1f,
+                tanHalf * cam.aspect * DepthAlongAxis(cam, playerPos.z - _patrolGap, copB, haveBodies));
+
+            if (!surging)
+                return camX + _patrolSide * SummaRace.Constants.GameRules.PatrolRestScreenX * copHalfWidth;
+
+            if (!haveBodies)
+                return camX + _patrolSide * 1.0f * copHalfWidth;
+
+            float kidHalfWidth = Mathf.Max(0.1f,
+                tanHalf * cam.aspect * DepthAlongAxis(cam, kidB.center.z, kidB, true));
+
+            // The kid's far silhouette edge, in normalised half-width units at HIS depth.
+            float kidEdge = (kidX + _patrolSide * kidB.extents.x - camX) / kidHalfWidth;
+            // Put the cop's near edge that far out plus the clearance, then convert his own near
+            // edge back into a body centre at HIS depth.
+            float byScreen = camX
+                + (kidEdge + _patrolSide * SummaRace.Constants.GameRules.PatrolScreenClearance) * copHalfWidth
+                + _patrolSide * copB.extents.x;
+            float byWorld = kidX + _patrolSide * (kidB.extents.x + copB.extents.x
+                + SummaRace.Constants.GameRules.PatrolBodyMargin);
+
+            return _patrolSide > 0f ? Mathf.Max(byScreen, byWorld) : Mathf.Min(byScreen, byWorld);
+        }
+
+        /// <summary>Distance from the lens along the camera's own axis for a body whose centre
+        /// sits at world z <paramref name="centreZ"/>. Not simply (z - camZ): the camera is
+        /// pitched, so height matters, and using the flat difference understates the depth (and
+        /// therefore the frame width) by ~20% at this pitch.</summary>
+        private static float DepthAlongAxis(Camera cam, float centreZ, Bounds b, bool haveBounds)
+        {
+            var f = cam.transform.forward;
+            float dy = (haveBounds ? b.center.y : 1f) - cam.transform.position.y;
+            float dz = centreZ - cam.transform.position.z;
+            return Mathf.Max(0.5f, dy * f.y + dz * f.z);
         }
 
         /// <summary>World-space bounds of a rigged model's VISIBLE renderers — what is actually on
@@ -2358,16 +2698,36 @@ namespace SummaRace.Features.Race.Endless
                 if (worldCardSprite != null) bImg.type = UnityEngine.UI.Image.Type.Sliced;
                 bImg.color = new Color(1f, 1f, 1f, 0.97f);
                 var bRt = bImg.rectTransform;
-                // Sits just above her head so it reads as HER line — at 0.29 it floated in open
-                // sky with the (then thumbnail-sized) Lumi nowhere near it.
-                bRt.anchorMin = new Vector2(0.02f, 0.196f);
-                bRt.anchorMax = new Vector2(0.42f, 0.252f);
+                // THE BUBBLE WAS BEING CUT IN HALF BY THE START BUTTON — only "Ready, ru" showed.
+                // The comment two blocks up works out that START is centred and 520 wide on a 1080
+                // reference, i.e. x 0.259-0.741 (its dark ring is 548 wide => 0.246-0.754), and
+                // that rule was applied to Lumi and then not to her own speech bubble, which ran
+                // to x 0.42 and y 0.196-0.252 — straight under the ring, and built earlier in the
+                // hierarchy so the ring draws over it.
+                //
+                // Lumi's rect is x -0.111..0.395, but her ART is only the middle 44% of a 2:1
+                // canvas, so the VISIBLE girl stands at x 0.031-0.253 with her head at y ~0.183.
+                // The bubble is placed against her visible head, not her rect: it sits directly
+                // on top of her and stops at x 0.235, which is 12px clear of the START ring's
+                // left edge on a 1080 reference. Taller and narrower than before, so the line
+                // wraps to two like a real speech bubble instead of being clipped.
+                bRt.anchorMin = new Vector2(0.020f, 0.192f);
+                bRt.anchorMax = new Vector2(0.235f, 0.300f);
                 bRt.offsetMin = Vector2.zero; bRt.offsetMax = Vector2.zero;
-                var bubbleText = MakeHudText(bubble.transform, new Vector2(0.5f, 0.5f), Vector2.zero, 40f);
+                var bubbleText = MakeHudText(bubble.transform, new Vector2(0.5f, 0.5f), Vector2.zero, 38f);
                 bubbleText.text = SummaRace.Constants.GameText.RaceBriefingLumi;
                 bubbleText.color = new Color(0.35f, 0.25f, 0.10f);
                 bubbleText.fontStyle = FontStyles.Bold;
-                bubbleText.rectTransform.sizeDelta = new Vector2(380f, 90f);
+                // Autosized inside the narrower bubble: the string is content (GameText) and may
+                // be re-worded or translated, so it must fit itself rather than be sized by hand.
+                bubbleText.enableAutoSizing = true;
+                bubbleText.fontSizeMin = 22f;
+                bubbleText.fontSizeMax = 38f;
+                bubbleText.textWrappingMode = TextWrappingModes.Normal;
+                var btRt = bubbleText.rectTransform;
+                btRt.anchorMin = Vector2.zero; btRt.anchorMax = Vector2.one;
+                // Offsets last: assigning sizeDelta after these would overwrite them.
+                btRt.offsetMin = new Vector2(16f, 12f); btRt.offsetMax = new Vector2(-16f, -12f);
                 bubble.transform.localScale = Vector3.zero;
                 Tween.Scale(bubble.transform, Vector3.one, 0.3f, Ease.OutBack, startDelay: 0.55f);
             }
@@ -2613,14 +2973,23 @@ namespace SummaRace.Features.Race.Endless
             if (cam != null) { cam.transform.localPosition = gpPos; cam.transform.localRotation = gpRot; }
         }
 
-        /// <summary>One 3-2-1 (or GO!) beat: banner + big center number + tick sfx.</summary>
+        /// <summary>
+        /// One 3-2-1 (or GO!) beat: ONE big centre number and a tick.
+        ///
+        /// "I notice the countdown doesn't start, there are 2 countdowns?" — and there were, both
+        /// of them ours. This wrote the same digit into the HUD BANNER as well as the giant gold
+        /// number, so every beat drew a small white "2" at screen y 0.81 and a huge gold "2" in
+        /// the middle. Captured mid-countdown to be sure it was not Trash Dash's 5-4-3-2-1: the
+        /// banner rect is normY[0.781,0.844] and their countdownText was inactive with a
+        /// zero-size rect at the time. Two sizes of the same digit in two colours read as two
+        /// countdowns, and the small one reads as the "real" one failing to start.
+        ///
+        /// The banner has been finish-only since F40 (the SWBST tracker owns progress); this was
+        /// the one site still writing to it. UpdateBanner is called by ReleaseRun immediately
+        /// after, so the banner returns to its normal state with no gap.
+        /// </summary>
         private void ShowBigCount(Transform hud, string text, bool isGo)
         {
-            if (_bannerText != null)
-            {
-                _bannerText.text = text;
-                Tween.PunchScale(_bannerText.transform, Vector3.one * 0.45f, 0.3f);
-            }
             if (hud != null)
             {
                 var big = MakeHudText(hud, new Vector2(0.5f, 0.55f), Vector2.zero, isGo ? 230f : 320f);
@@ -2727,6 +3096,8 @@ namespace SummaRace.Features.Race.Endless
 
         private void LateUpdate()
         {
+            KeepTheirCountdownHidden();
+
             // While paused the cop holds station: his placement is recomputed from the LIVE
             // player every frame, and the player has not moved, so skipping is a no-op that
             // cannot strand him — and on resume the very next frame re-derives him from the
@@ -2741,6 +3112,29 @@ namespace SummaRace.Features.Race.Endless
 
             if (_runReleased) return;
             if (track != null) HoldRunnerPreRace(track); // final word each frame -> no run-back blip
+        }
+
+        /// <summary>
+        /// TRASH DASH'S OWN 5-4-3-2-1, held down for good.
+        ///
+        /// `GameState.UpdateUI` (GameState.cs:357-361) does this EVERY FRAME while their timer
+        /// runs:  if (trackManager.timeToStart >= 0) { countdownText.gameObject.SetActive(true); … }
+        /// Their timer runs 5/1.5 = 3.33s from Begin() and our START unlocks at ~1.25s, so a
+        /// learner who taps promptly gets their white 5-4-3-2-1 running under our gold 3-2-1-GO!.
+        /// HideTheirChrome's one-shot hide is undone on the next frame; so is a hide in our
+        /// Update(), because their state machine is updated after us — measured live: with the
+        /// re-hide in Update and their condition re-armed, countdownText was still active=True.
+        ///
+        /// So this runs in LateUpdate (after every Update in the frame) AND clears the component's
+        /// own `enabled`, which they never touch — that half is immune to script order entirely.
+        /// Cheap: two reference compares in the steady state.
+        /// </summary>
+        private void KeepTheirCountdownHidden()
+        {
+            if (_gameState == null || _gameState.countdownText == null) return;
+            if (_gameState.countdownText.enabled) _gameState.countdownText.enabled = false;
+            if (_gameState.countdownText.gameObject.activeSelf)
+                _gameState.countdownText.gameObject.SetActive(false);
         }
 
         private TextMeshProUGUI MakeHudText(Transform parent, Vector2 anchor, Vector2 offset, float size)
@@ -2830,7 +3224,14 @@ namespace SummaRace.Features.Race.Endless
                 if (gs.multiplierText != null) gs.multiplierText.gameObject.SetActive(false);
                 // Their own 5-4-3-2-1 writes to this while timeToStart >= 0, which overlaps our
                 // gold 3-2-1 whenever START is tapped early — two countdowns on screen at once.
-                if (gs.countdownText != null) gs.countdownText.gameObject.SetActive(false);
+                if (gs.countdownText != null)
+                {
+                    gs.countdownText.gameObject.SetActive(false);
+                    // Belt and braces, and the half that actually holds: they re-show the
+                    // GAMEOBJECT every frame but never touch the component, so disabling the
+                    // Text itself survives their SetActive(true) whatever the script order is.
+                    gs.countdownText.enabled = false;
+                }
 
                 // Zone backgrounds survive the text-only hide above (CoinZone/PremiumZone
                 // are the text's direct parent; DistanceZone likewise; ScoreZone is two
