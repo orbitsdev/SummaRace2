@@ -281,7 +281,7 @@ def make_run(rng, learner, session, difficulty, when, device_id, device_model,
         "summaryText": "" if abandon else make_summary(rng, quality),
         "starsEarned": 0 if abandon else stars,
         "isReplay": False,
-        "schemaVersion": 5,
+        "schemaVersion": 6,
         "appVersion": APP_VERSION,
         "deviceId": device_id,
         "deviceModel": device_model,
@@ -307,6 +307,15 @@ def make_run(rng, learner, session, difficulty, when, device_id, device_model,
         # which is a different fact from the field being absent (an older build), and
         # the analyser has to keep them apart.
         "arrangeOrders": [] if abandon else arrange_orders,
+        # Schema 6. The phase clocks above INCLUDE these seconds -- they are real elapsed
+        # time and the app was simply not on screen for part of it. Subtracting gives
+        # attended time; 0.0 means the run really was uninterrupted, which is most of them.
+        "backgroundedSeconds": bg_total,
+        "backgroundedCount": bg_count,
+        "readingBackgroundedSeconds": bg["reading"],
+        "raceBackgroundedSeconds": 0.0 if abandon else bg["race"],
+        "arrangeBackgroundedSeconds": 0.0 if abandon else bg["arrange"],
+        "summaryBackgroundedSeconds": 0.0 if abandon else bg["summary"],
     }
 
     partials = []
@@ -323,6 +332,13 @@ def make_run(rng, learner, session, difficulty, when, device_id, device_model,
         snapshot["lastPhase"] = "race"
         snapshot["rowWrittenIso"] = iso(when + datetime.timedelta(seconds=total * 0.4))
         snapshot["totalSeconds"] = round(total * 0.4, 2)
+        # The snapshot is written AT the moment of backgrounding, before that interval has
+        # a duration, so it carries only intervals that had already closed -- here, none.
+        # This is exactly why §5.1 says to deduplicate before reading any duration.
+        snapshot["backgroundedSeconds"] = 0.0
+        snapshot["backgroundedCount"] = 0
+        for key in ("reading", "race", "arrange", "summary"):
+            snapshot["%sBackgroundedSeconds" % key] = 0.0
         partials.append(snapshot)
     return row, partials
 
@@ -426,6 +442,14 @@ def main():
                     for stale in [row] + partials:
                         stale["schemaVersion"] = 4
                         stale.pop("arrangeOrders", None)
+                        # A schema 4 build knew nothing about backgrounding either. The
+                        # keys have to be ABSENT, not zero: "this tablet never measured
+                        # interruptions" and "these children were never interrupted" are
+                        # different facts, and the analyser must not merge them.
+                        for gone in ("backgroundedSeconds", "backgroundedCount",
+                                     "readingBackgroundedSeconds", "raceBackgroundedSeconds",
+                                     "arrangeBackgroundedSeconds", "summaryBackgroundedSeconds"):
+                            stale.pop(gone, None)
                 for extra in partials:
                     rows_by_tablet[tablet_index].append(extra)
                 rows_by_tablet[tablet_index].append(row)
@@ -494,9 +518,12 @@ def main():
         print("  * %s missed sessions 6 and 7" % absentee["displayName"])
         print("  * %s was moved to a spare tablet after session 5" % moved["displayName"])
         print("  * some abandoned runs, some replays, some mid-run snapshots")
+        print("  * some runs were interrupted: the app was backgrounded, so the phase")
+        print("    clocks carry idle seconds and the schema 6 backgrounded fields net them out")
         if stale_tablet is not None:
             print("  * tablet %02d was never re-flashed: schema 4 rows with NO arrangeOrders"
                   % (stale_tablet + 1))
+            print("    and NO backgrounded clocks (must report NOT CAPTURED, never 0)")
     if options.corrupt:
         print("  * a half-written final line on tablet 1 (the analyser should STOP)")
     print("\nNow run:")

@@ -1,0 +1,32 @@
+{
+  "learners": [
+    {
+      "learnerId": "bdfde1cd-0330-414b-bc52-939fdbc31cc7",
+      "participantCode": "P05",
+      "displayName": "Juan L.",
+      "unlockedSession": 10,
+      "storiesCompleted": 29
+    },
+    {
+      "learnerId": "5241c600-63d2-419a-8c6e-fa1aa7b16610",
+      "participantCode": "P06",
+      "displayName": "Angel T.",
+      "unlockedSession": 10,
+      "storiesCompleted": 30
+    },
+    {
+      "learnerId": "3a7f07f1-06f7-4a39-a486-fddb145da6fe",
+      "participantCode": "P07",
+      "displayName": "Reyna P.",
+      "unlockedSession": 10,
+      "storiesCompleted": 26
+    },
+    {
+      "learnerId": "e1cc720f-fc1f-4281-9dc8-83f02042f269",
+      "participantCode": "P08",
+      "displayName": "Adrian M.",
+      "unlockedSession": 10,
+      "storiesCompleted": 15
+    }
+  ]
+}

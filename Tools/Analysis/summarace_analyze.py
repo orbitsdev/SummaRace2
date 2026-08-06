@@ -19,7 +19,7 @@ DESIGN RULES (do not relax these without thinking about what they protect)
      counted and reported. Every exclusion appears in the printed report.
   3. THE REPORT SAYS WHAT IT READ. Files, lines, learners, runs, kept, skipped, why.
 
-Schema: written against SessionLog schema version 5
+Schema: written against SessionLog schema version 6
 (Assets/_Game/Scripts/Data/SaveModels.cs, written by Core/SessionLogService.cs).
 """
 
@@ -32,7 +32,7 @@ import statistics
 import sys
 from collections import defaultdict, OrderedDict
 
-SCRIPT_SCHEMA = 5
+SCRIPT_SCHEMA = 6
 
 # ---------------------------------------------------------------------------
 # The five SWBST slots, in the fixed order the app writes them.
@@ -87,6 +87,21 @@ SCHEMA2_FIELDS = [
 SCHEMA3_FIELDS = ["racePicks", "racePauseCount", "racePausedSeconds", "abandonReason"]
 SCHEMA4_FIELDS = ["participantCode"]
 SCHEMA5_FIELDS = ["arrangeOrders"]
+SCHEMA6_FIELDS = [
+    "backgroundedSeconds", "backgroundedCount", "readingBackgroundedSeconds",
+    "raceBackgroundedSeconds", "arrangeBackgroundedSeconds", "summaryBackgroundedSeconds",
+]
+
+# The four phase clocks, and the schema 6 field saying how much of each the app spent OFF
+# SCREEN. Every duration in a row is real elapsed time, so a child called out of the room
+# mid-passage and a child labouring over it produced the same readingSeconds; subtracting
+# the companion gives attended time. Order matters only for the report.
+PHASE_CLOCKS = [
+    ("reading", "readingSeconds", "readingBackgroundedSeconds"),
+    ("race", "raceSeconds", "raceBackgroundedSeconds"),
+    ("arrange", "arrangeSeconds", "arrangeBackgroundedSeconds"),
+    ("summary", "summarySeconds", "summaryBackgroundedSeconds"),
+]
 
 # Names that look like a tester rather than a Grade-4 learner.
 TEST_NAME_HINTS = [
@@ -698,9 +713,43 @@ def derive(row, options):
     out["raceSeconds_net"] = (round(max(0.0, as_float(row.get("raceSeconds")) - paused), 2)
                               if (present("raceSeconds") and has_pause) else "")
     out["totalMinutes"] = round(total / 60.0, 2)
+
+    # ---- how much of it the app was not on screen for (schema 6) ----
+    # Durations are REAL elapsed time. Until schema 6 a forty-minute lunch break and a
+    # forty-minute struggle produced the same readingSeconds and nothing could separate
+    # them -- so each phase clock now carries a companion saying how much of it the app
+    # spent backgrounded, and *_attended is the subtraction. The raw clocks are UNCHANGED
+    # and still mean what they meant in every earlier schema; a blank attended column
+    # means the build never measured it, which is NOT "nothing was missed".
+    has_background = present("backgroundedSeconds")
+    out["background_captured"] = int(has_background)
+    out["backgroundedSeconds"] = num("backgroundedSeconds")
+    out["backgroundedCount"] = num("backgroundedCount", as_int)
+    out["totalSeconds_attended"] = (
+        round(max(0.0, total - as_float(row.get("backgroundedSeconds"))), 2)
+        if has_background else "")
+    for label, clock, companion in PHASE_CLOCKS:
+        out[companion] = num(companion)
+        # Only when BOTH are on the row: subtracting a companion the build did not write
+        # would silently report the raw clock as if it were attended time.
+        out["%sSeconds_attended" % label] = (
+            round(max(0.0, as_float(row.get(clock)) - as_float(row.get(companion))), 2)
+            if (present(clock) and present(companion)) else "")
+
     # Durations are REAL elapsed time with no idle detection: a tablet put down
     # mid-story counts that waiting as effort. Flag, never silently trim.
+    # Deliberately still measured on the RAW total, not on the attended one: this column
+    # has meant "this row's duration is not trustworthy as effort" since schema 1, it is
+    # what analysis_set() filters on, and quietly redefining it would change which runs
+    # every table in this folder is built from -- including for older rows that have no
+    # attended figure at all. Read totalSeconds_attended beside it.
     out["time_outlier"] = int(total > options.time_cap)
+    # A run that is long ONLY because of an interruption: over the cap raw, under it once
+    # the backgrounded time is removed. Those are the runs worth looking at by hand before
+    # deciding whether the cap threw away real data.
+    out["long_only_when_interrupted"] = (
+        int(out["time_outlier"] == 1 and out["totalSeconds_attended"] <= options.time_cap)
+        if has_background else "")
 
     # ---- provenance ----
     out["schemaVersion"] = as_int(row.get("schemaVersion"))
@@ -910,6 +959,11 @@ def build_learner_session(runs):
             ("nudge_mean", mean_or_blank([g["nudgeCount"] for g in group])),
             ("minutes_total", sum_or_blank([g["totalMinutes"] for g in group])),
             ("reading_minutes", minutes([g["readingSeconds"] for g in group])),
+            # Schema 6. Blank means no run in this cell came from a build that measured
+            # interruptions -- it does NOT mean none happened. Prefer this to
+            # reading_minutes for anything about effort or engagement.
+            ("reading_minutes_attended",
+             minutes([g["readingSeconds_attended"] for g in group])),
             ("race_minutes", minutes([g["raceSeconds"] for g in group])),
             ("arrange_minutes", minutes([g["arrangeSeconds"] for g in group])),
             ("summary_minutes", minutes([g["summarySeconds"] for g in group])),
@@ -1333,6 +1387,9 @@ def build_quality(all_runs, analysed, roster_by_id, roster_dupes, options, extra
     # Blank is "not measured", which is NOT zero. Say how many rows are affected so
     # nobody averages a column that half the data never carried.
     for flag, label, needs in (
+            ("background_captured",
+             "the backgrounded clocks (how much of a phase the app was off screen)",
+             "schema 6"),
             ("arrange_orders_captured",
              "arrangeOrders (which order the learner built)", "schema 5"),
             ("picks_captured", "racePicks (which card was chosen)", "schema 3"),
@@ -1469,9 +1526,22 @@ def build_quality(all_runs, analysed, roster_by_id, roster_dupes, options, extra
                 "sentence cannot be done that fast -- almost certainly a tester tapping "
                 "through." % (run["storyId"], run["totalSeconds"]))
         if run["time_outlier"]:
+            attended = ("" if run["totalSeconds_attended"] == ""
+                        else ", %.0f s of it with the app actually on screen"
+                             % run["totalSeconds_attended"])
             add("note", "run longer than the time cap", run["learnerId"], run["runId"],
-                "%.0f s (cap %.0f s). Durations include interruptions -- the tablet may "
-                "simply have been put down." % (run["totalSeconds"], options.time_cap))
+                "%.0f s (cap %.0f s)%s. Durations include interruptions -- the tablet may "
+                "simply have been put down." % (run["totalSeconds"], options.time_cap,
+                                                attended))
+        if run["long_only_when_interrupted"] == 1:
+            add("CHECK", "run is over the time cap ONLY because it was interrupted",
+                run["learnerId"], run["runId"],
+                "%.0f s raw but %.0f s attended (%.0f s backgrounded, %s time(s)). The cap "
+                "excluded this run from the analysis tables, yet the child's actual time on "
+                "task was inside it -- decide by hand whether to keep it, or re-run with "
+                "--include-time-outliers and filter on totalSeconds_attended instead."
+                % (run["totalSeconds"], run["totalSeconds_attended"],
+                   run["backgroundedSeconds"], run["backgroundedCount"]))
         if run["completed"] and run["summary_written"] == 0:
             add("note", "completed run with an empty summary sentence", run["learnerId"],
                 run["runId"], "%s -- the app never blocks a blank submission" % run["storyId"])
@@ -1779,6 +1849,31 @@ def main(argv=None):
                % OUT_FILES["runs"])
     report.say("  yourself with the completed / isReplay / time_outlier columns.")
 
+    # How much of the recorded time was not time on task at all (schema 6).
+    measured = [r for r in runs if r["background_captured"] == 1]
+    if measured:
+        interrupted = [r for r in measured if as_float(r["backgroundedSeconds"]) > 0]
+        report.say("")
+        report.say("  Interruptions (app backgrounded -- schema 6):")
+        report.say("    runs that measured it        : %d of %d" % (len(measured), len(runs)))
+        report.say("    ... of which were interrupted: %d (%s%%)"
+                   % (len(interrupted), pct(len(interrupted), len(measured))))
+        if interrupted:
+            away = [as_float(r["backgroundedSeconds"]) for r in interrupted]
+            reading_away = numeric_only([r["readingBackgroundedSeconds"]
+                                         for r in interrupted])
+            report.say("    seconds off screen, median   : %.0f  (max %.0f)"
+                       % (statistics.median(away), max(away)))
+            if reading_away:
+                report.say("    ... of that, in the READING phase: %.0f s in total"
+                           % sum(reading_away))
+        report.say("    Those seconds are INSIDE readingSeconds / raceSeconds / totalSeconds.")
+        report.say("    Use the *_attended columns of %s to take them out." % OUT_FILES["runs"])
+    else:
+        report.say("")
+        report.say("  No run carries the backgrounded clocks (schema 6), so a long duration")
+        report.say("  cannot be told apart from a long interruption in this data.")
+
     # ---------------- tables ----------------
     written = OrderedDict()
     written[OUT_FILES["runs"]] = write_csv(
@@ -2027,6 +2122,14 @@ def main(argv=None):
     report.say("  * Durations are real elapsed time with no idle detection. A tablet put")
     report.say("    down mid-story counts that waiting as effort. time_outlier flags the")
     report.say("    long ones; racePausedSeconds is the part the learner deliberately paused.")
+    report.say("  * Since schema 6 the part of each phase spent with the app OFF SCREEN is")
+    report.say("    measured: use readingSeconds_attended (= readingSeconds minus")
+    report.say("    readingBackgroundedSeconds) for anything about effort or engagement, and")
+    report.say("    the raw clock only where you mean wall time. The raw clocks did NOT change")
+    report.say("    meaning, so they stay comparable to older rows -- but an older row has no")
+    report.say("    attended figure at all, and a blank there is not 'nothing was missed'.")
+    report.say("    raceBackgroundedSeconds and racePausedSeconds can describe the SAME")
+    report.say("    interruption (backgrounding also pauses the race). Never add them.")
     report.say("  * nudgeCount is not a summary quality score. The app never grades the")
     report.say("    sentence -- the paper rubric does. 07_summaries.csv has empty")
     report.say("    rubric_score / coder_notes columns for that.")

@@ -177,7 +177,8 @@ say "the drop shrank from session 1 to session 10" — which is the learning cla
 | Stars (1–3) | `starsEarned` in `01_runs.csv`; `stars_mean` in the summaries |
 | Arrange assisted rate | `arrange_unaided` (1 = ordered it themselves), `arrangeAssisted` (1 = the app placed the pieces for them) |
 | Summary length | `summary_words`, `summary_chars` |
-| Time on task per phase | `readingSeconds`, `raceSeconds`, `arrangeSeconds`, `summarySeconds` (and `totalSeconds`) |
+| Time on task per phase | `readingSeconds`, `raceSeconds`, `arrangeSeconds`, `summarySeconds` (and `totalSeconds`) — **wall time, interruptions included** |
+| **Attended** time per phase | `readingSeconds_attended`, `raceSeconds_attended`, `arrangeSeconds_attended`, `summarySeconds_attended`, `totalSeconds_attended` — the same clocks with the seconds the app spent **off screen** taken out (`backgroundedSeconds`, `backgroundedCount`). Use these for anything about effort or engagement; a blank means that row's build never measured it, which is not "nothing was missed" |
 
 ### 4.3 Which wrong idea did they have? — `10_distractor_frequency.csv`
 
@@ -314,7 +315,7 @@ Change any of that with `--include-replays`, `--include-time-outliers`,
    never measured would put an invented number in your thesis. The `*_captured`
    columns in `01_runs.csv` (`picks_captured`, `pause_captured`,
    `race_outcome_captured`, `phase_clocks_captured`, `read_pages_captured`,
-   `arrange_orders_captured`) say exactly which rows carry which measure, and the
+   `arrange_orders_captured`, `background_captured`) say exactly which rows carry which measure, and the
    data-quality report counts them. **If a measure has blanks, report its n
    separately.**
 
@@ -336,6 +337,16 @@ Change any of that with `--include-replays`, `--include-time-outliers`,
    the tablet down for ten minutes, that is inside `totalSeconds`. `time_outlier`
    flags the long ones; `racePausedSeconds` is only the part they deliberately
    paused. Treat long values as interruptions, not as effort.
+
+   **What the app *can* now tell you** is how much of that was the tablet being **off
+   screen** — locked, or the child called away. `backgroundedSeconds` is that total and
+   `readingSeconds_attended` (etc.) is the clock with it removed. Prefer the attended
+   columns for effort, the raw ones for wall time, and note the two limits: a child
+   staring at the screen doing nothing still counts as attended (there is no way to
+   tell that from re-reading a paragraph, and guessing would invent data), and a row
+   from a pre-schema-6 build has no attended figure at all. `long_only_when_interrupted
+   = 1` marks the runs the time cap threw out that were actually inside it once the
+   interruption was removed — those are worth a look by hand.
 
 5. **`nudgeCount` is not a summary quality score.** The app never grades the
    sentence — your paper rubric does. It just counts how many gentle prompts appeared.
@@ -463,7 +474,7 @@ python make_test_data.py --out <folder> [options]
 
 ## 11. For whoever maintains this
 
-`summarace_analyze.py` is written against **`SessionLog` schema version 5** —
+`summarace_analyze.py` is written against **`SessionLog` schema version 6** —
 `Assets/_Game/Scripts/Data/SaveModels.cs` (the shape) and
 `Assets/_Game/Scripts/Core/SessionLogService.cs` (what writes it, and when). Those
 two files are the ground truth; `Documentation/SummaRace_Data_Dictionary.md` is the
@@ -478,7 +489,12 @@ play-through cannot be repeated.
 
 Schema history, so a mixed export can be read: **2** run context, phase clocks,
 per-element race detail · **3** `racePicks`, `racePauseCount`, `racePausedSeconds`,
-`abandonReason` · **4** `participantCode` on every row · **5** `arrangeOrders`.
+`abandonReason` · **4** `participantCode` on every row · **5** `arrangeOrders` · **6** the
+backgrounded clocks (`backgroundedSeconds`, `backgroundedCount` and one per phase), which is
+what makes `readingSeconds` separable into time on task and time the tablet was face down.
+The four raw phase clocks did **not** change meaning when 6 arrived, so they stay comparable
+across every schema; what an older row cannot tell you is how much of a long duration was an
+absence. The tables carry both: `readingSeconds` and `readingSeconds_attended`.
 
 `make_test_data.py` deliberately writes **one tablet's rows at the previous schema**,
 with the newest field absent, so every run of the rehearsal proves the "blank, never
