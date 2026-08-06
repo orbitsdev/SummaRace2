@@ -1535,44 +1535,104 @@ namespace SummaRace.EditorTools
         // ------------------------------------------------------------------ shared helpers
 
         /// <summary>
-        /// Every .cs under Assets/ that compiles into a PLAYER assembly: excludes Editor/ folders
-        /// and anything governed by the nearest enclosing .asmdef whose includePlatforms is Editor.
+        /// Every .cs that compiles into a PLAYER assembly. Two roots, not one:
+        ///
+        ///   Assets/ — minus Editor/ folders and anything under an .asmdef that is Editor-only or
+        ///             a test assembly.
+        ///   Packages — the runtime assemblies of every package that is NOT a Unity registry or
+        ///             built-in package, i.e. the ones a human dropped into this project. A package
+        ///             whose Runtime asmdef has an empty includePlatforms compiles into the APK
+        ///             exactly like our own scripts, and this project has one: com.coplaydev.unity-mcp
+        ///             (git URL) alongside com.kyrylokuzyk.primetween (local tarball). Scanning only
+        ///             Assets/ left both of them, and any future one, completely unchecked.
+        ///
+        /// Unity's own registry packages are deliberately skipped: they are not where a
+        /// hand-written mistake lands, and reading every .cs in URP would dominate the runtime.
         /// </summary>
         private static List<string> _runtimeScripts;
+        private static List<string> _runtimeScriptSources;   // human-readable roots, for the report
 
         private static List<string> EnumerateRuntimeScripts()
         {
             if (_runtimeScripts != null) return _runtimeScripts;
 
-            var asmdefCache = new Dictionary<string, bool?>();   // directory → is editor-only (null = no asmdef here)
+            var asmdefCache = new Dictionary<string, bool?>();   // directory → excluded from player (null = no asmdef here)
             var result = new List<string>();
+            var sources = new List<string>();
 
+            CollectPlayerScripts("Assets", "Assets", asmdefCache, result);
+            sources.Add("Assets/");
+
+            // Packages live outside the project folder on disk (Library/PackageCache, or anywhere
+            // for a local package), so PackageInfo is the only reliable way to find their real path.
+            UnityEditor.PackageManager.PackageInfo[] packages = null;
+            try { packages = UnityEditor.PackageManager.PackageInfo.GetAllRegisteredPackages(); }
+            catch { /* package manager unavailable: Assets/ alone is still a useful scan */ }
+
+            if (packages != null)
+            {
+                foreach (var pkg in packages)
+                {
+                    if (pkg == null) continue;
+                    if (pkg.source == UnityEditor.PackageManager.PackageSource.BuiltIn) continue;
+                    if (pkg.source == UnityEditor.PackageManager.PackageSource.Registry) continue;
+
+                    var root = pkg.resolvedPath;
+                    if (string.IsNullOrEmpty(root) || !SafeDirExists(root)) continue;
+
+                    var before = result.Count;
+                    CollectPlayerScripts(root, root, asmdefCache, result);
+                    sources.Add(pkg.name + " (" + pkg.source + ") — " + (result.Count - before) + " player script(s)");
+                }
+            }
+
+            _runtimeScripts = result;
+            _runtimeScriptSources = sources;
+            return result;
+        }
+
+        private static string PackageScanNote()
+        {
+            EnumerateRuntimeScripts();
+            return _runtimeScriptSources == null || _runtimeScriptSources.Count == 0
+                ? "Scanned roots: Assets/"
+                : "Scanned roots: " + string.Join("  ·  ", _runtimeScriptSources);
+        }
+
+        private static void CollectPlayerScripts(string root, string stopAt, Dictionary<string, bool?> cache, List<string> into)
+        {
             List<string> files;
-            try { files = Directory.GetFiles("Assets", "*.cs", SearchOption.AllDirectories).ToList(); }
-            catch { _runtimeScripts = result; return result; }
+            try { files = Directory.GetFiles(root, "*.cs", SearchOption.AllDirectories).ToList(); }
+            catch { return; }
 
             foreach (var raw in files)
             {
                 var path = raw.Replace('\\', '/');
 
-                var asm = NearestAsmdefIsEditorOnly(path, asmdefCache);
+                // Unity ignores any folder ending in '~' entirely (Samples~, Documentation~).
+                if (path.Contains("~/")) continue;
+
+                var asm = NearestAsmdefExcludesPlayer(path, stopAt.Replace('\\', '/'), cache);
                 if (asm.HasValue)
                 {
-                    if (asm.Value) continue;                     // editor-only assembly → not in the player
+                    if (asm.Value) continue;                     // editor-only or test assembly → not in the player
                 }
                 else if (path.IndexOf("/Editor/", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
                     continue;                                    // no asmdef → Unity's Editor-folder rule applies
                 }
 
-                result.Add(path);
+                into.Add(path);
             }
-
-            _runtimeScripts = result;
-            return result;
         }
 
-        private static bool? NearestAsmdefIsEditorOnly(string filePath, Dictionary<string, bool?> cache)
+        /// <summary>
+        /// Walks up to the nearest .asmdef and reports whether it keeps its code OUT of a player
+        /// build — either because includePlatforms is Editor-only, or because it is constrained on
+        /// UNITY_INCLUDE_TESTS (a test assembly, which a player build never contains).
+        /// Returns null when no .asmdef governs the file.
+        /// </summary>
+        private static bool? NearestAsmdefExcludesPlayer(string filePath, string stopAt, Dictionary<string, bool?> cache)
         {
             var dir = Path.GetDirectoryName(filePath);
             while (!string.IsNullOrEmpty(dir))
@@ -1587,9 +1647,12 @@ namespace SummaRace.EditorTools
                         if (asmdef != null)
                         {
                             var stub = JsonUtility.FromJson<AsmdefStub>(File.ReadAllText(asmdef));
-                            cached = stub != null && stub.includePlatforms != null &&
-                                     stub.includePlatforms.Length > 0 &&
-                                     stub.includePlatforms.All(p => p == "Editor");
+                            var editorOnly = stub != null && stub.includePlatforms != null &&
+                                             stub.includePlatforms.Length > 0 &&
+                                             stub.includePlatforms.All(p => p == "Editor");
+                            var testOnly = stub != null && stub.defineConstraints != null &&
+                                           stub.defineConstraints.Any(d => d != null && d.Contains("UNITY_INCLUDE_TESTS"));
+                            cached = editorOnly || testOnly;
                         }
                     }
                     catch { cached = null; }
@@ -1597,6 +1660,7 @@ namespace SummaRace.EditorTools
                 }
 
                 if (cached.HasValue) return cached;
+                if (string.Equals(key.TrimEnd('/'), stopAt.TrimEnd('/'), StringComparison.OrdinalIgnoreCase)) break;
                 if (key.TrimEnd('/').EndsWith("Assets", StringComparison.OrdinalIgnoreCase)) break;
                 dir = Path.GetDirectoryName(key);
             }
@@ -1608,8 +1672,234 @@ namespace SummaRace.EditorTools
         private class AsmdefStub
         {
             public string[] includePlatforms;
+            public string[] defineConstraints;
         }
 #pragma warning restore 0649
+
+        // ------------------------------------------------------------------ source scanning
+
+        /// <summary>
+        /// One source line, with comments and string literals blanked out and with the state of the
+        /// preprocessor stack around it resolved. Shared by the UnityEditor-leakage check and the
+        /// offline-integrity check so both agree on what "compiled into the player" means.
+        /// </summary>
+        private struct ScannedLine
+        {
+            public int Number;
+            /// <summary>The line with comments and string/char literals replaced by spaces.</summary>
+            public string Code;
+            /// <summary>True when the line only ever compiles in the Editor.</summary>
+            public bool EditorGuarded;
+            /// <summary>The #if condition that keeps this line out of the Android player, or null.</summary>
+            public string InactiveGuard;
+        }
+
+        private sealed class PpFrame
+        {
+            public readonly List<string> Conditions = new List<string>();
+            public string Current;
+            public bool EditorGuarded;
+        }
+
+        private static List<ScannedLine> ScanCode(string path)
+        {
+            var result = new List<ScannedLine>();
+            var body = SafeRead(path);
+            if (body == null) return result;
+
+            var lines = body.Replace("\r\n", "\n").Split('\n');
+            var stack = new List<PpFrame>();
+            var inBlockComment = false;
+
+            for (int i = 0; i < lines.Length; i++)
+            {
+                var trimmed = lines[i].TrimStart();
+
+                if (trimmed.StartsWith("#if", StringComparison.Ordinal) &&
+                    !trimmed.StartsWith("#ifdef", StringComparison.Ordinal))
+                {
+                    var c = StripDirectiveComment(trimmed.Substring(3));
+                    var frame = new PpFrame { Current = c, EditorGuarded = ImpliesEditor(c) };
+                    frame.Conditions.Add(c);
+                    stack.Add(frame);
+                    continue;
+                }
+                if (trimmed.StartsWith("#elif", StringComparison.Ordinal))
+                {
+                    if (stack.Count > 0)
+                    {
+                        var frame = stack[stack.Count - 1];
+                        // This branch also implies every earlier condition was false, so a preceding
+                        // "!UNITY_EDITOR" makes it editor-only just as an explicit UNITY_EDITOR would.
+                        var earlier = frame.Conditions.Any(NegationImpliesEditor);
+                        var c = StripDirectiveComment(trimmed.Substring(5));
+                        frame.Conditions.Add(c);
+                        frame.Current = c;
+                        frame.EditorGuarded = ImpliesEditor(c) || earlier;
+                    }
+                    continue;
+                }
+                if (trimmed.StartsWith("#else", StringComparison.Ordinal))
+                {
+                    if (stack.Count > 0)
+                    {
+                        // The else-branch is NOT(every condition above it). For "#if UNITY_EDITOR"
+                        // that is the player branch (unguarded); for "#if !UNITY_EDITOR" it is the
+                        // EDITOR branch, and treating it as unguarded — which this used to do —
+                        // reports a perfectly correct file as a build blocker.
+                        var frame = stack[stack.Count - 1];
+                        frame.EditorGuarded = frame.Conditions.Any(NegationImpliesEditor);
+                        frame.Current = "!(" + string.Join(" || ", frame.Conditions.ToArray()) + ")";
+                    }
+                    continue;
+                }
+                if (trimmed.StartsWith("#endif", StringComparison.Ordinal))
+                {
+                    if (stack.Count > 0) stack.RemoveAt(stack.Count - 1);
+                    continue;
+                }
+                if (trimmed.StartsWith("#", StringComparison.Ordinal))
+                    continue;                                     // #region, #pragma, #define …
+
+                string masked;
+                masked = MaskCode(lines[i], ref inBlockComment);
+
+                string inactive = null;
+                for (int f = stack.Count - 1; f >= 0; f--)
+                {
+                    if (!IsCompiledOutOfAndroidPlayer(stack[f].Current)) continue;
+                    inactive = stack[f].Current;
+                    break;
+                }
+
+                result.Add(new ScannedLine
+                {
+                    Number = i + 1,
+                    Code = masked,
+                    EditorGuarded = stack.Any(f => f.EditorGuarded),
+                    InactiveGuard = inactive,
+                });
+            }
+
+            return result;
+        }
+
+        private static string StripDirectiveComment(string condition)
+        {
+            if (condition == null) return "";
+            var slash = condition.IndexOf("//", StringComparison.Ordinal);
+            if (slash >= 0) condition = condition.Substring(0, slash);
+            condition = Regex.Replace(condition, @"/\*.*?\*/", " ");
+            return condition.Trim();
+        }
+
+        /// <summary>
+        /// Symbols Unity defines automatically when the matching service package is installed. They
+        /// never appear in scriptingDefineSymbols, so their absence there is exactly what says the
+        /// code behind them is compiled out today — and their return is exactly what would arm it.
+        /// </summary>
+        private static readonly string[] ServiceSymbols =
+        {
+            "UNITY_ADS", "UNITY_ANALYTICS", "UNITY_PURCHASING", "UNITY_IAP", "UNITY_SOCIAL",
+            "UNITY_ANALYTICS_EVENT_LOGS", "ENABLE_CLOUD_SERVICES", "ENABLE_CLOUD_SERVICES_ADS",
+            "ENABLE_CLOUD_SERVICES_ANALYTICS", "ENABLE_CLOUD_SERVICES_PURCHASING",
+        };
+
+        /// <summary>
+        /// Deliberately conservative: only says "compiled out" for a bare symbol it is sure about
+        /// (UNITY_EDITOR, or a service symbol that is not in the Android define list). Anything
+        /// else — an expression, an unknown symbol, a platform symbol — is treated as compiled in,
+        /// so an unrecognised guard produces a loud finding rather than a quiet pass.
+        /// </summary>
+        private static bool IsCompiledOutOfAndroidPlayer(string condition)
+        {
+            if (string.IsNullOrEmpty(condition)) return false;
+            if (!Regex.IsMatch(condition, @"^\(*\s*[A-Za-z_]\w*\s*\)*$")) return false;
+
+            var symbol = Regex.Match(condition, @"[A-Za-z_]\w*").Value;
+            if (symbol == "UNITY_EDITOR") return true;
+            return ServiceSymbols.Contains(symbol) && !AndroidDefineSymbols().Contains(symbol);
+        }
+
+        private static HashSet<string> _androidDefines;
+
+        private static HashSet<string> AndroidDefineSymbols()
+        {
+            if (_androidDefines != null) return _androidDefines;
+
+            _androidDefines = new HashSet<string>();
+            try
+            {
+                var raw = PlayerSettings.GetScriptingDefineSymbols(NamedBuildTarget.Android) ?? "";
+                foreach (var s in raw.Split(';', ','))
+                    if (!string.IsNullOrEmpty(s.Trim())) _androidDefines.Add(s.Trim());
+            }
+            catch { /* leave empty: every service symbol then reads as "not defined", which is the safe default */ }
+
+            return _androidDefines;
+        }
+
+        /// <summary>
+        /// Blanks out comments and string/char literals so a pattern cannot match prose. The old
+        /// leakage check only skipped whole lines that *started* with a comment marker, which is
+        /// why its report had to carry a "check for false positives in strings" caveat.
+        /// </summary>
+        private static string MaskCode(string line, ref bool inBlockComment)
+        {
+            if (string.IsNullOrEmpty(line)) return line ?? "";
+
+            var sb = new StringBuilder(line.Length);
+            int i = 0;
+            while (i < line.Length)
+            {
+                if (inBlockComment)
+                {
+                    var end = line.IndexOf("*/", i, StringComparison.Ordinal);
+                    if (end < 0) { sb.Append(' ', line.Length - i); i = line.Length; }
+                    else { sb.Append(' ', end + 2 - i); i = end + 2; inBlockComment = false; }
+                    continue;
+                }
+
+                var c = line[i];
+                if (c == '/' && i + 1 < line.Length && line[i + 1] == '/')
+                {
+                    sb.Append(' ', line.Length - i);
+                    break;
+                }
+                if (c == '/' && i + 1 < line.Length && line[i + 1] == '*')
+                {
+                    inBlockComment = true; sb.Append("  "); i += 2; continue;
+                }
+                if (c == '@' && i + 1 < line.Length && line[i + 1] == '"')
+                {
+                    int j = i + 2;
+                    while (j < line.Length)
+                    {
+                        if (line[j] == '"' && j + 1 < line.Length && line[j + 1] == '"') { j += 2; continue; }
+                        if (line[j] == '"') break;
+                        j++;
+                    }
+                    var stop = Math.Min(j + 1, line.Length);
+                    sb.Append(' ', stop - i); i = stop; continue;
+                }
+                if (c == '"' || c == '\'')
+                {
+                    int j = i + 1;
+                    while (j < line.Length)
+                    {
+                        if (line[j] == '\\') { j += 2; continue; }
+                        if (line[j] == c) break;
+                        j++;
+                    }
+                    var stop = Math.Min(j + 1, line.Length);
+                    sb.Append(' ', stop - i); i = stop; continue;
+                }
+
+                sb.Append(c); i++;
+            }
+
+            return sb.ToString();
+        }
 
         private static string _projectSettingsText;
 
@@ -1652,5 +1942,16 @@ namespace SummaRace.EditorTools
         private static int SafeCount(Func<int> f) { try { return f(); } catch { return 0; } }
 
         private static List<T> SafeList<T>(Func<List<T>> f) { try { return f() ?? new List<T>(); } catch { return new List<T>(); } }
+
+        /// <summary>File.ReadAllText that returns null instead of throwing on anything.</summary>
+        private static string SafeRead(string path)
+        {
+            try { return File.ReadAllText(path); } catch { return null; }
+        }
+
+        private static bool SafeDirExists(string path)
+        {
+            try { return Directory.Exists(path); } catch { return false; }
+        }
     }
 }
