@@ -28,7 +28,10 @@ namespace SummaRace.Core
         // without depending on the companion roster file also being retrieved.
         // 5: adds arrangeOrders — the sequence the learner actually built at Arrange, per verify,
         // so a wrong order is recoverable as an order and not only as a count of attempts.
-        private const int SchemaVersion = 5;
+        // 6: adds the backgrounded clocks — how much of each phase duration was spent with the
+        // app not on screen at all, so "a struggling reader" and "a lunch break" stop being the
+        // same number. Counted, never subtracted: the existing durations keep their meaning.
+        private const int SchemaVersion = 6;
 
         /// <summary>Hard ceiling on <see cref="SessionLog.racePicks"/>. A well-behaved run
         /// produces at most 5 gates x (1 first pick + MaxRepresentMisses re-presents) = 35
@@ -78,6 +81,15 @@ namespace SummaRace.Core
         private bool _dirtySinceWrite;         // something worth saving has happened since the last row
         private float _pauseStartedRealtime = -1f; // realtime the race was paused, -1 = not paused
 
+        /// <summary>Realtime the app was last backgrounded; -1 = it is on screen. Distinct from
+        /// <see cref="_pauseStartedRealtime"/>, which is the learner deliberately tapping the
+        /// race's own pause chip — a different event, in one phase only, and already logged.</summary>
+        private float _backgroundedAtRealtime = -1f;
+
+        /// <summary>Backgrounded seconds accrued INSIDE the phase currently running, banked into
+        /// that phase's own field by <see cref="ClosePhase"/> and then reset.</summary>
+        private float _phaseBackgrounded;
+
         private void OnEnable()
         {
             EventBus.Subscribe<StoryStarted>(OnStoryStarted);
@@ -126,6 +138,7 @@ namespace SummaRace.Core
             _pagesRecorded.Clear();
             _dirtySinceWrite = false;
             _pauseStartedRealtime = -1f;
+            _phaseBackgrounded = 0f;
         }
 
         /// <summary>
@@ -189,6 +202,7 @@ namespace SummaRace.Core
             _startedRealtime = Time.realtimeSinceStartup;
             _phaseStartedRealtime = _startedRealtime;
             _pauseStartedRealtime = -1f;
+            _phaseBackgrounded = 0f;
             _dirtySinceWrite = true;
         }
 
@@ -208,7 +222,7 @@ namespace SummaRace.Core
         private void OnReadingCompleted(ReadingCompleted evt)
         {
             if (_log == null) return;
-            _log.readingSeconds = ClosePhase();
+            _log.readingSeconds = ClosePhase(out _log.readingBackgroundedSeconds);
             // Sampled here rather than at StoryStarted: the toggle is learner-facing and lives
             // in the Reader, so this is the state they actually read under.
             _log.narrationOn = NarrationOn;
@@ -334,7 +348,7 @@ namespace SummaRace.Core
 
             ResolveFirstOutcomes();
 
-            _log.raceSeconds = ClosePhase();
+            _log.raceSeconds = ClosePhase(out _log.raceBackgroundedSeconds);
             _log.lastPhase = PhaseArrange;
             _dirtySinceWrite = true;
         }
@@ -386,7 +400,7 @@ namespace SummaRace.Core
             // phase closes the clock.
             if (evt.correct || evt.assisted)
             {
-                _log.arrangeSeconds = ClosePhase();
+                _log.arrangeSeconds = ClosePhase(out _log.arrangeBackgroundedSeconds);
                 _log.lastPhase = PhaseSummary;
             }
             _dirtySinceWrite = true;
@@ -426,7 +440,7 @@ namespace SummaRace.Core
             if (_log == null) return;
             _log.summaryText = evt.text;      // verbatim, for the rubric
             _log.nudgeCount = evt.nudgeCount;
-            _log.summarySeconds = ClosePhase();
+            _log.summarySeconds = ClosePhase(out _log.summaryBackgroundedSeconds);
             _log.lastPhase = PhaseResults;
             _dirtySinceWrite = true;
         }
@@ -447,10 +461,53 @@ namespace SummaRace.Core
         /// on a null log, one notification silently discarded every page, race pick, arrange
         /// attempt and summary for the rest of that story, and no completed row was ever
         /// written. Snapshot instead, and keep going.
+        /// <para>
+        /// It is also where the backgrounded clock starts and stops (schema 6). Every phase
+        /// duration here is real elapsed time, which keeps running while the tablet is face
+        /// down in a bag — so a child called out of the room and a child labouring over the
+        /// passage produced the same readingSeconds, and nothing in the row could tell them
+        /// apart afterwards. The interval is only ever COUNTED, never netted out of the phase
+        /// clock: the existing fields keep meaning exactly what they have always meant, which
+        /// is the same call already made for racePausedSeconds.
+        /// </para>
         /// </summary>
         private void OnApplicationPause(bool paused)
         {
-            if (paused && _dirtySinceWrite) WriteRow(true);
+            if (paused)
+            {
+                // Marked before the write, so a row snapshotted here is honest about carrying
+                // only the intervals that have already CLOSED — this one has no duration yet.
+                if (_backgroundedAtRealtime < 0f) _backgroundedAtRealtime = Time.realtimeSinceStartup;
+                if (_dirtySinceWrite) WriteRow(true);
+            }
+            else
+            {
+                CloseBackgroundInterval();
+            }
+        }
+
+        /// <summary>
+        /// Banks the away time since the app was backgrounded, into the run and into whichever
+        /// phase was open at the time. Safe to call when it was never backgrounded, and safe to
+        /// call with no run in flight — the interval is dropped rather than attributed to a run
+        /// it does not belong to.
+        /// <para>
+        /// The interval still OPEN when a tablet is killed in the background is necessarily lost:
+        /// there is no code running to close it. That costs nothing, because the last row written
+        /// is the snapshot taken at the moment of backgrounding and it has no idle after it.
+        /// </para>
+        /// </summary>
+        private void CloseBackgroundInterval()
+        {
+            if (_backgroundedAtRealtime < 0f) return;
+            float away = Time.realtimeSinceStartup - _backgroundedAtRealtime;
+            _backgroundedAtRealtime = -1f;
+
+            if (_log == null || away <= 0f) return;
+            _log.backgroundedSeconds += away;
+            _log.backgroundedCount++;
+            _phaseBackgrounded += away;
+            _dirtySinceWrite = true;
         }
 
         private void OnApplicationQuit() => Flush();
@@ -463,6 +520,10 @@ namespace SummaRace.Core
             // otherwise drop that whole interval, and it is exactly the interval a researcher
             // most wants to see.
             if (_pauseStartedRealtime >= 0f) OnRacePauseChanged(new RacePauseChanged { paused = false });
+            // Same reasoning for a run that ends while the app is in the background: Android
+            // sends OnApplicationPause(true) and then OnApplicationQuit, so without this the
+            // away time sits inside totalSeconds with nothing naming it.
+            CloseBackgroundInterval();
             // Double-tapping a story card raises StoryStarted twice, and the first run has not
             // recorded anything yet. Writing it would put a row in the study data that reads
             // exactly like a genuinely abandoned run — and those always carry something, since
@@ -497,13 +558,28 @@ namespace SummaRace.Core
             || log.arrangeOrders.Count > 0
             || log.starsEarned > 0;
 
-        /// <summary>Seconds spent in the phase that just ended, and start the clock on the next.</summary>
-        private float ClosePhase()
+        /// <summary>
+        /// Seconds spent in the phase that just ended, and start the clock on the next.
+        /// <paramref name="backgrounded"/> is how much of that same span the app was not on
+        /// screen for — always a subset of the return value, so the researcher's subtraction
+        /// (<c>readingSeconds - readingBackgroundedSeconds</c>) can never go negative.
+        /// <para>
+        /// Both numbers come off <see cref="Time.realtimeSinceStartup"/>, deliberately. Whatever
+        /// that clock does while the device is asleep, it does to BOTH, so the difference is
+        /// exact even on a platform where it is not strict wall time.
+        /// </para>
+        /// </summary>
+        private float ClosePhase(out float backgrounded)
         {
             float now = Time.realtimeSinceStartup;
             float elapsed = now - _phaseStartedRealtime;
             _phaseStartedRealtime = now;
-            return elapsed < 0f ? 0f : elapsed;
+            if (elapsed < 0f) elapsed = 0f;
+
+            backgrounded = _phaseBackgrounded < 0f ? 0f : _phaseBackgrounded;
+            if (backgrounded > elapsed) backgrounded = elapsed;
+            _phaseBackgrounded = 0f;
+            return elapsed;
         }
 
         /// <summary>

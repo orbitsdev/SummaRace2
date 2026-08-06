@@ -244,6 +244,9 @@ namespace SummaRace.Data
         /// <item>4 — adds <see cref="participantCode"/> to every row, so the export joins to the
         /// paper pretest/posttest without the companion roster also being retrieved.</item>
         /// <item>5 — adds <see cref="arrangeOrders"/>, the sequence the learner actually built.</item>
+        /// <item>6 — adds the backgrounded clocks (<see cref="backgroundedSeconds"/>,
+        /// <see cref="backgroundedCount"/> and one per phase), so time the app spent off screen
+        /// can be told apart from time the learner spent working.</item>
         /// </list>
         /// This list was stale at "1 and 2" for three versions. It is the comment a reader opens
         /// first, so keep it current — but the AUTHORITY is
@@ -294,7 +297,8 @@ namespace SummaRace.Data
 
         // --- time on task, seconds, one per phase of the support-removal ladder ---
         // Real elapsed time, so a phase left open while the tablet was backgrounded counts
-        // that waiting. Treat long outliers as interruptions, not as effort.
+        // that waiting. Since schema 6 the backgrounded part is measured separately (below) —
+        // subtract it for attended time. Treat what is left over as effort, not the raw number.
 
         /// <summary>Story opened → last reading question answered (Reader, text visible).</summary>
         public float readingSeconds;
@@ -390,5 +394,45 @@ namespace SummaRace.Data
         /// a stuck screen can never grow one row without bound.
         /// </summary>
         public List<string> arrangeOrders = new List<string>();
+
+        // ---------------- schema 6 ----------------
+
+        /// <summary>
+        /// HOW MUCH OF THIS RUN THE APP WAS NOT ON SCREEN FOR, in real seconds. Every duration
+        /// in this row is real elapsed time, and a tablet that is locked, put in a bag, or set
+        /// down when a child is called away keeps that clock running — so a forty-minute break
+        /// and a forty-minute struggle produced the same <see cref="readingSeconds"/>, and
+        /// nothing in the row could separate them afterwards. Reading time is process data the
+        /// study reports on, so that ambiguity is not recoverable once the sessions are over.
+        /// <para>
+        /// COUNTED, NOT SUBTRACTED, on the same principle as <see cref="racePausedSeconds"/>:
+        /// the raw durations stay raw and keep the meaning every earlier row already had, and
+        /// the analyst decides whether to net this out. <c>totalSeconds</c> INCLUDES it.
+        /// </para>
+        /// Only intervals that closed are here — see SessionLogService.CloseBackgroundInterval.
+        /// </summary>
+        public float backgroundedSeconds;
+
+        /// <summary>How many separate times the app was backgrounded during this run. One
+        /// twenty-minute absence and twenty one-minute glances at a notification are different
+        /// classroom events with the same <see cref="backgroundedSeconds"/>.</summary>
+        public int backgroundedCount;
+
+        /// <summary>The part of <see cref="readingSeconds"/> the app was off screen for.
+        /// Always ≤ its phase clock, so <c>readingSeconds - readingBackgroundedSeconds</c>
+        /// cannot go negative. 0 = the phase ran uninterrupted.</summary>
+        public float readingBackgroundedSeconds;
+
+        /// <summary>The part of <see cref="raceSeconds"/> the app was off screen for. Distinct
+        /// from <see cref="racePausedSeconds"/>, which is the learner deliberately using the
+        /// race's pause chip; backgrounding can also fire the pause, so a single interruption
+        /// may legitimately appear in both and they must not be added together.</summary>
+        public float raceBackgroundedSeconds;
+
+        /// <summary>The part of <see cref="arrangeSeconds"/> the app was off screen for.</summary>
+        public float arrangeBackgroundedSeconds;
+
+        /// <summary>The part of <see cref="summarySeconds"/> the app was off screen for.</summary>
+        public float summaryBackgroundedSeconds;
     }
 }

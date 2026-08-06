@@ -220,6 +220,13 @@ namespace SummaRace.Features.Race.Endless
         private bool _previewIsRepresent;
         private UnityEngine.UI.Image _previewGlow;   // border-only attention cue; never the words
         private Coroutine _previewCue;
+        /// <summary>True while the panel is showing a QUESTION (three options, or the one option a
+        /// re-present carries) rather than the answer-reveal beat. Only in that state may a column
+        /// be tapped, and only in that state do the columns claim taps away from the road.</summary>
+        private bool _previewTappable = true;
+        private EndlessTouchInput _tapInput;
+        private RectTransform[] _tapBlockersPlain;      // pause chip only
+        private RectTransform[] _tapBlockersWithPanel;  // pause chip + the three panel columns
 
         // The answer reveal that replaced the re-presented pickup. A wrong pick used to bring the
         // correct card back alone for the learner to drive into — which is not a choice, teaches
@@ -465,9 +472,9 @@ namespace SummaRace.Features.Race.Endless
                 gameObject.AddComponent<EndlessKeyboardInput>();
             // Touch: tap a third of the screen to go to that lane. Their swipe path still
             // works; see EndlessTouchInput for why the two cannot claim the same gesture.
-            var tap = GetComponent<EndlessTouchInput>();
-            if (tap == null) tap = gameObject.AddComponent<EndlessTouchInput>();
-            tap.SetBlockers(_pauseChipRect);
+            _tapInput = GetComponent<EndlessTouchInput>();
+            if (_tapInput == null) _tapInput = gameObject.AddComponent<EndlessTouchInput>();
+            ApplyTapBlockers();
 
             yield return new WaitForSeconds(0.5f);
             HideTheirChrome();
@@ -1660,8 +1667,9 @@ namespace SummaRace.Features.Race.Endless
                 var img = col.AddComponent<UnityEngine.UI.Image>();
                 img.sprite = worldCardSprite != null ? worldCardSprite : WoodPlaqueSprite();
                 img.type = UnityEngine.UI.Image.Type.Sliced;
-                img.color = new Color(0.98f, 0.97f, 0.93f); // the world card's white, so the
-                img.raycastTarget = false;                  // mapping is obvious at a glance
+                // The world card's white, so the mapping panel -> road is obvious at a glance.
+                img.color = new Color(0.98f, 0.97f, 0.93f);
+                img.raycastTarget = true;   // this column IS the control now — see below
                 var rt = img.rectTransform;
                 float x0 = pad + i * (w + pad);
                 rt.anchorMin = new Vector2(x0, 0.07f);
@@ -1669,6 +1677,44 @@ namespace SummaRace.Features.Race.Endless
                 rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
                 _previewPlaque[i] = img;
                 _previewColumn[i] = rt;
+
+                // THE COLUMN THE LEARNER READS IS THE CONTROL THEY USE.
+                //
+                // Without this the panel is a reading surface only: the learner reads an answer in
+                // the sky band, works out that it is the left one, then finds the left third of
+                // the road and taps that. For an ESL nine-year-old inside a ~12s gate that mapping
+                // is a working-memory tax laid on top of the comprehension task the race exists to
+                // measure. Tapping the column collapses the two into one act.
+                //
+                // SIZE, at every aspect the canvas can take (match 0 => always 1080 wide, height
+                // tracks the aspect). The board spans x 0.03-0.97 = 1015.2 units, of which a
+                // column is (1 - 4*0.014)/3 = 31.47% => 319.5 units wide, the same on every
+                // device. Its height is 86% of the board's 0.14 of canvas height = 0.1204*H:
+                //
+                //   aspect  canvas H   column px    at xxhdpi (3px/dp)
+                //   4:3       1440      319 x 173      106 x 58 dp
+                //   16:10     1728      319 x 208      106 x 69 dp
+                //   9:16      1920      319 x 231      106 x 77 dp
+                //   20:9      2400      319 x 289      106 x 96 dp
+                //
+                // Both axes clear the Android 48dp minimum at the worst aspect with room over.
+                //
+                // Transition.None is deliberate and load-bearing: Selectable's ColorTint would
+                // give the pressed AND the still-selected column a different tint from its
+                // neighbours, and after F44 nothing on this panel may look different from anything
+                // else on it — a surface cue that tracked the correct option was worth 84.7%
+                // against 33% for guessing. PaintPreview owns these colours outright.
+                var colBtn = col.AddComponent<UnityEngine.UI.Button>();
+                colBtn.transition = UnityEngine.UI.Selectable.Transition.None;
+                colBtn.targetGraphic = img;
+                // Navigation off: the race is steered by WASD/arrows read straight off the device,
+                // and a navigable Selectable lets the UI module take a selection here — which on a
+                // desktop test would make Enter/Space fire a lane change nobody asked for.
+                var nav = colBtn.navigation;
+                nav.mode = UnityEngine.UI.Navigation.Mode.None;
+                colBtn.navigation = nav;
+                int lane = i;   // captured per column; i is the loop variable
+                colBtn.onClick.AddListener(() => OnPreviewColumnTapped(lane));
 
                 var lblGo = new GameObject("Text");
                 lblGo.transform.SetParent(col.transform, false);
@@ -1694,6 +1740,67 @@ namespace SummaRace.Features.Race.Endless
 
             _previewRoot = board;
             board.SetActive(false);
+
+            _tapBlockersPlain = new RectTransform[] { _pauseChipRect };
+            _tapBlockersWithPanel = new RectTransform[]
+                { _pauseChipRect, _previewColumn[0], _previewColumn[1], _previewColumn[2] };
+        }
+
+        /// <summary>
+        /// A tap on one of the three reading-panel columns. Routes to the SAME MoveToLane the road
+        /// tap uses, so one code path decides what a lane request means.
+        ///
+        /// IT DOES NOT MAKE A PICK. It steers, exactly as a road tap steers; the pick is still made
+        /// only when the runner's collider enters an answer card's trigger, so racePicks,
+        /// raceFirstOutcome and raceFirstPickCorrect reach SessionLogService by the one route they
+        /// always have. Nothing here may ever grow a shortcut to the log — a pick that could arrive
+        /// by two routes is a corrupted measure, which is worse than the split-attention problem
+        /// this closes.
+        ///
+        /// The guards mirror ApplyPreviewVisibility: the board is inactive during the briefing, the
+        /// 3-2-1, a pause, an exit and after FINISH, so a click cannot physically be raised in any
+        /// of those states. They are restated rather than assumed because a Button that is only
+        /// safe by virtue of its parent's active flag is one refactor away from not being safe.
+        /// _previewTappable additionally rules out the answer-reveal beat, where the panel carries
+        /// one gold card that is a statement, not a choice.
+        /// </summary>
+        private void OnPreviewColumnTapped(int lane)
+        {
+            if (lane < 0 || lane > 2) return;
+            if (_paused || _leaving || _finished || !_runReleased) return;
+            if (!_previewTappable || _revealing) return;
+            if (_previewRoot == null || !_previewRoot.activeInHierarchy) return;
+            if (_previewColumn[lane] == null || !_previewColumn[lane].gameObject.activeInHierarchy) return;
+            if (_tapInput == null) return;   // grey-box / editor-direct: nothing to steer
+            _tapInput.SelectLane(lane);
+        }
+
+        /// <summary>
+        /// Tells the road-tap handler which screen rects own their own taps, so ONE gesture can
+        /// never register twice.
+        ///
+        /// EndlessTouchInput reads the pointer directly rather than through the EventSystem (their
+        /// swipe path does the same), so a tap on a panel column would otherwise be seen twice: once
+        /// as the Button's onClick, and once as "x / (Screen.width / 3)". Those two do not even
+        /// agree — the board runs x 0.03-0.97 with 1.4% gutters, so its column boundaries sit ~0.6%
+        /// off the screen thirds, and a tap in that sliver would ask for two different lanes in the
+        /// same frame. Listing the columns as blockers makes the Button the single winner while the
+        /// panel is up; SetBlockers is the mechanism the pause chip already uses, so this adds no
+        /// second way of suppressing a tap.
+        ///
+        /// It is re-applied rather than set once because the ANSWER-REVEAL beat must not create a
+        /// dead strip: there the panel is one full-width column that is not a choice, so the
+        /// columns stop blocking and a tap in that band falls through to the road mapping exactly
+        /// as it did before this existed. (IsOverBlocker already ignores inactive rects, so a hidden
+        /// panel needs no swap — only the reveal does.)
+        /// </summary>
+        private void ApplyTapBlockers()
+        {
+            if (_tapInput == null) return;
+            bool panelClaimsTaps = _previewTappable && _previewRoot != null;
+            _tapInput.SetBlockers(panelClaimsTaps && _tapBlockersWithPanel != null
+                ? _tapBlockersWithPanel
+                : _tapBlockersPlain);
         }
 
         /// <summary>Remembers a gate's three options, indexed BY LANE (0 left, 1 centre, 2 right)
@@ -1767,6 +1874,11 @@ namespace SummaRace.Features.Race.Endless
         /// may mark the correct one (F44 — a surface cue was worth 84.7% against 33% guessing).</summary>
         private void PaintPreview(string[] texts, bool single)
         {
+            // `single` is the answer reveal: a statement, not a question. Its one column must not
+            // be tappable, and must not claim taps away from the road either — see ApplyTapBlockers.
+            _previewTappable = !single;
+            ApplyTapBlockers();
+
             const float pad = 0.014f;
             float w = (1f - 4f * pad) / 3f;
             for (int i = 0; i < 3; i++)
@@ -2857,10 +2969,33 @@ namespace SummaRace.Features.Race.Endless
             title.color = new Color(0.32f, 0.19f, 0.02f); // deep brown on gold
             title.fontStyle = FontStyles.Bold;
 
-            var body = MakeHudText(card.transform, new Vector2(0.5f, 0.56f), Vector2.zero, 42f);
+            var body = MakeHudText(card.transform, new Vector2(0.5f, 0.63f), Vector2.zero, 42f);
             body.text = SummaRace.Constants.GameText.RaceBriefingBody(_story.title);
             body.color = new Color(0.35f, 0.25f, 0.10f);
-            body.rectTransform.sizeDelta = new Vector2(760f, 300f);
+            // 300 -> 380 TALL, AND CENTRE-PIVOTED, BECAUSE THE COPY GREW AND THE OLD BOX ALREADY
+            // OVERLAPPED THE CHIPS ON A SQUARE TABLET.
+            //
+            // RaceBriefingBody now names the reading panel and the three lanes, which is 7 lines
+            // for a short title and 9 for the longest of the thirty ("Baba Yaga, the Girl, and the
+            // Hedgehog"). At 42pt / 1.2 line spacing that is 353-454px against a 300px box, and TMP
+            // overflows rather than clips, so the last line would have hung outside the card.
+            //
+            // MakeHudText sets pivot = anchor, so the old (0.5, 0.56) box hung 56% of its height
+            // BELOW its anchor. On a 4:3 canvas (1080x1440 => a 720-tall card) that put its
+            // underside at y 235 against a chip row whose top is at 248 — a 13px overlap that
+            // exists at HEAD. A centre pivot makes the arithmetic legible, and 380 @ 0.63 clears
+            // both neighbours at every aspect the canvas can take (match 0 => 1080 wide always,
+            // height tracks the aspect, so the card's height is the only variable):
+            //
+            //   aspect   canvas H   card H   body span      chips top   pill bottom
+            //   4:3        1440       720    263.6-643.6      248         658.8      (15.6 / 15.2 clear)
+            //   16:10      1728       864    354.3-734.3      276.8       790.6      (77.5 / 56.3 clear)
+            //   9:16       1920       960    414.8-794.8      296         878.4      (118.8 / 83.6 clear)
+            //   20:9       2400      1200    566.0-946.0      344        1098.0      (222 / 152 clear)
+            //
+            // 9 lines in 380px is 42.2px per line => ~35pt, comfortably above the 32pt floor below.
+            body.rectTransform.pivot = new Vector2(0.5f, 0.5f);
+            body.rectTransform.sizeDelta = new Vector2(760f, 380f);
             // Autosized, because the story TITLE is interpolated into this line and titles are
             // content: at a pinned 42pt the longest of the thirty ("Baba Yaga, the Girl, and the
             // Hedgehog") wraps to ~6 lines / ~328px in a 300px box and overflows it. The floor is

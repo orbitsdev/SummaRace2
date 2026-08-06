@@ -62,8 +62,14 @@ namespace SummaRace.Constants
 
         /// <summary>The race briefing's instruction (GameText.RaceBriefingBody) WITHOUT the
         /// story title: the title is story content and differs every run, so it stays on
-        /// screen only. Says "Collect the 5 story parts in order. Tap or swipe left and
-        /// right to move!"</summary>
+        /// screen only. Says "Collect the 5 story parts in order. Read the 3 answers at the
+        /// top. Tap the answer you want. Or tap the left, middle, or right side of the
+        /// screen." Regenerate with the project's standard voice whenever
+        /// GameText.RaceBriefingBody changes — an instruction spoken aloud that disagrees with
+        /// the one on screen is worse for an emerging reader than no audio at all:
+        ///   python -m edge_tts --voice en-PH-RosaNeural --rate=-10% -f &lt;text&gt; --write-media vo_race_briefing.mp3
+        /// generated OUTSIDE Assets/ and then moved over the existing file, so the .meta
+        /// (guid + loadType 1 / Vorbis / mono / no preload / load in background) survives.</summary>
         public const string VoRaceBriefing = "vo_race_briefing";
 
         // The five SWBST definitions on the loading overlay (GameText.LoadingTips).

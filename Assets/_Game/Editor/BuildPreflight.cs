@@ -619,6 +619,37 @@ namespace SummaRace.EditorTools
                          "Add <assembly fullname=\"…\" preserve=\"all\" /> back to Assets/Link.xml for each.");
             }
 
+            // --- Android auto-backup. Nothing here can inspect the manifest: it does not exist
+            //     until a build generates it, which is exactly why this is enforced by a build
+            //     callback rather than by a setting. What CAN be checked is that the callback is
+            //     still in the project, because it is a single invisible file with no UI, no
+            //     Inspector presence and no symptom if it is deleted — the build simply succeeds
+            //     and the data starts leaving the tablet.
+            const string backupGuard = "Assets/_Game/Editor/AndroidBackupDisabler.cs";
+            var backupSrc = SafeRead(backupGuard);
+            const string whyBackup =
+                "android:allowBackup defaults to TRUE and Unity's generated manifest does not set " +
+                "it, so on any tablet signed into a Google account Android copies the app's data " +
+                "directory to Google Drive on its own schedule — every learner profile and every " +
+                "row of the study's process data. GDD 11.4 forbids it: \"learner data must never be " +
+                "copied to any cloud (privacy commitment in the thesis)\". A backup also SURVIVES " +
+                "the post-study wipe, on servers nobody involved can delete from.";
+            if (backupSrc == null)
+                Fail("The Android auto-backup guard is gone",
+                     backupGuard + " does not exist.\n" + whyBackup,
+                     "Restore it, or add android:allowBackup=\"false\" to the <application> tag of " +
+                     "the generated manifest by hand before every build.");
+            else if (!backupSrc.Contains("allowBackup"))
+                Fail("The Android auto-backup guard no longer sets allowBackup",
+                     backupGuard + " exists but does not mention allowBackup.\n" + whyBackup,
+                     "Restore the attribute write, or disable backup in the manifest by hand.");
+            else
+                Pass("Android auto-backup is disabled at build time",
+                     backupGuard + " writes android:allowBackup=\"false\" into the launcher " +
+                     "manifest and FAILS the build if it cannot. Verify once on the first APK: " +
+                     "unzip it and confirm the attribute is present — this check can only confirm " +
+                     "the guard exists, not that it ran.");
+
             // --- fog variant stripping. Custom + KeepLinear is CORRECT here precisely because
             //     RaceWorlds sets the mode from code: Unity's Automatic mode only keeps what it can
             //     see used by scenes and materials, and a code-only assignment is invisible to it.

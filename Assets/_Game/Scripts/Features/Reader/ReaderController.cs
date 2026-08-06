@@ -132,6 +132,7 @@ namespace SummaRace.Features.Reader
             if (nextButton != null) nextButton.onClick.AddListener(OnNext);
             if (voiceButton != null) voiceButton.onClick.AddListener(ToggleNarration);
             RefreshVoiceButton();
+            PulseVoiceButtonOnce();
 
             EnsureSecondaryControls();
             if (replayButton != null) replayButton.onClick.AddListener(ReplayNarration);
@@ -234,6 +235,35 @@ namespace SummaRace.Features.Reader
             if (AudioManager.Instance == null) return;
             AudioManager.Instance.PlaySfx(AudioKeys.SfxClick);
             AudioManager.Instance.PlayNarration(_story.pages[_pageIndex].narration);
+        }
+
+        /// <summary>
+        /// Draws the eye to the voice control once, on the first reading page of a session
+        /// (GDD §11.1: "First reading page pulses the speaker icon once so learners discover
+        /// narration"). Never implemented until now.
+        ///
+        /// Narration auto-plays, so this is not about starting it — it is about the learner
+        /// knowing the control is theirs. It is the only way to hear a page AGAIN, and for a
+        /// learner who cannot decode the passage that is the difference between the study
+        /// measuring comprehension and measuring decoding. A child who never notices the button
+        /// never gets a second listen, and nothing else on the screen mentions it.
+        ///
+        /// Once per app launch, not once per story: thirty pulses across ten sessions is a tic,
+        /// and by story two the learner either knows or is not going to learn it this way.
+        /// The tween goes on the LABEL — the button root carries ButtonSquash, and two tweens
+        /// driving one localScale leave it wherever the last one wrote.
+        /// </summary>
+        private static bool _voicePulsed;
+
+        private void PulseVoiceButtonOnce()
+        {
+            if (_voicePulsed || voiceButtonLabel == null) return;
+            _voicePulsed = true;
+
+            var target = voiceButtonLabel.transform;
+            Tween.StopAll(target);
+            target.localScale = Vector3.one;
+            Tween.PunchScale(target, Vector3.one * 0.28f, 0.7f, startDelay: 0.9f);
         }
 
         private void RefreshVoiceButton()

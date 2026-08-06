@@ -297,6 +297,23 @@ namespace SummaRace.Constants
         // Results screen
         public const string MainIdeaHeader = "Main Idea";
 
+        /// <summary>
+        /// The learner's own summary, shown back to them on Results. <c>{0}</c> is their
+        /// sentence, verbatim and unedited — it is quoted rather than restated so it plainly
+        /// belongs to them and not to the app.
+        /// <para>
+        /// Deliberately a plain caption and nothing else. Summary is the one rung of the ladder
+        /// that produces something, and until now the learner never saw what they produced; but
+        /// the app does not grade a summary (GDD D7, and the paper rubric is the actual outcome
+        /// measure), so this must not praise it, score it, correct it, or set it beside the
+        /// reference answer. "You wrote" is the whole claim being made.
+        /// </para>
+        /// The caption is on the SAME line as the sentence on purpose: Results has exactly one
+        /// unoccupied band, 108 reference px tall, and spending a whole line on a header would
+        /// cost the sentence itself about a third of its type size.
+        /// </summary>
+        public const string ResultsYourSummary = "You wrote: “{0}”";
+
         /// <summary>Continue button AFTER the third story of a session, when it leaves for the
         /// Session Map. "Mission" means a session everywhere else in the game (SessionMapTitle,
         /// SessionLockedHint), so this wording is only true on that branch.</summary>
@@ -392,15 +409,39 @@ namespace SummaRace.Constants
 
         public const string RaceBootFailedButton = "GO BACK";
 
-        /// <summary>Briefing body. Names the story so the learner knows the run is about what
-        /// they just read. Tap is named FIRST because it is the input a struggling learner should
-        /// reach for: it is one tap to any lane (a swipe is one lane per swipe, so the far lane
-        /// needed two inside a sub-second window), it needs less dexterity, and it cannot be
-        /// misread as a Jump the way a hurried diagonal flick can. Tap only became true with
-        /// EndlessTouchInput — before that this line promised a control that did nothing, and a
-        /// learner whose taps are ignored concludes the game is broken, not that they mis-gestured.</summary>
+        /// <summary>
+        /// Briefing body. Names the story so the learner knows the run is about what they just read.
+        ///
+        /// IT MUST NAME THE READING PANEL, because after F47(a) that panel is the ONLY legible copy
+        /// of the three answers — the world cards give 0.28–0.50s of legible time and were never
+        /// readable (the derivation is on EndlessRaceDirector.BuildOptionPreview). This line is the
+        /// only instruction the learner ever receives about the race, and it used to say nothing
+        /// about the panel at all, so a learner who never looked up was reading unreadable cards and
+        /// guessing — which raceFirstPickCorrect, the study's headline measure, records as failure
+        /// to comprehend rather than as a UI they were never told about.
+        ///
+        /// It also has to say THREE. "left and right" describes two choices over a three-lane road,
+        /// and the middle lane is a third of every gate. Tap-to-lane has always selected it (the
+        /// centre third of the screen); nothing had ever said so.
+        ///
+        /// Tap is named FIRST because it is the input a struggling learner should reach for: one tap
+        /// to any lane (a swipe is one lane per swipe, so the far lane needed two inside a sub-second
+        /// window), less dexterity, and it cannot be misread as a Jump the way a hurried diagonal
+        /// flick can. Tapping the ANSWER is named before tapping the road because the panel columns
+        /// are now real tap targets (EndlessRaceDirector.OnPreviewColumnTapped), which collapses
+        /// "read at the top, then map it onto a lane at the bottom, then steer" into one act.
+        ///
+        /// Swipe is deliberately no longer named: it still works (their CharacterInputController
+        /// path is untouched), but naming three controls in a briefing a nine-year-old reads once is
+        /// worse than naming the one that is easiest and always sufficient.
+        ///
+        /// Kept short and idiom-free: it is also spoken aloud (AudioKeys.VoRaceBriefing), and the
+        /// clip carries the same words minus the story title.
+        /// </summary>
         public static string RaceBriefingBody(string storyTitle) =>
-            $"Collect the 5 story parts of\n\"{storyTitle}\" in order.\n\nTap or swipe left and right to move!";
+            $"Collect the 5 story parts of\n\"{storyTitle}\" in order."
+            + "\n\nRead the 3 answers at the top.\nTap the answer you want."
+            + "\n\nOr tap the left, middle, or right side of the screen.";
 
         /// <summary>3-2-1-GO! steps. Last entry is treated as the "go" beat.</summary>
         public static readonly string[] RaceCountdown = { "3", "2", "1", "GO!" };

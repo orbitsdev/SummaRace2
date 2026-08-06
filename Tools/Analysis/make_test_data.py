@@ -25,7 +25,10 @@ WHAT IT SIMULATES (on purpose -- these are the messes you WILL actually get)
   * one learner moved to a spare tablet mid-study
   * one developer test profile that must be spotted and excluded
   * a learner who missed sessions 6 and 7 (absent from school)
-  * one tablet still on an older build, whose rows lack the newest field entirely
+  * runs interrupted by the app being backgrounded -- a locked screen, a child called
+    away -- so the phase clocks carry idle time and the schema 6 backgrounded clocks
+    are there to net it back out
+  * one tablet still on an older build, whose rows lack the newest fields entirely
     (the analyser must call that NOT CAPTURED, never 0)
   * the SWBST ordering errors real learners make -- mostly But/So confusions
 
@@ -228,6 +231,33 @@ def make_run(rng, learner, session, difficulty, when, device_id, device_model,
     summary_seconds = round(rng.uniform(35, 150), 2)
     pause_count = 1 if rng.random() < 0.12 else 0
     paused_seconds = round(rng.uniform(15, 120), 2) if pause_count else 0.0
+
+    # Schema 6: the app was backgrounded -- screen locked, child called out of the room,
+    # a notification pulled through. THE PHASE CLOCK KEEPS RUNNING, which is the whole
+    # point: the idle seconds are added INTO the phase they happened in, and the matching
+    # backgrounded field is what lets the analyser take them back out again. Reading is
+    # weighted heaviest because it is the longest phase and the one a child is most likely
+    # to be interrupted during -- and it is the phase whose duration the study reports.
+    bg = {"reading": 0.0, "race": 0.0, "arrange": 0.0, "summary": 0.0}
+    bg_count = 0
+    if rng.random() < 0.22:
+        bg_count = 1 if rng.random() < 0.8 else 2
+        for _ in range(bg_count):
+            phase = rng.choices(list(bg), weights=[6, 1, 2, 3])[0]
+            # A glance at a notification, or a whole break. Both happen in a classroom.
+            away = rng.uniform(6, 45) if rng.random() < 0.6 else rng.uniform(120, 900)
+            bg[phase] += away
+    if abandon:
+        # An abandoned run never reached those phases, and the row writes 0.0 for their
+        # clocks -- so it must not claim backgrounded seconds inside them either.
+        bg["race"] = bg["arrange"] = bg["summary"] = 0.0
+    bg = {k: round(v, 2) for k, v in bg.items()}
+    bg_total = round(sum(bg.values()), 2)
+    bg_count = min(bg_count, sum(1 for v in bg.values() if v > 0)) if bg_total else 0
+    reading_seconds = round(reading_seconds + bg["reading"], 2)
+    race_seconds = round(race_seconds + bg["race"], 2)
+    arrange_seconds = round(arrange_seconds + bg["arrange"], 2)
+    summary_seconds = round(summary_seconds + bg["summary"], 2)
 
     total = reading_seconds + race_seconds + arrange_seconds + summary_seconds + rng.uniform(5, 20)
     quality = min(1.0, ability + growth)

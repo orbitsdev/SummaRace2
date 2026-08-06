@@ -4,10 +4,11 @@
 No programming knowledge assumed. Everything below describes the files a tablet produces,
 what each variable means, and the traps to avoid when you load them.
 
-- Schema version described here: **5** — **verified field by field against commit `04a4040`
-  on 2026-08-06**, by reading what the code writes rather than what the previous version of this
-  document said. All 41 keys `SessionLog` emits are documented below; none is undocumented and
-  none is documented that the code does not write.
+- Schema version described here: **6** — **verified field by field against commit `04a4040`
+  on 2026-08-06** (schema 5), by reading what the code writes rather than what the previous version
+  of this document said, and extended in the same way for the six schema-6 keys. All 47 keys
+  `SessionLog` emits are documented below; none is undocumented and none is documented that the
+  code does not write.
 - Source of truth in code: `Assets/_Game/Scripts/Data/SaveModels.cs` (`SessionLog`, `RacePick`) and
   `Assets/_Game/Scripts/Core/SessionLogService.cs` (what writes it, and when — `SchemaVersion`
   is the one authority on the number at the top of this list). The export files themselves are
@@ -18,7 +19,8 @@ what each variable means, and the traps to avoid when you load them.
 - **What each version added**, so a mixed export can still be read: **1** the original core
   fields · **2** run context, the four phase clocks, per-element race detail (§3.3) · **3** the
   per-card race record and pause accounting (§3.3) · **4** `participantCode` on every row (§3.1)
-  · **5** `arrangeOrders`, the order the learner actually built (§3.4).
+  · **5** `arrangeOrders`, the order the learner actually built (§3.4) · **6** the **backgrounded
+  clocks** — how much of each phase duration the app was not on screen for (§3.6).
 - **An older tablet keeps writing its own schema.** If one device is never re-flashed its rows
   simply lack the newer keys. A missing key is **not recorded**, which is not the same as zero —
   see §5.4 and the `*_captured` columns the analysis toolkit writes.
@@ -284,12 +286,58 @@ Five more things to know before quoting it:
 | `raceSeconds` | float | Reading finished → finish line. Includes briefing + countdown; `raceRunSeconds` is the moving part alone. |
 | `arrangeSeconds` | float | Race finished → order solved or assisted. |
 | `summarySeconds` | float | Ordering done → sentence submitted. |
+| `backgroundedSeconds` | float, seconds | **Schema 6.** How much of this whole play-through the app was **not on screen** — screen locked, home button, notification pulled through, tablet put in a bag. `totalSeconds` **includes** this; subtract it for attended time. `0.0` = the run was never interrupted (which is the common case, so a file full of zeros is normal, not a broken field). |
+| `backgroundedCount` | integer | **Schema 6.** How many separate times the app went off screen during the run. `0` = never. One twenty-minute absence and twenty one-minute glances produce the same `backgroundedSeconds` and are different classroom events; this is what separates them. |
+| `readingBackgroundedSeconds` | float, seconds | **Schema 6.** The part of `readingSeconds` the app was off screen for. |
+| `raceBackgroundedSeconds` | float, seconds | **Schema 6.** The part of `raceSeconds` the app was off screen for. **Not the same thing as `racePausedSeconds`**, which is the learner deliberately tapping the race's pause chip. Backgrounding also triggers that pause, so one interruption can legitimately appear in both — **never add them together**. |
+| `arrangeBackgroundedSeconds` | float, seconds | **Schema 6.** The part of `arrangeSeconds` the app was off screen for. |
+| `summaryBackgroundedSeconds` | float, seconds | **Schema 6.** The part of `summarySeconds` the app was off screen for. |
 
 **Timing caveat — read before using any duration.** All durations are real elapsed time. If a
 learner puts the tablet down, is called away, or the app is backgrounded, that waiting is
-inside the number. Treat long outliers as interruptions, not as effort: winsorise, or filter
-on a sensible ceiling, before averaging. The four phase durations do not have to sum exactly
-to `totalSeconds` (the Results screen and any tail after the last event fall outside them).
+inside the number. The four phase durations do not have to sum exactly to `totalSeconds`
+(the Results screen and any tail after the last event fall outside them).
+
+#### The backgrounded clocks — telling a lunch break apart from a struggling reader
+
+Until schema 6 this caveat was all you got: a child called out of the room for twenty minutes
+during the reading phase and a child labouring over the same passage for twenty minutes produced
+**the same `readingSeconds`**, and nothing else in the row could separate them. Reading time is
+process data the study reports on, and that ambiguity is not recoverable afterwards — which is
+why it was closed before the study rather than after.
+
+Each phase clock now has a companion saying how much of it the app was off screen for:
+
+| Attended time | How |
+|---|---|
+| Reading | `readingSeconds - readingBackgroundedSeconds` |
+| Race | `raceSeconds - raceBackgroundedSeconds` |
+| Arrange | `arrangeSeconds - arrangeBackgroundedSeconds` |
+| Summary | `summarySeconds - summaryBackgroundedSeconds` |
+| Whole run | `totalSeconds - backgroundedSeconds` |
+
+Five things to know before using them:
+
+- **The existing fields did not change meaning.** `readingSeconds` still means exactly what it
+  meant in schema 1–5: wall-clock time from the story opening to the last reading question. The
+  new fields are **counted, not subtracted at source**, on the same principle as
+  `racePausedSeconds` — the raw duration stays raw and you decide whether to net it out. Rows from
+  every earlier build therefore remain directly comparable to schema-6 rows on the four phase
+  clocks. What older rows cannot tell you is *how much* of a long duration was an absence.
+- **Each companion is always ≤ its own phase clock**, so the subtraction can never go negative,
+  and a missing companion is not a zero (§5.4).
+- **The signal is Android's own "app went to background"**, not idleness. A child staring at the
+  screen without touching it is *attended* time, correctly, and this field will be `0`. There is
+  still no idle detection and there deliberately isn't: a nine-year-old re-reading a paragraph
+  looks identical to a nine-year-old doing nothing, and guessing between them would invent data.
+- **An interruption that killed the tablet is under-counted by its own last interval.** When the
+  app is backgrounded it immediately writes a safety snapshot (§5.1) and then, if the learner
+  comes back, closes the interval and adds it. If the tablet is instead killed while away, there
+  is no code left running to close it — but the surviving row is that snapshot, taken *before*
+  the absence began, so it carries no phantom idle either. Nothing is inflated; one interval is
+  simply invisible.
+- **A `backgroundedSeconds` of 0 with a huge `totalSeconds` is a real finding**, not a gap: the
+  tablet was on screen the whole time. That is the case where a long run really is time on task.
 
 ---
 
@@ -317,7 +365,7 @@ One completed run. In the real file this is a **single line**; it is wrapped her
   "summaryText": "Ana wanted to join the parade but she lost her slippers so her lola made new ones and she danced.",
   "starsEarned": 1,
   "isReplay": false,
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "appVersion": "1.0.0",
   "deviceId": "4a7c19e0b3d2",
   "deviceModel": "samsung SM-T295",
@@ -345,7 +393,13 @@ One completed run. In the real file this is a **single line**; it is wrapped her
   "racePauseCount": 0,
   "racePausedSeconds": 0.0,
   "abandonReason": "",
-  "arrangeOrders": ["01324", "01234"]
+  "arrangeOrders": ["01324", "01234"],
+  "backgroundedSeconds": 61.3,
+  "backgroundedCount": 1,
+  "readingBackgroundedSeconds": 61.3,
+  "raceBackgroundedSeconds": 0.0,
+  "arrangeBackgroundedSeconds": 0.0,
+  "summaryBackgroundedSeconds": 0.0
 }
 ```
 
@@ -369,6 +423,13 @@ be counted as a choice. Note there is **no free pick at all for element 3 (So)**
 first board `"01324"` put the So part in the But slot and the But part in the So slot, and the
 second board (with those two now the only unlocked slots) got it right. One child agreeing with
 themselves across two phases is far stronger evidence than either screen alone.
+
+**What the backgrounded clocks add.** `readingSeconds` is **214.8 s**, which for five pages
+reads like a slow, effortful reader — but `readingBackgroundedSeconds` is **61.3 s** across one
+interruption, so the child actually spent **153.5 s** with the passage in front of them, and the
+race, arrange and summary phases were uninterrupted. Reported raw, this run would have inflated
+this learner's reading time by 40%. Note the interruption also means there is a second line in
+the file with the same `runId` and `isPartial: true` — deduplicate first (§5.1).
 
 ---
 
@@ -445,7 +506,7 @@ any first-attempt/learning analysis (GDD §8.3). Within a learner and story, ord
 ### 5.4 Check the constants
 
 Before analysing, confirm across the whole file: `timesCaught` is always `0`, `schemaVersion`
-is always `5`, and `appVersion` has exactly one distinct value. Any surprise there is a data
+is always `6`, and `appVersion` has exactly one distinct value. Any surprise there is a data
 provenance problem, not a finding.
 
 **More than one `schemaVersion` means a tablet was never re-flashed.** Its rows are perfectly
@@ -472,6 +533,8 @@ rows in its data-quality report; do the same if you load the files yourself.
 | **Per-slot sequencing confusion** | for each slot *k* and part *e*, how often `arrangeOrders[0][k] == str(e)`. The 5×5 matrix; the diagonal is correct, the off-diagonal cells are the systematic confusions |
 | Clean two-part swaps | for each pair *(a,b)*, how often `order[a]==str(b)` **and** `order[b]==str(a)` on the first attempt — a transposition is stronger evidence than one wrong slot, because guessing rarely produces a tidy swap |
 | Handling-noise rate | proportion of `raceFirstOutcome == "missed"` — if this is high, the race is testing dexterity, not comprehension, and the star measure is contaminated |
+| **Attended reading time** | `readingSeconds - readingBackgroundedSeconds` (schema 6). Prefer this to `readingSeconds` for anything about engagement or effort; report `n` separately, because rows from an older build have no companion field and must be left blank rather than assumed uninterrupted |
+| Interruption rate | proportion of runs with `backgroundedCount > 0`, and median `backgroundedSeconds` among those — a classroom-conditions measure, useful in the limitations section |
 | Growth over the study | any of the above, by `session` (1–10), first attempts only |
 | Difficulty gradient | any of the above, by `difficulty`, holding `session` constant |
 
@@ -574,7 +637,10 @@ in the Python step above and export a flat CSV.
 
 1. **`timesCaught` is always 0** — the patrol never catches the learner (GDD D7). It is a
    constant, not a measure.
-2. **Durations include interruptions** (§3.6). No idle detection.
+2. **Durations include interruptions** (§3.6), and there is still **no idle detection** — a child
+   sitting in front of the screen doing nothing counts as time on task. Since schema 6 the part
+   of each phase spent with the app *off screen* is measured separately, so subtract it for
+   attended time; a phase clock on a pre-schema-6 row cannot be corrected at all.
 3. **`nudgeCount` is not a summary quality score.** The app never grades the sentence; the paper
    rubric does.
 4. **`starsEarned` is a function of `raceFirstPickCorrect` alone** — it carries no information

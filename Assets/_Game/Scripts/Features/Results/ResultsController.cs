@@ -34,6 +34,43 @@ namespace SummaRace.Features.Results
         private static readonly Color StarOff = new Color(0.35f, 0.35f, 0.38f);
         private static readonly Color StarOn = Color.white;
 
+        // The learner's own sentence, shown back to them (see BuildSummaryCard). Cream card,
+        // warm-brown ink: the same pairing the mission briefing and the Main Idea card use, so
+        // it reads as part of this screen rather than as a notice pinned to it.
+        private static readonly Color SummaryCardFill = new Color(0.971f, 0.923f, 0.829f, 1f);
+        private static readonly Color SummaryInk = new Color(0.278f, 0.196f, 0.129f, 1f);
+
+        // ---- geometry, in canvas fractions of the 1080x1920 portrait reference ----
+        // Results is a full screen: the ONLY vertical band with nothing in it runs from the top
+        // of the continue button's ring (0.31 x 1920 + 7 px of sizeDelta = 602.2 px) to the
+        // bottom of the Main Idea card (0.37 x 1920 = 710.4 px) — 108.2 px. The card takes
+        // 606.0..707.0 px of it, leaving 3.8 px clear below and 3.4 px clear above, and sits
+        // inside the results panel's own width (0.05..0.95) so it reads as part of that card.
+        private const float SummaryCardMinX = 0.06f;
+        private const float SummaryCardMaxX = 0.94f;
+        private const float SummaryCardMinY = 0.315625f;   // 606.0 px
+        private const float SummaryCardMaxY = 0.368229f;   // 707.0 px
+
+        // Padding inside the card, reference px. 12 x 3 was chosen by measuring, not by eye:
+        // at 926.4 x 95.0 the worst case the input field can produce (GameRules.SummaryMaxChars
+        // = 200 characters plus this caption and its quotes) auto-sizes to 23.2 pt on three
+        // lines, and the same length in capitals to 22.1 pt. More vertical padding costs type
+        // size directly; more horizontal padding costs almost none.
+        private const float SummaryPadX = 12f;
+        private const float SummaryPadY = 3f;
+
+        /// <summary>Matches the Main Idea card's fixed 34 pt, so the two read as one screen.
+        /// Any summary up to ~95 characters — which is nearly all of them — renders at this
+        /// size; only a maximal sentence auto-sizes below it.</summary>
+        private const float SummaryFontMax = 34f;
+
+        /// <summary>Low on purpose. It is not a design target — the measured worst case is
+        /// 22 pt — it is the floor that guarantees nothing is ever CLIPPED, including the
+        /// keyboard-mash a learner can submit after two nudges (200 characters with no spaces
+        /// needs about 17 pt once TMP breaks the word). Clipping a child's own words on a
+        /// celebration screen is the one outcome this must not have.</summary>
+        private const float SummaryFontMin = 14f;
+
         private StoryData _story;
 
         private void Start()
@@ -98,6 +135,11 @@ namespace SummaRace.Features.Results
                         Tween.PunchScale(starImages[i].transform, Vector3.one * 0.45f, 0.4f);
                     }
                     if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxStar);
+                    // A star landing is one of the two moments GDD §11.4 asks to be felt. It also
+                    // matters more than it sounds: a classroom tablet is usually muted, so for a
+                    // learner with the sound off this is the only channel the celebration has
+                    // besides the animation.
+                    SummaRace.Core.Haptics.Play(SummaRace.Core.Haptics.Medium);
                     yield return new WaitForSeconds(0.45f);
                 }
 
@@ -108,6 +150,12 @@ namespace SummaRace.Features.Results
 
                 yield return new WaitForSeconds(0.8f);
                 if (mainIdeaPanel != null) mainIdeaPanel.SetActive(true);
+
+                // Last beat, after the story's own main idea: the learner's sentence beside it.
+                // Deliberately not before — the reveal builds from what the app gave them to
+                // what they made of it, and their words are the thing to end on.
+                yield return new WaitForSeconds(0.55f);
+                BuildSummaryCard();
             }
             finally
             {
@@ -172,6 +220,105 @@ namespace SummaRace.Features.Results
                 if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxCoin);
                 yield return new WaitForSeconds(0.16f);
             }
+        }
+
+        /// <summary>
+        /// Shows the learner the sentence they just wrote. Four screens produce something and
+        /// this was the only one whose product the learner never saw again: SummaryController
+        /// stores it on GameManager and, until now, nothing read it back.
+        /// <para>
+        /// It is a CELEBRATION and nothing else. No score, no tick, no comparison with the
+        /// reference SWBST parts, no praise attached to it — the app does not grade a summary
+        /// (GDD D7; the paper rubric is the study's outcome measure), and a child who wrote
+        /// very little is entitled to see it presented exactly as warmly as a child who wrote a
+        /// lot. An empty or whitespace-only sentence builds NOTHING rather than an empty card,
+        /// because the Summary screen deliberately accepts almost anything, and a blank box on
+        /// the results screen would read as the failure the rest of the app refuses to hand out.
+        /// </para>
+        /// Built in code, like the treasure gems above and SummaryController's DONE TYPING chip,
+        /// so it ships without a scene edit and degrades to nothing if it cannot find a canvas.
+        /// </summary>
+        private void BuildSummaryCard()
+        {
+            var manager = SummaRace.Core.GameManager.Instance;
+            string written = manager != null ? manager.LastSummaryText : null;
+            // Editor-direct play has no GameManager and therefore no sentence (TDD §13), which
+            // lands in the same branch as a learner who submitted nothing: show no card.
+            if (string.IsNullOrWhiteSpace(written)) return;
+
+            var root = ResolveSceneCanvas();
+            if (root == null) return;
+
+            var cardGo = new GameObject("YourSummaryCard", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            cardGo.transform.SetParent(root, false);
+            var rect = (RectTransform)cardGo.transform;
+            rect.anchorMin = new Vector2(SummaryCardMinX, SummaryCardMinY);
+            rect.anchorMax = new Vector2(SummaryCardMaxX, SummaryCardMaxY);
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+            rect.SetAsLastSibling();
+
+            var image = cardGo.GetComponent<Image>();
+            // The gem chips' own 9-sliced sprite, already wired in this scene — a card here and
+            // a chip there being the same shape is why the row of gems and this read as one
+            // screen. With nothing wired it degrades to a flat cream rectangle, not to nothing.
+            if (chipSprite != null) { image.sprite = chipSprite; image.type = Image.Type.Sliced; }
+            image.color = SummaryCardFill;
+            image.raycastTarget = false;
+
+            var textGo = new GameObject("Text", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
+            textGo.transform.SetParent(cardGo.transform, false);
+            var textRect = (RectTransform)textGo.transform;
+            textRect.anchorMin = Vector2.zero;
+            textRect.anchorMax = Vector2.one;
+            textRect.offsetMin = new Vector2(SummaryPadX, SummaryPadY);
+            textRect.offsetMax = new Vector2(-SummaryPadX, -SummaryPadY);
+
+            var label = textGo.GetComponent<TextMeshProUGUI>();
+            // Borrow the Main Idea card's own face (Nunito body) rather than loading one: same
+            // scene, already resident, and the two cards then match without a serialized field
+            // that nobody would remember to wire.
+            var borrowed = mainIdeaText != null ? mainIdeaText.font
+                         : praiseText != null ? praiseText.font : null;
+            if (borrowed != null) label.font = borrowed;
+
+            // RICH TEXT OFF. This string contains a child's unfiltered typing, and TMP would
+            // read a stray "<" as the start of a tag and silently eat everything up to the next
+            // ">". A learner who writes "the dog was <this> big" must see what they wrote.
+            label.richText = false;
+            label.text = string.Format(GameText.ResultsYourSummary, written.Trim());
+            label.color = SummaryInk;
+            label.alignment = TextAlignmentOptions.Center;
+            label.textWrappingMode = TextWrappingModes.Normal;
+            label.enableAutoSizing = true;
+            label.fontSizeMin = SummaryFontMin;
+            label.fontSizeMax = SummaryFontMax;
+            label.raycastTarget = false;
+
+            cardGo.transform.localScale = Vector3.zero;
+            Tween.Scale(cardGo.transform, Vector3.one, 0.32f, Ease.OutBack);
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxPop);
+        }
+
+        /// <summary>
+        /// The canvas this scene's own UI lives on. A blind FindAnyObjectByType would happily
+        /// return SceneLoader's persistent FadeCanvas ([Core], DontDestroyOnLoad, alpha 0) and
+        /// the card would be built invisible on the loading overlay. Same idiom, and same trap,
+        /// as SummaryController.ResolveSceneCanvas.
+        /// </summary>
+        private Transform ResolveSceneCanvas()
+        {
+            var canvas = treasureRow != null ? treasureRow.GetComponentInParent<Canvas>() : null;
+            if (canvas == null && nextButton != null) canvas = nextButton.GetComponentInParent<Canvas>();
+            if (canvas == null && titleText != null) canvas = titleText.GetComponentInParent<Canvas>();
+            if (canvas != null) return canvas.rootCanvas.transform;
+
+            foreach (var candidate in FindObjectsByType<Canvas>(FindObjectsSortMode.None))
+                if (candidate.gameObject.scene == gameObject.scene)
+                    return candidate.rootCanvas.transform;
+
+            Debug.LogWarning("Results: no scene canvas found — the learner's summary is not shown.");
+            return null;
         }
 
         private void OnNextMission()

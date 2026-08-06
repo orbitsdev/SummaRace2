@@ -128,6 +128,34 @@ namespace SummaRace.Features.Race.Endless
         }
 
         /// <summary>
+        /// THE ONE ENTRY POINT FOR "PUT THE RUNNER IN LANE n", for callers that already know the
+        /// lane — today the three columns of the reading panel, which are real tap targets so the
+        /// learner can choose the answer they are reading instead of translating it into a lane
+        /// and then finding that lane on the road (EndlessRaceDirector.OnPreviewColumnTapped).
+        ///
+        /// It deliberately shares MoveToLane with the road tap rather than calling ChangeLane
+        /// itself: one code path decides what a lane request means, so the reflection read of
+        /// their private lane counter, its geometric fallback and the two-step clamp cannot drift
+        /// between the two surfaces.
+        ///
+        /// It does NOT record a pick and must never learn how to. A pick is still made only by
+        /// driving into an answer card's trigger, so racePicks / raceFirstOutcome reach the log by
+        /// exactly the route they always have — this changes how the learner steers, not what is
+        /// measured.
+        ///
+        /// The isMoving test is the same one Update uses, and is false through the briefing, the
+        /// 3-2-1, our pause and the finish.
+        /// </summary>
+        public void SelectLane(int lane)
+        {
+            var track = TrackManager.instance;
+            if (track == null || !track.isMoving) return;
+            if (_runner == null) _runner = track.characterController;
+            if (_runner == null) return;
+            MoveToLane(Mathf.Clamp(lane, 0, 2), track);
+        }
+
+        /// <summary>
         /// Steps their relative ChangeLane until the runner is in the tapped lane. Their own
         /// method clamps at the outer lanes, so an over-count can only ever be a no-op — which
         /// is what makes the reflection fallback safe.

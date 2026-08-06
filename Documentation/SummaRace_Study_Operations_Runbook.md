@@ -384,6 +384,18 @@ Android version):
 learner on that tablet has no participant code, or if two share one (§1.2b). Fix it before the next
 session — codes cannot be back-filled onto rows already written.
 
+**The tablet is the only copy, by design — and now actually.** GDD §11.4 requires Android's
+automatic cloud backup to be off, because otherwise the operating system copies the app's private
+storage — every learner profile and every log row — to the Google account the tablet is signed
+into, on its own schedule and with no visible sign. That was never implemented until now: the
+attribute defaults to *enabled* and Unity's generated manifest does not set it. The build now
+writes `android:allowBackup="false"` into the manifest and **stops the build if it cannot**.
+
+Two consequences worth stating to an ethics reviewer, both now true: nothing leaves the tablet
+except by a researcher deliberately tapping Export, and the post-study erase is final — there is
+no cloud copy of a child's data surviving it. **Confirm it once on the first APK** (unzip the
+APK, check the `<application>` tag) — the preflight can verify the guard exists, not that it ran.
+
 **Both files land in the same folder, at the same time, from the one "Export logs" tap.**
 Retrieve them over USB (connect the tablet, enable file transfer / MTP, browse to the path
 shown on screen — you may need a file manager app with "show hidden/app-private files" access,
