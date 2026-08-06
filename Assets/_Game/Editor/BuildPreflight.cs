@@ -91,6 +91,7 @@ namespace SummaRace.EditorTools
             _runtimeScripts = null;
             _runtimeScriptSources = null;
             _androidDefines = null;
+            SelfDeclaredCache.Clear();     // source files change between runs without a domain reload
 
             Run("Editor & platform", CheckEditorAndPlatform);
             Run("Build Settings scenes", CheckBuildScenes);
@@ -1764,8 +1765,12 @@ namespace SummaRace.EditorTools
                 string masked;
                 masked = MaskCode(lines[i], ref inBlockComment);
 
+                // Report the OUTERMOST guard that excludes the line, not the innermost: with
+                // "#if UNITY_ADS { #if UNITY_ANALYTICS … }" the answer to "what would arm this
+                // code again" is the ads package, and naming the inner guard would send the
+                // reader after the wrong one.
                 string inactive = null;
-                for (int f = stack.Count - 1; f >= 0; f--)
+                for (int f = 0; f < stack.Count; f++)
                 {
                     if (!IsCompiledOutOfAndroidPlayer(stack[f].Current)) continue;
                     inactive = stack[f].Current;
