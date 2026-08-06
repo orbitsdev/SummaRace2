@@ -78,16 +78,25 @@ namespace SummaRace.Data
         public const int MinLength = 2;
 
         /// <summary>
-        /// The one canonical form: trimmed, spaces removed, upper-cased, length-capped.
+        /// The one canonical form: trimmed, spaces removed, upper-cased.
         /// "p07", " P07" and "P 07" are one participant; without this they are three, and the
         /// duplicate check below would wave all three through.
+        /// <para>
+        /// It does NOT cap the length, and that is the point. It used to stop appending at
+        /// <see cref="MaxLength"/>, which meant <see cref="IsAcceptable"/>'s
+        /// <c>&gt; MaxLength</c> test could never fire: a 14-character code was silently
+        /// truncated to its first 12 and then ACCEPTED. Two booklet codes sharing a 12-character
+        /// prefix would collapse into one participant — the exact failure this field exists to
+        /// prevent — and the teacher would be told it saved. An over-long code is now refused
+        /// while they still have the booklet in front of them.
+        /// </para>
         /// </summary>
         public static string Normalize(string raw)
         {
             if (string.IsNullOrEmpty(raw)) return string.Empty;
 
             var text = new System.Text.StringBuilder(raw.Length);
-            for (int i = 0; i < raw.Length && text.Length < MaxLength; i++)
+            for (int i = 0; i < raw.Length; i++)
             {
                 char c = raw[i];
                 if (char.IsWhiteSpace(c)) continue;

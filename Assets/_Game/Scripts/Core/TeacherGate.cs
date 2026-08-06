@@ -44,6 +44,10 @@ namespace SummaRace.Core
             if (settings == null) return false;
 
             string hash = Hash(pin);
+            // A null hash means hashing itself failed. Storing it would clear the gate AND pass
+            // the read-back check below (null equals null), so the screen would report a PIN set
+            // on a tablet that has none — the single state a learner can claim the gate from.
+            if (string.IsNullOrEmpty(hash)) return false;
             settings.teacherPinHash = hash;
             SaveManager.Instance.SaveSettings(settings);
 
@@ -151,14 +155,40 @@ namespace SummaRace.Core
         private static Data.AppSettings LoadSettings() =>
             SaveManager.Instance != null ? SaveManager.Instance.LoadSettings() : null;
 
+        /// <summary>
+        /// Salted SHA-256 of the PIN. Returns null if hashing is unavailable — see below.
+        ///
+        /// <c>SHA256.Create()</c> resolves its implementation through CryptoConfig by
+        /// REFLECTION, which is precisely what IL2CPP's managed stripping removes, and Android
+        /// ships IL2CPP with stripping on. <c>Assets/Link.xml</c> now preserves the crypto
+        /// assemblies so this should not happen; the catch is here because of what a throw
+        /// costs if it does. Every adult action on the tablet runs through this method — setting
+        /// the PIN at install, unlocking the next session, and EXPORTING THE LOGS — and Unity
+        /// swallows an exception thrown inside a UI callback, so the researcher would tap Export
+        /// and simply see nothing happen, on the one control that retrieves the whole dataset.
+        /// A logged null that the callers refuse on is recoverable; a silent no-op is not.
+        ///
+        /// None of this is visible in the Editor, which does not strip.
+        /// </summary>
         private static string Hash(string pin)
         {
-            using (var sha = SHA256.Create())
+            try
             {
-                var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(Salt + pin.Trim()));
-                var text = new StringBuilder(bytes.Length * 2);
-                for (int i = 0; i < bytes.Length; i++) text.Append(bytes[i].ToString("x2"));
-                return text.ToString();
+                using (var sha = SHA256.Create())
+                {
+                    var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(Salt + pin.Trim()));
+                    var text = new StringBuilder(bytes.Length * 2);
+                    for (int i = 0; i < bytes.Length; i++) text.Append(bytes[i].ToString("x2"));
+                    return text.ToString();
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("TeacherGate: SHA-256 is unavailable on this build, so the teacher " +
+                    "PIN cannot be set or verified and the logs cannot be exported. This is almost " +
+                    "certainly IL2CPP managed stripping removing the crypto implementation — check " +
+                    "that Assets/Link.xml still preserves System.Security.Cryptography.*. " + e);
+                return null;
             }
         }
     }

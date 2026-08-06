@@ -4,7 +4,24 @@
 		<type fullname="UnityEngine.MeshRenderer" preserve="all" />
 		<type fullname="UnityEngine.SkinnedMeshRenderer" preserve="all" />
 		<type fullname="UnityEngine.MeshFilter" preserve="all" />
-		<type fullname="UnityEngine.Advertisements" preserve="all" />
 		<type fullname="UnityEngine.SpriteRenderer" preserve="all" />
 	</assembly>
+
+	<!--
+		The teacher PIN is a salted SHA-256 hash, and SHA256.Create() resolves its
+		implementation through CryptoConfig by REFLECTION. Android ships IL2CPP with managed
+		stripping on, and nothing here preserved the crypto assemblies — so the linker was free
+		to remove the very type that call returns.
+
+		The cost of being wrong is not a cosmetic failure. TeacherGate.Hash is behind every
+		adult action on the tablet: setting the PIN at install, unlocking the next session, and
+		EXPORTING THE LOGS. A throw inside a UI callback is swallowed and logged by Unity, so
+		the teacher would tap Export and see nothing happen, on the one control that retrieves
+		the entire dataset — and there is no second chance to collect it after the study.
+
+		Invisible in the Editor, which does not strip. Preserved rather than diagnosed after the
+		fact, because the first APK is also the study build.
+	-->
+	<assembly fullname="System.Security.Cryptography.Algorithms" preserve="all" />
+	<assembly fullname="System.Security.Cryptography.Primitives" preserve="all" />
 </linker>

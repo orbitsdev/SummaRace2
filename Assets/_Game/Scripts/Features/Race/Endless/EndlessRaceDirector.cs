@@ -233,6 +233,14 @@ namespace SummaRace.Features.Race.Endless
         private bool _revealing;                     // suppresses the normal window while shown
         private const float AnswerRevealSeconds = 2.2f;
 
+        /// <summary>The option preview board's underside, as a fraction of screen height. Derived
+        /// in BuildOptionPreview (the horizon sits at 0.7375, so nothing on the road can reach
+        /// this band); named here because the HUD banner hangs off it and the two must not be
+        /// allowed to drift apart — they were overlapping until F55.</summary>
+        private const float PreviewBandBottom = 0.745f;
+        /// <summary>The same board's top edge; the SWBST tracker's underside must stay above it.</summary>
+        private const float PreviewBandTop = 0.885f;
+
         // Pause. Never a fail state and never an ending — see OpenPause.
         private GameObject _pauseRoot;      // full-screen overlay, its own canvas above everything
         private GameObject _pauseChip;      // the small control that opens it
@@ -1443,6 +1451,23 @@ namespace SummaRace.Features.Race.Endless
             var scaler = canvasGo.AddComponent<UnityEngine.UI.CanvasScaler>();
             scaler.uiScaleMode = UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1080f, 1920f);
+            // MATCH = 0 IS DELIBERATE HERE, AND MUST STAY 0 — it is also the field's default, so
+            // it is written out only to stop a future pass "harmonising" it with the eleven
+            // authored scenes, which use 0.5.
+            //
+            // At match 0 the canvas is ALWAYS 1080 units wide and its height tracks the aspect
+            // (1920 at 9:16, 2400 at 20:9). Every number in this HUD is a width-driven pixel
+            // measurement against that 1080: the tracker board is 880 wide with slots measured to
+            // the pixel against "SOMEBODY", and the pause chip takes the 144px of gutter that
+            // leaves. At match 0.5 on a 1080x2400 phone the canvas narrows to 966x2147, and that
+            // same top row breaks outright: the board (880 in 966) runs 17px OFF the left edge
+            // and the chip lands 53px on top of the fifth slot. The 0.5 scenes are laid out on
+            // fractional anchors and do not care; this one is the opposite case.
+            //
+            // The cost is real and accepted: race type renders ~11% smaller than the rest of the
+            // app on a 20:9 phone. The two are never on screen together, and a consistent-but-
+            // overlapping HUD is not an improvement on an inconsistent-but-legible one.
+            scaler.matchWidthOrHeight = 0f;
             // The HUD had no raycaster because nothing on it was ever tappable; the pause chip
             // is. Everything else on this canvas sets raycastTarget = false (MakeHudText does it
             // for every label), so adding one cannot start swallowing taps meant for the road —
@@ -1464,7 +1489,30 @@ namespace SummaRace.Features.Race.Endless
             vrt.offsetMin = Vector2.zero; vrt.offsetMax = Vector2.zero;
 
             BuildTracker(canvasGo.transform);
-            _bannerText = MakeHudText(canvasGo.transform, new Vector2(0.5f, 1f), new Vector2(0f, -300f), 64f);
+
+            // THE BANNER WAS ENTIRELY INSIDE THE OPTION PREVIEW BOARD, AND THEY SHARE THE LAST
+            // GATE. At (0,-300) from the top it occupied y 0.781-0.844 on a 1920 reference,
+            // inside the preview board's 0.745-0.885 — and the board is opaque (alpha 0.94) and
+            // a later sibling, so it drew over the banner. The banner's only line is
+            // RaceRunToFinish, set by UpdateBanner the moment _pendingElement reaches 5; a wrong
+            // or missed element 5 runs AdvanceToNext -> UpdateBanner and then ShowAnswerReveal,
+            // which puts the board up for 2.2s. So on the one gate where "Run to the FINISH!" is
+            // the whole instruction, it was behind a wooden board.
+            //
+            // It is anchored to the BOARD'S UNDERSIDE rather than given a bigger fixed offset:
+            // with matchWidthOrHeight = 0 the canvas is always 1080 units wide but its HEIGHT
+            // tracks the aspect (1920 at 9:16, 2400 at 20:9), so the board's fractional anchors
+            // move in pixels while a fixed top offset does not. A flat (0,-500) reads correctly
+            // at 1920 and lands back inside the board at 1080x2400 (board bottom 612px from the
+            // top, banner top 500). Hung off the anchor it is 12px below the board at every
+            // aspect: y 0.681-0.739 at 9:16 (63px of clearance above the feedback pill's 0.648)
+            // and 0.690-0.740 at 20:9.
+            _bannerText = MakeHudText(canvasGo.transform, new Vector2(0.5f, 1f), Vector2.zero, 64f);
+            var bannerRt = _bannerText.rectTransform;
+            bannerRt.anchorMin = bannerRt.anchorMax = new Vector2(0.5f, PreviewBandBottom);
+            bannerRt.pivot = new Vector2(0.5f, 1f);
+            bannerRt.anchoredPosition = new Vector2(0f, -12f);
+            bannerRt.sizeDelta = new Vector2(1000f, 120f);
 
             // Feedback sits on a dark pill, as it does in the legacy race (F16). Bare coloured
             // text over the world is barely legible: "Not quite — the glowing one!" was landing in
@@ -1536,8 +1584,8 @@ namespace SummaRace.Features.Race.Endless
             bimg.color = new Color(0.26f, 0.17f, 0.09f, 0.94f); // same wood language as the tracker
             bimg.raycastTarget = false;
             var brt = bimg.rectTransform;
-            brt.anchorMin = new Vector2(0.03f, 0.745f);
-            brt.anchorMax = new Vector2(0.97f, 0.885f);
+            brt.anchorMin = new Vector2(0.03f, PreviewBandBottom);
+            brt.anchorMax = new Vector2(0.97f, PreviewBandTop);
             brt.offsetMin = Vector2.zero; brt.offsetMax = Vector2.zero;
 
             // ATTENTION CUE, AND WHY IT IS A BORDER. Now that the panel only appears near its
@@ -1775,10 +1823,30 @@ namespace SummaRace.Features.Race.Endless
             img.color = new Color(0.30f, 0.20f, 0.10f, 0.92f);
             var rt = img.rectTransform;
             rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(1f, 1f);
-            // The tracker board is 880 wide and centred, so it ends at x=980 on a 1080 reference;
-            // this sits in the 100px gutter to its right, clear of the status bar / notch band.
-            rt.anchoredPosition = new Vector2(-8f, -95f);
-            rt.sizeDelta = new Vector2(88f, 88f);
+            // SIZED AT THE ANDROID 48dp MINIMUM, AND THE TRACKER MOVED TO MAKE ROOM FOR IT.
+            // This was 88x88 at (-8,-95) = 29.3dp at xxhdpi with its right edge 8px (2.7dp)
+            // from the screen, i.e. buried inside Android's ~20dp (60px) back-gesture exclusion
+            // strip — on the ONLY way out of a run.
+            //
+            // 144px = 48dp exactly at xxhdpi (1080-wide screen, and with matchWidthOrHeight = 0
+            // the canvas is ALWAYS 1080 units wide, so this arithmetic holds on every device).
+            // Where it goes is forced, because the top row has no spare width:
+            //   * the tracker board cannot shrink. Tools/StoryPipeline/fit.py measures "SOMEBODY"
+            //     at 26.2pt needing 140px in a 140px slot — ZERO headroom — so one pixel off the
+            //     board ellipsises the first slot of all 30 races (the F47(f) bug).
+            //   * board(880) + chip(144) + a 60px gesture margin = 1084 > 1080, so a chip that is
+            //     both 48dp AND fully clear of the strip AND clear of the board does not exist on
+            //     a 1080 reference. Something had to give, and the strip is the cheapest: F51's
+            //     BackButtonGuard already swallows Android BACK app-wide, so a tap that drifts
+            //     into the strip does nothing rather than dropping the child out of the app.
+            //   * down is not available either — the option preview board (the F47(a) reading
+            //     surface) starts at y 0.885 and is not negotiable.
+            // So the tracker slides 52px left (BuildTracker) and the chip takes the widened
+            // gutter: slots now end at x=908, the chip runs x[908,1052] over the board's 20px of
+            // decorative right padding only, with a 28px (9.3dp) margin to the screen edge and
+            // its centre 104px (34.7dp) in from it.
+            rt.anchoredPosition = new Vector2(-28f, -72f);
+            rt.sizeDelta = new Vector2(144f, 144f);
             _pauseChipRect = rt;
 
             for (int i = 0; i < 2; i++) // the two bars of a pause glyph
@@ -1790,8 +1858,9 @@ namespace SummaRace.Features.Race.Endless
                 bimg.raycastTarget = false;
                 var brt = bimg.rectTransform;
                 brt.anchorMin = brt.anchorMax = brt.pivot = new Vector2(0.5f, 0.5f);
-                brt.sizeDelta = new Vector2(15f, 44f);
-                brt.anchoredPosition = new Vector2(i == 0 ? -13f : 13f, 0f);
+                // Scaled with the plaque (x144/88) so the glyph keeps its proportions.
+                brt.sizeDelta = new Vector2(24f, 72f);
+                brt.anchoredPosition = new Vector2(i == 0 ? -21f : 21f, 0f);
             }
 
             var button = chip.AddComponent<UnityEngine.UI.Button>();
@@ -1818,6 +1887,10 @@ namespace SummaRace.Features.Race.Endless
             var scaler = canvasGo.AddComponent<UnityEngine.UI.CanvasScaler>();
             scaler.uiScaleMode = UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1080f, 1920f);
+            // Match 0, as the HUD — see BuildHud for the derivation. This screen draws over the
+            // HUD through a 0.72 dim, so the tracker behind it is still visible and a different
+            // scale on the two would be seen side by side.
+            scaler.matchWidthOrHeight = 0f;
             canvasGo.AddComponent<UnityEngine.UI.GraphicRaycaster>();
             _pauseRoot = canvasGo;
 
@@ -2063,7 +2136,14 @@ namespace SummaRace.Features.Race.Endless
             // learner has to watch the road and read a card at the same time.
             // -26 put the board 26px from the top of a 1920-tall reference, i.e. underneath the
             // Android status bar and inside the notch cutout on most phones. Dropped clear of it.
-            rrt.anchoredPosition = new Vector2(0f, -78f);
+            //
+            // x = -52 (was 0, dead centre): the pause chip is the only way out of a run and had
+            // to reach the 48dp minimum, which needs 144px of gutter beside this board — the
+            // centred board left only 100px, and this board CANNOT be narrowed (see the slot
+            // arithmetic below: zero headroom). So the row shifts left by 52 instead, putting
+            // its slots at x[68,908] and its left margin at 48px, and the chip takes x[908,1052].
+            // Nothing here is interactive, so the shift costs composition only, not reach.
+            rrt.anchoredPosition = new Vector2(-52f, -78f);
             // 880 wide, not 774 — see the slot arithmetic below. Still 100px of margin each
             // side of a 1080-wide reference.
             rrt.sizeDelta = new Vector2(880f, 122f);
@@ -2671,6 +2751,14 @@ namespace SummaRace.Features.Race.Endless
             var scaler = canvasGo.AddComponent<UnityEngine.UI.CanvasScaler>();
             scaler.uiScaleMode = UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1080f, 1920f);
+            // Match 0, as the HUD — and here it is load-bearing for a fix that already had to be
+            // made once. F46(k) placed Ms. Lumi's speech bubble by working out that START is
+            // "centred and 520 wide on a 1080 reference, i.e. x 0.259-0.741", and stopped the
+            // bubble at x 0.235. Those are pixel widths converted to fractions of 1080; at match
+            // 0.5 on a 1080x2400 phone the canvas is 966 wide, START's dark ring becomes
+            // x 0.216-0.784, and it eats the bubble again — the exact "only 'Ready, ru' showed"
+            // bug. Do not change this without re-deriving that block.
+            scaler.matchWidthOrHeight = 0f;
             canvasGo.AddComponent<UnityEngine.UI.GraphicRaycaster>();
             _briefingRoot = canvasGo;
 
@@ -2727,6 +2815,14 @@ namespace SummaRace.Features.Race.Endless
             body.text = SummaRace.Constants.GameText.RaceBriefingBody(_story.title);
             body.color = new Color(0.35f, 0.25f, 0.10f);
             body.rectTransform.sizeDelta = new Vector2(760f, 300f);
+            // Autosized, because the story TITLE is interpolated into this line and titles are
+            // content: at a pinned 42pt the longest of the thirty ("Baba Yaga, the Girl, and the
+            // Hedgehog") wraps to ~6 lines / ~328px in a 300px box and overflows it. The floor is
+            // 32pt so a long title costs a little size rather than the last line, and the max
+            // stays 42 so nothing renders differently for the other 29.
+            body.enableAutoSizing = true;
+            body.fontSizeMin = 32f;
+            body.fontSizeMax = 42f;
             _briefingBody = body;   // rewritten by ShowBriefingEscape if the kit never boots
 
             // The five parts, in the colours they will wear on the gates (F18 palette),

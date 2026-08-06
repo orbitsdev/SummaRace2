@@ -228,106 +228,128 @@ namespace SummaRace.Features.Arrange
         private IEnumerator VerifyRoutine()
         {
             _busy = true;
-            bool allCorrect = true;
-            int worstElement = -1;   // the piece this learner has misplaced most often
-            int worstMisses = 0;
-
-            for (int i = 0; i < 5; i++)
+            // The board is unusable while _busy is set, and Arrange is the ONE screen a story
+            // cannot get past until the order is right — so a throw anywhere below would leave
+            // VERIFY, UNDO, every slot and every piece dead with no exit. That class of bug has
+            // already stranded a learner twice in this project (Results, F46g). EventBus.Raise
+            // now guards its own subscribers, which was the one plausible thrower here; this is
+            // the belt to that pair of braces.
+            //
+            // finally, not catch: an iterator cannot yield inside a try that has a catch
+            // (CS1626), and wrapping the body in a child coroutine does not work either --
+            // Unity logs an inner coroutine's exception and simply never resumes the outer one,
+            // so the finally would not run at all.
+            bool handedOff = false;
+            try
             {
-                if (_slotLocked[i]) continue;
+                bool allCorrect = true;
+                int worstElement = -1;   // the piece this learner has misplaced most often
+                int worstMisses = 0;
 
-                if (_slotContent[i] == i)
+                for (int i = 0; i < 5; i++)
                 {
-                    _slotLocked[i] = true;
-                    if (slotButtons[i] != null) slotButtons[i].image.color = SlotLocked;
-                    if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxSlotLock);
-                    yield return new WaitForSeconds(0.15f);
-                }
-                else
-                {
-                    allCorrect = false;
-                    int wrongElement = _slotContent[i];
-                    _missCount[wrongElement]++;
-                    // Hint about the part the learner is struggling with MOST, not simply the
-                    // last one in slot order to qualify — otherwise a piece missed eight times
-                    // is shadowed by one that has only just crossed the threshold. The
-                    // threshold is applied below, not here, so the last attempt can still
-                    // reach for this piece when nothing has crossed it.
-                    if (_missCount[wrongElement] > worstMisses)
+                    if (_slotLocked[i]) continue;
+
+                    if (_slotContent[i] == i)
                     {
-                        worstMisses = _missCount[wrongElement];
-                        worstElement = wrongElement;
+                        _slotLocked[i] = true;
+                        if (slotButtons[i] != null) slotButtons[i].image.color = SlotLocked;
+                        if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxSlotLock);
+                        yield return new WaitForSeconds(0.15f);
                     }
+                    else
+                    {
+                        allCorrect = false;
+                        int wrongElement = _slotContent[i];
+                        _missCount[wrongElement]++;
+                        // Hint about the part the learner is struggling with MOST, not simply the
+                        // last one in slot order to qualify — otherwise a piece missed eight times
+                        // is shadowed by one that has only just crossed the threshold. The
+                        // threshold is applied below, not here, so the last attempt can still
+                        // reach for this piece when nothing has crossed it.
+                        if (_missCount[wrongElement] > worstMisses)
+                        {
+                            worstMisses = _missCount[wrongElement];
+                            worstElement = wrongElement;
+                        }
 
-                    if (slotButtons[i] != null) slotButtons[i].image.color = SlotWrong;
-                    if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxSlotWiggle);
-                    yield return new WaitForSeconds(0.35f);
-                    _slotContent[i] = -1; // wrong piece returns to the pool
+                        if (slotButtons[i] != null) slotButtons[i].image.color = SlotWrong;
+                        if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxSlotWiggle);
+                        yield return new WaitForSeconds(0.35f);
+                        _slotContent[i] = -1; // wrong piece returns to the pool
+                    }
                 }
-            }
 
-            RefreshUI();
+                RefreshUI();
 
-            if (allCorrect)
-            {
-                if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxCorrect);
-                SetStatus(SummaRace.Core.Praise.ArrangePerfect());
-                if (SummaRace.Core.GameManager.Instance != null) SummaRace.Core.GameManager.Instance.SetArrangeResult(_attempts);
+                if (allCorrect)
+                {
+                    if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxCorrect);
+                    SetStatus(SummaRace.Core.Praise.ArrangePerfect());
+                    if (SummaRace.Core.GameManager.Instance != null) SummaRace.Core.GameManager.Instance.SetArrangeResult(_attempts);
+                    EventBus.Raise(new ArrangeVerified
+                    {
+                        correct = true,
+                        attemptCount = _attempts,
+                        placement = _submittedOrder
+                    });
+
+                    yield return new WaitForSeconds(1f);
+                    SceneLoader.Go(SceneNames.Summary);
+
+                    // Stays busy on purpose, exactly as the assist below does. Falling through to
+                    // _busy = false re-armed a board whose slots are all filled and locked while
+                    // the load was still in flight, and a second VERIFY there re-raises
+                    // ArrangeVerified with a higher attemptCount — which SessionLogService takes
+                    // as the study's arrangeAttempts, because the last raise wins. The loading
+                    // fade blocks taps today, so this is the guard rather than the cure; the
+                    // honesty of a study variable should not rest on a fade.
+                    handedOff = true;
+                    yield break;
+                }
+
                 EventBus.Raise(new ArrangeVerified
                 {
-                    correct = true,
+                    correct = false,
                     attemptCount = _attempts,
                     placement = _submittedOrder
                 });
 
-                yield return new WaitForSeconds(1f);
-                SceneLoader.Go(SceneNames.Summary);
+                if (_attempts >= GameRules.ArrangeMaxAttempts)
+                {
+                    // Stays busy on purpose: the assist ends by leaving the scene, so the
+                    // board must not accept taps while it plays out.
+                    yield return StartCoroutine(AssistRoutine());
+                    handedOff = true;
+                    yield break;
+                }
 
-                // Stays busy on purpose, exactly as the assist below does. Falling through to
-                // _busy = false re-armed a board whose slots are all filled and locked while
-                // the load was still in flight, and a second VERIFY there re-raises
-                // ArrangeVerified with a higher attemptCount — which SessionLogService takes
-                // as the study's arrangeAttempts, because the last raise wins. The loading
-                // fade blocks taps today, so this is the guard rather than the cure; the
-                // honesty of a study variable should not rest on a fade.
-                yield break;
+                // The hint is meant to arrive BEFORE the assist does: GameRules sets
+                // ArrangeMaxAttempts to 4 precisely so the last attempt is the first one the
+                // learner makes with a hint in front of them. Counting misses per piece did not
+                // guarantee that — a learner who reshuffles everything each verify spreads the
+                // misses so no single piece ever reaches ArrangeHintAfterMisses, and the screen
+                // went straight from "Almost!" to finishing the order for them without once
+                // saying what any part means. On the last attempt the most-missed piece gets the
+                // hint whatever its count.
+                bool lastAttempt = _attempts >= GameRules.ArrangeMaxAttempts - 1;
+                bool hintEarned = worstElement >= 0
+                    && (worstMisses >= GameRules.ArrangeHintAfterMisses || lastAttempt);
+
+                // LoadingTips is the S-W-B-S-T definition list in element order — the array
+                // is named for the loading overlay that also shows it, but index i really is
+                // element i. See the note on GameText.LoadingTips before touching either.
+                SetStatus(hintEarned
+                    ? GameText.ArrangeHintPrefix + GameText.LoadingTips[worstElement]
+                    : GameText.ArrangeAlmost);
             }
-
-            EventBus.Raise(new ArrangeVerified
+            finally
             {
-                correct = false,
-                attemptCount = _attempts,
-                placement = _submittedOrder
-            });
-
-            if (_attempts >= GameRules.ArrangeMaxAttempts)
-            {
-                // Stays busy on purpose: the assist ends by leaving the scene, so the
-                // board must not accept taps while it plays out.
-                yield return StartCoroutine(AssistRoutine());
-                yield break;
+                // Two paths above stay busy ON PURPOSE -- the solve and the assist both end by
+                // leaving the scene, and re-arming a finished board lets a second VERIFY raise
+                // ArrangeVerified again with a higher attemptCount, which is a study variable.
+                if (!handedOff) _busy = false;
             }
-
-            // The hint is meant to arrive BEFORE the assist does: GameRules sets
-            // ArrangeMaxAttempts to 4 precisely so the last attempt is the first one the
-            // learner makes with a hint in front of them. Counting misses per piece did not
-            // guarantee that — a learner who reshuffles everything each verify spreads the
-            // misses so no single piece ever reaches ArrangeHintAfterMisses, and the screen
-            // went straight from "Almost!" to finishing the order for them without once
-            // saying what any part means. On the last attempt the most-missed piece gets the
-            // hint whatever its count.
-            bool lastAttempt = _attempts >= GameRules.ArrangeMaxAttempts - 1;
-            bool hintEarned = worstElement >= 0
-                && (worstMisses >= GameRules.ArrangeHintAfterMisses || lastAttempt);
-
-            // LoadingTips is the S-W-B-S-T definition list in element order — the array
-            // is named for the loading overlay that also shows it, but index i really is
-            // element i. See the note on GameText.LoadingTips before touching either.
-            SetStatus(hintEarned
-                ? GameText.ArrangeHintPrefix + GameText.LoadingTips[worstElement]
-                : GameText.ArrangeAlmost);
-
-            _busy = false;
         }
 
         /// <summary>

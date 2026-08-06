@@ -19,6 +19,12 @@ namespace SummaRace.Constants
         public const string NameEntryPickAvatar = "Pick your runner";
         public const string NameEntryConfirm = "LET'S GO!";
 
+        /// <summary>Closes the on-screen keyboard on the FIRST screen a learner ever sees, where
+        /// the keyboard covers the four runners AND "LET'S GO!" — i.e. everything left to do.
+        /// Same words as <see cref="SummaryDoneTyping"/> on purpose: it is the same gesture in
+        /// the same place, and a child should only ever have to learn it once.</summary>
+        public const string NameEntryDoneTyping = "DONE TYPING";
+
         // Teacher menu (adults only — plain on purpose)
         public const string TeacherTitle = "Teacher";
         public const string TeacherEnterPin = "Enter PIN";

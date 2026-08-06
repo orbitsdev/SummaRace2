@@ -155,6 +155,19 @@ namespace SummaRace.Core
             // duplicated id silently folds two learners into one file, and nothing downstream
             // can undo that — so repair the list on load rather than trusting the file.
             bool repaired = false;
+
+            // A null entry can only come from a corrupted or hand-edited profiles.json, but this
+            // runs inside Bootstrapper.Awake — so an NRE here takes out [Core] itself and the app
+            // never reaches a screen. Every sibling method already defends; this was the one that
+            // did not. Dropping the entry is right: a null profile has no id, so it names no log
+            // file and holds nobody's progress.
+            for (int i = _profiles.Count - 1; i >= 0; i--)
+            {
+                if (_profiles[i] != null) continue;
+                _profiles.RemoveAt(i);
+                repaired = true;
+            }
+
             var seen = new HashSet<string>();
             for (int i = 0; i < _profiles.Count; i++)
             {
