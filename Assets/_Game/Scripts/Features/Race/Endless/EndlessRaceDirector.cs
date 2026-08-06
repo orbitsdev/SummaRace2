@@ -241,6 +241,42 @@ namespace SummaRace.Features.Race.Endless
         /// <summary>The same board's top edge; the SWBST tracker's underside must stay above it.</summary>
         private const float PreviewBandTop = 0.885f;
 
+        /// <summary>
+        /// Where the SWBST tracker's UNDERSIDE sits, as a fraction of canvas height.
+        ///
+        /// The tracker and the pause chip used to be pinned in PIXELS to the top of the screen
+        /// (-78 and -72) while the reading band is anchored in FRACTIONS. With
+        /// matchWidthOrHeight = 0 the canvas is always 1080 units wide but its height tracks the
+        /// aspect, so a fixed pixel offset is a different fraction on every device — and the two
+        /// systems collide on anything squarer than 9:16:
+        ///
+        ///   aspect          canvas H   band top   tracker bottom   pause chip bottom
+        ///   9:16  (ref)       1920      220.8       200  clear        216  clear
+        ///   16:10 tablet      1728      198.7       200  -1px         216  -17px
+        ///   4:3   tablet      1440      165.6       200  -34px        216  -50px
+        ///   20:9  phone       2400      276.0       200  clear        216  clear
+        ///
+        /// The preview board is built after the tracker, so it DRAWS OVER it: on a 4:3 tablet it
+        /// covered the bottom 34px of the board, which is the bottom ~22% of every plaque — the
+        /// tracker's five words clipped through the middle of their descenders, on the widget
+        /// that teaches the framework. It also buried 50px of the pause chip, which is the only
+        /// way out of a run. Cheap Android 8 tablets are commonly 4:3 or 16:10, and the study
+        /// device is a tablet.
+        ///
+        /// Anchoring the BOTTOM edge to a fraction makes the relationship aspect-independent: the
+        /// clearance to the band is now a constant fraction of the canvas rather than a number
+        /// that happened to work at one aspect ratio. Both values are the old pixel positions
+        /// expressed against the 1920 reference, so at 9:16 the layout is byte-for-byte what it
+        /// was — this can only improve other aspects, never regress the one that was playtested.
+        /// (200/1920; the board grows upward from here, away from the band.)
+        /// </summary>
+        private const float TrackerBottomY = 1f - 200f / 1920f;   // 0.89583
+
+        /// <summary>The pause chip's underside, on the same reasoning as
+        /// <see cref="TrackerBottomY"/>. 216/1920 — slightly lower than the tracker because the
+        /// chip is 144 tall against the board's 122, and it must clear the band by itself.</summary>
+        private const float PauseChipBottomY = 1f - 216f / 1920f; // 0.8875
+
         // Pause. Never a fail state and never an ending — see OpenPause.
         private GameObject _pauseRoot;      // full-screen overlay, its own canvas above everything
         private GameObject _pauseChip;      // the small control that opens it
@@ -1826,7 +1862,11 @@ namespace SummaRace.Features.Race.Endless
             img.type = UnityEngine.UI.Image.Type.Sliced;
             img.color = new Color(0.30f, 0.20f, 0.10f, 0.92f);
             var rt = img.rectTransform;
-            rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(1f, 1f);
+            // Anchored to the TOP OF THE READING BAND by its own bottom edge, not to the top of
+            // the screen. See BuildTracker for the derivation — on a 4:3 tablet a top-anchored
+            // chip put 50 of its 144px underneath the reading panel, which draws over it.
+            rt.anchorMin = rt.anchorMax = new Vector2(1f, PauseChipBottomY);
+            rt.pivot = new Vector2(1f, 0f);
             // SIZED AT THE ANDROID 48dp MINIMUM, AND THE TRACKER MOVED TO MAKE ROOM FOR IT.
             // This was 88x88 at (-8,-95) = 29.3dp at xxhdpi with its right edge 8px (2.7dp)
             // from the screen, i.e. buried inside Android's ~20dp (60px) back-gesture exclusion
@@ -1849,7 +1889,7 @@ namespace SummaRace.Features.Race.Endless
             // gutter: slots now end at x=908, the chip runs x[908,1052] over the board's 20px of
             // decorative right padding only, with a 28px (9.3dp) margin to the screen edge and
             // its centre 104px (34.7dp) in from it.
-            rt.anchoredPosition = new Vector2(-28f, -72f);
+            rt.anchoredPosition = new Vector2(-28f, 0f);
             rt.sizeDelta = new Vector2(144f, 144f);
             _pauseChipRect = rt;
 
@@ -2133,8 +2173,10 @@ namespace SummaRace.Features.Race.Endless
             var row = new GameObject("SwbstTracker");
             row.transform.SetParent(parent, false);
             var rrt = row.AddComponent<RectTransform>();
-            rrt.anchorMin = rrt.anchorMax = new Vector2(0.5f, 1f);
-            rrt.pivot = new Vector2(0.5f, 1f);
+            // Anchored by its BOTTOM edge to a fraction of the canvas, not by its top edge to the
+            // top of the screen — see TrackerBottomY.
+            rrt.anchorMin = rrt.anchorMax = new Vector2(0.5f, TrackerBottomY);
+            rrt.pivot = new Vector2(0.5f, 0f);
             // Sized down from 1052x168: on a 1080-wide reference that was running edge to edge
             // and dominating the screen, which matters more here than on a HUD because the
             // learner has to watch the road and read a card at the same time.
@@ -2147,7 +2189,7 @@ namespace SummaRace.Features.Race.Endless
             // arithmetic below: zero headroom). So the row shifts left by 52 instead, putting
             // its slots at x[68,908] and its left margin at 48px, and the chip takes x[908,1052].
             // Nothing here is interactive, so the shift costs composition only, not reach.
-            rrt.anchoredPosition = new Vector2(-52f, -78f);
+            rrt.anchoredPosition = new Vector2(-52f, 0f);
             // 880 wide, not 774 — see the slot arithmetic below. Still 100px of margin each
             // side of a 1080-wide reference.
             rrt.sizeDelta = new Vector2(880f, 122f);

@@ -792,14 +792,17 @@ namespace SummaRace.EditorTools
             // The shipping race scene is Trash Dash's, and its track, themes, zones and the runner
             // prefab all come through Addressables.InstantiateAsync / LoadAssetsAsync. In the Editor
             // this works off the Asset Database, which hides the problem completely; in a player,
-            // unbuilt Addressables content means an empty road and no runner.
-            var addressableCallers = SafeCount(() =>
-                Directory.EnumerateFiles("Assets/Scripts", "*.cs", SearchOption.AllDirectories)
-                         .Count(f => File.ReadAllText(f).Contains("Addressables.")));
+            // unbuilt Addressables content does not mean "a race that looks wrong" — it means the
+            // race never begins. See NoContentConsequence below for the traced chain.
+            var callerFiles = EnumerateRuntimeScripts()
+                .Where(f => (SafeRead(f) ?? "").Contains("Addressables."))
+                .Select(f => f.Replace('\\', '/'))
+                .ToList();
             Info("Addressables is on the shipping path",
-                 addressableCallers + " script(s) under Assets/Scripts call Addressables (track segments, themes, " +
-                 "zones, the character prefab). In the Editor these resolve off the Asset Database, so a missing " +
-                 "content build is invisible until the APK runs.");
+                 callerFiles.Count + " player-compiled script(s) call Addressables (track segments, themes, zones, " +
+                 "sky domes, the runner prefab). In the Editor these resolve off the Asset Database, so a missing " +
+                 "content build is invisible until the APK runs.\n" +
+                 string.Join("\n", callerFiles.Take(20)) + (callerFiles.Count > 20 ? "\n…" : ""));
 
             var settings = File.ReadAllText(settingsPath);
             var m = Regex.Match(settings, @"m_BuildAddressablesWithPlayerBuild:\s*(\d+)");
@@ -810,16 +813,14 @@ namespace SummaRace.EditorTools
                 if (v == "1")
                     Pass("Addressables content is built with the player", "BuildAddressablesWithPlayerBuild = BuildWithPlayer");
                 else if (v == "2")
-                    Fail("Addressables content will NOT be built with the player",
-                         "BuildAddressablesWithPlayerBuild = DoNotBuildWithPlayer.",
-                         "Either flip it (Window ▸ Asset Management ▸ Addressables ▸ Settings ▸ Build Addressables on " +
-                         "Player Build = Build Addressables content on Player Build) or run " +
-                         "Window ▸ Asset Management ▸ Addressables ▸ Groups ▸ Build ▸ New Build ▸ Default Build Script " +
-                         "by hand BEFORE every APK build. Forgetting this ships a race with no track.");
+                    Fail("HARD STOP — Addressables content will NOT be built with the player, and the race never starts",
+                         "BuildAddressablesWithPlayerBuild = DoNotBuildWithPlayer.\n" + NoContentConsequence,
+                         BuildContentRemedy);
                 else
                     Warn("Addressables build-with-player follows the global Preferences value",
                          "BuildAddressablesWithPlayerBuild = PreferencesValue — the setting lives in Unity Preferences, " +
-                         "not in the repo, so it is per-machine and invisible in review.",
+                         "not in the repo, so it is per-machine and invisible in review. A machine whose preference is " +
+                         "off produces an APK with no content and no warning.\n" + NoContentConsequence,
                          "Set it explicitly on the settings asset, or always run a manual content build first.");
             }
 
@@ -838,16 +839,173 @@ namespace SummaRace.EditorTools
             }
             else
             {
-                Fail("No Addressables content has ever been built for Android",
-                     "Expected " + aaAndroid + " — it does not exist.",
-                     "Window ▸ Asset Management ▸ Addressables ▸ Groups ▸ Build ▸ New Build ▸ Default Build Script, " +
-                     "with the platform already switched to Android (content is per-platform).");
+                Fail("HARD STOP — no Addressables content has ever been built for Android; the race never starts",
+                     "Expected " + aaAndroid + " — it does not exist.\n" + NoContentConsequence,
+                     BuildContentRemedy);
             }
 
             var groups = SafeCount(() =>
                 Directory.EnumerateFiles("Assets/AddressableAssetsData/AssetGroups", "*.asset", SearchOption.TopDirectoryOnly).Count());
             Info(groups + " Addressables groups", "Unused groups cost ~nothing in the APK — their meshes and " +
                  "textures are shared with what does ship, measured previously. Deleting them is not a size fix.");
+
+            CheckAddressableGroupPaths();
+        }
+
+        /// <summary>What an APK without built content actually does, traced through their code.</summary>
+        private const string NoContentConsequence =
+            "WHAT THE LEARNER SEES: not a race missing its scenery — NO RACE AT ALL. The screen sits on the\n" +
+            "mission briefing / an empty scene and never moves, with no error the child or teacher can see.\n" +
+            "The chain, traced in Assets/Scripts/Tracks/TrackManager.cs:\n" +
+            "  :194  Addressables.InstantiateAsync(<runner prefab>) resolves to nothing in a player with no bundles\n" +
+            "  :197  op.Result is null →\n" +
+            "  :201  yield break — the whole Begin coroutine abandons here\n" +
+            "  :228  gameObject.SetActive(true) is therefore NEVER reached\n" +
+            "  :131  TrackManager.Awake (which sets s_Instance) only runs when that object activates\n" +
+            "  ⇒ TrackManager.instance stays null forever, so nothing that drives the run can start.\n" +
+            "In the Editor every one of those calls resolves straight off the Asset Database, so the race is\n" +
+            "flawless right up until it is an APK. This is the single most expensive way to lose a study day.";
+
+        private const string BuildContentRemedy =
+            "Switch the platform to Android FIRST (content is per-platform), then either\n" +
+            "  Window ▸ Asset Management ▸ Addressables ▸ Settings ▸ Build Addressables on Player Build =\n" +
+            "    'Build Addressables content on Player Build'  (do this once and stop thinking about it), or\n" +
+            "  Window ▸ Asset Management ▸ Addressables ▸ Groups ▸ Build ▸ New Build ▸ Default Build Script\n" +
+            "    by hand BEFORE every APK build.\n" +
+            "Then re-run this preflight and confirm this row turns green before building.";
+
+        /// <summary>Groups the race cannot run without — theme, zone family, sky dome (F54).</summary>
+        private static readonly string[] RaceCriticalGroups =
+        {
+            "Themes", "Default-Zones", "Night-Zones", "Default-Sky", "Night-Sky", "Duplicate Asset Isolation",
+        };
+
+        /// <summary>
+        /// Each group's BundledAssetGroupSchema carries the build/load path variables and the
+        /// provider types that tell the runtime where its bundles are. 12+ of these were left empty
+        /// on disk by the Endless Runner import (e4de43e). BundledAssetGroupSchema.OnEnable very
+        /// probably re-seeds them from the active profile the moment the Addressables window opens —
+        /// but "very probably" is not a thing anyone should discover at 11pm before a study.
+        /// Read as text: the Addressables package must not be a compile dependency of this tool.
+        /// </summary>
+        private static void CheckAddressableGroupPaths()
+        {
+            const string groupDir = "Assets/AddressableAssetsData/AssetGroups";
+            var groupFiles = SafeList(() =>
+                Directory.EnumerateFiles(groupDir, "*.asset", SearchOption.TopDirectoryOnly).ToList());
+
+            if (groupFiles.Count == 0)
+            {
+                Info("No Addressables group assets found under " + groupDir);
+                return;
+            }
+
+            var empty = new List<string>();
+            var ok = new List<string>();
+            int bundled = 0;
+
+            foreach (var gf in groupFiles)
+            {
+                var text = SafeRead(gf);
+                if (text == null) continue;
+
+                var name = Regex.Match(text, @"^\s*m_GroupName:\s*(.*)$", RegexOptions.Multiline);
+                var groupName = name.Success ? name.Groups[1].Value.Trim() : Path.GetFileNameWithoutExtension(gf);
+
+                var schema = FindBundledSchemaText(text);
+                if (schema == null) continue;                       // e.g. Built In Data (player-data group)
+                bundled++;
+
+                var buildPath = YamlChildValue(schema, "m_BuildPath", "m_Id");
+                var loadPath = YamlChildValue(schema, "m_LoadPath", "m_Id");
+                var provider = YamlChildValue(schema, "m_AssetBundleProviderType", "m_ClassName");
+
+                if (string.IsNullOrEmpty(buildPath) || string.IsNullOrEmpty(loadPath) || string.IsNullOrEmpty(provider))
+                    empty.Add(groupName +
+                              "  (build:" + (string.IsNullOrEmpty(buildPath) ? "EMPTY" : "set") +
+                              " load:" + (string.IsNullOrEmpty(loadPath) ? "EMPTY" : "set") +
+                              " provider:" + (string.IsNullOrEmpty(provider) ? "EMPTY" : "set") + ")");
+                else
+                    ok.Add(groupName);
+            }
+
+            if (empty.Count == 0)
+            {
+                Pass($"All {bundled} bundled Addressables group(s) have build/load paths and a provider",
+                     string.Join(", ", ok));
+                return;
+            }
+
+            var critical = RaceCriticalGroups
+                .Where(c => empty.Any(e => e.StartsWith(c + "  ", StringComparison.Ordinal)))
+                .ToList();
+
+            Warn($"{empty.Count} of {bundled} Addressables groups have EMPTY build/load path and provider on disk",
+                 string.Join("\n", empty) +
+                 (critical.Count > 0
+                    ? "\nRace-critical groups affected: " + string.Join(", ", critical) +
+                      "\nThose carry the theme, the zone families and the sky domes the race loads (F54)."
+                    : "") +
+                 "\nThese were emptied by the Endless Runner import (e4de43e). BundledAssetGroupSchema.OnEnable " +
+                 "most likely re-seeds them from the active profile as soon as the Addressables window opens, " +
+                 "which is why content builds have worked — but nothing in the repo proves it, and if it does NOT " +
+                 "happen the content build silently produces bundles the player cannot locate.\n" +
+                 "WHAT THAT LOOKS LIKE ON THE TABLET: identical to having built no content at all — the race " +
+                 "never starts (see the Addressables content rows above for the traced chain).",
+                 "Do this once, now, not on build day: Window ▸ Asset Management ▸ Addressables ▸ Groups, click " +
+                 "each listed group and confirm Build & Load Paths read 'Local' in the Inspector, then File ▸ Save " +
+                 "Project and re-run this preflight. This row should turn green — if it does not, the paths are " +
+                 "genuinely unset and must be picked by hand before any APK is built.");
+        }
+
+        /// <summary>
+        /// Finds the BundledAssetGroupSchema text for a group: first by the sibling-file naming
+        /// convention (&lt;groupGuid&gt;_BundledAssetGroupSchema.asset), then by resolving the guids
+        /// listed in the group's m_SchemaSet. Returns null when the group has no bundled schema.
+        /// </summary>
+        private static string FindBundledSchemaText(string groupText)
+        {
+            var guid = Regex.Match(groupText, @"^\s*m_GUID:\s*(\S+)\s*$", RegexOptions.Multiline);
+            if (guid.Success)
+            {
+                var byConvention = "Assets/AddressableAssetsData/AssetGroups/Schemas/" +
+                                   guid.Groups[1].Value + "_BundledAssetGroupSchema.asset";
+                var text = SafeRead(byConvention);
+                if (text != null && text.Contains("m_BuildPath:")) return text;
+            }
+
+            var set = ExtractBlock(groupText, "m_SchemaSet:", "\n  m_") ?? groupText;
+            foreach (Match m in Regex.Matches(set, @"guid:\s*([a-f0-9]{32})"))
+            {
+                string path;
+                try { path = AssetDatabase.GUIDToAssetPath(m.Groups[1].Value); } catch { continue; }
+                if (string.IsNullOrEmpty(path)) continue;
+                var text = SafeRead(path);
+                if (text != null && text.Contains("m_BuildPath:")) return text;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Reads `parent:` on its own line and returns the value of `child:` on one of the next few
+        /// lines. A multi-line regex cannot do this safely here: when the value is empty, `\s*`
+        /// happily eats the newline and swallows the following key as the value.
+        /// </summary>
+        private static string YamlChildValue(string yaml, string parent, string child)
+        {
+            var lines = yaml.Split('\n');
+            for (int i = 0; i < lines.Length; i++)
+            {
+                if (lines[i].Trim() != parent + ":") continue;
+                for (int j = i + 1; j < Math.Min(i + 4, lines.Length); j++)
+                {
+                    var t = lines[j].Trim();
+                    if (t.StartsWith(child + ":", StringComparison.Ordinal))
+                        return t.Substring(child.Length + 1).Trim();
+                }
+                return "";
+            }
+            return "";
         }
 
         // ------------------------------------------------------------------ 8. stories
@@ -1055,117 +1213,310 @@ namespace SummaRace.EditorTools
             }
             else Pass("No Google External Dependency Manager in Assets/");
 
-            // --- networking calls reachable from a shipping scene
-            var builtScenePaths = EditorBuildSettings.scenes.Where(s => s.enabled).Select(s => s.path)
-                                                            .Where(File.Exists).ToList();
+            CheckNetworkingReachability();
+        }
+
+        /// <summary>
+        /// Anything that could talk to a network or a vendor backend. Ads / analytics / purchasing
+        /// APIs are in here as well as raw sockets: com.unity.ads and com.unity.analytics have both
+        /// re-entered this project once already, and the Trash Dash code that calls them is still on
+        /// disk and still wired into the shipping scene — it is compiled out by a #if today and one
+        /// package install away from being compiled back in.
+        /// </summary>
+        private static readonly Regex NetPattern = new Regex(
+            @"Application\.OpenURL|UnityWebRequest|UnityEngine\.Networking|System\.Net|new\s+WWW\s*\(|" +
+            @"HttpClient|TcpClient|Socket\s*\(|" +
+            @"(?<![\w.])Analytics\s*\.|(?<![\w.])AnalyticsEvent\s*\.|(?<![\w.])Advertisement\s*\.|" +
+            @"(?<![\w.])Social\s*\.|(?<![\w.])Purchasing(?![\w])|UnityEngine\.Purchasing|(?<![\w.])Firebase(?![\w])");
+
+        private static void CheckNetworkingReachability()
+        {
             var sceneText = new Dictionary<string, string>();
-            foreach (var p in builtScenePaths)
+            foreach (var p in EditorBuildSettings.scenes.Where(s => s.enabled).Select(s => s.path).Where(File.Exists))
             {
-                try { sceneText[p] = File.ReadAllText(p); } catch { }
+                var t = SafeRead(p);
+                if (t != null) sceneText[p] = t;
             }
 
-            var netPattern = new Regex(@"Application\.OpenURL|UnityWebRequest|System\.Net|new\s+WWW\s*\(|HttpClient|TcpClient|Socket\s*\(");
-            var offenders = new List<string>();
-            var reachable = new List<string>();
+            // file → the guard that compiles its hits out (null = compiled in)
+            var liveHits = new List<string>();
+            var inertHits = new List<string>();
+            var liveFiles = new List<string>();
+            var inertFiles = new List<string>();
 
             foreach (var cs in EnumerateRuntimeScripts())
             {
-                string body;
-                try { body = File.ReadAllText(cs); } catch { continue; }
-                if (!netPattern.IsMatch(body)) continue;
+                var body = SafeRead(cs);
+                if (body == null || !NetPattern.IsMatch(body)) continue;
 
-                offenders.Add(cs);
+                bool anyLive = false;
+                var guards = new SortedSet<string>();
 
-                var guid = AssetDatabase.AssetPathToGUID(cs.Replace('\\', '/'));
-                if (string.IsNullOrEmpty(guid)) continue;
-                foreach (var kv in sceneText)
-                    if (kv.Value.Contains(guid))
-                        reachable.Add(Path.GetFileName(cs) + "  in  " + kv.Key);
+                foreach (var line in ScanCode(cs))
+                {
+                    var hit = NetPattern.Match(line.Code);
+                    if (!hit.Success) continue;
+
+                    if (line.InactiveGuard == null)
+                    {
+                        anyLive = true;
+                        liveHits.Add(cs + ":" + line.Number + "  " + hit.Value.Trim());
+                    }
+                    else guards.Add(line.InactiveGuard);
+                }
+
+                if (anyLive) liveFiles.Add(cs);
+                else if (guards.Count > 0) inertFiles.Add(cs);
+
+                if (guards.Count > 0)
+                    inertHits.Add(cs + "  — behind #if " + string.Join(" / #if ", guards));
             }
 
-            if (reachable.Count == 0)
-                Pass("No networking call is reachable from a scene in the build list",
-                     offenders.Count == 0
-                        ? "No runtime script contains one at all."
-                        : offenders.Count + " runtime script(s) contain one but no build scene references them:\n" +
-                          string.Join("\n", offenders));
+            // Reachability: a script matters if a build scene references it, or if a PREFAB does —
+            // a prefab is where a component actually lives, and the old check looked only at scenes,
+            // so an ads button sitting on a prefab that a shipping scene instantiates was invisible.
+            var reachable = new List<string>();
+            var interesting = liveFiles.Concat(inertFiles).Distinct().ToList();
+            var guidToScript = new Dictionary<string, string>();
+            foreach (var cs in interesting)
+            {
+                string guid;
+                try { guid = AssetDatabase.AssetPathToGUID(cs.Replace('\\', '/')); } catch { continue; }
+                if (!string.IsNullOrEmpty(guid) && !guidToScript.ContainsKey(guid)) guidToScript[guid] = cs;
+            }
+
+            var liveSet = new HashSet<string>(liveFiles);
+            foreach (var kv in guidToScript)
+                foreach (var scene in sceneText)
+                    if (scene.Value.Contains(kv.Key))
+                        reachable.Add((liveSet.Contains(kv.Value) ? "LIVE " : "inert") + "  " +
+                                      Path.GetFileName(kv.Value) + "  on a GameObject in  " + scene.Key);
+
+            if (guidToScript.Count > 0)
+            {
+                var prefabs = SafeList(() => Directory.EnumerateFiles("Assets", "*.prefab", SearchOption.AllDirectories).ToList());
+                foreach (var prefab in prefabs)
+                {
+                    var text = SafeRead(prefab);
+                    if (text == null) continue;
+
+                    foreach (var kv in guidToScript)
+                    {
+                        if (!text.Contains(kv.Key)) continue;
+
+                        var prefabPath = prefab.Replace('\\', '/');
+                        string prefabGuid;
+                        try { prefabGuid = AssetDatabase.AssetPathToGUID(prefabPath); } catch { prefabGuid = null; }
+
+                        var host = string.IsNullOrEmpty(prefabGuid)
+                            ? null
+                            : sceneText.FirstOrDefault(s => s.Value.Contains(prefabGuid)).Key;
+
+                        reachable.Add((liveSet.Contains(kv.Value) ? "LIVE " : "inert") + "  " +
+                                      Path.GetFileName(kv.Value) + "  on prefab  " + prefabPath +
+                                      (host != null
+                                        ? "  ← used by  " + host
+                                        : "  (no build scene references this prefab directly — it can still be reached " +
+                                          "through Addressables or Resources)"));
+                    }
+                }
+            }
+
+            // --- verdicts
+            if (liveHits.Count == 0)
+                Pass("No compiled-in networking, ads, analytics or purchasing call exists in player code",
+                     inertHits.Count == 0
+                        ? "Nothing matched at all."
+                        : "Nothing is compiled in. " + inertHits.Count + " file(s) still CONTAIN such calls but " +
+                          "they are behind a preprocessor guard that is not defined for Android — see the next row.");
             else
-                Fail("A networking call is reachable from a shipping scene", string.Join("\n", reachable),
-                     "100% offline is a non-negotiable. Remove the component (both OpenURL objects were deleted once " +
-                     "before and this is how they would be caught coming back).");
+                Fail("A compiled-in networking / ads / analytics call exists in player code",
+                     string.Join("\n", liveHits.Take(30)) + (liveHits.Count > 30 ? "\n…" : ""),
+                     "100% offline is a GDD non-negotiable and a condition of the study's consent. " +
+                     "Delete the call or the script. (Both Application.OpenURL objects were removed once already; " +
+                     "this is the check that catches them coming back.)");
+
+            if (inertHits.Count > 0)
+                Info(inertHits.Count + " file(s) contain ads/analytics/purchasing calls that are PRESENT BUT COMPILED OUT",
+                     string.Join("\n", inertHits.Take(30)) + (inertHits.Count > 30 ? "\n…" : "") +
+                     "\nAndroid scripting define symbols: " +
+                     (AndroidDefineSymbols().Count == 0 ? "(none)" : string.Join(", ", AndroidDefineSymbols())) +
+                     "\nThis is Trash Dash's shop / leaderboard / rewarded-ad code. It ships as dead source, costs " +
+                     "nothing in the APK, and reaches no network today. The reason it is reported rather than " +
+                     "ignored: UNITY_ADS / UNITY_ANALYTICS / UNITY_PURCHASING are defined AUTOMATICALLY by " +
+                     "Unity the moment the matching package is installed. Nobody has to edit these files to arm " +
+                     "them — re-adding one package to Packages/manifest.json is enough, and that has already " +
+                     "happened twice in this repo. Removing the code outright is the permanent fix.");
+
+            if (reachable.Count == 0)
+                Pass("No such script is referenced by a build scene or by any prefab");
+            else if (reachable.All(r => r.StartsWith("inert", StringComparison.Ordinal)))
+                Info(reachable.Count + " reference(s) to compiled-out ads/analytics code from shipping content",
+                     string.Join("\n", reachable.Take(30)) + (reachable.Count > 30 ? "\n…" : "") +
+                     "\nHarmless while the guards are off — listed so that if a banned package ever returns you can " +
+                     "see immediately which shipping objects would come alive.");
+            else
+                Fail("A LIVE networking / ads / analytics script is on shipping content",
+                     string.Join("\n", reachable.Where(r => r.StartsWith("LIVE", StringComparison.Ordinal))),
+                     "Delete the component from that object/prefab, or delete the script. " +
+                     "An offline build that reaches a network breaks the study's consent terms, not just the GDD.");
         }
 
         // ------------------------------------------------------------------ 11. UnityEditor leakage
 
+        private static readonly Regex UsingEditorRx =
+            new Regex(@"^\s*using\s+(static\s+)?([A-Za-z_]\w*\s*=\s*)?UnityEditor(\.|;|\s)");
+        private static readonly Regex QualifiedEditorRx =
+            new Regex(@"(?<![\w.])UnityEditor(Internal)?\s*\.");
+
+        /// <summary>
+        /// Editor-only types used WITHOUT the UnityEditor prefix. A file whose `using UnityEditor;`
+        /// is correctly wrapped in #if UNITY_EDITOR but whose *use* of AssetDatabase is not still
+        /// fails the player compile, and neither of the two patterns above can see it.
+        /// Split three ways so each can be matched in the shape it is actually written in.
+        /// </summary>
+        private static readonly string[] EditorStaticTypes =
+        {
+            "AssetDatabase", "AssetImporter", "AssetPreview", "BuildPipeline", "EditorApplication",
+            "EditorBuildSettings", "EditorGUI", "EditorGUILayout", "EditorGUIUtility", "EditorJsonUtility",
+            "EditorPrefs", "EditorSceneManager", "EditorStyles", "EditorUserBuildSettings", "EditorUtility",
+            "GameObjectUtility", "HandleUtility", "Handles", "MonoImporter", "PlayerSettings",
+            "PrefabUtility", "SceneView", "Selection", "Undo", "Unwrapping",
+        };
+        private static readonly string[] EditorDeclaredTypes =
+        {
+            "SerializedObject", "SerializedProperty", "EditorWindow", "PropertyDrawer", "ScriptableWizard",
+            "GenericMenu", "TextureImporter", "ModelImporter", "AudioImporter", "AssetPostprocessor",
+        };
+        private static readonly string[] EditorAttributes =
+        {
+            "MenuItem", "CustomEditor", "CustomPropertyDrawer", "InitializeOnLoad", "InitializeOnLoadMethod",
+            "DidReloadScripts", "PostProcessBuild", "PostProcessScene", "OnOpenAsset", "CanEditMultipleObjects",
+        };
+
+        private static readonly Regex UnqualifiedStaticRx =
+            new Regex(@"(?<![\w.])(" + string.Join("|", EditorStaticTypes) + @")\s*\.");
+        private static readonly Regex UnqualifiedDeclRx =
+            new Regex(@"(?<![\w.])(" + string.Join("|", EditorDeclaredTypes) + @")(?![\w])");
+        private static readonly Regex UnqualifiedAttrRx =
+            new Regex(@"\[\s*(?:\w+\s*:\s*)?(" + string.Join("|", EditorAttributes) + @")(?![\w])");
+
         private static void CheckUnityEditorLeakage()
         {
-            // An unguarded `using UnityEditor;` in code that compiles into Assembly-CSharp makes the
-            // PLAYER build fail while the Editor compiles it happily — so it is invisible until a
-            // build is attempted, and this project has hit it three times (TrackManager.cs,
+            // An unguarded reference to UnityEditor in code that compiles into a PLAYER assembly
+            // makes the APK build fail while the Editor compiles it happily — so it is invisible
+            // until a build is attempted, and this project has hit it three times (TrackManager.cs,
             // CreatureMover.cs, TMP_TextInfoDebugTool.cs). It cost more than the missing module.
-            var usingRx = new Regex(@"^\s*using\s+(static\s+)?([A-Za-z_]\w*\s*=\s*)?UnityEditor(\.|;|\s)");
-            var qualifiedRx = new Regex(@"(?<![\w.])UnityEditor(Internal)?\s*\.");
-
             var unguardedUsings = new List<string>();
             var unguardedQualified = new List<string>();
+            var unguardedUnqualified = new List<string>();
+            var filesWithBadUsing = new HashSet<string>();
             int scanned = 0;
 
             foreach (var cs in EnumerateRuntimeScripts())
             {
-                string[] lines;
-                try { lines = File.ReadAllLines(cs); } catch { continue; }
+                var lines = ScanCode(cs);
+                if (lines.Count == 0 && SafeRead(cs) == null) continue;
                 scanned++;
 
-                var stack = new List<bool>();   // one entry per open #if, true when UNITY_EDITOR-guarded
-                for (int i = 0; i < lines.Length; i++)
+                var self = SelfDeclaredNames(cs);
+
+                foreach (var line in lines)
                 {
-                    var raw = lines[i];
-                    var line = raw.TrimStart();
+                    if (line.EditorGuarded) continue;                  // inside a UNITY_EDITOR-only region
 
-                    if (line.StartsWith("#if"))
+                    if (UsingEditorRx.IsMatch(line.Code))
                     {
-                        stack.Add(ImpliesEditor(line.Substring(3)));
-                        continue;
-                    }
-                    if (line.StartsWith("#elif"))
-                    {
-                        if (stack.Count > 0) stack[stack.Count - 1] = ImpliesEditor(line.Substring(5));
-                        continue;
-                    }
-                    if (line.StartsWith("#else"))
-                    {
-                        // The else-branch of a UNITY_EDITOR block is the player branch: not guarded.
-                        if (stack.Count > 0) stack[stack.Count - 1] = false;
-                        continue;
-                    }
-                    if (line.StartsWith("#endif"))
-                    {
-                        if (stack.Count > 0) stack.RemoveAt(stack.Count - 1);
+                        unguardedUsings.Add($"{cs}:{line.Number}  {line.Code.Trim()}");
+                        filesWithBadUsing.Add(cs);
                         continue;
                     }
 
-                    if (stack.Any(g => g)) continue;                       // inside a UNITY_EDITOR region
-                    if (line.StartsWith("//") || line.StartsWith("*") || line.StartsWith("/*")) continue;
+                    if (QualifiedEditorRx.IsMatch(line.Code) && !line.Code.Contains("nameof("))
+                    {
+                        unguardedQualified.Add($"{cs}:{line.Number}  {line.Code.Trim()}");
+                        continue;
+                    }
 
-                    if (usingRx.IsMatch(raw)) unguardedUsings.Add($"{cs}:{i + 1}  {line.Trim()}");
-                    else if (qualifiedRx.IsMatch(raw) && !line.Contains("nameof(")) unguardedQualified.Add($"{cs}:{i + 1}  {line.Trim()}");
+                    var token = FirstUnqualifiedEditorType(line.Code, self);
+                    if (token != null)
+                        unguardedUnqualified.Add($"{cs}:{line.Number}  [{token}]  {line.Code.Trim()}");
                 }
             }
 
+            // A file whose `using UnityEditor;` is already reported would otherwise list every
+            // AssetDatabase call in it as a second finding; one fix closes them all.
+            unguardedUnqualified = unguardedUnqualified
+                .Where(h => !filesWithBadUsing.Any(f => h.StartsWith(f + ":", StringComparison.Ordinal))).ToList();
+
+            var scannedNote =
+                "Covers Assets/ AND the runtime assemblies of non-registry packages — a git or local package " +
+                "whose Runtime asmdef has an empty includePlatforms compiles into the APK exactly like our own " +
+                "code (this project has one: com.coplaydev.unity-mcp). Scripts in an Editor/ folder, scripts " +
+                "under an Editor-only .asmdef, and test assemblies are correctly excluded.\n" +
+                PackageScanNote();
+
             if (unguardedUsings.Count == 0)
-                Pass($"No unguarded 'using UnityEditor' in runtime-compiled code ({scanned} scripts scanned)",
-                     "Scripts inside an Editor/ folder, and scripts governed by an Editor-only .asmdef, are correctly excluded.");
+                Pass($"No unguarded 'using UnityEditor' in player-compiled code ({scanned} scripts scanned)", scannedNote);
             else
-                Fail($"{unguardedUsings.Count} unguarded 'using UnityEditor' in runtime code — the player build cannot compile",
+                Fail($"{unguardedUsings.Count} unguarded 'using UnityEditor' in player code — the APK cannot compile at all",
                      string.Join("\n", unguardedUsings),
-                     "Wrap the import in #if UNITY_EDITOR … #endif (and every use of it), or delete it if unused, " +
-                     "or move the file into an Editor/ folder. The Editor compiles these fine, so nothing else will warn you.");
+                     "You will not get a broken game, you will get no game: the build stops with a compile error " +
+                     "and no APK is produced. Wrap the import in #if UNITY_EDITOR … #endif (and every use of it), " +
+                     "delete it if unused, or move the file into an Editor/ folder. The Editor compiles these " +
+                     "happily, so nothing else will warn you.");
+
+            if (unguardedUnqualified.Count == 0)
+                Pass($"No unguarded unqualified editor type (AssetDatabase, Handles, MenuItem, …) in player code",
+                     "This is the leak the two checks above cannot see: a file whose `using UnityEditor;` IS " +
+                     "correctly guarded, but which then uses AssetDatabase or [MenuItem] outside the guard. " +
+                     "Same hard build failure, no warning anywhere else.");
+            else
+                Fail($"{unguardedUnqualified.Count} unguarded editor-only type use(s) in player code — the APK cannot compile",
+                     string.Join("\n", unguardedUnqualified.Take(25)) + (unguardedUnqualified.Count > 25 ? "\n…" : ""),
+                     "Same outcome as an unguarded using: the build stops and no APK is produced. Move the code " +
+                     "inside #if UNITY_EDITOR … #endif, or into an Editor/ folder.\n" +
+                     "FALSE POSITIVE CHECK: this matches by NAME, because there is no compiler here. If the line " +
+                     "is really your own type or field that happens to share the name, ignore the row — comments, " +
+                     "strings and types declared in the same file are already excluded.");
 
             if (unguardedQualified.Count > 0)
                 Warn($"{unguardedQualified.Count} unguarded fully-qualified UnityEditor reference(s)",
                      string.Join("\n", unguardedQualified.Take(25)) + (unguardedQualified.Count > 25 ? "\n…" : ""),
-                     "Same failure mode as the using-directive if it is real code; check for false positives in " +
-                     "strings and block comments.");
+                     "Same hard build failure as the using-directive if it is real code. Comments and string " +
+                     "literals are already excluded, so treat each row as real until you have looked at it.");
+        }
+
+        /// <summary>
+        /// Returns the first editor-only type name used unqualified on a line, or null. Names the
+        /// file declares itself are excluded — the common false positive is a project type that
+        /// happens to be called Selection or Undo.
+        /// </summary>
+        private static string FirstUnqualifiedEditorType(string code, HashSet<string> selfDeclared)
+        {
+            foreach (var rx in new[] { UnqualifiedStaticRx, UnqualifiedDeclRx, UnqualifiedAttrRx })
+            {
+                var m = rx.Match(code);
+                if (m.Success && !selfDeclared.Contains(m.Groups[1].Value)) return m.Groups[1].Value;
+            }
+            return null;
+        }
+
+        private static readonly Dictionary<string, HashSet<string>> SelfDeclaredCache =
+            new Dictionary<string, HashSet<string>>();
+
+        private static HashSet<string> SelfDeclaredNames(string path)
+        {
+            if (SelfDeclaredCache.TryGetValue(path, out var cached)) return cached;
+
+            var set = new HashSet<string>();
+            var body = SafeRead(path);
+            if (body != null)
+                foreach (Match m in Regex.Matches(body, @"\b(?:class|struct|interface|enum)\s+([A-Za-z_]\w*)"))
+                    set.Add(m.Groups[1].Value);
+
+            SelfDeclaredCache[path] = set;
+            return set;
         }
 
         private static bool ImpliesEditor(string condition)
@@ -1173,6 +1524,12 @@ namespace SummaRace.EditorTools
             if (string.IsNullOrEmpty(condition)) return false;
             if (Regex.IsMatch(condition, @"!\s*UNITY_EDITOR")) return false;
             return condition.Contains("UNITY_EDITOR");
+        }
+
+        /// <summary>True when the condition is exactly "!UNITY_EDITOR", so its #else IS editor-only.</summary>
+        private static bool NegationImpliesEditor(string condition)
+        {
+            return condition != null && Regex.IsMatch(condition, @"^\s*\(*\s*!\s*UNITY_EDITOR\s*\)*\s*$");
         }
 
         // ------------------------------------------------------------------ shared helpers
