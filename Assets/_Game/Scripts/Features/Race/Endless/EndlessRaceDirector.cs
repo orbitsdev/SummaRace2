@@ -1505,8 +1505,8 @@ namespace SummaRace.Features.Race.Endless
             // move in pixels while a fixed top offset does not. A flat (0,-500) reads correctly
             // at 1920 and lands back inside the board at 1080x2400 (board bottom 612px from the
             // top, banner top 500). Hung off the anchor it is 12px below the board at every
-            // aspect: y 0.681-0.739 at 9:16 (63px of clearance above the feedback pill's 0.648)
-            // and 0.690-0.740 at 20:9.
+            // aspect: y 0.676-0.739 at 9:16 (53px of clearance above the feedback pill, which
+            // tops out at 0.648) and y 0.690-0.740 at 20:9 (171px of clearance).
             _bannerText = MakeHudText(canvasGo.transform, new Vector2(0.5f, 1f), Vector2.zero, 64f);
             var bannerRt = _bannerText.rectTransform;
             bannerRt.anchorMin = bannerRt.anchorMax = new Vector2(0.5f, PreviewBandBottom);

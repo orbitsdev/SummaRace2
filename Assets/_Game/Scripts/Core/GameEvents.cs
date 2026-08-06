@@ -135,6 +135,20 @@ namespace SummaRace.Core
 
     public struct SaveFailed { public string reason; }
 
+    /// <summary>
+    /// Every profile and every log on this tablet has just been erased — the post-study wipe, or
+    /// the PIN-recovery reset. Listeners must DISCARD anything they were about to write, not
+    /// flush it.
+    /// <para>
+    /// That distinction is the whole reason this event exists. The wipe is followed immediately
+    /// by <c>GameManager.InitProfiles</c>, and if a play-through was still in flight the next
+    /// row written would call <c>Directory.CreateDirectory</c> and recreate the logs folder —
+    /// putting one row of an erased child's data back on a tablet the researcher has been told
+    /// is clean. The erase is the consent promise; it has to be the last word.
+    /// </para>
+    /// </summary>
+    public struct AllDataErased { }
+
     /// <summary>Result of one race run (built at the finish line, TDD §11.6).</summary>
     [System.Serializable]
     public class RaceResult

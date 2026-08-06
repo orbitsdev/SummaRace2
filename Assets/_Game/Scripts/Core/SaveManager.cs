@@ -312,6 +312,11 @@ namespace SummaRace.Core
         /// <summary>Post-study wipe: removes profiles and all logs (GDD §9.4).</summary>
         public void DeleteAllData()
         {
+            // Before anything is removed, not after: SessionLogService drops the run in flight
+            // here. Otherwise its next write recreates the logs folder for a learner this call
+            // has just erased, on the one action whose entire purpose is that they are gone.
+            EventBus.Raise(new AllDataErased());
+
             try
             {
                 // The .bak/.tmp siblings TryWrite leaves behind hold the SAME learner data, so a

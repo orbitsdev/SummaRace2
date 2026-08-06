@@ -384,6 +384,14 @@ killed while the app is away), so **one play-through can appear as several lines
 
 Never sum or average across rows sharing a `runId` — you would count one child twice.
 
+The backgrounding snapshot is doing more work than it looks. The app also has a "clean quit"
+write, and **on a tablet that path never runs**: `Core/BackButtonGuard` cancels every quit so the
+Android BACK gesture cannot drop a child out of a story mid-run, and cancelling the quit also
+cancels the quit-time write. So on device, a run interrupted by anything other than finishing it
+reaches disk as a *partial* snapshot and nothing else. That is why deduplication is not optional
+housekeeping — it is the only thing separating "this child was interrupted twice and then
+finished" from three dropouts.
+
 **Do this before §5.2.** A mid-run snapshot has an empty `finishedIso` and `starsEarned == 0`,
 exactly like a genuinely abandoned run, because at the moment it was written the run genuinely had
 not finished. Testing for abandonment before deduplicating counts a backgrounded-then-completed

@@ -91,6 +91,7 @@ namespace SummaRace.Core
             EventBus.Subscribe<SummarySubmitted>(OnSummarySubmitted);
             EventBus.Subscribe<StoryCompleted>(OnStoryCompleted);
             EventBus.Subscribe<LearnerChanged>(OnLearnerChanged);
+            EventBus.Subscribe<AllDataErased>(OnAllDataErased);
         }
 
         private void OnDisable()
@@ -106,6 +107,25 @@ namespace SummaRace.Core
             EventBus.Unsubscribe<SummarySubmitted>(OnSummarySubmitted);
             EventBus.Unsubscribe<StoryCompleted>(OnStoryCompleted);
             EventBus.Unsubscribe<LearnerChanged>(OnLearnerChanged);
+            EventBus.Unsubscribe<AllDataErased>(OnAllDataErased);
+        }
+
+        /// <summary>
+        /// The tablet has just been erased. Drop the run in flight WITHOUT writing it — the one
+        /// place in this class that throws data away on purpose.
+        ///
+        /// <see cref="Flush"/> would be exactly wrong here: it appends, and AppendLog creates the
+        /// logs directory if it is missing, so flushing after a wipe recreates that folder and
+        /// puts a row of the erased child's play back on a tablet the researcher believes is
+        /// clean. The wipe is the consent promise made to those families, so it has to win over
+        /// this class's usual rule that a play-through is never lost.
+        /// </summary>
+        private void OnAllDataErased(AllDataErased evt)
+        {
+            _log = null;
+            _pagesRecorded.Clear();
+            _dirtySinceWrite = false;
+            _pauseStartedRealtime = -1f;
         }
 
         /// <summary>
