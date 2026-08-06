@@ -1,12 +1,16 @@
 # SummaRace — Finalization Plan
 
-**The live plan.** Rewritten 2026-08-06, verified against HEAD `b399e03` on
+**The live plan.** Rewritten 2026-08-06, verified against HEAD `b5a7003` on
 `experiment/endless-override-2`. Superseded content has been deleted rather than appended to — if
-it is not here, it is done or it no longer applies. Fifteen commits have landed since the previous
+it is not here, it is done or it no longer applies. Eighteen commits have landed since the previous
 version's baseline (`63e1be3`) and this one was checked against the source, not against that page.
 
+⚠️ **This branch moved four times while this page was being written.** Run
+`git log --oneline b5a7003..HEAD` before trusting a specific claim; if it prints nothing, this page
+is current.
+
 **Start with `SummaRace_Owner_Handover.md`.** That document carries the ordered critical path, the
-decisions waiting on the owner, and the record of what the last fifteen commits closed. This one
+decisions waiting on the owner, and the record of what the last eighteen commits closed. This one
 carries the *work list with effort*, so the two do not restate each other.
 
 ---
@@ -15,13 +19,13 @@ carries the *work list with effort*, so the two do not restate each other.
 
 | Phase | State |
 |---|---|
-| P0 decontaminate | ✅ no ads/analytics/purchasing/GDK in `manifest.json`, every Unity service `m_Enabled: 0`, zero `Application.OpenURL` reachable from a build scene, 12 build scenes with Boot at index 0, app icon is ours |
+| P0 decontaminate | ✅ no ads/analytics/purchasing/GDK in `manifest.json`, every Unity service `m_Enabled: 0`, 12 build scenes with Boot at index 0, app icon is ours. **`Assets/Scripts/OpenURL.cs` deleted** (`d4f2544`) — it was unreachable from a build scene but still compiled into the player, so it was the last live `Application.OpenURL` there. Offline is now **a test** (`OfflineComplianceTests`, `b5a7003`) rather than a preflight item someone has to remember: it asserts the package list, the define symbols, Google's self-resurrecting `BillingMode.json` and the Unity service switches — the *source* of the regression, since Unity defines `UNITY_ADS`/`UNITY_ANALYTICS`/`UNITY_PURCHASING` automatically the moment the matching package returns, and this project has had that happen |
 | P1 30 stories | ✅ 30/30 load through the real `StoryLoader`, 0 validation failures. Card-width tell closed in both the race (F44) and the Reader (F47ⓖ). **The memoriser route is NOT closed — see C1** |
 | P2 reachable | ✅ StorySelect data-driven, SessionMap built and routed |
 | P3 profiles / logging / gating | ✅ `SessionLogService`, `TeacherGate`, NameEntry + TeacherMenu, teacher-gated switching, atomic profile writes, participant codes with export back-fill, log schema **5** (`arrangeOrders`) |
 | P4 10 worlds | ✅ theme + zone mix + sky dome + greenery + light; 10–20 distinct segment prefabs per race (was 3–4) |
-| P5 narration + art | ✅ 150/150 story clips, **plus 10 instructional clips** (Arrange, Summary, loading tips, race briefing), 30/30 hero PNGs resolve, 21/21 `AudioKeys`. 27 hero images are blank placeholders — appearance, not wiring |
-| P7 tests + build tooling | ✅ `Assets/_Game/Tests/`, `SummaRace ▸ Build Preflight`, `SummaRace ▸ Device Budget`. ⚠️ **the "45/45 green" figure is stale** — two fixtures have been added since and one (`NarrationArrayTests.cs`) is untracked. Re-run it; do not quote a number |
+| P5 narration + art | ✅ 150/150 story clips, **plus 10 instructional clips** (Arrange, Summary, loading tips, race briefing), 30/30 hero PNGs resolve, **31/31** `AudioKeys` (was 21), and `VoLoadingTips` — the one positional array reflection cannot see — is now asserted against the framework's five slots. 27 hero images are blank placeholders — appearance, not wiring |
+| P7 tests + build tooling | ✅ `Assets/_Game/Tests/`, `SummaRace ▸ Build Preflight` (eight blind spots closed in `d4f2544`, incl. unqualified editor types, `Packages/`, prefabs and six missing offline patterns), `SummaRace ▸ Device Budget`. ⚠️ **the "45/45 green" figure is stale** — two fixtures added since. Re-run it; do not quote a number |
 | P8 device budget | ✅ **applied** (`c03c2cd` + `24d682e`) — ~127MB of resident RAM recovered; verified on disk, the stems are `loadType: 1 / preloadAudioData: 0` and `music_menu` is streaming |
 | **P6 ship pass** | ⬜ **blocked on tooling — still the only thing between here and a study build** |
 
@@ -36,8 +40,8 @@ effort view.
 |---|---|---|---|
 | 1 | Install Android Build Support + OpenJDK + SDK/NDK on **6000.4.1f1**, Editor closed | 10–30 min download, unattended | **HARD BLOCKER** — verified: `PlaybackEngines/` holds only `windowsstandalonesupport`, so no APK can be produced at all |
 | 2 | Switch platform to Android (re-imports a 945MB `Assets/`) | 30–90 min, unattended — **do it the day before** | yes, follows 1 |
-| 3 | Turn on **Build Addressables on Player Build** (or build content by hand, every build) | 5 min + a few min per build | **HARD BLOCKER, and the worst one.** Verified: `m_BuildAddressablesWithPlayerBuild: 2`, no `aa/` folder, no `StreamingAssets`. The race's road, scenery and runner all load via Addressables, and their `TrackManager` GameObject is only activated at the end of a `Begin()` that `yield break`s when the character load returns null — so with no content the race **never starts.** `a760ec0` made that escapable, not playable |
-| 4 | `SummaRace ▸ Build Preflight`, fix every ✖ | 15 min + unknown fixes | yes |
+| 3 | ~~Turn on Build Addressables on Player Build~~ — **done in `e56643a`**; confirm content actually lands in the first build | 0 min + slower builds | **Was the worst blocker; now half-closed.** Verified: `m_BuildAddressablesWithPlayerBuild: 1` (BuildWithPlayer). Content has still never been built for any platform (no `aa/`, no `StreamingAssets`), so this has never been exercised — the preflight's second Addressables check correctly stays red until a build runs. The race's road, scenery and runner all load via Addressables, and their `TrackManager` GameObject is only activated at the end of a `Begin()` that `yield break`s when the character load returns null, so with no content the race **never starts**; `a760ec0` made that escapable, not playable. Also unverified: the preflight reports **13 of 15 bundled groups empty on disk, including all six the race needs** (`d4f2544`, filed WARN on the assumption `OnEnable` re-seeds them) |
+| 4 | `SummaRace ▸ Build Preflight`, fix every ✖ | 15 min + unknown fixes | yes — it is materially better than it was two commits ago, and its Addressables rows are HARD STOPs |
 | 5 | Build one APK, tag the commit, back up `debug.keystore` | 20–45 min (first IL2CPP build) | yes |
 | 6 | Sideload + on-device smoke test, **Wi-Fi off, on a non-`s01` story** | 30–60 min | yes — and it is the only way to settle five things listed as never-measured in Handover §4a |
 | 7 | Set + record the teacher PIN on every tablet, **and each learner's participant code** | ~2 min per tablet, + ~1 min per learner | yes. Export now back-fills the code onto rows written before it was set, so a late code is recoverable — set them at install anyway. Runbook §1.2b |
@@ -76,7 +80,7 @@ Ordered by value, effort honestly stated. None of it blocks a build.
 | R8 | **Real hero art ×27** | an evening | Verified: `s01_*` are ~1.8MB illustrations, `s02`–`s10` are 42–47KB blank gradients. 27 ready-to-paste prompts + exact spec in `SummaRace_Asset_Shopping_List.md` §2. Overwrite the filenames; never delete the `.png.meta` |
 | R9 | **Drop `Race.unity` from Build Settings**, then delete `Ch46_nonPBR.fbx` | 15 min | 51.5MB of source assets are reachable only from it (the scene file is 119KB); 12–20MB estimated APK saving. Zero call sites. Only worth doing if the APK is near the 300MB cap — **measure first, since no APK has ever been built** |
 | R10 | **Strip Trash Dash's inactive objects** from `MainSummaRace` | half a day | GameOver, Loadout ×2, Highscore, store/leaderboard buttons. The five buttons are already neutralised (`m_Calls: []`, non-interactable). GameOver and the Loadout children need a code guard first. **Their `UICamera/Game` chrome is load-bearing — `GameState.UpdateUI()` dereferences it every frame; do not delete it.** Post-study cleanup |
-| R11 | **Commit the working tree** | 5 min | `Assets/_Game/Editor/BuildPreflight.cs` has ~440 lines of uncommitted changes and `Assets/_Game/Tests/Editor/NarrationArrayTests.cs` is untracked. Also `ExportBackfillTests.cs` is tracked with no `.meta` — Unity will generate one on next import, which will show up as an unexplained diff |
+| R11 | **Commit the two stray `.meta` files** | 2 min | `ExportBackfillTests.cs.meta` and `NarrationArrayTests.cs.meta` are untracked — Unity generated them after their `.cs` files were committed without them. Harmless, but a `.cs` whose `.meta` is not in git gets a fresh guid on every clone |
 
 ---
 
@@ -108,8 +112,8 @@ Plus one that belongs to neither the build nor the researcher:
 
 | Risk | Where it stands |
 |---|---|
-| **The first APK ships without Addressables content** | The single highest-consequence risk in the project. The race does not merely look wrong — it never starts. Preflight fails on it; do not override that ✖ |
-| **The build has never been attempted on the target platform** | Everything about APK size, frame rate and IL2CPP behaviour is inference from disk. Three unguarded `using UnityEditor;` in runtime code have been found and fixed, each of which alone would have failed the *player* compile while the Editor stayed silent. `Link.xml` now preserves the crypto assemblies, which was the same class of defect one layer down: `SHA256.Create()` resolves by reflection and stripping was free to remove it, taking the PIN, session unlock and **Export** with it |
+| **The first APK ships without Addressables content** | Still the single highest-consequence risk. `e56643a` removed the obvious way to cause it (content now builds with the player) but nothing has been built, so the coupling has never been observed working, and 13 of 15 bundled groups read empty on disk. The race does not merely look wrong — it never starts. Preflight HARD-STOPs on it; do not override that ✖ |
+| **The build has never been attempted on the target platform** | Everything about APK size, frame rate and IL2CPP behaviour is inference from disk. Three unguarded `using UnityEditor;` in runtime code have been found and fixed, each of which alone would have failed the *player* compile while the Editor stayed silent — and `d4f2544` found the preflight could not have caught a fourth, since it never matched an *unqualified* `AssetDatabase.` or `[MenuItem]`, never walked `Packages/` (which this project compiles into the player), and never looked at prefabs. `Link.xml` now preserves the crypto assemblies, the same class of defect one layer down: `SHA256.Create()` resolves by reflection and stripping was free to remove it, taking the PIN, session unlock and **Export** with it |
 | **The instrument can be passed without comprehension** | Found three times at the same magnitude — race card width (F44), Reader option length (F47ⓖ), and now the Reader→race answer carryover, at 59.3% against a 34.0% control. The first two are guarded **in the build** by test fixtures; the third is not, and it is the one that is still live. C1 |
 | **Race defects that silently produce wrong study data** | Eight found and fixed to date: a tunnelled gate logged as WRONG, a watchdog re-present logged as CORRECT, `raceFirstOutcome` filled by re-present collections, a backgrounding that discarded the rest of a run, four saves that reported success without checking, an export that reported a failed write as "no logs", a learner handover indistinguishable from a dead battery, and a `HasData` check that would discard a run carrying only `racePicks`/`arrangeOrders`. Anything that writes `raceFirstPickCorrect` deserves the same scrutiny — it **is** the star count and the headline measure |
 | **RAM on the 2GB floor** | **Largely closed.** The pool was 220.6MB, not the 178.2MB previously recorded — there was a seventh DecompressOnLoad stem nobody had found — and ~127MB has been recovered and verified on disk. What remains unmeasured is the render side: `renderScale` 1.0, a 2048 shadow atlas and 4 cascades into a world that cannot receive a shadow. R7 |

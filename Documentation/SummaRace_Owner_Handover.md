@@ -1,15 +1,15 @@
 # SummaRace — Owner Handover
 
-**Rewritten 2026-08-06 · branch `experiment/endless-override-2` · verified against HEAD `b399e03`**
+**Rewritten 2026-08-06 · branch `experiment/endless-override-2` · verified against HEAD `b5a7003`**
 
-**Read this first. It is the front door to every other document.** Fifteen commits have landed
+**Read this first. It is the front door to every other document.** Eighteen commits have landed
 since this page was last true (`63e1be3`), several of them owner-driven steers, and this rewrite
 was checked against the source at HEAD rather than reconciled against the previous version. Where
 a claim could not be verified, it says so.
 
-**Working tree note:** `Assets/_Game/Editor/BuildPreflight.cs` has uncommitted changes and
-`Assets/_Game/Tests/Editor/NarrationArrayTests.cs` is untracked. Everything below describes
-HEAD, not the working tree.
+⚠️ **This branch moved four times while this page was being written** (`b399e03` → `902e078` →
+`d4f2544` → `e56643a` → `b5a7003`). Run `git log --oneline b5a7003..HEAD` before trusting any specific claim
+below; if that prints nothing, this page is current.
 
 ---
 
@@ -25,16 +25,20 @@ research row (log schema **5**), and the teacher PIN gates session unlocking and
 
 **But the race scene loads its road, its scenery and the runner itself through Addressables, and
 Addressables content has never been built for any platform.** In the Editor those resolve off the
-Asset Database, which is why every playtest has looked perfect. In an APK they come from bundles
-that do not exist. Commit `a760ec0` traced the chain: their `TrackManager` GameObject is activated
-at the *end* of `Begin()`, which `yield break`s early when the Addressables character load returns
-null — so `TrackManager` never appears, and the briefing used to wait for it forever with no
-working control on screen and Android BACK swallowed app-wide.
+Asset Database, which is why every playtest has looked perfect. In an APK they come from bundles.
+Commit `a760ec0` traced the chain: their `TrackManager` GameObject is activated at the *end* of
+`Begin()`, which `yield break`s early when the Addressables character load returns null — so
+`TrackManager` never appears, and the briefing used to wait for it forever with no working control
+on screen and Android BACK swallowed app-wide.
 
-**That trap is now bounded and escapable.** After a timeout the briefing turns into a working
-"this race is not ready — go back to Story Select" screen with the real cause logged. **Escapable
-is not playable.** Until Addressables content is built for Android, no learner can finish a story
-on a tablet. Nothing else on this page matters more.
+**Two things changed this, and neither is a substitute for building an APK.** First, that trap is
+bounded and escapable: after a timeout the briefing becomes a working "this race is not ready — go
+back to Story Select" screen with the real cause logged. **Escapable is not playable.** Second,
+`e56643a` set `m_BuildAddressablesWithPlayerBuild` to **1 (BuildWithPlayer)**, verified at HEAD, so
+"build an APK" and "build the content that APK needs" are no longer two separate actions with
+nothing connecting them. There is no longer an obvious way to produce a plausible-looking APK with
+no content in it — **but no build has ever run, so this has never been observed working.** The race
+starting on a tablet is still the first thing to confirm and it is still unconfirmed.
 
 Against that: **no APK has ever been built** (Android Build Support is not installed, so APK size
 and the 30fps floor remain arithmetic), **27 of the 30 stories have never been played through by
@@ -62,19 +66,26 @@ Then **switch platform to Android once** (`File ▸ Build Profiles ▸ Android �
 The first switch re-imports every texture in a 945MB `Assets/`. **Do this the day before, not on
 build day.**
 
-### 2. Build Addressables content for Android — the one that decides whether the study happens
+### 2. Confirm Addressables content actually builds — the one that decides whether the study happens
 
-Verified on disk at HEAD: `AddressableAssetSettings.asset` line 61 is
-`m_BuildAddressablesWithPlayerBuild: 2` (**DoNotBuildWithPlayer**), `Library/com.unity.addressables/`
-contains only `AddressablesBuildTEP.json` (a play-mode entry, not a content build), and there is
-no `Assets/StreamingAssets`.
+**Half of this is already done.** Verified on disk at HEAD: `AddressableAssetSettings.asset` line 61
+is now `m_BuildAddressablesWithPlayerBuild: 1` (**BuildWithPlayer**, set in `e56643a`), so the
+player build produces the content automatically. Do not change it back — with `2` it was possible to
+build an APK that installs, boots, plays Boot, the menu, the map, Story Select and the whole Reader,
+and then hits a race that never starts, with no symptom until a learner is holding the tablet.
 
-`Window ▸ Asset Management ▸ Addressables ▸ Settings` ▸ **Build Addressables on Player Build**
-(recommended — every APK then carries current content with no human step), *or* build content by
-hand from the Groups window with the platform already on Android, before every single build.
+**The other half has never happened.** `Library/com.unity.addressables/` still contains only
+`AddressablesBuildTEP.json` (a play-mode entry, not a content build), there is no `aa/` folder for
+any platform, and no `Assets/StreamingAssets`. The preflight's second Addressables check correctly
+stays red until a build actually runs.
+
+Also reported by the preflight in `d4f2544`, and **not independently verified here**: 13 of 15
+bundled Addressables groups are empty on disk, including all six the race needs. That commit filed
+it as a WARN rather than a blocker on the reasoning that `OnEnable` very likely re-seeds them.
+**Treat it as a thing to look at on the first build**, not as a settled non-issue.
 
 **How you will know it worked:** the race starts. If you see the "this race is not ready yet" card
-with a button back to Story Select, this step did not take.
+with a button back to Story Select, content did not ship.
 
 ### 3. Run `SummaRace ▸ Build Preflight`
 
@@ -287,7 +298,7 @@ unlock session 6 HARD — no code change. Fold this into the D1 email.
 
 | # | Thing | Why it is unmeasured |
 |---|---|---|
-| 1 | **Whether the race runs at all in a player** | Addressables content has never been built. §2 step 2. |
+| 1 | **Whether the race runs at all in a player** | Addressables content has never been built for any platform. The setting that makes a player build produce it is now on, and has never been exercised. §2 step 2. |
 | 2 | **APK size** vs the 300MB cap | No APK has ever been built. |
 | 3 | **30fps in the race** on the 2GB / Android 8 floor device | Same. Never observed on hardware. |
 | 4 | **27 of 30 stories, end to end** | Never played once, by anyone, in any mode. |
@@ -297,7 +308,8 @@ unlock session 6 HARD — no code change. Fold this into the D1 email.
 | 8 | **Which tablet the study uses** | The readability audit's verdicts swing on 7" vs 10.1", and `b399e03`'s aspect-ratio fix was derived for 4:3 / 16:10 / 9:16 / 20:9 without knowing which one ships. Cheapest unknown to resolve. |
 | 9 | **End-to-end session timing** | The runbook's 15–25 min/session is an estimate and the race got materially longer in `8cba732` (D2). Do one timed dry run. |
 | 10 | **Draw-call cost of the race world** | `63e1be3` + `c03c2cd` added greenery, a second theme and a mixed-family road. Author's estimate: up to **+200 draw calls worst case**, unmeasured on any device. If the race misses 30fps, **halve `GameRules.RaceMaxSceneryPerSegment` (14) first.** |
-| 11 | **Test suite count at HEAD** | The "45/45 green" figure predates two new fixtures (`ExportBackfillTests`, and untracked `NarrationArrayTests`). I cannot run Unity's test runner from here. **Re-run it; do not quote 45/45.** |
+| 11 | **Test suite count at HEAD** | The "45/45 green" figure predates two new fixtures (`ExportBackfillTests`, `NarrationArrayTests`). I cannot run Unity's test runner from here. **Re-run it; do not quote 45/45.** |
+| 12 | **Whether the 13 empty Addressables groups matter** | Reported by the preflight (`d4f2544`), filed as WARN on the reasoning that Unity re-seeds them on `OnEnable`. Not independently verified. |
 
 ### 4b. Known limitations that will still be there on day 1
 
@@ -373,6 +385,11 @@ document is stale.**
 | **`HasData` did not know about `racePicks` or `arrangeOrders`** (`0752fb3`) | A run carrying only those would have been discarded as "empty" by the check whose own comment promises abandoned runs always carry something. |
 | **A learner handover was byte-identical to a dead battery** (`0752fb3`) | Empty `abandonReason`. On a shared tablet that happens every time a child finishes, so the data would have carried a steady stream of false dropouts in exactly the configuration where someone might report a dropout rate. It has its own token now. |
 | **The race world stopped being four buildings** (`c03c2cd`) | Five of the ten worlds drew from the same **four** Suburbs prefabs across ~55 placements. Worlds now draw a weighted **mix** of families in blocks measured in metres of laid track: **10–20 distinct prefabs per race, mean ~16.** Zero new prefabs, live segment count untouched. |
+| **Addressables content is now coupled to the player build** (`e56643a`) | `m_BuildAddressablesWithPlayerBuild` 2 → **1**. Slower builds, but there is no longer a way to produce a plausible-looking APK with no content in it. §2 step 2. |
+| **The preflight had eight blind spots** (`d4f2544`) | Each closed and exercised offline against the real repo with 32 mutation assertions. It matched only `using UnityEditor` and fully-qualified `UnityEditor.`, so an **unqualified `AssetDatabase.` or `[MenuItem]`** in a file whose using *is* guarded was invisible — and that fails the player compile while the Editor stays silent, which has already bitten this project three times (45 editor names now, 0 hits today). It walked `Assets/` only, never `Packages/` — this project has a git-URL package whose runtime asmdef compiles into the player (scope 222 → 260 scripts). `#else` was always treated as unguarded. The offline check omitted `Analytics.`, `Advertisement.`, `Purchasing`, `Social.`, `UnityEngine.Networking` and `Firebase`, so it reported PASS while the shipping scene reached files full of them — right only by accident, since those sit behind defines Unity adds **automatically** the moment the matching package returns, which has happened twice here. It searched scene YAML only, so a script on a **prefab** used by a scene was invisible (found `AdsForMission` on `AddMissionButton.prefab`, referenced by `MainSummaRace`). Four checks added that did not exist: predictive-back vs `BackButtonGuard`, Android graphics APIs decoded from the hex blob, `Link.xml` crypto preservation, and fog stripping. |
+| **`Assets/Scripts/OpenURL.cs` deleted** (`d4f2544`) | Verified gone. Referenced only by their `Main.unity`/`Start.unity`, neither in Build Settings — but it **compiled into the player** and was the last live `Application.OpenURL` there, guaranteeing a permanent FAIL on the offline check. A check that is always red is a check nobody reads. Zero live networking calls in player code now; the remaining hits are all in `includePlatforms: ["Editor"]` assemblies. |
+| **Offline compliance is a test now, not a checklist item** (`b5a7003`) | `OfflineComplianceTests` guards the *source* of the regression rather than its symptom. Trash Dash's shop, leaderboard and rewarded-ad code is still in the project at **49 call sites**, inert only because `UNITY_ADS` / `UNITY_ANALYTICS` / `UNITY_PURCHASING` are undefined — and **nobody has to touch one of those files to arm them**, because Unity defines those symbols automatically when the matching package is present. Not hypothetical: the full Endless Runner import silently added all three to the manifest, and Google's `BillingMode.json` re-created itself after being deleted once. Neither was noticeable by playing the game. Verified: 0 banned packages, Android defines are `UNITY_POST_PROCESSING_STACK_V2` only, no `BillingMode.json`, every `m_Enabled` in `UnityConnectSettings` is 0. |
+| **`AudioKeys.VoLoadingTips` was unguarded** (`902e078`) | `ResourceContractTests` proves every audio key resolves by reflecting over `const string` fields, so the ten new instructional constants were covered for free — but `VoLoadingTips` is a `static readonly string[]`, invisible to reflection, and it is the one place where an **index carries meaning** (entry *i* is the spoken form of `GameText.LoadingTips[i]`). A mismatch does not throw: `SceneLoader` bounds-checks, so it degrades to silence or to the wrong SWBST definition read aloud over the right one on screen — and the learner who cannot read the tip is the one person unable to notice. Verified alongside: **31/31** `AudioKeys` constants, 30/30 hero images, 150/150 story clips, and the ten new `.meta` files are CompressedInMemory / no preload. |
 | **The Main Menu's "Playing as \<name\>" was navy on dark brown, half cut by the ground edge** (`a4ed8bd`) | Placed on the stated assumption that `bg_playground` is a bright sky backdrop. It is not. Found by playing the game from Boot rather than reading the code. It now carries its own chip and stops depending on what is behind it. |
 
 ### 4d. Where the documents disagree — and which one is right
@@ -431,11 +448,10 @@ Everything else is a snapshot with a date on it, and §4d lists where a snapshot
 
 1. **Send the researcher email (D1).** Five minutes of typing, and the answers arrive on her clock.
 2. Install the Android module — it downloads while you do everything else.
-3. Turn on **Build Addressables on Player Build**.
-4. Run `Build Preflight`, fix every ✖.
-5. Build, sideload to one tablet, and play **one non-`s01` story end to end with Wi-Fi off**.
+3. Run `Build Preflight`, fix every ✖. (Build Addressables on Player Build is already on.)
+4. Build, sideload to one tablet, and play **one non-`s01` story end to end with Wi-Fi off**.
 
-Step 5 answers, in ninety seconds each, four things nothing else can: does the race start at all,
+Step 4 answers, in ninety seconds each, four things nothing else can: does the race start at all,
 does Android BACK close the app, does a tap change lane, and can the soft keyboard be dismissed.
 Everything else on this page can wait until you know the app installs, runs, and finishes a story
 on real hardware.
