@@ -406,13 +406,14 @@ namespace SummaRace.Constants
         public static readonly string[] RaceCountdown = { "3", "2", "1", "GO!" };
 
         // Race feedback + banner
-        /// <summary>Shown on a wrong pick, when the gate has just gone and the right answer is
-        /// on its way back as a single glowing card (EndlessRaceDirector.ScheduleRepresent).
-        /// "The glowing one!" named a thing with no verb — it never said what to do about it,
-        /// and it reads as a fragment to a learner still building English sentences. Same
-        /// "Not quite —" opening as the Reader's version, so the two screens feel like one
-        /// voice, and no blame in either.</summary>
-        public const string RaceWrongFeedback = "Not quite — get the glowing card!";
+        //
+        // RaceWrongFeedback ("Not quite — get the glowing card!") was here and is deleted. It
+        // told the learner to go and collect a card that no longer exists: the re-present gate it
+        // described was removed when the wrong-answer beat became a 2.2s reveal of the correct
+        // answer. An instruction to do something impossible is worse than no instruction — a
+        // child who cannot find the glowing card concludes they missed it, on the beat that
+        // exists to reassure them. The director now shows the answer itself, which needs no
+        // constant because it is story content.
         // Race pause. A learner could not leave a race at all before this — in a 55-minute
         // classroom session the likeliest real failure is a child tapping the wrong story, or the
         // clock running out, and force-quitting was the only way out (which files the run as

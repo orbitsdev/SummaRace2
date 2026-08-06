@@ -18,6 +18,11 @@
 //     file as text for the same reason: a missing package must not break compilation.
 //   * RE-DERIVE, DON'T HARDCODE. Story/clip/scene counts come from the constants and
 //     the loader the game itself uses, so the report cannot drift from the game.
+//   * "PLAYER CODE" IS NOT THE SAME AS "Assets/". A package whose Runtime asmdef has an
+//     empty includePlatforms compiles into the APK exactly like our own scripts — this
+//     project has one (com.coplaydev.unity-mcp, a git-URL package). Every source scan
+//     therefore covers Assets/ AND the runtime assemblies of packages that are not
+//     Unity-registry packages. See EnumerateRuntimeScripts.
 
 using System;
 using System.Collections.Generic;
@@ -84,6 +89,8 @@ namespace SummaRace.EditorTools
             Results.Clear();
             _projectSettingsText = null;   // ProjectSettings edits do not trigger a domain reload
             _runtimeScripts = null;
+            _runtimeScriptSources = null;
+            _androidDefines = null;
 
             Run("Editor & platform", CheckEditorAndPlatform);
             Run("Build Settings scenes", CheckBuildScenes);
@@ -91,6 +98,7 @@ namespace SummaRace.EditorTools
             Run("Player settings (Android)", CheckPlayerSettings);
             Run("App icon", CheckIcons);
             Run("Signing", CheckSigning);
+            Run("IL2CPP stripping & shader keywords", CheckStrippingAndKeywords);
             Run("Addressables", CheckAddressables);
             Run("Content: stories", CheckStories);
             Run("Content: audio keys", CheckAudioKeys);
@@ -204,18 +212,36 @@ namespace SummaRace.EditorTools
             // Trash Dash's CharacterInputController reads legacy Input.touchCount for the swipe
             // controls. With activeInputHandler = "Input System Package (New)" that call throws at
             // runtime and touch steering dies on the tablet, which no editor test would reveal.
+            //
+            // NOTE ON HOW THIS IS READ. activeInputHandler comes out of the SAVED
+            // ProjectSettings/ProjectSettings.asset file, not from a live API — so an Inspector
+            // change that has not been File ▸ Save Project'd is invisible here and this line will
+            // confidently report the OLD value. That matters more for this setting than for any
+            // other in the report: a wrong value costs nothing in the Editor and on a desktop test
+            // (mouse and keyboard keep working), and only shows up as a learner on a tablet
+            // swiping and swiping while the runner refuses to change lane.
+            const string savedFileCaveat =
+                "Read from the SAVED ProjectSettings/ProjectSettings.asset. If you changed Active Input " +
+                "Handling in the Inspector just now, File ▸ Save Project and re-run — until you do, this " +
+                "line reports the previous value.";
+
             var handler = ReadProjectSettingValue("activeInputHandler");
             if (handler == "2") Pass("Input handling = Both (required)",
                 "Trash Dash's CharacterInputController uses legacy Input.touchCount for the race swipe; " +
-                "our UI uses the new Input System. Both must stay enabled.");
+                "our UI uses the new Input System. Both must stay enabled.\n" + savedFileCaveat);
             else if (handler == "0") Warn("Input handling = Old only",
-                "The new Input System drives our UI (InputSystemUIInputModule) and EndlessKeyboardInput.",
-                "Project Settings ▸ Player ▸ Active Input Handling = Both.");
+                "The new Input System drives our UI (InputSystemUIInputModule) and EndlessKeyboardInput.\n" + savedFileCaveat,
+                "Project Settings ▸ Player ▸ Active Input Handling = Both, then File ▸ Save Project.");
             else if (handler == "1") Fail("Input handling = New only — race touch controls will throw",
                 "CharacterInputController calls Input.touchCount / Input.GetKeyDown; those throw " +
-                "InvalidOperationException when only the new system is active. Swipe steering breaks on device.",
-                "Project Settings ▸ Player ▸ Active Input Handling = Both.");
-            else Info("Input handling: could not read activeInputHandler");
+                "InvalidOperationException when only the new system is active. On the tablet the learner " +
+                "taps and swipes and the runner never changes lane — and nothing about a desktop or Editor " +
+                "test reveals it.\n" + savedFileCaveat,
+                "Project Settings ▸ Player ▸ Active Input Handling = Both, then File ▸ Save Project.");
+            else Warn("Input handling: could not read activeInputHandler",
+                "The key was not found in ProjectSettings/ProjectSettings.asset.\n" + savedFileCaveat,
+                "Check Project Settings ▸ Player ▸ Active Input Handling = Both by eye before building. " +
+                "This branch must be Both; it is the setting that silently kills touch steering on device.");
         }
 
         // ------------------------------------------------------------------ 2. build scenes
@@ -393,6 +419,72 @@ namespace SummaRace.EditorTools
                      "Project Settings ▸ Player ▸ Android ▸ Resolution and Presentation ▸ Resizable Window (off), " +
                      "or accept it and add a line to the tablet setup sheet.");
 
+            // --- Android BACK. Core/BackButtonGuard cancels every quit through
+            //     Application.wantsToQuit. Predictive back opts the activity into the platform's
+            //     OnBackInvokedCallback path, where the system commits the gesture itself — the
+            //     managed hook is no longer asked, so the guard is bypassed and BACK quits again.
+            var predictiveBack = ReadProjectSettingValue("androidPredictiveBackSupport");
+            if (predictiveBack == "0")
+                Pass("Android predictive back is off (required)",
+                     "Core/BackButtonGuard refuses every quit via Application.wantsToQuit, which is what stops a " +
+                     "learner's edge swipe ending the story. Predictive back would route BACK through the platform " +
+                     "instead and the guard would never be consulted.");
+            else if (predictiveBack == "1")
+                Fail("Android predictive back is ON — BackButtonGuard is bypassed and BACK quits the app",
+                     "androidPredictiveBackSupport = 1. On gesture navigation BACK is an EDGE SWIPE — the same " +
+                     "motion the race trains — so on the tablet a learner mid-story swipes, watches the app peel " +
+                     "away, and lands on the launcher. That run is then filed as abandoned, and there is no way " +
+                     "to recover it. On three-button navigation it is a permanent target under a portrait game.",
+                     "Project Settings ▸ Player ▸ Android ▸ Other Settings ▸ Predictive Back Support = off, " +
+                     "then File ▸ Save Project. Verify on the tablet in the first smoke test — " +
+                     "Application.wantsToQuit is never raised in the Editor, so this cannot be tested in Play mode.");
+            else
+                Info("Android predictive back: could not read androidPredictiveBackSupport",
+                     "Expected 0. Check Project Settings ▸ Player ▸ Android ▸ Other Settings ▸ Predictive Back Support.");
+
+            // --- graphics API. The floor device is a 2GB Android 8 tablet, where Vulkan drivers are
+            //     the least reliable thing on the device, and the race depends on two custom shaders
+            //     (SummaRace/SkyTint and CurvedVertexColor). A driver-specific shader failure looks
+            //     like a black or untextured world and cannot be reproduced on the build machine.
+            var gfxBlock = ExtractTargetBlock(
+                ExtractBlock(ReadProjectSettingsText(), "m_BuildTargetGraphicsAPIs:", "m_BuildTargetVRSettings:"),
+                "AndroidPlayer");
+            if (gfxBlock == null)
+            {
+                Info("Android graphics APIs: no explicit list in ProjectSettings",
+                     "Unity will choose automatically, which on current versions puts Vulkan first. " +
+                     "Project Settings ▸ Player ▸ Android ▸ Other Settings ▸ Auto Graphics API (off) ▸ OpenGLES3.");
+            }
+            else
+            {
+                var apis = DecodeGraphicsApis(gfxBlock);
+                var auto = Regex.Match(gfxBlock, @"m_Automatic:\s*(\d)");
+                var isAuto = auto.Success && auto.Groups[1].Value == "1";
+                var list = apis.Count == 0 ? "(none listed)" : string.Join(", ", apis);
+
+                if (isAuto)
+                    Warn("Android graphics API is set to Automatic",
+                         "Unity picks the list at build time and currently prefers Vulkan. Resolved list in the file: " + list,
+                         "Project Settings ▸ Player ▸ Android ▸ Other Settings ▸ untick Auto Graphics API and leave " +
+                         "OpenGLES3 alone in the list.");
+                else if (apis.Contains("Vulkan"))
+                    Warn("Vulkan is in the Android graphics API list",
+                         "Graphics APIs: " + list + ".\n" +
+                         "The study floor device is a 2GB Android 8 tablet. Vulkan drivers on that class of hardware " +
+                         "are the usual source of shader-specific breakage, and the race leans on two custom shaders " +
+                         "(SummaRace/SkyTint, CurvedVertexColor). On the tablet that shows up as a black sky, an " +
+                         "untextured road, or a straight crash into the launcher on entering the race — none of which " +
+                         "reproduces on the build machine.",
+                         "Project Settings ▸ Player ▸ Android ▸ Other Settings ▸ Graphics APIs: remove Vulkan and " +
+                         "leave OpenGLES3. If you keep Vulkan, the race must be smoke-tested on the actual tablet " +
+                         "model before the study, not on a newer phone.");
+                else if (apis.Count == 1 && apis[0] == "OpenGLES3")
+                    Pass("Android graphics API: OpenGLES3 only", "Explicit list (Auto Graphics API off) — the safe " +
+                         "choice for a 2GB Android 8 floor device with two custom shaders in the race.");
+                else
+                    Info("Android graphics APIs: " + list, "Explicit list (Auto Graphics API off).");
+            }
+
             // --- scripting / architecture
             var backend = PlayerSettings.GetScriptingBackend(android);
             if (backend == ScriptingImplementation.IL2CPP) Pass("Scripting backend: IL2CPP");
@@ -453,6 +545,136 @@ namespace SummaRace.EditorTools
                 case 33: return "13";
                 case 34: return "14";
                 default: return "API " + api;
+            }
+        }
+
+        /// <summary>
+        /// ProjectSettings stores the per-platform graphics API list as one hex blob: four bytes
+        /// per entry, little-endian, each a UnityEngine.Rendering.GraphicsDeviceType. Decoded here
+        /// rather than via PlayerSettings.GetGraphicsAPIs so the check keeps working with the
+        /// Android module absent, and so the names come from the enum instead of a hardcoded table.
+        /// </summary>
+        private static List<string> DecodeGraphicsApis(string androidBlock)
+        {
+            var names = new List<string>();
+            var m = Regex.Match(androidBlock ?? "", @"m_APIs:\s*([0-9a-fA-F]+)");
+            if (!m.Success) return names;
+
+            var hex = m.Groups[1].Value;
+            for (int i = 0; i + 8 <= hex.Length; i += 8)
+            {
+                try
+                {
+                    int value = 0;
+                    for (int b = 0; b < 4; b++)                       // little-endian
+                        value |= Convert.ToInt32(hex.Substring(i + b * 2, 2), 16) << (b * 8);
+                    var name = Enum.GetName(typeof(UnityEngine.Rendering.GraphicsDeviceType), value);
+                    names.Add(name ?? ("api#" + value));
+                }
+                catch { names.Add("<unreadable>"); }
+            }
+            return names;
+        }
+
+        // ------------------------------------------------------------------ 6b. stripping & keywords
+
+        /// <summary>
+        /// Two settings that behave perfectly in the Editor and only bite in a stripped IL2CPP
+        /// player: managed-code stripping removing a type that is only ever reached by reflection,
+        /// and shader-variant stripping removing a fog mode that is only ever set from code.
+        /// </summary>
+        private static void CheckStrippingAndKeywords()
+        {
+            // --- link.xml: the crypto assemblies behind the teacher PIN.
+            const string linkPath = "Assets/Link.xml";
+            var needed = new[] { "System.Security.Cryptography.Algorithms", "System.Security.Cryptography.Primitives" };
+            const string whyCrypto =
+                "TeacherGate.Hash uses SHA256.Create(), which resolves its implementation through " +
+                "CryptoConfig BY REFLECTION — so managed stripping cannot see the type is needed and is " +
+                "free to remove it. Nothing in the Editor strips, so this is invisible until the APK runs.\n" +
+                "On the tablet the teacher taps a PIN-gated control and NOTHING HAPPENS: the throw " +
+                "inside the UI callback is swallowed and only logged. That is the PIN at install, the " +
+                "session unlock, and EXPORT — the single control that retrieves the whole dataset, with " +
+                "no second chance to collect it after the study.";
+
+            if (!File.Exists(linkPath))
+            {
+                Fail("Assets/Link.xml is missing — IL2CPP stripping can delete the PIN's crypto",
+                     whyCrypto,
+                     "Restore Assets/Link.xml with <assembly fullname=\"System.Security.Cryptography.Algorithms\" " +
+                     "preserve=\"all\" /> and the same for …Cryptography.Primitives. " +
+                     "Verify by setting a PIN and running Export on the tablet, not in the Editor.");
+            }
+            else
+            {
+                var link = SafeRead(linkPath) ?? "";
+                var absent = needed.Where(n => !Regex.IsMatch(link, "fullname\\s*=\\s*\"" + Regex.Escape(n) + "\"")).ToList();
+                if (absent.Count == 0)
+                    Pass("Link.xml preserves the crypto assemblies the teacher PIN depends on",
+                         string.Join(", ", needed));
+                else
+                    Fail($"Link.xml no longer preserves {absent.Count} crypto assembly/assemblies",
+                         "Missing: " + string.Join(", ", absent) + "\n" + whyCrypto,
+                         "Add <assembly fullname=\"…\" preserve=\"all\" /> back to Assets/Link.xml for each.");
+            }
+
+            // --- fog variant stripping. Custom + KeepLinear is CORRECT here precisely because
+            //     RaceWorlds sets the mode from code: Unity's Automatic mode only keeps what it can
+            //     see used by scenes and materials, and a code-only assignment is invisible to it.
+            const string gfxPath = "ProjectSettings/GraphicsSettings.asset";
+            var gfx = SafeRead(gfxPath);
+            if (gfx == null)
+            {
+                Warn("Could not read " + gfxPath, null, "Fog stripping check skipped.");
+            }
+            else
+            {
+                var strippingMode = Regex.Match(gfx, @"m_FogStripping:\s*(\d)");
+                var kept = new HashSet<string>();
+                foreach (var mode in new[] { "Linear", "Exp", "Exp2" })
+                    if (Regex.IsMatch(gfx, @"m_FogKeep" + mode + @":\s*1")) kept.Add(mode);
+
+                // Which fog modes does our code actually ask for at runtime?
+                var used = new SortedSet<string>();
+                var usedWhere = new List<string>();
+                foreach (var cs in EnumerateRuntimeScripts())
+                {
+                    var body = SafeRead(cs);
+                    if (body == null) continue;
+                    foreach (Match hit in Regex.Matches(body, @"(?<![\w.])FogMode\.(\w+)"))
+                    {
+                        used.Add(hit.Groups[1].Value);
+                        usedWhere.Add(Path.GetFileName(cs) + " → FogMode." + hit.Groups[1].Value);
+                    }
+                }
+
+                var isCustom = strippingMode.Success && strippingMode.Groups[1].Value == "1";
+                var detail = "m_FogStripping = " + (isCustom ? "Custom" : "Automatic") +
+                             ", kept variants: " + (kept.Count == 0 ? "(none)" : string.Join(", ", kept)) +
+                             "\nfog modes set from code: " + (used.Count == 0 ? "(none)" : string.Join(", ", used)) +
+                             (usedWhere.Count > 0 ? "\n" + string.Join("\n", usedWhere.Distinct()) : "");
+
+                if (!isCustom)
+                {
+                    Info("Fog shader stripping is Automatic", detail +
+                         "\nAutomatic keeps the modes Unity can see used by scenes and materials. RaceWorlds sets " +
+                         "the mode from C# at runtime, which Unity cannot see — so this is only safe while the " +
+                         "scene's own fog mode happens to match.");
+                }
+                else
+                {
+                    var unkept = used.Where(u => !kept.Contains(u)).ToList();
+                    if (unkept.Count == 0)
+                        Pass("Every fog mode the race sets from code survives shader stripping", detail);
+                    else
+                        Fail("A fog mode is set at runtime but its shader variant is stripped out of the player",
+                             detail + "\nStripped but used: " + string.Join(", ", unkept),
+                             "In the Editor the race looks exactly right. On the tablet that world renders with NO " +
+                             "FOG at all — the corridor's far end stops fading and the world reads as flat, bright " +
+                             "and wrong, only in the worlds using that mode.\n" +
+                             "Fix either side: Project Settings ▸ Graphics ▸ Shader Stripping ▸ Fog Modes — tick " +
+                             string.Join(" and ", unkept) + " — or change RaceWorlds back to a kept mode.");
+                }
             }
         }
 

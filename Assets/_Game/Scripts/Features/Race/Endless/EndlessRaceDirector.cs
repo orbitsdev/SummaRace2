@@ -1368,15 +1368,19 @@ namespace SummaRace.Features.Race.Endless
             }
         }
 
-        private void ScheduleRepresent(TrackManager track, int element)
-        {
-            _pendingElement = element;
-            _pendingIsRepresent = true;
-            _pendingGateDistance = track.worldDistance + RepresentDistance(track);
-            PrepareGateOptions(element, true);
-            UpdateBanner();
-            TryPlacePending();
-        }
+        // ScheduleRepresent lived here and is deliberately GONE, not merely unreferenced.
+        //
+        // The owner's objection to the re-present was that it made no sense as a game: get an
+        // answer wrong and a single lone card appears in the middle of the road carrying the
+        // right answer, which is a chance offered in a shape nobody would recognise as a chance.
+        // It was replaced by a 2.2s answer reveal, and TryPlacePending's represent branch went
+        // with it — so this method had no call sites left.
+        //
+        // Left on disk it was a loaded gun: calling it would place a full three-option gate for
+        // an element whose first pick is already CLOSED, and a collection there would be logged
+        // against a question the learner had already answered. raceFirstPickCorrect is the star
+        // count and the study's headline measure, so that is a data defect, not a gameplay one.
+        // RepresentDistance survives because FinishRunway is derived the same way.
 
         private void BoostSpeed(TrackManager track)
         {
@@ -2975,6 +2979,16 @@ namespace SummaRace.Features.Race.Endless
                 BootWaitSeconds + "s — the runner kit did not finish booting. Offering the " +
                 "learner a way back to Story Select. If this is a device build, the most likely " +
                 "cause is that Addressables content was never built for this platform.");
+
+            // FIRST, before anything is shown. This method is reached by `yield break`ing out of
+            // Start() ahead of the line that normally does this, so without it the learner is
+            // looking at the runner kit's own HUD — coins, gems, score, distance, multiplier,
+            // life hearts and their pause button — under our "this race is not ready" card. The
+            // per-frame re-hide in Update() only engages once _gameState is resolved, so it
+            // never catches up on its own. EnsureSingleAudioListener is skipped for the same
+            // reason and is cheap to do here.
+            HideTheirChrome();
+            EnsureSingleAudioListener();
 
             _bootReady = true;   // the briefing is no longer waiting on anything
 
