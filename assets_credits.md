@@ -1,6 +1,11 @@
 # SummaRace — Asset Credits & Licences
 
-**Date: 2026-08-06 · verified against commit `2b7a860` (branch `experiment/endless-override-2`)**
+**Date: 2026-08-06 · verified against commit `53d6e9d` (branch `experiment/endless-override-2`)**
+
+*Audit basis: the sweep ran against `2b7a860`; HEAD advanced to `53d6e9d` during the pass. Re-checked
+— the two intervening commits touched **12 `.cs` files and regenerated one narration clip**
+(`vo_race_briefing.mp3`, same edge-tts recipe, §6). **No third-party asset was added, removed or
+changed**, so every finding below holds at `53d6e9d`.*
 
 Required by GDD §6.8: *"A credits tracker (`assets_credits.md` in the repo) logs every asset the
 moment it enters the project: name, author, source URL, license, where used. CC0 preferred; CC-BY
