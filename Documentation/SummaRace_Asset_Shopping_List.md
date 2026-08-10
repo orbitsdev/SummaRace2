@@ -484,6 +484,15 @@ watermark.
 
 ## §3. Ms. Lumi — the teacher guide
 
+> **⚠️ Superseded as of 2026-08-10 — use `SummaRace_Image_Prompt_Pack.md` instead.** This section
+> still states the problem and the file specs correctly, and §3a's padding warning is still the
+> authority on that. But its "one Lumi, three poses" target has been widened: the Prompt Pack
+> carries a **22-image variation set** (16 half-body poses + 6 badge portraits, bucketed by the
+> beat in the game they serve), because three images means the same teacher on every screen for
+> ten sessions. It also settles which of the two Lumis is canonical (`teacher_temp`) and which
+> three of the 22 are drop-in today. The 27 hero prompts in §2 below are unchanged and remain the
+> source of truth.
+
 **The problem:** there are **two Ms. Lumis in two different art styles**, and learners see both.
 
 | File | Size | Where it appears | Current look |
