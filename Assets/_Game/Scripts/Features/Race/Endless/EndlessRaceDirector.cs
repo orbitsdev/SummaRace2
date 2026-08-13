@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using PrimeTween;
 using TMPro;
@@ -192,6 +192,10 @@ namespace SummaRace.Features.Race.Endless
         private Animator _patrolAnim;
         private float _menaceTimer;
 
+        /// <summary>Project-wide Time.maximumDeltaTime, saved on race entry and restored in
+        /// OnDestroy. -1 = never taken (so a failed Start cannot restore a bogus value).</summary>
+        private float _savedMaxDeltaTime = -1f;
+
         /// <summary>Whether a wrong-pick menace surge is running this frame. Owned by LateUpdate
         /// so it ticks whether or not the (currently disabled) patrol cop exists.</summary>
         private bool _menaceSurging;
@@ -353,6 +357,13 @@ namespace SummaRace.Features.Race.Endless
         private void OnDestroy()
         {
             EndlessRaceMode.Active = false;
+            // Global, so it must come back with us however this scene ends — including the
+            // briefing escape and a mid-run LEAVE RACE, not just a completed run.
+            if (_savedMaxDeltaTime > 0f)
+            {
+                Time.maximumDeltaTime = _savedMaxDeltaTime;
+                _savedMaxDeltaTime = -1f;
+            }
             // Close an open pause in the log rather than losing it: the row's paused-seconds
             // must add up even if the scene ends while the pause screen is still on top.
             if (_paused)
@@ -402,6 +413,27 @@ namespace SummaRace.Features.Race.Endless
             _story = (ourGm != null && ourGm.CurrentStory != null)
                 ? ourGm.CurrentStory
                 : SummaRace.Data.StoryLoader.Load("s01_easy");
+
+            // StoryLoader.Load returns null on a missing file, a parse failure or ANY validation
+            // failure — and the s01_easy fallback can fail the same way. Without this guard the
+            // next line dereferenced null, the exception killed this coroutine before BuildHud
+            // and BuildBriefing, and MaskLoadoutFlash had already hidden the kit's own UI: the
+            // learner sat in an empty scene with no HUD, no briefing, no pause chip and Android
+            // BACK swallowed app-wide. This is the one race path that had no escape at all, so
+            // it takes the same "never a dead end" exit the four story screens use.
+            if (_story == null)
+            {
+                Debug.LogError("EndlessRaceDirector: no story could be loaded (neither the selected " +
+                               "story nor the s01_easy fallback) — leaving for Story Select rather " +
+                               "than stranding the learner in an empty race.");
+                SummaRace.Core.SceneLoader.Go(SummaRace.Constants.SceneNames.StorySelect);
+                yield break;
+            }
+
+            // Cap a single frame's advance so a hitch cannot step OVER an answer gate and be
+            // written to the study as a wrong answer. See GameRules.RaceMaxDeltaTime.
+            _savedMaxDeltaTime = Time.maximumDeltaTime;
+            Time.maximumDeltaTime = SummaRace.Constants.GameRules.RaceMaxDeltaTime;
 
             // One visual recipe per session day, shifted by difficulty, so no two of the 30
             // races look alike (RaceWorlds / AssetGeneration README §1-2).
@@ -1090,7 +1122,7 @@ namespace SummaRace.Features.Race.Endless
             }
 
             if (track != null) AdvanceToNext(track, element);
-            else { _activeGateRoot = null; _activeElement = -1; _activeIsRepresent = false; }
+            else { _activeGateRoot = null; _activeElement = -1; _activeGateId = 0; _activeIsRepresent = false; }
         }
 
         /// <summary>
@@ -1147,7 +1179,7 @@ namespace SummaRace.Features.Race.Endless
             int element = pickup.elementIndex;
             DestroyActiveGate();               // the whole gate goes; nothing replaces it
             if (track != null) AdvanceToNext(track, element);
-            else { _activeGateRoot = null; _activeElement = -1; }
+            else { _activeGateRoot = null; _activeElement = -1; _activeGateId = 0; }
             ShowAnswerReveal(element);         // after AdvanceToNext, so it overrides the re-arm
         }
 
@@ -1303,6 +1335,14 @@ namespace SummaRace.Features.Race.Endless
                 Destroy(_activeGateRoot.gameObject);
             }
             _activeGateRoot = null;
+            // No card of a retired gate may ever match again. This was left holding the spent
+            // gate's serial while _activeElement went to -1, so a surviving card reaching
+            // OnPickupHit would pass the identity guard and then index _firstPickDone[-1] —
+            // an IndexOutOfRangeException thrown inside a physics callback, mid-measured-run.
+            // Disabling the colliders above makes that hard to reach, but the previous
+            // "already resolved" latch was defeated by exactly this kind of same-frame
+            // reasoning, so the identity is cleared rather than argued about.
+            _activeGateId = 0;
             _laneSelector = null; // child of the gate root — it went with it
             _laneSelectorSr = null;
             HideOptionPreview();
@@ -1315,6 +1355,7 @@ namespace SummaRace.Features.Race.Endless
         {
             _activeGateRoot = null;
             _activeElement = -1;
+            _activeGateId = 0;   // see DestroyActiveGate: -1 must never be indexable
             _activeIsRepresent = false;
 
             int next = completedElement + 1;

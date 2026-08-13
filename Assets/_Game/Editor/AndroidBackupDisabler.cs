@@ -83,6 +83,50 @@ namespace SummaRace.EditorTools
                 // Belt and braces for the older full-backup path; harmless where it is ignored.
                 application.SetAttribute("fullBackupContent", AndroidNs, "false");
 
+                // --- VIBRATE, so the GDD 11.4 haptics are not silently dead on device ---------
+                // Core/Haptics reaches the vibrator through raw JNI
+                // (activity.Call("getSystemService", "vibrator")) rather than Handheld.Vibrate(),
+                // and Unity only infers android.permission.VIBRATE from the latter. There is no
+                // AndroidManifest.xml in this project and no VIBRATE string anywhere, so the
+                // permission was never declared: on device every call threw SecurityException
+                // into Haptics' bare catch and haptics never fired once, on a feature that
+                // defaults ON. Added HERE rather than as Assets/Plugins/Android/AndroidManifest.xml
+                // because that file REPLACES Unity's generated main manifest — a hand-written
+                // minimal one would drop the activity declaration and break launch.
+                //
+                // Deliberately NOT fatal, unlike allowBackup above: a missing buzz is a lost
+                // nicety, while a cloud backup breaks the consent promise. Never fail the study
+                // build over a vibration.
+                try
+                {
+                    var manifestRoot = doc.SelectSingleNode("/manifest") as XmlElement;
+                    if (manifestRoot != null)
+                    {
+                        const string vibrate = "android.permission.VIBRATE";
+                        bool already = false;
+                        foreach (XmlNode existing in doc.SelectNodes("/manifest/uses-permission"))
+                        {
+                            var el = existing as XmlElement;
+                            if (el != null && el.GetAttribute("name", AndroidNs) == vibrate) { already = true; break; }
+                        }
+
+                        if (!already)
+                        {
+                            var perm = doc.CreateElement("uses-permission");
+                            perm.SetAttribute("name", AndroidNs, vibrate);
+                            manifestRoot.AppendChild(perm);
+                            Debug.Log("AndroidBackupDisabler: declared " + vibrate +
+                                      " so Core/Haptics actually works on device.");
+                        }
+                    }
+                }
+                catch (System.Exception ve)
+                {
+                    Debug.LogWarning("AndroidBackupDisabler: could not declare android.permission.VIBRATE (" +
+                                     ve.Message + "). Haptics will be silently inert on device; the " +
+                                     "build continues because that is cosmetic.");
+                }
+
                 doc.Save(manifest);
 
                 Debug.Log("AndroidBackupDisabler: android:allowBackup=\"false\" written to " + manifest +

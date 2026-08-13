@@ -71,11 +71,31 @@ namespace SummaRace.Features.Race.Endless
             if (!up || !_tracking) return;
             _tracking = false;
 
+            Vector2 delta = pos - _startPos;
             float dragFraction = Screen.width > 0
-                ? (pos - _startPos).magnitude / Screen.width
+                ? delta.magnitude / Screen.width
                 : 1f;
-            if (dragFraction > SummaRace.Constants.GameRules.RaceTapMaxDrag) return;   // theirs
-            if (Time.unscaledTime - _startTime > SummaRace.Constants.GameRules.RaceTapMaxSeconds) return;
+
+            if (dragFraction > SummaRace.Constants.GameRules.RaceTapMaxDrag)
+            {
+                // Past the tap tolerance, so normally theirs — but only a HORIZONTAL swipe is
+                // actually theirs. Their handler routes any |dy| > |dx| gesture to Jump()/Slide(),
+                // and both begin with `if (EndlessRaceMode.Active) return;` because our race has
+                // no obstacles to clear. So a vertical or diagonal flick — named in this class's
+                // own docstring as the likeliest gesture a nine-year-old under time pressure
+                // produces — was landing in a gap between the two handlers and doing NOTHING:
+                // no lane change, no jump, no feedback. If that was the child's attempt to reach
+                // a card, the gate is run past and written to the study as first-pick-incorrect.
+                // Claim it as a lane request; theirs cannot double-fire because it no-ops.
+                if (Mathf.Abs(delta.y) <= Mathf.Abs(delta.x)) return;   // horizontal: theirs steers
+            }
+            else if (Time.unscaledTime - _startTime > SummaRace.Constants.GameRules.RaceTapMaxSeconds)
+            {
+                // Tap-length gesture held too long to be a tap. (Deliberately not applied to the
+                // swipe branch above: a deliberate flick can easily outlast the tap window.)
+                return;
+            }
+
             if (IsOverBlocker(pos)) return;
 
             if (_runner == null) _runner = track.characterController;

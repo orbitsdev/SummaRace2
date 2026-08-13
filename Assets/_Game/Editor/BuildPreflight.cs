@@ -609,7 +609,14 @@ namespace SummaRace.EditorTools
             else
             {
                 var link = SafeRead(linkPath) ?? "";
-                var absent = needed.Where(n => !Regex.IsMatch(link, "fullname\\s*=\\s*\"" + Regex.Escape(n) + "\"")).ToList();
+                // Strip XML comments BEFORE matching. Link.xml carries a long <!-- --> block that
+                // explains why these assemblies must be preserved and names them in full — so a
+                // raw-text match was satisfied by the explanation itself, and commenting out the
+                // two <assembly> lines left this row green while IL2CPP was free to strip the
+                // crypto that gates the teacher PIN, session unlock and log EXPORT. A throw inside
+                // a UI callback is swallowed, so on device that reads as a button doing nothing.
+                var linkCode = Regex.Replace(link, "<!--.*?-->", string.Empty, RegexOptions.Singleline);
+                var absent = needed.Where(n => !Regex.IsMatch(linkCode, "fullname\\s*=\\s*\"" + Regex.Escape(n) + "\"")).ToList();
                 if (absent.Count == 0)
                     Pass("Link.xml preserves the crypto assemblies the teacher PIN depends on",
                          string.Join(", ", needed));
@@ -639,9 +646,18 @@ namespace SummaRace.EditorTools
                      backupGuard + " does not exist.\n" + whyBackup,
                      "Restore it, or add android:allowBackup=\"false\" to the <application> tag of " +
                      "the generated manifest by hand before every build.");
-            else if (!backupSrc.Contains("allowBackup"))
-                Fail("The Android auto-backup guard no longer sets allowBackup",
-                     backupGuard + " exists but does not mention allowBackup.\n" + whyBackup,
+            // Test the CODE, not the word. This was `Contains("allowBackup")`, and the guard's own
+            // doc-comments and error strings say "allowBackup" six times against exactly one real
+            // write — so commenting out the SetAttribute call, or gutting the class entirely while
+            // leaving its documentation, kept this row green while every learner profile and every
+            // .jsonl row synced to Google Drive. A privacy check satisfied by its own description
+            // is worse than none, because it is the one people trust.
+            else if (!backupSrc.Contains("IPostGenerateGradleAndroidProject")
+                     || !backupSrc.Contains("SetAttribute(\"allowBackup\""))
+                Fail("The Android auto-backup guard no longer writes allowBackup",
+                     backupGuard + " exists but does not both implement " +
+                     "IPostGenerateGradleAndroidProject and call SetAttribute(\"allowBackup\", …). " +
+                     "Mentioning allowBackup in a comment is not enough.\n" + whyBackup,
                      "Restore the attribute write, or disable backup in the manifest by hand.");
             else
                 Pass("Android auto-backup is disabled at build time",

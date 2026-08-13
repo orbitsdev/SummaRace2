@@ -234,6 +234,26 @@ namespace SummaRace.Constants
         public const float RaceTapMaxDrag = 0.02f;
         public const float RaceTapMaxSeconds = 0.45f;
 
+        /// <summary>
+        /// Ceiling on a single frame's delta while the race is running (seconds). Restored when
+        /// the race scene ends.
+        ///
+        /// This is a STUDY-DATA guard, not a feel tweak. TrackManager moves the runner by
+        /// `speed * Time.deltaTime`, and Unity's project-wide Maximum Allowed Timestep is
+        /// 0.33333334 — so one long frame could advance the world 0.333 x maxSpeed 30 = 10m,
+        /// against an answer card's catch window of TriggerDepth 3m plus the runner's ~0.93m
+        /// collider, about 3.9m. A single GC spike or Addressables segment instantiation on the
+        /// 2GB floor device therefore stepped clean over all three cards, and a tunnelled gate is
+        /// recorded by HandleMissedActiveGate as first-pick INCORRECT — a rendering hitch turned
+        /// into a research datum on raceFirstPickCorrect, which is the headline measure.
+        ///
+        /// 0.10 x 30 = 3.0m per frame worst case, inside the 3.9m window with margin, and three
+        /// frames' worth at the 30fps target so it never bites a healthy frame. The cost when a
+        /// hitch does happen is that the world briefly runs in slow motion instead of teleporting
+        /// — which for a runner is the better failure anyway.
+        /// </summary>
+        public const float RaceMaxDeltaTime = 0.10f;
+
         // The "you are here" lane marker is a coloured halo standing out behind the answer card
         // the runner is lined up with. This is the extra HEIGHT (metres, split top and bottom):
         // the marker can only grow upwards and downwards, because sideways there is nowhere to
