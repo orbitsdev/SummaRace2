@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using SummaRace.Constants;
@@ -53,6 +53,29 @@ namespace SummaRace.Core
 
         private static string PathFor(string file) =>
             Path.Combine(Application.persistentDataPath, file);
+
+        /// <summary>
+        /// How many storage problems have happened since launch, and the most recent one.
+        ///
+        /// SaveFailed has eight raise sites and no subscriber, and for the writes that return a
+        /// bool the call sites now check it. <see cref="AppendLog"/> cannot: it is fire-and-forget
+        /// from gameplay, it returns void, and the logs it writes ARE the study's entire in-app
+        /// dataset. So a tablet that fills up, or loses write permission after an OS update, threw
+        /// on every row for ten sessions while the learner played normally and nothing on screen,
+        /// in the console, or in the export ever said so — it surfaced only as an export that
+        /// looked like an empty tablet. Recording it costs two fields and makes the teacher menu
+        /// able to say "this tablet has a storage problem" while the tablet is still in hand.
+        /// </summary>
+        public static int StorageIssueCount { get; private set; }
+        public static string LastStorageIssue { get; private set; }
+
+        private static void RaiseFailure(string reason)
+        {
+            StorageIssueCount++;
+            LastStorageIssue = reason;
+            Debug.LogWarning("SaveManager: " + reason);
+            EventBus.Raise(new SaveFailed { reason = reason });
+        }
 
         public AppSettings LoadSettings()
         {
@@ -135,7 +158,7 @@ namespace SummaRace.Core
             }
             catch (Exception e)
             {
-                EventBus.Raise(new SaveFailed { reason = "log: " + e.Message });
+                RaiseFailure("log: " + e.Message);
             }
         }
 
@@ -213,7 +236,7 @@ namespace SummaRace.Core
             }
             catch (Exception e)
             {
-                EventBus.Raise(new SaveFailed { reason = "export: " + e.Message });
+                RaiseFailure("export: " + e.Message);
                 Debug.LogError("SaveManager: export failed — " + e);
                 status = ExportStatus.Failed;
                 return null;
@@ -348,10 +371,23 @@ namespace SummaRace.Core
                 // their code and may not be alive when a teacher wipes from the menu.
                 var runnerSave = PathFor("save.bin");
                 if (File.Exists(runnerSave)) File.Delete(runnerSave);
+
+                // The exports are the LARGEST thing this wipe used to leave behind, and the only
+                // de-pseudonymising artifact the system produces. ExportLogs writes two files to
+                // the root of persistentDataPath: export_<stamp>.jsonl, which is every log row of
+                // every learner on this tablet, and export_<stamp>_learners.json, the roster that
+                // carries displayName — the child's own typed name against their learnerId. The
+                // wipe erased the profiles those names came from and the logs those rows came from,
+                // then left a combined copy of both sitting beside them. The researcher exports on
+                // the last session day because the runbook says to, so on a wiped tablet that file
+                // is not hypothetical: it is the expected state. Deleted by prefix rather than by
+                // remembered filename because the stamp is per-export and a tablet may hold several.
+                foreach (var stale in Directory.GetFiles(Application.persistentDataPath, "export_*"))
+                    File.Delete(stale);
             }
             catch (Exception e)
             {
-                EventBus.Raise(new SaveFailed { reason = "delete: " + e.Message });
+                RaiseFailure("delete: " + e.Message);
             }
         }
 
@@ -399,11 +435,11 @@ namespace SummaRace.Core
                 try { File.WriteAllText(path, json); }
                 catch (Exception inner)
                 {
-                    EventBus.Raise(new SaveFailed { reason = file + ": " + inner.Message });
+                    RaiseFailure(file + ": " + inner.Message);
                     Debug.LogError("SaveManager: could not write " + file + " — " + inner);
                     return false;
                 }
-                EventBus.Raise(new SaveFailed { reason = file + " (non-atomic fallback): " + e.Message });
+                RaiseFailure(file + " (non-atomic fallback): " + e.Message);
             }
             finally
             {
@@ -419,14 +455,14 @@ namespace SummaRace.Core
         {
             var path = PathFor(file);
             try { if (File.Exists(path)) return File.ReadAllText(path); }
-            catch (Exception e) { EventBus.Raise(new SaveFailed { reason = "read " + file + ": " + e.Message }); }
+            catch (Exception e) { RaiseFailure("read " + file + ": " + e.Message); }
 
             var bak = path + ".bak";
             try
             {
                 if (File.Exists(bak))
                 {
-                    EventBus.Raise(new SaveFailed { reason = file + ": primary unreadable, recovered from backup" });
+                    RaiseFailure(file + ": primary unreadable, recovered from backup");
                     return File.ReadAllText(bak);
                 }
             }

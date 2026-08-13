@@ -191,6 +191,10 @@ namespace SummaRace.Features.Race.Endless
         private Transform _patrol;
         private Animator _patrolAnim;
         private float _menaceTimer;
+
+        /// <summary>Whether a wrong-pick menace surge is running this frame. Owned by LateUpdate
+        /// so it ticks whether or not the (currently disabled) patrol cop exists.</summary>
+        private bool _menaceSurging;
         private float _patrolGroundY;      // fixed run-height captured on activation
         private bool _patrolGrounded;      // has _patrolGroundY been captured yet
         private float _patrolGap = 30f;    // metres the cop trails behind the player (constant once running)
@@ -1583,8 +1587,15 @@ namespace SummaRace.Features.Race.Endless
             _feedbackText.fontSizeMin = 30f;
             _feedbackText.fontSizeMax = 56f;
 
-            BuildOptionPreview(canvasGo.transform);
+            // ORDER IS LOAD-BEARING: BuildOptionPreview captures _pauseChipRect into both tap-blocker
+            // arrays, and BuildPauseChip is what assigns it. Built the other way round (as it was),
+            // both arrays held a permanent null in the chip slot, IsOverBlocker skipped it, and the
+            // chip was never a blocker in either state — so a tap on the chip at x~980/1080 also
+            // resolved to lane 2 and steered the runner right. That put the learner in a lane they
+            // never chose, on the measure that IS the star count, and it silently disarmed the whole
+            // documented point of ApplyTapBlockers ("one gesture can never register twice").
             BuildPauseChip(canvasGo.transform);
+            BuildOptionPreview(canvasGo.transform);
             BuildPauseOverlay();
         }
 
@@ -2675,8 +2686,8 @@ namespace SummaRace.Features.Race.Endless
                 _patrolMoveVel = 0f;
             }
 
-            bool surging = _menaceTimer > 0f;
-            if (surging) _menaceTimer -= Time.deltaTime;
+            // Owned by LateUpdate now, not by this method — see UpdateDangerVignette.
+            bool surging = _menaceSurging;
 
             var playerPos = runner.transform.position;
             var cam = Camera.main;
@@ -2761,19 +2772,39 @@ namespace SummaRace.Features.Race.Endless
             // moved his body 0.65m across, straight back into the kid's column) and inflates his
             // footprint from 1.2m wide to 1.8m, which is what put him back on top of the runner.
 
-            // Amber vignette rides the surge, not the (now cop-independent) danger meter.
-            if (_vignette != null)
-            {
-                var vc = _vignette.color;
-                vc.a = Mathf.Lerp(vc.a, surging ? 0.35f : 0f, 6f * Time.deltaTime);
-                _vignette.color = vc;
-                // Disable it outright when invisible. A full-screen alpha-blended Image still
-                // costs a full screen of overdraw at alpha 0, and on a tile-based mobile GPU
-                // that is pure bandwidth for every frame of an otherwise clean run — which is
-                // most frames, since the vignette only shows during a menace surge.
-                bool visible = vc.a > 0.004f;
-                if (_vignette.enabled != visible) _vignette.enabled = visible;
-            }
+        }
+
+        /// <summary>
+        /// The amber wrong-answer vignette. Driven by the menace surge and nothing else.
+        ///
+        /// This used to live at the tail of <see cref="UpdatePatrol"/>, which returns immediately
+        /// on <c>_patrol == null</c> — and <c>_patrol</c> is ALWAYS null, because
+        /// <see cref="SummaRace.Constants.GameRules.RacePatrolEnabled"/> is false and SpawnPatrol
+        /// returns before creating him. So the vignette never appeared once, and neither did the
+        /// _menaceTimer countdown that drives it. Two things followed from that:
+        ///
+        ///   * The comment on RacePatrolEnabled justifies cutting the cop with "the wrong-answer
+        ///     beat is already carried by the amber vignette and the feedback line" — and half of
+        ///     that was untrue the moment the cop went off. The only surviving wrong-answer signal
+        ///     was the feedback pill and the 2.2s answer reveal.
+        ///   * The "disable it when invisible" optimisation below was itself unreachable, so a
+        ///     full-screen alpha-blended Image sat enabled at alpha 0 for the whole ~90s race —
+        ///     a full screen of overdraw every frame, on the tile-based GPU of the 2GB floor
+        ///     device that has to hold 30fps.
+        ///
+        /// Kept out of UpdatePatrol deliberately: this is learner feedback and must not depend on
+        /// a chaser that is currently switched off and may stay off.
+        /// </summary>
+        private void UpdateDangerVignette(bool surging)
+        {
+            if (_vignette == null) return;
+            var vc = _vignette.color;
+            vc.a = Mathf.Lerp(vc.a, surging ? 0.35f : 0f, 6f * Time.deltaTime);
+            _vignette.color = vc;
+            // A full-screen alpha-blended Image still costs a full screen of overdraw at alpha 0,
+            // and most frames of a clean run have no surge at all.
+            bool visible = vc.a > 0.004f;
+            if (_vignette.enabled != visible) _vignette.enabled = visible;
         }
 
         /// <summary>
@@ -3520,6 +3551,13 @@ namespace SummaRace.Features.Race.Endless
             if (_paused || _leaving) return;
 
             var track = TrackManager.instance;
+
+            // The surge clock and the vignette are ticked HERE, before UpdatePatrol, because the
+            // cop is optional and the learner's wrong-answer feedback is not. Paused/leaving
+            // frames already returned above, so a surge does not burn down behind the pause menu.
+            _menaceSurging = _menaceTimer > 0f;
+            if (_menaceSurging) _menaceTimer -= Time.deltaTime;
+            UpdateDangerVignette(_menaceSurging);
 
             // After TrackManager.Update has moved the runner, so the cop is placed against
             // THIS frame's player position rather than last frame's.

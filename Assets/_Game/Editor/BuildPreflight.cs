@@ -817,7 +817,14 @@ namespace SummaRace.EditorTools
             const string settingsPath = "Assets/AddressableAssetsData/AddressableAssetSettings.asset";
             if (!File.Exists(settingsPath))
             {
-                Info("No Addressables settings asset — nothing to check.");
+                // This was an Info + return, and Info does not affect the verdict — so deleting or
+                // moving one asset skipped BOTH of this section's HARD STOPs and the dialog said
+                // ALL CLEAR for a build whose race cannot start. The absent settings asset is
+                // itself the most serious state this check can find: nothing addressable can be
+                // built or loaded without it.
+                Fail("HARD STOP — the Addressables settings asset is missing",
+                     "Expected " + settingsPath + ".\n" + NoContentConsequence,
+                     BuildContentRemedy);
                 return;
             }
 
@@ -861,10 +868,18 @@ namespace SummaRace.EditorTools
             var aaAndroid = Path.Combine("Library", "com.unity.addressables", "aa", "Android");
             var altAndroid = Path.Combine("Library", "com.unity.addressables", "aa", "Android".ToLowerInvariant());
             var built = Directory.Exists(aaAndroid) || Directory.Exists(altAndroid);
-            if (built)
+            var builtDir = Directory.Exists(aaAndroid) ? aaAndroid : altAndroid;
+            // The bundle count is part of the TEST, not just the message. Directory.Exists alone
+            // passed on an empty or half-written aa/Android — and a failed or cancelled content
+            // build leaves exactly that. Once one build had run, this row could never go red
+            // again, on the project's single highest-consequence failure mode.
+            var bundleCount = built
+                ? SafeCount(() => Directory.EnumerateFiles(builtDir, "*.bundle", SearchOption.AllDirectories).Count())
+                : 0;
+            if (built && bundleCount > 0)
             {
-                var dir = Directory.Exists(aaAndroid) ? aaAndroid : altAndroid;
-                var bundles = SafeCount(() => Directory.EnumerateFiles(dir, "*.bundle", SearchOption.AllDirectories).Count());
+                var dir = builtDir;
+                var bundles = bundleCount;
                 Pass("Addressables content exists for Android (" + bundles + " bundle(s))",
                      dir + "\nLast written " + Directory.GetLastWriteTime(dir).ToString("yyyy-MM-dd HH:mm") +
                      " — rebuild it whenever an addressable asset changes.");
@@ -872,7 +887,11 @@ namespace SummaRace.EditorTools
             else
             {
                 Fail("HARD STOP — no Addressables content has ever been built for Android; the race never starts",
-                     "Expected " + aaAndroid + " — it does not exist.\n" + NoContentConsequence,
+                     (built
+                        ? builtDir + " exists but contains ZERO .bundle files — a content build that " +
+                          "failed, was cancelled, or wrote nothing. An empty folder loads exactly like a " +
+                          "missing one."
+                        : "Expected " + aaAndroid + " — it does not exist.") + "\n" + NoContentConsequence,
                      BuildContentRemedy);
             }
 

@@ -71,7 +71,7 @@ PlayerSettings:
   androidUseSwappy: 0
   androidDisplayOptions: 1
   androidBlitType: 1
-  androidResizeableActivity: 1
+  androidResizeableActivity: 0
   androidDefaultWindowWidth: 1920
   androidDefaultWindowHeight: 1080
   androidMinimumWindowWidth: 400

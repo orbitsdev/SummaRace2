@@ -25,6 +25,10 @@ namespace SummaRace.Core
         private GameObject _loadingLabel;
         private bool _loading;
 
+        /// <summary>The scene the running load is fetching, so a repeat request for that same
+        /// scene can be told apart from a genuine rescue to a different one.</summary>
+        private string _loadingScene;
+
         /// <summary>A scene requested while a load was already running, honoured when it ends.
         /// See <see cref="Load"/> for why dropping it was not survivable.</summary>
         private string _pendingScene;
@@ -80,6 +84,15 @@ namespace SummaRace.Core
         {
             if (_loading)
             {
+                // A repeat request for the scene already being fetched is a double tap, not a
+                // rescue. _loading is set before this routine's first yield, so the second
+                // dispatch of one button press lands here — and queueing it made StartPending()
+                // run the SAME scene a second time: another loading screen, another Start(), and
+                // on a story card another StoryStarted for a run the learner began once.
+                // Every genuine rescue targets a DIFFERENT scene (StorySelect from the four
+                // story screens, NameEntry from MainMenu), so this cannot swallow one.
+                if (sceneName == _loadingScene) return;
+
                 // Last request wins: a rescue raised by the scene we just loaded is more
                 // current than anything queued before it.
                 _pendingScene = sceneName;
@@ -92,6 +105,7 @@ namespace SummaRace.Core
         private IEnumerator LoadRoutine(string sceneName, bool showTips)
         {
             _loading = true;
+            _loadingScene = sceneName;
             if (_tipCard != null) _tipCard.SetActive(showTips);
             if (_barRoot != null) _barRoot.SetActive(showTips);
             if (_loadingLabel != null) _loadingLabel.SetActive(showTips);

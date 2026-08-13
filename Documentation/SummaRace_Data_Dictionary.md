@@ -105,7 +105,7 @@ One export covers **one tablet**. With 40 learners on 40 tablets you will concat
 
 ## 3. The row: one play-through of one story
 
-Every key below is present on every schema-5 row, even when empty (`""`, `0`, `false`, `[]`).
+Every key below is present on every schema-6 row, even when empty (`""`, `0`, `false`, `[]`).
 A row from an older build simply lacks the keys added after its version; the §3 tables say
 which version brought each one in.
 
@@ -113,7 +113,7 @@ which version brought each one in.
 
 | Field | Type | Written | Meaning |
 |---|---|---|---|
-| `schemaVersion` | integer | story start | Shape of this row. `5` = as documented here. A row with `0` came from an older build (schema 1) and lacks everything in §3.4–3.6. Lower numbers lack whatever their version had not yet added — see the version list at the top. |
+| `schemaVersion` | integer | story start | Shape of this row. `6` = as documented here. A row with `0` came from an older build (schema 1) and lacks everything in §3.4–3.6. Lower numbers lack whatever their version had not yet added — see the version list at the top. |
 | `runId` | string (32 hex) | story start | Unique id for this play-through. **Several rows can share one `runId`** — see §5, deduplication. |
 | `isPartial` | boolean | on write | `true` = a mid-run safety snapshot. `false` = the row written when the run ended. |
 | `learnerId` | string (guid) | story start | The child. Join key to the roster. Never blank in exported data. Minted on the tablet, so it appears nowhere on paper — use `participantCode` to reach the booklets. |
