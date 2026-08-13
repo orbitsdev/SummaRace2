@@ -1007,22 +1007,34 @@ namespace SummaRace.EditorTools
                 .Where(c => empty.Any(e => e.StartsWith(c + "  ", StringComparison.Ordinal)))
                 .ToList();
 
-            Warn($"{empty.Count} of {bundled} Addressables groups have EMPTY build/load path and provider on disk",
+            // Info, NOT Warn — and that downgrade is evidence-based, not a shrug. This row used to
+            // say OnEnable "most likely" re-seeds these "but nothing in the repo proves it", which
+            // sent the owner to the Groups window on build day to check something by hand. It has
+            // since been demonstrated twice, in the live Editor:
+            //   1. Querying the loaded AddressableAssetSettings shows every group that HAS a
+            //      bundled schema resolving to the correct Local build/load paths. The only two
+            //      without one are Addressables' own built-ins (Built In Data, UI), both 0 entries
+            //      — which is why the on-disk count says 13 of 15 while nothing is actually wrong.
+            //   2. An actual content build ran clean (BuildError empty, 36s) and produced 15
+            //      bundles, INCLUDING one for every race-critical group listed here.
+            // So empty-on-disk is the normal serialized state, not damage from e4de43e. The real
+            // gate is the aa/<platform> content row above, which is a HARD STOP and cannot be
+            // satisfied by a build that produced nothing.
+            Info($"{empty.Count} of {bundled} Addressables groups have EMPTY build/load path and provider on disk — expected, and verified harmless",
                  string.Join("\n", empty) +
                  (critical.Count > 0
-                    ? "\nRace-critical groups affected: " + string.Join(", ", critical) +
+                    ? "\nRace-critical groups listed: " + string.Join(", ", critical) +
                       "\nThose carry the theme, the zone families and the sky domes the race loads (F54)."
                     : "") +
-                 "\nThese were emptied by the Endless Runner import (e4de43e). BundledAssetGroupSchema.OnEnable " +
-                 "most likely re-seeds them from the active profile as soon as the Addressables window opens, " +
-                 "which is why content builds have worked — but nothing in the repo proves it, and if it does NOT " +
-                 "happen the content build silently produces bundles the player cannot locate.\n" +
-                 "WHAT THAT LOOKS LIKE ON THE TABLET: identical to having built no content at all — the race " +
-                 "never starts (see the Addressables content rows above for the traced chain).",
-                 "Do this once, now, not on build day: Window ▸ Asset Management ▸ Addressables ▸ Groups, click " +
-                 "each listed group and confirm Build & Load Paths read 'Local' in the Inspector, then File ▸ Save " +
-                 "Project and re-run this preflight. This row should turn green — if it does not, the paths are " +
-                 "genuinely unset and must be picked by hand before any APK is built.");
+                 "\nEmpty on disk is how Addressables SERIALIZES these: BundledAssetGroupSchema.OnEnable " +
+                 "re-seeds the paths from the active profile when the settings object loads. Verified two " +
+                 "ways in the live Editor — the loaded settings report correct Local build/load paths for " +
+                 "every group that has a bundled schema, and a real content build completed with no error " +
+                 "and produced a bundle for each of the groups above.\n" +
+                 "The two groups WITHOUT a bundled schema (Built In Data, UI) are Addressables' own and " +
+                 "hold 0 entries, which is the whole of the '13 of 15' arithmetic.\n" +
+                 "Nothing to do here. The row that actually gates a build is the aa/<platform> content " +
+                 "HARD STOP above.");
         }
 
         /// <summary>

@@ -34,17 +34,37 @@ namespace SummaRace.Core
         private static bool _hasEffects;   // VibrationEffect exists (API 26+; our min SDK is 26)
 #endif
 
-        /// <summary>Honours the learner's/teacher's setting, re-read each time rather than
-        /// cached: the toggle can change between two vibrations and a stale copy would keep
-        /// buzzing a device someone has just asked to stop.</summary>
+        /// <summary>
+        /// Cached answer to "are haptics on", dropped whenever settings are written.
+        ///
+        /// This used to call SaveManager.LoadSettings() on EVERY vibration, which is a
+        /// File.ReadAllText plus a JsonUtility parse — three of them for the Results stars, and
+        /// one per collect once the race beat is wired, mid-run, on the 2GB floor device that has
+        /// to hold 30fps. The reasoning it carried ("re-read each time rather than cached: the
+        /// toggle can change between two vibrations") is a real requirement but does not need a
+        /// disk hit to satisfy: the setting can only change by being SAVED, so invalidating there
+        /// keeps it exactly as fresh with no I/O in the steady state.
+        /// </summary>
+        private static bool? _enabledCache;
+
+        /// <summary>Called by <see cref="SaveManager.SaveSettings"/> so a changed toggle takes
+        /// effect on the very next vibration.</summary>
+        public static void InvalidateSettingsCache() => _enabledCache = null;
+
         private static bool Enabled
         {
             get
             {
+                if (_enabledCache.HasValue) return _enabledCache.Value;
+
                 var save = SaveManager.Instance;
-                if (save == null) return false;          // editor-direct play: no settings, no buzz
+                // Editor-direct play: no settings, no buzz — and deliberately NOT cached, so the
+                // answer starts working the moment [Core] does rather than latching false.
+                if (save == null) return false;
+
                 var settings = save.LoadSettings();
-                return settings != null && settings.haptics;
+                _enabledCache = settings != null && settings.haptics;
+                return _enabledCache.Value;
             }
         }
 

@@ -199,15 +199,23 @@ namespace SummaRace.Features.Race.Endless
         private void HoldSky(TrackManager track)
         {
             if (track.skyMeshFilter == null) return;
+            // --- the dome MESH. Needs the other theme's ThemeData, so it can legitimately be
+            //     unavailable. Re-asserted rather than set once: their Begin() writes this from
+            //     the theme, and on a slow device that can land after we have. Assigning an asset
+            //     mesh to a MeshFilter mutates nothing on disk, and the equality test makes the
+            //     steady state free.
             var domeTheme = ThemeDatabase.GetThemeData(_world.nightSky ? RaceWorlds.ThemeNight
                                                                        : RaceWorlds.ThemeDay);
-            if (domeTheme == null || domeTheme.skyMesh == null) return;
-            // Re-asserted rather than set once: their Begin() writes this from the theme, and on
-            // a slow device that can land after we have. Assigning an asset mesh to a MeshFilter
-            // mutates nothing on disk, and the equality test makes the steady state free.
-            if (track.skyMeshFilter.sharedMesh != domeTheme.skyMesh)
+            if (domeTheme != null && domeTheme.skyMesh != null
+                && track.skyMeshFilter.sharedMesh != domeTheme.skyMesh)
                 track.skyMeshFilter.sharedMesh = domeTheme.skyMesh;
 
+            // --- the TINT. Deliberately NOT behind the check above: it needs nothing from
+            //     domeTheme, only the sky filter, its Renderer and our own shader. They used to
+            //     share one early return, so a ThemeDatabase that had not resolved NightTime cost
+            //     blue_hour_suburbs (session 4), night_city (7) and starlit_finale (10) not just
+            //     the night dome but the ENTIRE repaint — falling back to the one flat blue dome,
+            //     which is the exact symptom the sky tint exists to remove.
             if (_skyMaterial != null) return;   // done once; the tint never changes mid-race
 
             var renderer = track.skyMeshFilter.GetComponent<Renderer>();
@@ -324,7 +332,19 @@ namespace SummaRace.Features.Race.Endless
                 grass = GameRules.RaceMaxSceneryPerSegment - trees;
             }
 
-            bool night = _world.theme == RaceWorlds.ThemeNight;
+            // Ask the theme that ACTUALLY LOADED, not the one the recipe wanted. SelectTheme has
+            // two silent bail-outs (no PlayerData, or ThemeDatabase not up yet) that leave
+            // PlayerData.usedTheme at its previous value — and that value is PERSISTED, because
+            // TrackManager saves it on every 300m rank-up. So after any night race the tablet's
+            // save holds NightTime, and if the next race's SelectTheme bails (a cold first launch
+            // on the 2GB floor device is exactly when the database might not be up inside the 2s
+            // wait) the track loads NightTime art for a morning_suburbs race while the recipe
+            // still says Day. Trusting the recipe here then picked daylit trees to stand in a
+            // night street. Falls back to the recipe only when the track cannot be asked.
+            var loadedTheme = TrackManager.instance != null ? TrackManager.instance.currentTheme : null;
+            bool night = loadedTheme != null
+                ? loadedTheme.themeName == RaceWorlds.ThemeNight
+                : _world.theme == RaceWorlds.ThemeNight;
             Mesh treeMesh = night ? _art.treeNight : _art.treeDay;
             Mesh grassMesh = night ? _art.grassNight : _art.grassDay;
 

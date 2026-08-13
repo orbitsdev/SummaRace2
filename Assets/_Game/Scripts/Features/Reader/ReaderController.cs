@@ -401,6 +401,13 @@ namespace SummaRace.Features.Reader
             if (AudioManager.Instance != null)
                 AudioManager.Instance.PlaySfx(correct ? AudioKeys.SfxCorrect : AudioKeys.SfxNotQuite);
 
+            // GDD 11.4 asks for a tiny vibration on collect and on star pops. Only the star pops
+            // were ever wired, so Haptics.Light — documented as "Collect / correct answer" — was
+            // declared and called from nowhere. A classroom tablet is usually muted, which is
+            // exactly when a non-audio confirmation carries the beat. Correct only: a wrong answer
+            // is never punished, so it gets no buzz.
+            if (correct) SummaRace.Core.Haptics.Play(SummaRace.Core.Haptics.Light);
+
             if (feedbackText != null)
             {
                 feedbackText.text = correct ? Praise.Generic() : GameText.ReaderWrongFeedback;

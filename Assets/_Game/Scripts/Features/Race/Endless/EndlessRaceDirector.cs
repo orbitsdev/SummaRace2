@@ -1077,6 +1077,11 @@ namespace SummaRace.Features.Race.Endless
             if (SummaRace.Core.AudioManager.Instance != null)
                 SummaRace.Core.AudioManager.Instance.PlaySfx(SummaRace.Constants.AudioKeys.SfxCollect);
 
+            // The "collect" half of GDD 11.4's tiny vibration. This is THE collect beat the
+            // constant is named for, and on a muted classroom tablet it is the only non-visual
+            // confirmation the learner gets.
+            SummaRace.Core.Haptics.Play(SummaRace.Core.Haptics.Light);
+
             // Sparkle VFX at the collected card (TDD §11.4) — the visible "you got it".
             SpawnCollectSparkle(pickup.transform.position);
             // The word lifts off and flies up into its SWBST slot (F40 collect-to-inventory).
@@ -3355,7 +3360,20 @@ namespace SummaRace.Features.Race.Endless
             bool firstRelease = !_runReleased;
             ShowBigCount(hud, label, true);
             _runReleased = true; // Update()/LateUpdate() stop holding the pre-race dance
-            if (firstRelease) RestartTheirMusic();
+            if (firstRelease)
+            {
+                RestartTheirMusic();
+                // Final word on the world's light and fog. Their TrackManager.Begin() writes
+                // RenderSettings.fogColor from the THEME, not from the world recipe, and the only
+                // thing that undid it was the throttled re-assert inside `if (!_runReleased)` —
+                // i.e. correctness depended on that poll landing after their write and before the
+                // countdown ended. It currently does, but it is an undefended ordering dependency
+                // on a path that has been reordered repeatedly, and the failure mode is every
+                // world's fog silently collapsing to one of two theme colours: the bleaching that
+                // had to be fixed once already. Re-asserting once here makes it not a race.
+                if (_story != null)
+                    SummaRace.Features.Race.RaceWorlds.Apply(_story.world, _story.difficulty);
+            }
             // Both only exist once there is a run: pausing a world that has not started would
             // stack two "hold the track still" mechanisms, and gate 1's options showing under
             // the mission card or the 3-2-1 would be noise rather than reading time.

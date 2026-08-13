@@ -97,6 +97,10 @@ namespace SummaRace.Core
         public void SaveSettings(AppSettings settings)
         {
             TryWrite(PrefKeys.SettingsFile, JsonUtility.ToJson(settings, true));
+            // Settings can only change by being written, so this is the one place that has to
+            // tell Haptics its cached answer is stale. Keeps the toggle as responsive as the old
+            // read-from-disk-every-buzz behaviour, without the disk.
+            Haptics.InvalidateSettingsCache();
         }
 
         public List<LearnerProfile> LoadProfiles()
