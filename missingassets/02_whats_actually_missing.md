@@ -1,24 +1,4 @@
-using System.IO;
-using UnityEditor;
-using UnityEngine;
-
-namespace SummaRace.EditorTools
-{
-    /// <summary>One-shot writer for Documentation/SummaRace_Missing_Assets.md.</summary>
-    public static class WriteAssetDoc
-    {
-        [MenuItem("SummaRace/Write Missing Assets Doc", false, 40)]
-        public static void Write()
-        {
-            var dir = Path.Combine(Directory.GetCurrentDirectory(), "Documentation");
-            Directory.CreateDirectory(dir);
-            var path = Path.Combine(dir, "..", "missingassets", "02_whats_actually_missing.md");
-            File.WriteAllText(path, Doc);
-            AssetDatabase.Refresh();
-            Debug.Log("[WriteAssetDoc] wrote " + path);
-        }
-
-        private const string Doc = @"# SummaRace — Missing Assets
+# SummaRace — Missing Assets
 
 Verified 2026-08-19 on disk, against the code that loads each path, and against a portrait render
 of every screen. **Nothing here blocks the build** — every path already resolves to something.
@@ -96,6 +76,3 @@ Unity menu SummaRace then Capture Portrait Screen renders the open scene to `Cap
 at true 1080x1920. Existing renders: Reader, StorySelect, Arrange, Summary, Results, SessionMap.
 The two different Ms. Lumis are obvious side by side in `Captures\Reader.png` versus
 `Captures\Arrange.png`.
-";
-    }
-}
