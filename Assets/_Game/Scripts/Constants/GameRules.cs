@@ -343,9 +343,20 @@ namespace SummaRace.Constants
         // if the race misses 30fps on the tablet, this is the first number to halve.
         public const int RaceMaxSceneryPerSegment = 14;
 
-        // Stars (GDD §4.2): 3★ = 5/5 first picks, 2★ = 4/5, 1★ = 3 or fewer
+        // Stars: 3 stars = 5/5 first picks, 2 stars = 3/5 or 4/5, 1 star = 2 or fewer.
+        //
+        // The GDD (4.2) sets the 2-star gate at 4 of 5. It is deliberately 3 here, per the owner
+        // decision recorded as D4 in SummaRace_Owner_Handover.md. At 4, everything from 3/5
+        // down to 0/5 showed the identical one-star screen -- so a learner who summarised
+        // three of the five parts correctly got exactly the same feedback as one who got
+        // none, thirty times over the study, on the screen whose whole job is telling a
+        // child how they did.
+        //
+        // Display only. Stars are not a logged measure: raceFirstPickCorrect is, it is
+        // written straight from the run, and it does not move. Reverting is this one
+        // constant plus the matching assertion in ProgressionRuleTests.
         public const int StarsThreeMin = 5;
-        public const int StarsTwoMin = 4;
+        public const int StarsTwoMin = 3;
 
         // Arrange (GDD §4.4). Correct slots lock, so every verify makes progress — but the
         // story cannot continue until the order is right, which makes this the one screen

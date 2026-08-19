@@ -54,7 +54,9 @@ namespace SummaRace.Tests.EditMode
         public void StarThresholdsFollowTheGddLadder()
         {
             Assert.AreEqual(5, GameRules.StarsThreeMin, "3 stars is a perfect run of first picks (GDD S4.2).");
-            Assert.AreEqual(4, GameRules.StarsTwoMin, "2 stars is 4 of 5 first picks (GDD S4.2).");
+            // 3, not the GDD's 4 -- owner decision D4. At 4 the 2-star gate sat one step below a
+            // perfect run, which collapsed 3/5 and 0/5 onto the same one-star screen.
+            Assert.AreEqual(3, GameRules.StarsTwoMin, "2 stars is 3 or 4 of 5 first picks (owner decision D4).");
             Assert.Greater(GameRules.StarsThreeMin, GameRules.StarsTwoMin, "The ladder must go up.");
             Assert.AreEqual(TestContent.ElementsPerStory, GameRules.StarsThreeMin,
                 "3 stars must mean every SWBST element was right first time — if the threshold and the number of "

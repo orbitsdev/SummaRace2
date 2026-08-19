@@ -901,6 +901,10 @@ MonoBehaviour:
   nextButtonLabel: {fileID: 2070235701}
   voiceButton: {fileID: 2103098876}
   voiceButtonLabel: {fileID: 1531028351}
+  replayButton: {fileID: 0}
+  replayButtonLabel: {fileID: 0}
+  backButton: {fileID: 0}
+  backButtonLabel: {fileID: 0}
   questionPanel: {fileID: 2000385749}
   questionText: {fileID: 2037533485}
   optionButtons:
@@ -1271,7 +1275,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 66
+  m_fontSize: 46
   m_fontSizeBase: 46
   m_fontWeight: 400
   m_enableAutoSizing: 1
@@ -2090,13 +2094,13 @@ RectTransform:
   m_GameObject: {fileID: 1532069976}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: -309.4}
-  m_LocalScale: {x: 2.1070023, y: 2.21, z: 5.392449}
+  m_LocalScale: {x: 2.107, y: 2.107, z: 2.107}
   m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 1890616202}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: -0.06, y: 0.11}
-  m_AnchorMax: {x: 0.44, y: 0.45}
+  m_AnchorMin: {x: 0, y: 0.11}
+  m_AnchorMax: {x: 0.5, y: 0.45}
   m_AnchoredPosition: {x: 72, y: 23}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}

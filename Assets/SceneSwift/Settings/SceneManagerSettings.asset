@@ -15,8 +15,11 @@ MonoBehaviour:
   _favorites: []
   _recent:
   - Assets/Scenes/MainSummaRace.unity
-  - Assets/_Game/Scenes/Race.unity
+  - Assets/TextMesh Pro/Examples & Extras/Scenes/04 - Word Wrapping.unity
   - Assets/_Game/Scenes/Boot.unity
+  - Assets/_Recovery/0.unity
+  - Assets/TextMesh Pro/Examples & Extras/Scenes/03 - Line Justification.unity
+  - Assets/_Game/Scenes/Race.unity
   - Assets/TextMesh Pro/Examples & Extras/Scenes/02 - Multi-line TextMesh Pro.unity
   _groups: []
   _sceneColors: []

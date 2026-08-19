@@ -24,9 +24,9 @@ namespace SummaRace.UI
 
         private void Awake()
         {
-            _image = GetComponent<Image>();
+                        _image = GetComponent<Image>();
             _group = GetComponent<CanvasGroup>();
-            if (idleSprite != null) _image.sprite = idleSprite;
+            ShowIdle();
         }
 
         private void OnEnable() => EventBus.Subscribe<PageAnswered>(OnAnswered);
@@ -41,12 +41,24 @@ namespace SummaRace.UI
 
         private IEnumerator Cheer()
         {
-            if (cheerSprite != null) _image.sprite = cheerSprite;
+            var cheer = LumiExpressions.NextCheer() ?? cheerSprite;
+            if (cheer != null) _image.sprite = cheer;
             if (_group != null) _group.alpha = 1f; // pop back in (she was hidden for the question)
-            Tween.PunchScale(transform, Vector3.one * 0.18f, 0.5f);
+                        Tween.PunchScale(transform, Vector3.one * 0.18f, 0.5f);
             yield return new WaitForSeconds(cheerSeconds);
-            if (idleSprite != null) _image.sprite = idleSprite;
+            ShowIdle();
             _routine = null;
+        }
+
+        /// <summary>
+        /// Idle pose. Prefers the Resources/UI/Lumi pool, so she can carry as many expressions
+        /// as there are files instead of exactly one; falls back to the serialized sprite when
+        /// that folder is empty, which is what every scene wired before the pool existed uses.
+        /// </summary>
+        private void ShowIdle()
+        {
+            var idle = LumiExpressions.NextIdle() ?? idleSprite;
+            if (idle != null) _image.sprite = idle;
         }
     }
 }
