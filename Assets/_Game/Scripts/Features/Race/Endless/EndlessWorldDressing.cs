@@ -66,6 +66,8 @@ namespace SummaRace.Features.Race.Endless
         private RaceWorlds.World _world;
         private WorldArt _art;
         private bool _configured;
+        private bool _rngCaptured;
+        private UnityEngine.Random.State _priorRandomState;
         private bool _subscribed;
         private float _zoneHoldTimer;
         private System.Random _rng;
@@ -79,6 +81,7 @@ namespace SummaRace.Features.Race.Endless
         /// <summary>Fraction of a blocker's renderer bounds treated as solid — see Blocked().</summary>
         private const float BlockerSolidity = 0.62f;
 
+        private ParticleSystem _weather; // camera-parented; destroyed with this component
         private Material _skyMaterial;   // per-race instance; freed in OnDestroy
         private static readonly int SkyColorId = Shader.PropertyToID("_SkyColor");
         private static readonly int SkyBlendId = Shader.PropertyToID("_SkyBlend");
@@ -117,7 +120,7 @@ namespace SummaRace.Features.Race.Endless
             data.usedTheme = index;
         }
 
-        public void Configure(RaceWorlds.World world, WorldArt art, int seed)
+        public void Configure(RaceWorlds.World world, WorldArt art, int seed, string worldId)
         {
             _world = world;
             _art = art;
@@ -132,11 +135,50 @@ namespace SummaRace.Features.Race.Endless
             _inAccent = false;
             _blockMetresLeft = JitterBlock(world.primaryRunMetres);
 
+            SeedTheirSegmentDraw(seed);
+            BuildWeather(worldId);
+
             _configured = true;
+        }
+
+        /// <summary>
+        /// Makes the ORDER of the track's own segment prefabs a property of the story (F57).
+        ///
+        /// THE BUG THIS EXISTS TO FIX. Their <c>SpawnNewSegment</c> picks with
+        /// <c>Random.Range(0, prefabList.Length)</c> off Unity's global stream, which is seeded
+        /// from the clock. Two consequences, and the second is the one that matters:
+        ///   1. Variety was accidental. The zone mix could hand a run fourteen Urban prefabs and
+        ///      the draw could still open on the same three, because nothing spread the picks.
+        ///   2. A RACE WAS NOT REPRODUCIBLE. The same story laid a different street on every run
+        ///      and on every tablet. For a thesis instrument that is a real problem and not a
+        ///      cosmetic one: forty learners are compared against a control group on how well
+        ///      they answer five gates, and "which buildings happened to be beside gate 3" was
+        ///      an uncontrolled variable that differed per child. Seeding it means every learner
+        ///      runs the SAME s04_hard, so the only thing that varies between them is the child.
+        ///
+        /// The seed comes from <see cref="RaceWorlds.StableSeed"/> (an FNV hash of the story id,
+        /// not <c>GetHashCode</c>, which is documented as unstable across processes), so the three
+        /// difficulties of one session draw three different orders and each is fixed forever.
+        ///
+        /// SCOPE, and why this is safe to do to a global. Everything else drawn from this stream
+        /// during a race is decoration — their cloud placement, and our own verge scatter, which
+        /// already ran off a story-seeded System.Random. Their obstacle and consumable spawns are
+        /// the other callers and both are guarded off in our mode (F35: the only obstacle in this
+        /// game is a wrong answer). Nothing that scores, logs or gates anything reads it. The
+        /// previous state is captured and put back in OnDestroy so the seeding cannot outlive the
+        /// race and quietly make some later screen deterministic.
+        /// </summary>
+        private void SeedTheirSegmentDraw(int seed)
+        {
+            if (_rngCaptured) return;
+            _priorRandomState = UnityEngine.Random.state;
+            _rngCaptured = true;
+            UnityEngine.Random.InitState(seed);
         }
 
         private void OnDestroy()
         {
+            if (_weather != null) Destroy(_weather.gameObject);
             if (_subscribed && TrackManager.instance != null)
                 TrackManager.instance.newSegmentCreated -= OnNewSegment;
             _subscribed = false;
@@ -145,6 +187,9 @@ namespace SummaRace.Features.Race.Endless
             // across ten sessions on a 2GB device is exactly the kind of drip the vignette
             // sprite had to be fixed for in F44.
             if (_skyMaterial != null) { Destroy(_skyMaterial); _skyMaterial = null; }
+
+            // Hand the global stream back exactly as it was found — see SeedTheirSegmentDraw.
+            if (_rngCaptured) { UnityEngine.Random.state = _priorRandomState; _rngCaptured = false; }
         }
 
         private void Update()
@@ -452,5 +497,78 @@ namespace SummaRace.Features.Race.Endless
         {
             return min + (float)_rng.NextDouble() * (max - min);
         }
+
+        /// <summary>
+        /// The world's weather, as a Shuriken emitter parented to the camera.
+        ///
+        /// WHY SHURIKEN AND NOT THE VFX PACKS IN THIS PROJECT. Both `Plugins/Calcatz/Weather
+        /// Elemental VFX` and `Assets/asset pack` ship rain/snow/fog as **VFX Graph** (`.vfx`).
+        /// `com.unity.visualeffectgraph` is not installed, and installing it would not help:
+        /// VFX Graph needs compute shaders and Android here is pinned to OpenGLES3. Shuriken
+        /// (`com.unity.modules.particlesystem`) is installed and runs everywhere.
+        ///
+        /// The material is loaded from Resources rather than `Shader.Find`. A Resources asset is
+        /// a build dependency, so its shader variants survive stripping; `Shader.Find` resolves
+        /// in the Editor and returns null in a player, which is the failure that only shows up
+        /// on the tablet. Missing material = no weather, and the race is otherwise untouched.
+        ///
+        /// Parented to the camera so the emitter travels with the runner. Their track floats its
+        /// origin roughly every 100m, so anything left in world space would be stranded.
+        /// </summary>
+        private void BuildWeather(string worldId)
+        {
+            int kind; float rate;
+            RaceWorlds.WeatherFor(worldId, out kind, out rate);
+            if (kind == RaceWorlds.WeatherNone || rate <= 0f) return;
+
+            var cam = Camera.main;
+            if (cam == null) return;
+
+            var mat = Resources.Load<Material>("FX/weather_particle");
+            if (mat == null) return;   // degrade to no weather rather than to magenta
+
+            var go = new GameObject("Weather");
+            go.transform.SetParent(cam.transform, false);
+            // a box above and ahead of the lens, wide enough to cover the corridor
+            go.transform.localPosition = new Vector3(0f, 9f, 14f);
+
+            _weather = go.AddComponent<ParticleSystem>();
+            var em = _weather.emission; em.rateOverTime = rate;
+            var sh = _weather.shape;
+            sh.shapeType = ParticleSystemShapeType.Box;
+            sh.scale = new Vector3(26f, 1f, 30f);
+
+            var main = _weather.main;
+            main.simulationSpace = ParticleSystemSimulationSpace.World; // so it does not turn with the camera
+            main.maxParticles = 900;
+            main.gravityModifier = 0f;
+
+            var rend = _weather.GetComponent<ParticleSystemRenderer>();
+            rend.material = mat;
+            rend.alignment = ParticleSystemRenderSpace.View;
+
+            switch (kind)
+            {
+                case RaceWorlds.WeatherRain:
+                    main.startSpeed = 24f; main.startLifetime = 1.1f;
+                    main.startSize = 0.10f; main.startColor = new Color(0.78f, 0.86f, 1f, 0.55f);
+                    rend.renderMode = ParticleSystemRenderMode.Stretch;
+                    rend.velocityScale = 0.28f;   // the streak IS the rain
+                    break;
+                case RaceWorlds.WeatherSnow:
+                    main.startSpeed = 3.2f; main.startLifetime = 4.5f;
+                    main.startSize = 0.16f; main.startColor = new Color(1f, 1f, 1f, 0.85f);
+                    var nz = _weather.noise; nz.enabled = true; nz.strength = 0.6f; nz.frequency = 0.3f;
+                    break;
+                default: // motes — dust, pollen, fireflies: hang in the air rather than fall
+                    main.startSpeed = 0.6f; main.startLifetime = 6f;
+                    main.startSize = 0.09f; main.startColor = new Color(1f, 0.93f, 0.72f, 0.6f);
+                    var n2 = _weather.noise; n2.enabled = true; n2.strength = 0.35f; n2.frequency = 0.2f;
+                    main.gravityModifier = -0.02f;
+                    break;
+            }
+            _weather.Play();
+        }
+
     }
 }

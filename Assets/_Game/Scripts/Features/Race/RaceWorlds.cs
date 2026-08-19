@@ -1,4 +1,5 @@
 using UnityEngine;
+using SummaRace.Constants;
 
 namespace SummaRace.Features.Race
 {
@@ -71,6 +72,36 @@ namespace SummaRace.Features.Race
 
         // Ordered deliberately: day -> sunset -> night -> mist -> finale, so session 10 feels
         // like arriving somewhere.
+        // ---- Weather -------------------------------------------------------------------
+        // A world's weather, keyed by id rather than added to the World struct: the struct is
+        // built by three chained builders (Make -> Place -> Mix) and threading one more value
+        // through all of them touches ten recipes for a purely additive layer.
+        //
+        // Deliberately DETERMINISTIC per world. Every learner running s07 gets the same night
+        // rain — weather that varied per run would be an uncontrolled variable in an instrument
+        // whose whole job is to compare raceFirstPickCorrect across children.
+        public const int WeatherNone = 0;
+        public const int WeatherSnow = 1;   // slow, drifting, settles nothing
+        public const int WeatherRain = 2;   // fast vertical streaks
+        public const int WeatherMotes = 3;  // dust / pollen / fireflies hanging in the light
+
+        /// <summary>Weather kind and how heavy it is (particles/sec) for a world id.</summary>
+        public static void WeatherFor(string worldId, out int kind, out float rate)
+        {
+            switch (worldId)
+            {
+                // Only the worlds whose mood the weather SERVES. A clear bright morning with
+                // snow in it reads as a bug, not as variety.
+                case "overcast_industrial": kind = WeatherRain;  rate = 320f; return;
+                case "misty_morning":       kind = WeatherMotes; rate =  70f; return;
+                case "golden_fields":       kind = WeatherMotes; rate =  55f; return;
+                case "autumn_lane":         kind = WeatherMotes; rate =  90f; return;
+                case "starlit_finale":      kind = WeatherSnow;  rate = 110f; return;
+                case "night_city":          kind = WeatherRain;  rate = 240f; return;
+                default:                    kind = WeatherNone;  rate =   0f; return;
+            }
+        }
+
         private static World Make(float sr, float sg, float sb, float intensity,
                                   float pitch, float yaw,
                                   float ar, float ag, float ab,
@@ -151,6 +182,119 @@ namespace SummaRace.Features.Race
             w.primaryRunMetres = primaryRunMetres;
             w.accentRunMetres = accentRunMetres;
             return w;
+        }
+
+        /// <summary>
+        /// A hash of the story id that is the SAME on every device and every run.
+        ///
+        /// <c>string.GetHashCode</c> is explicitly documented as not stable across processes or
+        /// runtimes, and the director was seeding the world RNG with it. On Mono it happens to be
+        /// deterministic today, so nothing was visibly wrong — but a study instrument that
+        /// silently lays a different track for the same story on a different tablet, or after a
+        /// runtime upgrade, is not reproducible, and reproducibility is the whole reason the
+        /// track is seeded at all: every learner running s04_hard should run the SAME s04_hard.
+        /// FNV-1a, unchecked so the overflow is the algorithm and not an exception.
+        /// </summary>
+        public static int StableSeed(string id)
+        {
+            unchecked
+            {
+                uint h = 2166136261u;
+                if (!string.IsNullOrEmpty(id))
+                    for (int i = 0; i < id.Length; i++) { h ^= id[i]; h *= 16777619u; }
+                return (int)(h & 0x7fffffff);
+            }
+        }
+
+        /// <summary>
+        /// Makes the THREE STORIES OF A SESSION lay three different streets (F57).
+        ///
+        /// THE BUG THIS EXISTS TO FIX. F48 gave each world a place and F49 gave it a family mix,
+        /// but both are properties of the WORLD, and a world is per session — so easy, average
+        /// and hard shared every one of them: same theme, same primary family, same accent
+        /// weights, same block lengths, same greenery counts. The only thing that differed
+        /// between the three races a learner runs in one session was the time of day and the gate
+        /// spacing. Thirty races, ten distinct layouts. The owner reported the race as repetitive
+        /// three times across F48/F49/F57 and was right every time, because each fix addressed a
+        /// different axis and none of them addressed this one.
+        ///
+        /// WHAT IS DELIBERATELY *NOT* VARIED: theme, sky dome and the primary family. Those three
+        /// are what make a session read as one place, which is the property F48 exists to create
+        /// and the reason the ten worlds are ordered as a journey. A learner should recognise
+        /// session 4 as the same town on all three runs — walking a different street of it, not
+        /// waking up in a different city. <see cref="Endless.EndlessWorldDressing.Configure"/>
+        /// also always OPENS the run on the world's own family, so the establishing shot is
+        /// identical by construction whatever this does.
+        ///
+        /// WHAT IS VARIED is how much of the run belongs to the primary family and which accent
+        /// cuts into it. Easy stays close to the authored recipe and is the greenest; hard gives
+        /// the most road to the accents and strips the verge back. Combined with the story-seeded
+        /// segment order (see EndlessWorldDressing.Configure), the three races of a session lay
+        /// visibly different geometry from the same pool of prefabs — no new art, no extra
+        /// memory, and the live segment count is untouched.
+        /// </summary>
+        public static World Vary(World w, string difficulty)
+        {
+            switch (difficulty)
+            {
+                case "easy":
+                    // Closest to the authored recipe: longest primary blocks, shortest accents,
+                    // greenest verge. The first race of a session is the one that has to
+                    // establish the place, so it is the one that stays most faithful to it.
+                    w.primaryRunMetres *= 1.12f;
+                    w.accentRunMetres *= 0.85f;
+                    w.trees = Mathf.RoundToInt(w.trees * 1.35f);
+                    w.grass = Mathf.RoundToInt(w.grass * 1.30f);
+                    break;
+
+                case "hard":
+                    // The accents take the most road here, and the RARER accent is promoted to
+                    // the common one — so the family a learner saw least in the session's first
+                    // two races is the one that carries its third. Verge stripped back: a later,
+                    // barer version of the same street, which also agrees with the cooler, dimmer
+                    // light ApplyTimeOfDay gives this difficulty.
+                    w.primaryRunMetres *= 0.70f;
+                    w.accentRunMetres *= 1.40f;
+                    int swapA = w.accentA, swapAW = w.accentAWeight;
+                    w.accentA = w.accentB; w.accentAWeight = w.accentBWeight;
+                    w.accentB = swapA; w.accentBWeight = swapAW;
+                    w.trees = Mathf.RoundToInt(w.trees * 0.55f);
+                    w.grass = Mathf.RoundToInt(w.grass * 0.60f);
+                    break;
+
+                default:
+                    // Average sits between the two on run length, and flattens the accent
+                    // weighting so both accent families get comparable road. That is the single
+                    // most varied of the three, which suits the middle race of a session.
+                    w.primaryRunMetres *= 0.86f;
+                    w.accentRunMetres *= 1.18f;
+                    if (w.accentAWeight > 0 && w.accentBWeight > 0)
+                    {
+                        int flat = Mathf.Max(1, (w.accentAWeight + w.accentBWeight) / 2);
+                        w.accentAWeight = flat;
+                        w.accentBWeight = flat;
+                    }
+                    break;
+            }
+
+            // A recipe may not scale itself out of usability. The mix sequencer treats a block
+            // shorter than the minimum as a reason to restart the block immediately, which at
+            // zero length would spin it once per segment and shred the world into single pieces.
+            w.primaryRunMetres = Mathf.Max(GameRules.RaceZoneMixMinBlockMetres, w.primaryRunMetres);
+            w.accentRunMetres = Mathf.Max(GameRules.RaceZoneMixMinBlockMetres, w.accentRunMetres);
+            w.trees = Mathf.Max(0, w.trees);
+            w.grass = Mathf.Max(0, w.grass);
+            return w;
+        }
+
+        /// <summary>
+        /// The recipe an actual race should use: the session's world, varied for this story's
+        /// difficulty. Call this rather than <see cref="For"/> anywhere a real run is being set
+        /// up — For() is the authored row, this is the row as played.
+        /// </summary>
+        public static World ForRace(string worldId, string difficulty)
+        {
+            return Vary(For(worldId), difficulty);
         }
 
         public static World For(string worldId)

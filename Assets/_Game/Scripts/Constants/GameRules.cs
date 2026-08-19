@@ -139,6 +139,20 @@ namespace SummaRace.Constants
         // 800 is only a backstop against a nonsensical speed.
         public const float RaceMaxGateGap = 800f; // never absurdly long
 
+        // RHYTHM (F57). Every gap in a race used to be the same number, because the formula above
+        // is a pure function of difficulty and current speed — so a race was a metronome, and all
+        // three races of a session shared the same beat. The gap is now multiplied by a per-gate
+        // factor drawn from the story's stable seed, which makes the pacing part of a story's
+        // identity instead of a constant.
+        //
+        // WHY THIS CANNOT COST READING TIME, which is the one thing about gate spacing that is a
+        // validity concern and not a taste one. NextGateGap clamps its result to a floor of
+        // (RacePreviewLeadSeconds + RaceQuietRunSeconds) seconds of runway, and the clamp is
+        // applied AFTER this multiplier. A draw below 1.0 therefore cannot produce a gate that
+        // arrives before its options have been readable for the full window — it is absorbed by
+        // the floor. Centred on 1.0 so a race is not systematically longer either.
+        public const float RaceGateRhythmSpread = 0.20f;
+
         // ------------------------------------------------------------------------------
         // THE READING WINDOW (F55). The option preview used to appear the moment its gate was
         // PLACED and stay up until the gate resolved. Measured live over a real s01_easy run:
@@ -167,12 +181,11 @@ namespace SummaRace.Constants
         // would otherwise drop the gap below the reading window itself.
         public const float RaceQuietRunSeconds = 6f;
 
-        // Attention cue when the window opens (F55). The panel arriving silently mid-run can be
-        // missed, and missing it costs exactly the reading seconds the panel exists to give. Two
-        // soft pulses on the panel's BORDER only — never on the words, which must be legible and
-        // motionless from their first rendered frame — over this long. Two peaks in 1.23s is
-        // 1.63Hz, well under the 3Hz photosensitivity ceiling; nothing here may ever be a strobe.
-        public const float RacePreviewCueSeconds = 1.23f;
+        // The option panel's arrival cue is NOT tunable from here. EndlessRaceDirector's
+        // PulseArrivalGlow writes its four legs out longhand so the pulse frequency stays
+        // checkable by reading it (1.85Hz, against a 3Hz photosensitivity ceiling). A constant
+        // here duplicated that — and duplicated it wrong, claiming 1.63Hz — while nothing read
+        // it, so tuning it would have silently changed nothing. Removed 2026-08-19.
 
         // ------------------------------------------------------------------------------
         // RACE LEGIBILITY. The world cards cannot be read, and the numbers say so.

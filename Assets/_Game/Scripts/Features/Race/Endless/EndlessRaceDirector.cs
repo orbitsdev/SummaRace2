@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using PrimeTween;
 using TMPro;
+using SummaRace.Constants;
 using UnityEngine;
 
 namespace SummaRace.Features.Race.Endless
@@ -46,7 +47,7 @@ namespace SummaRace.Features.Race.Endless
         [SerializeField] private Shader skyTintShader;           // _Game/Art/Shaders/SkyTint
 
         // Warm gold the collect sparkle is retinted to, matching the story-treasure look.
-        private static readonly Color StoryGold = new Color(1f, 0.85f, 0.45f);
+        private static readonly Color StoryGold = Theme.StoryGold;
         private UnityEngine.UI.Image _vignette; // amber screen-edge danger vignette (TDD §11.5)
         private Sprite _vignetteSprite;        // generated per race entry; freed in OnDestroy
 
@@ -465,7 +466,7 @@ namespace SummaRace.Features.Race.Endless
             // WHERE this race happens, not just what colour the light is (F48). Both halves have
             // to land before their Begin() runs: it reads the theme once and never looks again,
             // and its very first Update spawns ten segments from whatever zone is current.
-            var place = SummaRace.Features.Race.RaceWorlds.For(_story.world);
+            var place = SummaRace.Features.Race.RaceWorlds.ForRace(_story.world, _story.difficulty);
             // Bounded, because a race that never starts is far worse than a race in the wrong
             // theme: if their database is slow, SelectTheme leaves their default alone and the
             // world still gets its light, fog, sky and greenery.
@@ -484,7 +485,7 @@ namespace SummaRace.Features.Race.Endless
                 leaf = sceneryLeafMaterial,
                 branch = sceneryBranchMaterial,
                 skyTint = skyTintShader,
-            }, _story.id != null ? _story.id.GetHashCode() : 0);
+            }, SummaRace.Features.Race.RaceWorlds.StableSeed(_story.id), _story.world);
 
             // Jump their Loadout menu straight into the run. Their TrackManager GameObject
             // stays inactive until GameState.Enter -> StartGame -> Begin() activates it,
@@ -1161,7 +1162,7 @@ namespace SummaRace.Features.Race.Endless
             // it needs no GameText constant — and GameText.RaceWrongFeedback ("Not quite - get the
             // glowing card!") is now false, since there is no card to get. See the report: the
             // framing wording is a GameText change for whoever owns that file.
-            ShowFeedback(_story.elements[pickup.elementIndex].correct, new Color(1f, 0.85f, 0.45f));
+            ShowFeedback(_story.elements[pickup.elementIndex].correct, Theme.StoryGold);
 
             // Surge the chaser into view for a beat — the visible half of "not quite".
             _menaceTimer = SummaRace.Constants.GameRules.PatrolMenaceSeconds;
@@ -1436,18 +1437,72 @@ namespace SummaRace.Features.Race.Endless
             // empty corridor between gates wondering if the game had stopped.
             float runSpeed = Mathf.Max(track.speed, track.minSpeed);
             float bySpeed = SummaRace.Constants.GameRules.RaceSecondsPerGate
-                * DifficultyGateTime() * runSpeed;
+                * DifficultyGateTime() * GateRhythm(_pendingElement) * runSpeed;
             // THE LEGIBILITY FLOOR, in seconds and therefore in metres at the speed being run:
             // the reading window plus the quiet stretch. Difficulty scales thinking time, but it
             // may never scale it below the window itself — at hard (x0.8) it otherwise would, and
             // a gate that arrives before its options have been readable for 12s is the F47
             // validity failure returning through the difficulty setting.
-            float secondsFloor = (SummaRace.Constants.GameRules.RacePreviewLeadSeconds
-                + SummaRace.Constants.GameRules.RaceQuietRunSeconds) * runSpeed;
+            // seconds -> METRES, accounting for the fact that the runner ACCELERATES across the
+            // gap. `seconds * runSpeed` is the distance only if the speed never changes; their
+            // track adds k_Acceleration (0.2 m/s^2) every second up to maxSpeed, so the runner
+            // eats that distance faster than the floor assumes and the window silently comes in
+            // short. Measured before this fix: hard delivered 16.1s where the floor claimed 18s,
+            // i.e. it missed the ~16.5s a 70wpm reader needs on the one difficulty that has the
+            // least slack. Integrating instead: d = v*T + 0.5*a*T^2 while below maxSpeed, then
+            // the remainder at maxSpeed.
+            const float trackAccel = 0.2f;   // TrackManager.k_Acceleration (protected const there)
+            float window = SummaRace.Constants.GameRules.RacePreviewLeadSeconds
+                + SummaRace.Constants.GameRules.RaceQuietRunSeconds;
+            float secondsFloor;
+            float toTop = trackAccel > 0f ? (track.maxSpeed - runSpeed) / trackAccel : float.MaxValue;
+            if (toTop >= window)
+            {
+                secondsFloor = runSpeed * window + 0.5f * trackAccel * window * window;
+            }
+            else
+            {
+                // accelerate to maxSpeed, then cruise for what is left of the window
+                secondsFloor = runSpeed * toTop + 0.5f * trackAccel * toTop * toTop
+                             + track.maxSpeed * (window - toTop);
+            }
             float floor = Mathf.Max(Mathf.Max(_story.mission.checkpointSpacing,
                 SummaRace.Constants.GameRules.RaceMinGateGap), secondsFloor);
             return Mathf.Clamp(Mathf.Max(bySpeed, floor), floor,
                 SummaRace.Constants.GameRules.RaceMaxGateGap);
+        }
+
+        /// <summary>
+        /// This story's beat for this gate (F57). A race used to hand out the same gap five
+        /// times, because NextGateGap is a pure function of difficulty and current speed, so the
+        /// pacing of every race in the game was identical and only its length differed. The
+        /// factor is derived from the story's stable seed and the gate index, which makes it
+        /// fixed for a given story forever (every learner runs the same s04_hard) while giving
+        /// each of the thirty races its own rhythm.
+        ///
+        /// Centred on 1.0 and applied BEFORE NextGateGap's floor clamp, so a short draw is
+        /// absorbed by the reading-window floor rather than eating into it — see
+        /// GameRules.RaceGateRhythmSpread.
+        /// </summary>
+        private float GateRhythm(int gateIndex)
+        {
+            float spread = SummaRace.Constants.GameRules.RaceGateRhythmSpread;
+            if (spread <= 0f) return 1f;
+
+            // A cheap integer hash of (story, gate) rather than a stored System.Random: this is
+            // called from gate scheduling, which also runs on the re-present path, and a stream
+            // would then advance differently depending on how many mistakes the learner made —
+            // i.e. the track would change shape in response to the child's answers.
+            int seed = SummaRace.Features.Race.RaceWorlds.StableSeed(_story.id) + gateIndex * 7919;
+            unchecked
+            {
+                uint h = (uint)seed;
+                h ^= h >> 16; h *= 2246822519u;
+                h ^= h >> 13; h *= 3266489917u;
+                h ^= h >> 16;
+                float unit = (h & 0xffffff) / (float)0x1000000;   // [0,1)
+                return 1f + (unit * 2f - 1f) * spread;
+            }
         }
 
         /// <summary>Easy gets more runway to read a card, hard gets less.</summary>
@@ -1619,7 +1674,7 @@ namespace SummaRace.Features.Race.Endless
             _feedbackPill = pillGo.AddComponent<UnityEngine.UI.Image>();
             _feedbackPill.sprite = WoodPlaqueSprite();
             _feedbackPill.type = UnityEngine.UI.Image.Type.Sliced;
-            _feedbackPill.color = new Color(0.10f, 0.12f, 0.16f, 0.88f);
+            _feedbackPill.color = Theme.Alpha(Theme.Ink, 0.88f);
             _feedbackPill.raycastTarget = false;
             var prt = _feedbackPill.rectTransform;
             prt.anchorMin = prt.anchorMax = prt.pivot = new Vector2(0.5f, 0.5f);
@@ -1685,7 +1740,7 @@ namespace SummaRace.Features.Race.Endless
             var bimg = board.AddComponent<UnityEngine.UI.Image>();
             bimg.sprite = WoodPlaqueSprite();
             bimg.type = UnityEngine.UI.Image.Type.Sliced;
-            bimg.color = new Color(0.26f, 0.17f, 0.09f, 0.94f); // same wood language as the tracker
+            bimg.color = Theme.Alpha(Theme.TextBrownDeep, 0.94f); // same wood language as the tracker
             bimg.raycastTarget = false;
             var brt = bimg.rectTransform;
             brt.anchorMin = new Vector2(0.03f, PreviewBandBottom);
@@ -1703,14 +1758,23 @@ namespace SummaRace.Features.Race.Endless
             // crisis was a surface cue worth 84.7% against 33% for guessing, and a cue that
             // landed differently on the correct column would be that failure in a new costume.
             var glow = new GameObject("ArrivalGlow");
-            glow.transform.SetParent(board.transform, false);
+            // SIBLING OF THE BOARD, NOT A CHILD. uGUI draws a child after its parent's own
+            // graphic, so parenting this to the board put the gold OVER the panel's wood and
+            // only the columns (added later) covered it — a wash across the interior, which is
+            // the opposite of what both comments here promise and what the negative inset below
+            // is for. Inserting it at the board's own sibling index puts it behind, so the only
+            // gold that ever shows is the 16px rim sticking out past the edge. Every other
+            // element keeps its relative order, which matters: the HUD banner has already been
+            // fixed once for drawing under this board.
+            glow.transform.SetParent(parent, false);
+            glow.transform.SetSiblingIndex(board.transform.GetSiblingIndex());
             var gimg = glow.AddComponent<UnityEngine.UI.Image>();
             gimg.sprite = WoodPlaqueSprite();
             gimg.type = UnityEngine.UI.Image.Type.Sliced;
-            gimg.color = new Color(1f, 0.84f, 0.35f, 0f); // warm gold, invisible at rest
+            gimg.color = Theme.Alpha(Theme.Gold, 0f); // warm gold, invisible at rest
             gimg.raycastTarget = false;
             var grt = gimg.rectTransform;
-            grt.anchorMin = Vector2.zero; grt.anchorMax = Vector2.one;
+            grt.anchorMin = brt.anchorMin; grt.anchorMax = brt.anchorMax;
             grt.offsetMin = new Vector2(-16f, -16f); grt.offsetMax = new Vector2(16f, 16f);
             _previewGlow = gimg;
 
@@ -1955,7 +2019,7 @@ namespace SummaRace.Features.Race.Endless
                 }
                 if (_previewPlaque[i] != null)
                     _previewPlaque[i].color = single
-                        ? new Color(1f, 0.85f, 0.35f)          // "this is the answer" gold
+                        ? Theme.Gold          // "this is the answer" gold
                         : new Color(0.98f, 0.97f, 0.93f);      // the answer card's white
             }
         }
@@ -2127,7 +2191,7 @@ namespace SummaRace.Features.Race.Endless
                 cardImg.type = UnityEngine.UI.Image.Type.Sliced;
                 cardImg.pixelsPerUnitMultiplier = 0.6f;
             }
-            else cardImg.color = new Color(0.98f, 0.93f, 0.80f);
+            else cardImg.color = Theme.Cream;
             var crt = cardImg.rectTransform;
             crt.anchorMin = new Vector2(0.08f, 0.40f);
             crt.anchorMax = new Vector2(0.92f, 0.70f);
@@ -2140,7 +2204,7 @@ namespace SummaRace.Features.Race.Endless
 
             var body = MakeHudText(card.transform, new Vector2(0.5f, 0.34f), Vector2.zero, 42f);
             body.text = SummaRace.Constants.GameText.RacePauseBody;
-            body.color = new Color(0.35f, 0.25f, 0.10f);
+            body.color = Theme.TextBrown;
             body.rectTransform.sizeDelta = new Vector2(700f, 140f);
 
             // Coming back is the big, obvious, green thing — the same CTA treatment as START.
@@ -2181,7 +2245,7 @@ namespace SummaRace.Features.Race.Endless
             var lImg = leave.AddComponent<UnityEngine.UI.Image>();
             lImg.sprite = WoodPlaqueSprite();
             lImg.type = UnityEngine.UI.Image.Type.Sliced;
-            lImg.color = new Color(0.24f, 0.16f, 0.09f, 0.95f);
+            lImg.color = Theme.Alpha(Theme.TextBrownDeep, 0.95f);
             var lRt = lImg.rectTransform;
             lRt.anchorMin = lRt.anchorMax = lRt.pivot = new Vector2(0.5f, 0.135f);
             lRt.sizeDelta = new Vector2(380f, 110f);
@@ -2277,7 +2341,7 @@ namespace SummaRace.Features.Race.Endless
             if (_leaveLabel != null)
             {
                 _leaveLabel.text = SummaRace.Constants.GameText.RaceLeaveConfirm;
-                _leaveLabel.color = new Color(1f, 0.86f, 0.35f);
+                _leaveLabel.color = Theme.Gold;
             }
         }
 
@@ -2370,7 +2434,7 @@ namespace SummaRace.Features.Race.Endless
             board.transform.SetParent(row.transform, false);
             var bimg = board.AddComponent<UnityEngine.UI.Image>();
             bimg.sprite = wood; bimg.type = UnityEngine.UI.Image.Type.Sliced;
-            bimg.color = new Color(0.34f, 0.22f, 0.11f);
+            bimg.color = Theme.TextBrown;
             bimg.raycastTarget = false;
             var brt = bimg.rectTransform;
             brt.anchorMin = Vector2.zero; brt.anchorMax = Vector2.one;
@@ -2534,7 +2598,7 @@ namespace SummaRace.Features.Race.Endless
             var pill = tokenGo.AddComponent<UnityEngine.UI.Image>();
             pill.sprite = WoodPlaqueSprite();
             pill.type = UnityEngine.UI.Image.Type.Sliced;
-            pill.color = new Color(0.10f, 0.12f, 0.16f, 0.88f); // same backing as the feedback line
+            pill.color = Theme.Alpha(Theme.Ink, 0.88f); // same backing as the feedback line
             pill.raycastTarget = false;
             var pillRt = pill.rectTransform;
             pillRt.sizeDelta = new Vector2(600f, 180f);
@@ -3022,7 +3086,7 @@ namespace SummaRace.Features.Race.Endless
                 cardImg.type = UnityEngine.UI.Image.Type.Sliced;
                 cardImg.pixelsPerUnitMultiplier = 0.6f;
             }
-            else cardImg.color = new Color(0.98f, 0.93f, 0.80f);
+            else cardImg.color = Theme.Cream;
             var crt = cardImg.rectTransform;
             crt.anchorMin = new Vector2(0.06f, 0.34f);
             crt.anchorMax = new Vector2(0.94f, 0.84f);
@@ -3035,7 +3099,7 @@ namespace SummaRace.Features.Race.Endless
             var tpImg = titlePill.AddComponent<UnityEngine.UI.Image>();
             tpImg.sprite = goldPillSprite != null ? goldPillSprite : worldCardSprite;
             if (tpImg.sprite != null) tpImg.type = UnityEngine.UI.Image.Type.Sliced;
-            if (goldPillSprite == null) tpImg.color = new Color(1f, 0.78f, 0.16f);
+            if (goldPillSprite == null) tpImg.color = Theme.GoldDeep;
             var tpRt = tpImg.rectTransform;
             tpRt.anchorMin = new Vector2(0.09f, 0.915f);
             tpRt.anchorMax = new Vector2(0.91f, 1.045f);
@@ -3048,7 +3112,7 @@ namespace SummaRace.Features.Race.Endless
 
             var body = MakeHudText(card.transform, new Vector2(0.5f, 0.63f), Vector2.zero, 42f);
             body.text = SummaRace.Constants.GameText.RaceBriefingBody(_story.title);
-            body.color = new Color(0.35f, 0.25f, 0.10f);
+            body.color = Theme.TextBrown;
             // 300 -> 380 TALL, AND CENTRE-PIVOTED, BECAUSE THE COPY GREW AND THE OLD BOX ALREADY
             // OVERLAPPED THE CHIPS ON A SQUARE TABLET.
             //
@@ -3143,7 +3207,7 @@ namespace SummaRace.Features.Race.Endless
                 bRt.offsetMin = Vector2.zero; bRt.offsetMax = Vector2.zero;
                 var bubbleText = MakeHudText(bubble.transform, new Vector2(0.5f, 0.5f), Vector2.zero, 38f);
                 bubbleText.text = SummaRace.Constants.GameText.RaceBriefingLumi;
-                bubbleText.color = new Color(0.35f, 0.25f, 0.10f);
+                bubbleText.color = Theme.TextBrown;
                 bubbleText.fontStyle = FontStyles.Bold;
                 // Autosized inside the narrower bubble: the string is content (GameText) and may
                 // be re-worded or translated, so it must fit itself rather than be sized by hand.
