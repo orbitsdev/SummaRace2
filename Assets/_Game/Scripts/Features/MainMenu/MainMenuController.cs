@@ -136,7 +136,7 @@ namespace SummaRace.Features.MainMenu
             var pill = pillGo.AddComponent<UnityEngine.UI.Image>();
             pill.sprite = Resources.Load<Sprite>("UI/bar_bg");
             if (pill.sprite != null) pill.type = UnityEngine.UI.Image.Type.Sliced;
-            pill.color = pill.sprite != null ? Color.white : new Color(0.11f, 0.17f, 0.33f, 0.92f);
+            pill.color = pill.sprite != null ? Color.white : Theme.Alpha(Theme.Navy, 0.92f);
             pill.raycastTarget = false;
             var prect = pill.rectTransform;
             prect.anchorMin = new Vector2(0.26f, 0.152f);
@@ -150,7 +150,7 @@ namespace SummaRace.Features.MainMenu
             text.fontSizeMin = 20f;
             text.fontSizeMax = 30f;
             text.alignment = TextAlignmentOptions.Center;
-            text.color = new Color(0.97f, 0.97f, 1f);   // light on the navy pill
+            text.color = Theme.Paper;   // light on the navy pill
             text.raycastTarget = false;                 // never steal a tap from TAP TO START
 
             var rect = text.rectTransform;

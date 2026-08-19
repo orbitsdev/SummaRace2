@@ -30,8 +30,8 @@ namespace SummaRace.Features.Summary
         // small kit pill for it at runtime (see EnsureDoneTypingChip).
         [SerializeField] private Button doneTypingButton;
 
-        private static readonly Color ChipText = new Color(0.97f, 0.97f, 1.00f);
-        private static readonly Color ChipFallback = new Color(0.11f, 0.17f, 0.33f, 0.95f);
+        private static readonly Color ChipText = Theme.Paper;
+        private static readonly Color ChipFallback = Theme.Alpha(Theme.Navy, 0.95f);
 
         private StoryData _story;
         private int _nudgeCount;
@@ -57,6 +57,10 @@ namespace SummaRace.Features.Summary
                 SceneLoader.Go(SceneNames.StorySelect);
                 return;
             }
+
+            // Ms. Lumi reacts here now (see MsLumiReactor.AttachBadge). Null-safe and pool-safe:
+            // absent object or absent badge art simply leaves the screen as it was.
+            SummaRace.UI.MsLumiReactor.AttachBadge();
 
             if (referenceText != null && _story.elements != null)
             {
@@ -290,7 +294,15 @@ namespace SummaRace.Features.Summary
             label.text = GameText.SummaryDoneTyping;
             label.fontSize = 26f;
             label.enableAutoSizing = true;
-            label.fontSizeMin = 16f;
+            // Floor raised 16 -> 22 (2026-08-19). 22pt is the measured acuity floor for the
+            // 10.1" target device in SummaRace_Readability_And_Accessibility_Audit.md 2.1;
+            // at 16pt this chip was ~11.9 arcmin, below the 16' minimum the audit sets.
+            // The audit's blanket advice is 26, which here would equal fontSizeMax and so
+            // disable shrinking entirely — and these chips are NoWrap, so a longer string
+            // would then spill outside the pill rather than shrink. 22 clears the floor and
+            // keeps a little headroom, which is the safer trade while no one can run a
+            // portrait render to catch an overflow.
+            label.fontSizeMin = 22f;
             label.fontSizeMax = 26f;
             label.alignment = TextAlignmentOptions.Center;
             label.textWrappingMode = TextWrappingModes.NoWrap;

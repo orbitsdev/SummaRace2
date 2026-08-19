@@ -34,8 +34,8 @@ namespace SummaRace.Features.NameEntry
 
         private static readonly Color AvatarOff = new Color(0.72f, 0.76f, 0.80f);
         private static readonly Color AvatarOn = Color.white;
-        private static readonly Color ChipText = new Color(0.97f, 0.97f, 1.00f);
-        private static readonly Color ChipFallback = new Color(0.11f, 0.17f, 0.33f, 0.95f);
+        private static readonly Color ChipText = Theme.Paper;
+        private static readonly Color ChipFallback = Theme.Alpha(Theme.Navy, 0.95f);
 
         private int _avatarIndex;
         private bool _typing;      // input field focused = keyboard up on Android
@@ -218,7 +218,15 @@ namespace SummaRace.Features.NameEntry
             label.text = GameText.NameEntryDoneTyping;
             label.fontSize = 26f;
             label.enableAutoSizing = true;
-            label.fontSizeMin = 16f;
+            // Floor raised 16 -> 22 (2026-08-19). 22pt is the measured acuity floor for the
+            // 10.1" target device in SummaRace_Readability_And_Accessibility_Audit.md 2.1;
+            // at 16pt this chip was ~11.9 arcmin, below the 16' minimum the audit sets.
+            // The audit's blanket advice is 26, which here would equal fontSizeMax and so
+            // disable shrinking entirely — and these chips are NoWrap, so a longer string
+            // would then spill outside the pill rather than shrink. 22 clears the floor and
+            // keeps a little headroom, which is the safer trade while no one can run a
+            // portrait render to catch an overflow.
+            label.fontSizeMin = 22f;
             label.fontSizeMax = 26f;
             label.alignment = TextAlignmentOptions.Center;
             label.textWrappingMode = TextWrappingModes.NoWrap;

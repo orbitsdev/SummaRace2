@@ -44,7 +44,7 @@ namespace SummaRace.Features.StorySelect
         [SerializeField] private TMP_Text titleText;
 
         // Same silhouette trick as ResultsController: the sprite is golden, so "off" is dark.
-        private static readonly Color StarOff = new Color(0.20f, 0.28f, 0.32f);
+        private static readonly Color StarOff = Theme.Slate;
         private static readonly Color StarOn = Color.white;
         private static readonly Color CardLocked = new Color(0.62f, 0.66f, 0.70f);
 

@@ -241,7 +241,7 @@ namespace SummaRace.Core
             }
             else
             {
-                card.color = new Color(0.98f, 0.93f, 0.80f);
+                card.color = Theme.Cream;
             }
             var cardRect = card.rectTransform;
             cardRect.anchorMin = new Vector2(0.08f, 0.42f);
@@ -255,7 +255,7 @@ namespace SummaRace.Core
             // Font comes from TMP Settings default (Nunito).
             _tipText.fontSize = 38;
             _tipText.alignment = TextAlignmentOptions.Center;
-            _tipText.color = new Color(0.35f, 0.25f, 0.10f); // warm brown on cream
+            _tipText.color = Theme.TextBrown; // warm brown on cream
             var tipRect = _tipText.rectTransform;
             tipRect.anchorMin = new Vector2(0.06f, 0.10f);
             tipRect.anchorMax = new Vector2(0.94f, 0.90f);
@@ -281,7 +281,7 @@ namespace SummaRace.Core
             _barFill = fillGo.AddComponent<Image>();
             var barFillSprite = Resources.Load<Sprite>("UI/bar_fill");
             if (barFillSprite != null) _barFill.sprite = barFillSprite;
-            else _barFill.color = new Color(1f, 0.78f, 0.20f);
+            else _barFill.color = Theme.GoldDeep;
             _barFill.type = Image.Type.Filled;
             _barFill.fillMethod = Image.FillMethod.Horizontal;
             _barFill.fillOrigin = (int)Image.OriginHorizontal.Left;
@@ -300,7 +300,7 @@ namespace SummaRace.Core
             loading.text = GameText.LoadingLabel;
             loading.fontSize = 34;
             loading.alignment = TextAlignmentOptions.Center;
-            loading.color = new Color(0.11f, 0.17f, 0.33f, 0.95f); // deep navy — readable on the bright sky
+            loading.color = Theme.Alpha(Theme.Navy, 0.95f); // deep navy — readable on the bright sky
             var loadRect = loading.rectTransform;
             loadRect.anchorMin = new Vector2(0.2f, 0.585f);
             loadRect.anchorMax = new Vector2(0.8f, 0.635f);

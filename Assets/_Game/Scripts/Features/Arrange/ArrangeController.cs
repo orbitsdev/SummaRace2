@@ -81,6 +81,10 @@ namespace SummaRace.Features.Arrange
                 return;
             }
 
+            // Ms. Lumi reacts here now (see MsLumiReactor.AttachBadge). Null-safe and pool-safe:
+            // absent object or absent badge art simply leaves the screen as it was.
+            SummaRace.UI.MsLumiReactor.AttachBadge();
+
             // Pieces come from the race result when available (same texts either way).
             var result = SummaRace.Core.GameManager.Instance != null ? SummaRace.Core.GameManager.Instance.LastRaceResult : null;
             for (int i = 0; i < 5; i++)

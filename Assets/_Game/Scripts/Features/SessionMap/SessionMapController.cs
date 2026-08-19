@@ -39,7 +39,7 @@ namespace SummaRace.Features.SessionMap
         [SerializeField] private TMP_Text lockedHintText;
 
         // Same silhouette trick as ResultsController: the sprite is golden, so "off" is dark.
-        private static readonly Color StarOff = new Color(0.20f, 0.28f, 0.32f);
+        private static readonly Color StarOff = Theme.Slate;
         private static readonly Color StarOn = Color.white;
         private static readonly Color StopLocked = new Color(0.62f, 0.66f, 0.70f);
 
@@ -62,6 +62,7 @@ namespace SummaRace.Features.SessionMap
             {
                 lockedHintText.text = GameText.SessionLockedHint;
                 lockedHintText.gameObject.SetActive(unlocked < GameRules.SessionCount);
+                AddHintBacking(lockedHintText);
             }
 
             if (backButton != null)
@@ -229,5 +230,43 @@ namespace SummaRace.Features.SessionMap
             if (AudioManager.Instance != null)
                 AudioManager.Instance.PlaySfx(AudioKeys.SfxClick);
         }
+
+        /// <summary>
+        /// Put a soft dark pill behind the hint line.
+        ///
+        /// The line sits at the bottom of the screen straight over the painted landscape, and
+        /// that art has WHITE DAISIES scattered through the grass. Measured off a portrait
+        /// render: the background beside the glyphs averages a respectable 3.7-5.4:1 against
+        /// white text, but its brightest pixels are pure white — so wherever a flower lands
+        /// behind a letter that letter is invisible (1.00:1). An average is the wrong statistic
+        /// for legibility; the worst pixel under a glyph is the one that decides it.
+        ///
+        /// Built here rather than in the scene so it cannot be lost if the screen is rebuilt,
+        /// and inserted at the hint's own sibling index so it draws BEHIND the text while every
+        /// other element keeps its relative order. Null-safe: no hint, no backing, no harm.
+        /// </summary>
+        private static void AddHintBacking(TMP_Text hint)
+        {
+            if (hint == null || hint.transform.parent == null) return;
+            if (hint.transform.parent.Find("HintBacking") != null) return;   // idempotent
+
+            var go = new GameObject("HintBacking", typeof(RectTransform));
+            go.transform.SetParent(hint.transform.parent, false);
+            go.transform.SetSiblingIndex(hint.transform.GetSiblingIndex());
+
+            var img = go.AddComponent<Image>();
+            img.color = Theme.Alpha(Theme.Ink, 0.55f);
+            img.raycastTarget = false;
+
+            var src = hint.rectTransform;
+            var rt = (RectTransform)go.transform;
+            rt.anchorMin = src.anchorMin;
+            rt.anchorMax = src.anchorMax;
+            rt.pivot = src.pivot;
+            rt.anchoredPosition = src.anchoredPosition;
+            // a little wider than the words so the pill reads as deliberate, not as a clipped box
+            rt.sizeDelta = src.sizeDelta + new Vector2(36f, 14f);
+        }
+
     }
 }

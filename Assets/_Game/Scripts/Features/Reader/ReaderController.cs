@@ -59,7 +59,7 @@ namespace SummaRace.Features.Reader
         /// the story with one later stray tap.</summary>
         private const float BackConfirmSeconds = 4f;
 
-        private static readonly Color OptionNormal = new Color(0.96f, 0.94f, 1.00f); // light pill (high contrast on the gold card)
+        private static readonly Color OptionNormal = Theme.Paper; // light pill (high contrast on the gold card)
         private static readonly Color OptionCorrect = new Color(0.55f, 0.85f, 0.45f); // friendly green
 
         // Both feedback colours are read against the question card, which is the kit's
@@ -70,14 +70,14 @@ namespace SummaRace.Features.Reader
         // most needs, at low classroom brightness. Deepened, not re-hued: still a warm amber
         // and a friendly green, never a scolding red. Measured on that cream: 4.89:1 and
         // 5.57:1.
-        private static readonly Color FeedbackCorrect = new Color(0.12f, 0.42f, 0.18f); // deep green
+        private static readonly Color FeedbackCorrect = Theme.GreenDeep; // deep green
         private static readonly Color FeedbackNotQuite = new Color(0.62f, 0.32f, 0.02f); // deep warm amber, never harsh
 
         // Small-chip palette: the navy pill (Resources/UI/bar_bg) is the HUD's own language
         // (F16), the gold pill (bar_fill) is what "armed" looks like everywhere else.
-        private static readonly Color ChipTextIdle = new Color(0.97f, 0.97f, 1.00f);   // on navy
+        private static readonly Color ChipTextIdle = Theme.Paper;   // on navy
         private static readonly Color ChipTextArmed = new Color(0.30f, 0.20f, 0.05f);  // on gold
-        private static readonly Color ChipFallbackIdle = new Color(0.11f, 0.17f, 0.33f, 0.95f);
+        private static readonly Color ChipFallbackIdle = Theme.Alpha(Theme.Navy, 0.95f);
         private static readonly Color ChipFallbackArmed = new Color(0.98f, 0.73f, 0.22f);
 
         private StoryData _story;
@@ -640,7 +640,15 @@ namespace SummaRace.Features.Reader
             label.text = text;
             label.fontSize = fontSize;
             label.enableAutoSizing = true;
-            label.fontSizeMin = 16f;
+            // Floor raised 16 -> 22 (2026-08-19). 22pt is the measured acuity floor for the
+            // 10.1" target device in SummaRace_Readability_And_Accessibility_Audit.md 2.1;
+            // at 16pt this chip was ~11.9 arcmin, below the 16' minimum the audit sets.
+            // The audit's blanket advice is 26, which here would equal fontSizeMax and so
+            // disable shrinking entirely — and these chips are NoWrap, so a longer string
+            // would then spill outside the pill rather than shrink. 22 clears the floor and
+            // keeps a little headroom, which is the safer trade while no one can run a
+            // portrait render to catch an overflow.
+            label.fontSizeMin = 22f;
             label.fontSizeMax = fontSize;
             label.alignment = TextAlignmentOptions.Center;
             label.textWrappingMode = TextWrappingModes.NoWrap;

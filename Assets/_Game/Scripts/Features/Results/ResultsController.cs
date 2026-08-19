@@ -37,7 +37,7 @@ namespace SummaRace.Features.Results
         // The learner's own sentence, shown back to them (see BuildSummaryCard). Cream card,
         // warm-brown ink: the same pairing the mission briefing and the Main Idea card use, so
         // it reads as part of this screen rather than as a notice pinned to it.
-        private static readonly Color SummaryCardFill = new Color(0.971f, 0.923f, 0.829f, 1f);
+        private static readonly Color SummaryCardFill = Theme.Alpha(Theme.Cream, 1f);
         private static readonly Color SummaryInk = new Color(0.278f, 0.196f, 0.129f, 1f);
 
         // ---- geometry, in canvas fractions of the 1080x1920 portrait reference ----
