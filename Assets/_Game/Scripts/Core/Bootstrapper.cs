@@ -12,14 +12,19 @@ namespace SummaRace.Core
     public class Bootstrapper : MonoBehaviour
     {
         // Scene wiring (Boot.unity → SplashCanvas → Bootstrapper). Only `taglineText` is
-        // connected today; the two below are still {fileID: 0}, which is why the F15 splash
-        // bar never appears. To finish them, add under SplashCanvas:
-        //   • "LoadingText"  — TextMeshProUGUI under the lockup → drag onto `loadingText`.
-        //   • "SplashBar"    — Image using Resources UI/bar_bg, with a child "Fill" Image
-        //     using UI/bar_fill, Image Type = Filled, Fill Method = Horizontal, Origin = Left
-        //     → drag the CHILD onto `splashFill`. (SceneLoader builds the same pair in code
-        //     for its transition overlay — copy those proportions.)
-        // All three stay optional: unwired, the splash simply runs without them.
+        // connected in the scene. The other two were {fileID: 0} for the whole of F15..F58 —
+        // the objects were never added under SplashCanvas, and both fields are only
+        // null-guarded, so the splash bar this project believed it shipped has never once
+        // appeared and the "Loading..." label under it has never been drawn. It is the first
+        // screen a learner sees, which is exactly why nobody caught it: the splash still runs
+        // for its GameRules.SplashSeconds either way, so nothing looks broken.
+        //
+        // Rather than ask for two more objects to be dragged in (which is what the previous
+        // note here asked for, and which stayed undone), EnsureSplashChrome() builds them at
+        // runtime when they are unwired — the same pattern ReaderController.EnsureSecondaryControls
+        // and Summary/NameEntry's EnsureDoneTypingChip already use for optional chrome. A scene
+        // that DOES wire them keeps its own objects untouched.
+        // All three stay optional: with the build skipped, the splash simply runs without them.
         [SerializeField] private TMP_Text taglineText;
         [SerializeField] private TMP_Text loadingText;
         [SerializeField] private UnityEngine.UI.Image splashFill;
@@ -28,6 +33,10 @@ namespace SummaRace.Core
 
         private void Awake()
         {
+            // Before the two reads below, and before the _initialized guard: a Boot re-entry
+            // skips singleton creation but still plays the splash, so it still needs chrome.
+            EnsureSplashChrome();
+
             if (taglineText != null) taglineText.text = GameText.BootTagline;
             if (loadingText != null) loadingText.text = GameText.LoadingLabel;
 
@@ -55,6 +64,81 @@ namespace SummaRace.Core
             core.GetComponent<GameManager>().InitProfiles();
 
             EventBus.Raise(new AppReady());
+        }
+
+
+        /// <summary>
+        /// Builds the splash's "Loading..." label and progress bar when the scene carries no
+        /// objects for them, so the beat the learner watches has something in it. Anything the
+        /// scene DOES wire is left alone — this only fills gaps.
+        ///
+        /// Geometry is deliberately copied from SceneLoader's transition overlay (bar at
+        /// y 0.365-0.395, same bar_bg/bar_fill sprites, same 5px fill inset) so the bar does
+        /// not jump position when the splash hands over to the first real scene load. The
+        /// label sits at y 0.425-0.465 rather than the overlay's 0.585, because in Boot that
+        /// band is inside LogoLockup (0.545-0.795) and Tagline (0.51-0.57); everything below
+        /// 0.51 is free. Reference resolution here is 1080x1920.
+        ///
+        /// Both sprites are optional: Resources.Load returning null falls back to flat colour,
+        /// exactly as SceneLoader does, so a stripped build degrades instead of throwing.
+        /// </summary>
+        private void EnsureSplashChrome()
+        {
+            var canvas = GetComponentInParent<Canvas>();
+            if (canvas == null) return; // no canvas => nothing to hang chrome on; splash still runs
+            var root = canvas.transform;
+
+            if (loadingText == null)
+            {
+                var loadGo = new GameObject("LoadingText", typeof(RectTransform));
+                loadGo.transform.SetParent(root, false);
+                var label = loadGo.AddComponent<TextMeshProUGUI>();
+                label.text = GameText.LoadingLabel;
+                label.fontSize = 34;
+                label.alignment = TextAlignmentOptions.Center;
+                label.raycastTarget = false;
+                label.color = Theme.Alpha(Theme.Navy, 0.95f);
+                var lr = label.rectTransform;
+                lr.anchorMin = new Vector2(0.2f, 0.425f);
+                lr.anchorMax = new Vector2(0.8f, 0.465f);
+                lr.offsetMin = Vector2.zero;
+                lr.offsetMax = Vector2.zero;
+                loadingText = label;
+            }
+
+            if (splashFill == null)
+            {
+                var barGo = new GameObject("SplashBar", typeof(RectTransform));
+                barGo.transform.SetParent(root, false);
+                var barBg = barGo.AddComponent<UnityEngine.UI.Image>();
+                barBg.raycastTarget = false;
+                var barBgSprite = Resources.Load<Sprite>("UI/bar_bg");
+                if (barBgSprite != null) { barBg.sprite = barBgSprite; barBg.type = UnityEngine.UI.Image.Type.Sliced; }
+                else barBg.color = new Color(0.08f, 0.14f, 0.28f, 0.9f);
+                var br = barBg.rectTransform;
+                br.anchorMin = new Vector2(0.18f, 0.365f);
+                br.anchorMax = new Vector2(0.82f, 0.395f);
+                br.offsetMin = Vector2.zero;
+                br.offsetMax = Vector2.zero;
+
+                var fillGo = new GameObject("Fill", typeof(RectTransform));
+                fillGo.transform.SetParent(barGo.transform, false);
+                var fill = fillGo.AddComponent<UnityEngine.UI.Image>();
+                fill.raycastTarget = false;
+                var barFillSprite = Resources.Load<Sprite>("UI/bar_fill");
+                if (barFillSprite != null) fill.sprite = barFillSprite;
+                else fill.color = Theme.GoldDeep;
+                fill.type = UnityEngine.UI.Image.Type.Filled;
+                fill.fillMethod = UnityEngine.UI.Image.FillMethod.Horizontal;
+                fill.fillOrigin = (int)UnityEngine.UI.Image.OriginHorizontal.Left;
+                fill.fillAmount = 0f;
+                var fr = fill.rectTransform;
+                fr.anchorMin = Vector2.zero;
+                fr.anchorMax = Vector2.one;
+                fr.offsetMin = new Vector2(5f, 5f);
+                fr.offsetMax = new Vector2(-5f, -5f);
+                splashFill = fill;
+            }
         }
 
         private IEnumerator Start()
