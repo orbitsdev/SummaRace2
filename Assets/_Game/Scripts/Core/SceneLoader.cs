@@ -102,6 +102,17 @@ namespace SummaRace.Core
             StartCoroutine(LoadRoutine(sceneName, showTips));
         }
 
+        /// <summary>
+        /// The four screens where a spoken SWBST tip is on topic — the ones that teach or test
+        /// the framework. Menus and the results screen are deliberately excluded; see the note
+        /// at the call site in <see cref="LoadRoutine"/>.
+        /// </summary>
+        private static bool TeachesFramework(string sceneName) =>
+            sceneName == SceneNames.Reader ||
+            sceneName == SceneNames.RaceEndless ||
+            sceneName == SceneNames.Arrange ||
+            sceneName == SceneNames.Summary;
+
         private IEnumerator LoadRoutine(string sceneName, bool showTips)
         {
             _loading = true;
@@ -121,7 +132,15 @@ namespace SummaRace.Core
                     // a learner who cannot read it loses the definition entirely. Bounds-checked
                     // against the voice array's own length so adding a written tip without a
                     // clip degrades to silence rather than throwing mid-scene-change.
-                    if (tip < AudioKeys.VoLoadingTips.Length)
+                                        // ...but SPOKEN only on the way into a screen that actually works the
+                    // framework. It used to speak on every single load, so walking Main Menu ->
+                    // Session Map -> Story Select answered each tap with a random definition of
+                    // "But" read aloud over a screen that has nothing to do with it. Worse, the
+                    // clip is queued so it deliberately outlives the load: a learner tapping at
+                    // a normal pace got voice, chopped mid-word by the next load's
+                    // StopNarration, then a different voice, then chopped again. That reads as a
+                    // broken game, not as teaching. The WRITTEN tip still shows on every load.
+                    if (tip < AudioKeys.VoLoadingTips.Length && TeachesFramework(sceneName))
                         AudioManager.Instance.PlayVoice(AudioKeys.VoLoadingTips[tip], true);
                 }
             }

@@ -317,7 +317,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 5b5e31ec79e3edd4780c6df4a5317e5c, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 3772024f21af6034fab8ded6c81c815a, type: 3}
   m_Type: 1
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -2170,7 +2170,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SummaRace.UI.MsLumiReactor
   idleSprite: {fileID: 21300000, guid: 73e37743208c1bd498cd44cb99e5bdec, type: 3}
   cheerSprite: {fileID: 21300000, guid: 7cf1cded82a509e4bb36eab11c0c88bb, type: 3}
+  restPool: idle
+  cheerPool: cheer
+  restPose: 
+  shuffleRestPose: 1
   cheerSeconds: 1.6
+  reactToReaderAnswer: 1
+  reactToArrangeVerified: 1
+  reactToSummarySubmitted: 1
+  headPixels: 0
 --- !u!225 &1532069982
 CanvasGroup:
   m_ObjectHideFlags: 0

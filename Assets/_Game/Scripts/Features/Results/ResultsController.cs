@@ -76,7 +76,7 @@ namespace SummaRace.Features.Results
         private void Start()
         {
             _story = SummaRace.Core.GameManager.Instance != null ? SummaRace.Core.GameManager.Instance.CurrentStory : null;
-            if (_story == null) _story = StoryLoader.Load("s01_easy"); // editor-direct fallback
+                        if (_story == null) _story = StoryLoader.Load("s01_easy"); // editor-direct fallback
             if (_story == null)
             {
                 // No story means no stars, no main idea and — because the continue button's
@@ -86,6 +86,11 @@ namespace SummaRace.Features.Results
                 SceneLoader.Go(SceneNames.StorySelect);
                 return;
             }
+
+            // See ArrangeController: the celebration screen was silent apart from its own star
+            // and coin stings, which is the worst screen in the game to have no bed under. The
+            // stings are PlayOneShot on the SFX source, so they still land on top of the loop.
+            if (AudioManager.Instance != null) AudioManager.Instance.PlayMusic(AudioKeys.MusicMenu);
 
             int stars = SummaRace.Core.GameManager.Instance != null ? SummaRace.Core.GameManager.Instance.CalculateStars() : 1;
 

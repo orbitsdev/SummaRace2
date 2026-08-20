@@ -435,8 +435,8 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 686247685}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.03, y: 0.355}
-  m_AnchorMax: {x: 0.97, y: 0.41}
+  m_AnchorMin: {x: 0.03, y: 0.265}
+  m_AnchorMax: {x: 0.97, y: 0.32}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -703,8 +703,8 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 686247685}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.03, y: 0.905}
-  m_AnchorMax: {x: 0.19, y: 0.995}
+  m_AnchorMin: {x: 0.03, y: 0.888}
+  m_AnchorMax: {x: 0.19, y: 0.958}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -1118,8 +1118,8 @@ RectTransform:
   - {fileID: 437417312}
   m_Father: {fileID: 686247685}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.21, y: 0.9}
-  m_AnchorMax: {x: 0.97, y: 1}
+  m_AnchorMin: {x: 0.21, y: 0.885}
+  m_AnchorMax: {x: 0.97, y: 0.962}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: -12}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -1439,8 +1439,8 @@ RectTransform:
   - {fileID: 1942473904}
   m_Father: {fileID: 686247685}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.25, y: 0.25}
-  m_AnchorMax: {x: 0.75, y: 0.335}
+  m_AnchorMin: {x: 0.25, y: 0.13}
+  m_AnchorMax: {x: 0.75, y: 0.225}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -1464,7 +1464,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 5b5e31ec79e3edd4780c6df4a5317e5c, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 3772024f21af6034fab8ded6c81c815a, type: 3}
   m_Type: 1
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -1538,6 +1538,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ba5c5b49667967c4cb0211b7f7a77c6e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SummaRace.UI.ButtonSquash
+  playSound: 0
 --- !u!1 &1338826073
 GameObject:
   m_ObjectHideFlags: 0
@@ -1573,7 +1574,7 @@ RectTransform:
   - {fileID: 1738387433}
   m_Father: {fileID: 686247685}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.05, y: 0.42}
+  m_AnchorMin: {x: 0.05, y: 0.33}
   m_AnchorMax: {x: 0.95, y: 0.585}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
@@ -1855,6 +1856,7 @@ MonoBehaviour:
   summaryInput: {fileID: 1338826077}
   submitButton: {fileID: 947428080}
   nudgeText: {fileID: 386981986}
+  hintBubbleSource: {fileID: 844298276}
   titleText: {fileID: 437417315}
   placeholderText: {fileID: 44292890}
   submitLabel: {fileID: 1942473907}
@@ -1906,8 +1908,8 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 686247685}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.25, y: 0.25}
-  m_AnchorMax: {x: 0.75, y: 0.335}
+  m_AnchorMin: {x: 0.25, y: 0.13}
+  m_AnchorMax: {x: 0.75, y: 0.225}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 14, y: 14}
   m_Pivot: {x: 0.5, y: 0.5}

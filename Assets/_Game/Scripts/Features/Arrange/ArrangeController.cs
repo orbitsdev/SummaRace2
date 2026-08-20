@@ -68,7 +68,7 @@ namespace SummaRace.Features.Arrange
         private void Start()
         {
             _story = SummaRace.Core.GameManager.Instance != null ? SummaRace.Core.GameManager.Instance.CurrentStory : null;
-            if (_story == null) _story = StoryLoader.Load("s01_easy"); // editor-direct fallback
+                        if (_story == null) _story = StoryLoader.Load("s01_easy"); // editor-direct fallback
             if (_story == null)
             {
                 // Nothing below this line has run yet, so returning would leave the learner
@@ -80,6 +80,19 @@ namespace SummaRace.Features.Arrange
                 SceneLoader.Go(SceneNames.StorySelect);
                 return;
             }
+
+            // The back half of the loop had NO music at all. The Reader stops the track on
+            // purpose (narration is the accessibility support the study depends on) and the race
+            // stops its own at FINISH — but nothing ever started one again, so Arrange, Summary
+            // and Results ran in silence, three screens in a row. The menus were the liveliest
+            // part of the game and the actual learning was dead air.
+            //
+            // PlayMusic no-ops when the same clip is already running, so this costs nothing on
+            // the way through and cannot restart the loop between these three screens. The voice
+            // channel is a separate AudioSource on its own level, so the instruction still reads
+            // over the top. Below the no-story guard on purpose: that path leaves for Story
+            // Select, which starts this same loop itself.
+            if (AudioManager.Instance != null) AudioManager.Instance.PlayMusic(AudioKeys.MusicMenu);
 
             // Ms. Lumi reacts here now (see MsLumiReactor.AttachBadge). Null-safe and pool-safe:
             // absent object or absent badge art simply leaves the screen as it was.

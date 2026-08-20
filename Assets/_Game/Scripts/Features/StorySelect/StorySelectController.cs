@@ -70,9 +70,24 @@ namespace SummaRace.Features.StorySelect
         private static readonly Color LockedLabelInk = new Color(0.88f, 0.95f, 0.97f);
         private static readonly Color LockedHintInk = new Color(0.82f, 0.90f, 0.93f);
 
+        // --- "tap this one" marker (see MarkPlayable) ---------------------------------
+        /// <summary>How far the gold ring stands proud of the card, in reference pixels.</summary>
+        private const float RingOutset = 18f;
+        /// <summary>Peak of the ring's idle breath. Deliberately tiny: the ring sits directly
+        /// behind a card the learner is asked to read, and anything larger reads as a wobble.</summary>
+        private const float RingBreath = 1.012f;
+        private const float RingBreathSeconds = 1.1f;
+        private const string BadgeName = "PlayBadge";
+
         private void Start()
         {
-            if (titleText != null) titleText.text = GameText.StorySelectTitle;
+            if (titleText != null)
+            {
+                titleText.text = GameText.StorySelectTitle;
+                // Names the rule the three cards already follow but never stated. Without it a
+                // learner sees two padlocks and no reason for them.
+                SummaRace.UI.SubtitleLine.Add(titleText, GameText.StorySelectSubtitle);
+            }
 
             // The Reader stops the music so nothing sits under the narration; pick the loop
             // back up here, or the second and third story of a session are chosen in silence.
@@ -180,8 +195,10 @@ namespace SummaRace.Features.StorySelect
 
             if (card.button == null) return;
 
-            var background = card.button.GetComponent<Image>();
+                        var background = card.button.GetComponent<Image>();
             if (background != null) background.color = playable ? Color.white : CardLocked;
+
+            MarkPlayable(card, playable);
 
             card.button.onClick.RemoveAllListeners();
             if (playable)
@@ -255,7 +272,146 @@ namespace SummaRace.Features.StorySelect
             if (target != null) Tween.PunchScale(target, Vector3.one * 0.25f, 0.35f);
         }
 
-        private static void PlayClick()
+                /// <summary>
+        /// The POSITIVE half of the locked/open pair, which this screen never had. A locked
+        /// card says "Locked", carries a padlock and is dimmed to HeroLocked; the open card was
+        /// marked only by the ABSENCE of all three. "Which one do I tap" was therefore a
+        /// difference a nine-year-old had to NOTICE rather than READ — and the three cards are
+        /// otherwise identical in size, shape and position (each 32% of the board, full width).
+        ///
+        /// Built in code, not in the scene, because WHICH card is playable is decided at
+        /// runtime from the learner's progress: a scene-authored marker would sit on the wrong
+        /// card for two visits out of every three.
+        /// </summary>
+        private void MarkPlayable(DifficultyCard card, bool playable)
+        {
+            if (card == null || card.button == null) return;
+
+            var root = card.button.GetComponent<RectTransform>();
+            if (root == null) return;
+
+            var ring = root.parent != null ? root.parent.Find(RingName(root)) : null;
+            var badge = root.Find(BadgeName);
+
+            if (!playable)
+            {
+                if (ring != null) ring.gameObject.SetActive(false);
+                if (badge != null) badge.gameObject.SetActive(false);
+                return;
+            }
+
+            if (ring == null) ring = BuildPlayRing(card, root);
+            if (badge == null) badge = BuildPlayBadge(card, root);
+
+            if (badge != null) badge.gameObject.SetActive(true);
+            if (ring == null) return;
+
+            ring.gameObject.SetActive(true);
+            // Breathe on the RING, never on the card root: the root carries ButtonSquash, which
+            // drives the same localScale from its own tween, and two tweens on one transform
+            // leave it wherever the last one wrote. Same rule as the punches elsewhere here.
+            Tween.Scale(ring, Vector3.one * RingBreath, RingBreathSeconds, Ease.InOutSine,
+                        cycles: -1, cycleMode: CycleMode.Yoyo);
+        }
+
+        private static string RingName(Transform card) => "PlayRing_" + card.name;
+
+        /// <summary>
+        /// A gold silhouette of the card, slightly larger, inserted at the CARD'S OWN sibling
+        /// index — so it draws behind the card while every other element keeps its relative
+        /// order. It cannot be a child: uGUI draws a parent's graphic first and its children
+        /// after, so a child would land in FRONT of the hero art and wash it gold (exactly the
+        /// bug that had to be fixed on the race's option board).
+        ///
+        /// It COPIES the card's own sprite rather than choosing one, so the ring can never be
+        /// a different shape from the card it rings — the three cards do not share a sprite.
+        /// </summary>
+        private Transform BuildPlayRing(DifficultyCard card, RectTransform root)
+        {
+            var parent = root.parent as RectTransform;
+            if (parent == null) return null;
+
+            var go = new GameObject(RingName(root), typeof(RectTransform));
+            go.transform.SetParent(parent, false);
+            go.transform.SetSiblingIndex(root.GetSiblingIndex());
+
+            var img = go.AddComponent<Image>();
+            var cardImage = card.button.GetComponent<Image>();
+            if (cardImage != null)
+            {
+                img.sprite = cardImage.sprite;
+                img.type = cardImage.type;
+            }
+            img.color = Theme.GoldDeep;
+            img.raycastTarget = false;   // never steal the card's own tap
+
+            var rt = (RectTransform)go.transform;
+            rt.anchorMin = root.anchorMin;
+            rt.anchorMax = root.anchorMax;
+            rt.pivot = root.pivot;
+            rt.anchoredPosition = root.anchoredPosition;
+            rt.sizeDelta = root.sizeDelta + new Vector2(RingOutset, RingOutset);
+            return go.transform;
+        }
+
+        /// <summary>
+        /// The word PLAY on a gold pill at the card's foot — the readable counterpart to the
+        /// padlock on the other two, so the state is carried by a WORD and not only by how
+        /// bright the picture is (the same reasoning that removed colour-only feedback from the
+        /// Reader and Arrange).
+        ///
+        /// The label is cloned from the difficulty chip's own text so it carries this screen's
+        /// TMP font asset and material; a fresh TMP_Text falls back to the project default and
+        /// reads as a different typeface. Dark brown on gold, because gold on gold is invisible
+        /// and gold type generally is a fill colour here, never a text one (Theme).
+        /// </summary>
+        private Transform BuildPlayBadge(DifficultyCard card, RectTransform root)
+        {
+            if (card.chipText == null) return null;   // nothing to borrow a font from
+
+            var pillGo = new GameObject(BadgeName, typeof(RectTransform));
+            pillGo.transform.SetParent(root, false);
+
+            var pill = pillGo.AddComponent<Image>();
+            pill.sprite = Resources.Load<Sprite>("UI/bar_bg");
+            if (pill.sprite != null) pill.type = Image.Type.Sliced;
+            pill.color = Theme.GoldDeep;
+            pill.raycastTarget = false;
+
+            var prect = pill.rectTransform;
+            prect.anchorMin = new Vector2(0.60f, 0.06f);
+            prect.anchorMax = new Vector2(0.94f, 0.26f);
+            prect.offsetMin = Vector2.zero;
+            prect.offsetMax = Vector2.zero;
+
+            var labelGo = Instantiate(card.chipText.gameObject, pillGo.transform, false);
+            labelGo.name = "Label";
+            labelGo.SetActive(true);
+
+            var label = labelGo.GetComponent<TMP_Text>();
+            if (label == null) { Destroy(labelGo); return pillGo.transform; }
+
+            label.text = GameText.PlayBadge;
+            label.color = Theme.TextBrownDeep;
+            label.alignment = TextAlignmentOptions.Center;
+            label.enableAutoSizing = true;
+            label.fontSizeMin = 18f;
+            label.fontSizeMax = 38f;
+            label.raycastTarget = false;
+
+            var lrect = label.rectTransform;
+            lrect.localScale = Vector3.one;
+            lrect.localRotation = Quaternion.identity;
+            lrect.anchorMin = Vector2.zero;
+            lrect.anchorMax = Vector2.one;
+            lrect.pivot = new Vector2(0.5f, 0.5f);
+            lrect.offsetMin = new Vector2(8f, 4f);
+            lrect.offsetMax = new Vector2(-8f, -4f);
+
+            return pillGo.transform;
+        }
+
+private static void PlayClick()
         {
             if (AudioManager.Instance != null)
                 AudioManager.Instance.PlaySfx(AudioKeys.SfxClick);

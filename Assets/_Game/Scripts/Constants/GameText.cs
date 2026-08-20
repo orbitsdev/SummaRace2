@@ -168,10 +168,26 @@ namespace SummaRace.Constants
         /// <summary>Sessions open one at a time via the teacher's PIN (GDD §8.3), so the
         /// locked state has to read as "not yet", never as the learner's fault.</summary>
         public const string SessionLockedHint = "Your teacher opens the next mission!";
-        public const string SessionCompleteCheer = "Mission complete! All three stories done!";
+                public const string SessionCompleteCheer = "Mission complete! All three stories done!";
+        /// <summary>
+        /// What a "mission" IS, and what its three stars count. Both were unexplained anywhere
+        /// on screen, and the stars are the sharper problem: this screen's three stars mean
+        /// "stories finished" while Story Select's three stars — same sprite, same row, one tap
+        /// away — mean "how well you did". A teacher reading two stars here as "did okay" would
+        /// be wrong. Say which one this is, on the screen it is on.
+        /// </summary>
+        public const string SessionMapSubtitle =
+            "Each mission has 3 stories. Stars show how many you finished.";
 
         // Story select
         public const string StorySelectTitle = "Pick a Story";
+        /// <summary>Names the rule the cards already follow but never stated: three stories per
+        /// mission, opening in order. Without it a learner sees two locked cards and no reason.</summary>
+        public const string StorySelectSubtitle = "Finish a story to open the next one.";
+        /// <summary>On the one card that can actually be tapped. The locked cards say "Locked"
+        /// and carry a padlock; nothing said the opposite, so the open card was distinguished
+        /// only by NOT being dimmed — a difference a child has to notice rather than read.</summary>
+        public const string PlayBadge = "PLAY";
         public const string DifficultyEasy = "EASY";
         /// <summary>Label only — the story id stays "sNN_average" (StoryIds), and the
         /// researcher's own documents say AVERAGE. On the chip a 9-year-old reads, "MEDIUM" is

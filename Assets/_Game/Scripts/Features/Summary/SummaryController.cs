@@ -20,6 +20,12 @@ namespace SummaRace.Features.Summary
         [SerializeField] private Button submitButton;
         [SerializeField] private TMP_Text nudgeText;
 
+        [Tooltip("Ms. Lumi's own speech bubble at the top of the screen. Its sprite and colour " +
+                 "are COPIED onto the sentence-frame bubble so the two read as two balloons " +
+                 "from the same character. Optional: with nothing wired the frame keeps a " +
+                 "plain cream backing instead, which is still better than bare text.")]
+        [SerializeField] private Image hintBubbleSource;
+
         [Header("Labels (set from GameText)")]
         [SerializeField] private TMP_Text titleText;
         [SerializeField] private TMP_Text placeholderText;
@@ -30,8 +36,18 @@ namespace SummaRace.Features.Summary
         // small kit pill for it at runtime (see EnsureDoneTypingChip).
         [SerializeField] private Button doneTypingButton;
 
-        private static readonly Color ChipText = Theme.Paper;
+                private static readonly Color ChipText = Theme.Paper;
         private static readonly Color ChipFallback = Theme.Alpha(Theme.Navy, 0.95f);
+
+        // --- sentence-frame speech bubble (see BuildHintBubble) -------------------------
+        private const string HintBubbleName = "HintBubble";
+        /// <summary>Padding around the frame text, in reference pixels.</summary>
+        private const float HintBubblePadX = 44f;
+        private const float HintBubblePadY = 30f;
+        /// <summary>Where the tail sits across the bubble's width. Kept left, under Ms. Lumi's
+        /// own column (she anchors x 0.03-0.19), so it points at her and not at empty wall.</summary>
+        private const float HintTailX = 0.12f;
+        private const float HintTailSize = 34f;
 
         private StoryData _story;
         private int _nudgeCount;
@@ -47,7 +63,7 @@ namespace SummaRace.Features.Summary
         private void Start()
         {
             _story = SummaRace.Core.GameManager.Instance != null ? SummaRace.Core.GameManager.Instance.CurrentStory : null;
-            if (_story == null) _story = StoryLoader.Load("s01_easy"); // editor-direct fallback
+                        if (_story == null) _story = StoryLoader.Load("s01_easy"); // editor-direct fallback
             if (_story == null)
             {
                 // Without a story the reference list and the submit button would both be
@@ -57,6 +73,10 @@ namespace SummaRace.Features.Summary
                 SceneLoader.Go(SceneNames.StorySelect);
                 return;
             }
+
+            // See ArrangeController: this screen had no music either. No-ops when the loop is
+            // already running, so arriving from Arrange is free.
+            if (AudioManager.Instance != null) AudioManager.Instance.PlayMusic(AudioKeys.MusicMenu);
 
             // Ms. Lumi reacts here now (see MsLumiReactor.AttachBadge). Null-safe and pool-safe:
             // absent object or absent badge art simply leaves the screen as it was.
@@ -90,7 +110,11 @@ namespace SummaRace.Features.Summary
             if (titleText != null) titleText.text = GameText.SummaryTitle;
             if (placeholderText != null) placeholderText.text = GameText.SummaryPlaceholder;
             if (submitLabel != null) submitLabel.text = GameText.SubmitLabel;
-            if (hintText != null) hintText.text = GameText.SummaryHint;
+            if (hintText != null)
+            {
+                hintText.text = GameText.SummaryHint;
+                BuildHintBubble();
+            }
             if (nudgeText != null) nudgeText.text = "";
             if (summaryInput != null)
             {
@@ -120,6 +144,81 @@ namespace SummaRace.Features.Summary
                 doneTypingButton.onClick.AddListener(OnDoneTyping);
                 doneTypingButton.gameObject.SetActive(false);
             }
+        }
+
+        /// <summary>
+        /// Puts the sentence frame in a SPEECH BUBBLE with a tail pointing up at Ms. Lumi, so
+        /// the instruction comes FROM the teacher instead of floating on the wallpaper.
+        ///
+        /// WHY. The title ("Write your summary!") was already inside her bubble at the top, but
+        /// the part that actually tells a child what to do — "Somebody wanted ___, but ___, so
+        /// ___, then ___" — sat detached in the middle of the screen as loose grey text on a
+        /// painted room. So the ASK looked like teaching and the INSTRUCTION looked like
+        /// decoration, which is exactly backwards.
+        ///
+        /// It is built here rather than moved into her top bubble on purpose: the frame is most
+        /// useful directly above the box the learner types into, and relocating it to the top of
+        /// the screen would have traded usability for theme. A second balloon gets both.
+        ///
+        /// The bubble is a SIBLING inserted at the hint's own index — uGUI draws a parent's
+        /// graphic before its children, so a child would cover the words it is meant to sit
+        /// behind. Idempotent, and null-safe at every step.
+        /// </summary>
+        private void BuildHintBubble()
+        {
+            var host = hintText.rectTransform;
+            var parent = host.parent as RectTransform;
+            if (parent == null) return;
+            if (parent.Find(HintBubbleName) != null) return;   // already built
+
+            var go = new GameObject(HintBubbleName, typeof(RectTransform));
+            go.transform.SetParent(parent, false);
+            go.transform.SetSiblingIndex(host.GetSiblingIndex());
+
+            var bubble = go.AddComponent<Image>();
+            if (hintBubbleSource != null)
+            {
+                bubble.sprite = hintBubbleSource.sprite;
+                bubble.type = hintBubbleSource.type;
+                bubble.color = hintBubbleSource.color;
+            }
+            else
+            {
+                bubble.color = Theme.Cream;
+            }
+            bubble.raycastTarget = false;   // the box below it must stay tappable
+
+            var rt = (RectTransform)go.transform;
+            rt.anchorMin = host.anchorMin;
+            rt.anchorMax = host.anchorMax;
+            rt.pivot = host.pivot;
+            rt.anchoredPosition = host.anchoredPosition;
+            rt.sizeDelta = host.sizeDelta + new Vector2(HintBubblePadX, HintBubblePadY);
+
+            // The tail: a plain square turned 45 degrees, half of it standing above the
+            // bubble's top edge, near the left where Ms. Lumi is (she sits at x 0.03-0.19).
+            // Deliberately not a drawn sprite — a rotated quad in the bubble's own colour reads
+            // as a tail at this size and cannot go missing the way a new art file can.
+            var tailGo = new GameObject("Tail", typeof(RectTransform));
+            tailGo.transform.SetParent(go.transform, false);
+
+            var tail = tailGo.AddComponent<Image>();
+            tail.color = bubble.color;
+            tail.raycastTarget = false;
+
+            var trt = tail.rectTransform;
+            trt.anchorMin = new Vector2(HintTailX, 1f);
+            trt.anchorMax = new Vector2(HintTailX, 1f);
+            trt.pivot = new Vector2(0.5f, 0.5f);
+            trt.sizeDelta = new Vector2(HintTailSize, HintTailSize);
+            trt.anchoredPosition = new Vector2(0f, -HintTailSize * 0.32f);
+            trt.localRotation = Quaternion.Euler(0f, 0f, 45f);
+            tailGo.transform.SetAsFirstSibling();   // behind the bubble's own rounded corner
+
+            // Body copy on cream is warm brown everywhere else in this game (Theme.TextBrown,
+            // 8.4:1). The hint was a cool grey chosen against the painted wall it used to sit
+            // on, and that wall is no longer what is behind it.
+            hintText.color = Theme.TextBrown;
         }
 
         private void OnSubmit()

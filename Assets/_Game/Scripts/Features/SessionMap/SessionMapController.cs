@@ -45,7 +45,15 @@ namespace SummaRace.Features.SessionMap
 
         private void Start()
         {
-            if (titleText != null) titleText.text = GameText.SessionMapTitle;
+            if (titleText != null)
+            {
+                titleText.text = GameText.SessionMapTitle;
+                // Says what a "mission" IS and what these three stars count. The stars matter
+                // most: the same sprite in the same row one tap away (Story Select) means "how
+                // well you did", while here it means "stories finished" — so an unlabelled two
+                // stars is read wrongly by a teacher, not just by a child.
+                SummaRace.UI.SubtitleLine.Add(titleText, GameText.SessionMapSubtitle);
+            }
 
             // The Reader stops the music so nothing sits under the narration, and Results ends
             // on the victory sting — so the map is where the loop comes back. PlayMusic no-ops
