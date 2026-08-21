@@ -1,10 +1,11 @@
 # SUMMARACE — REMAINING TASKS, UPDATES & FIXES
 ### Every open item, in execution order, with exact steps, owner, time, and how to verify
 
-**2026-08-21 (rev 2, HEAD `e0591c5`).** Everything NOT listed here is done, committed, and
-pushed (branch `experiment/endless-override-2`). Companion docs:
-`summaracefinal/SUMMARACE_BLUEPRINT.md` (design/logic — incl. §15 acceptance argument) ·
-`SUMMARACE_UI_SPEC.md` (visuals).
+**2026-08-21 (rev 4, HEAD `7bb6fec`+). CURRENT SCORE: 82/100 — Task 1 is DONE.**
+Everything NOT listed here is done, committed, and pushed (branch
+`experiment/endless-override-2`). Companion docs: `summaracefinal/SUMMARACE_BLUEPRINT.md`
+(design/logic — incl. §15 acceptance argument) · `SUMMARACE_UI_SPEC.md` (visuals) ·
+`promp/Researcher_Email_Draft.md` (Task 12, ready to send).
 
 **Completion snapshot: 80/100 — and this list is the exact remaining 20.** Each task carries
 its credit below; complete them all and the project is 100 by construction. The ⚪ decisions
@@ -14,8 +15,8 @@ and ⚫ post-study items carry **zero weight** — 100% never depends on optiona
 
 | Task | Credit | Running total |
 |---|---|---|
-| 1 — package collision removed, Editor tooling back | +2 | 82 |
-| 2 — full test suite green, count recorded | +2 | 84 |
+| ✅ 1 — package collision removed, Editor tooling back — **DONE** (`7bb6fec`; `Assembly-CSharp-Editor.dll` compiled 14:32) | +2 | **82 ← we are here** |
+| ▶ 2 — full test suite green, count recorded — **NEXT** (Window ▸ General ▸ Test Runner ▸ EditMode ▸ Run All; expect ~56) | +2 | 84 |
 | 3 — full-loop portrait playtest clean (non-s01) | +5 | 89 |
 | 4 — hero-art compression | +1 | 90 |
 | 5 — Android Build Support installed | +1 | 91 |
@@ -35,7 +36,12 @@ retire the on-device unknowns, Task 12 is credit for sending — the reply is he
 
 ---
 
-## 🔴 TASK 1 — Remove the package collision (THE gate; everything in the Editor waits on this)
+## ✅ TASK 1 — DONE 2026-08-21 (`7bb6fec`) — package collision removed
+`com.adjoint.editor` deleted from the manifest; `Assembly-CSharp-Editor.dll` compiled for the
+first time ever (14:32). Preflight menu + test fixtures + Play mode are unblocked. Steps kept
+below only as the record of what was done.
+
+<details><summary>original task text</summary>
 
 **Problem:** `com.adjoint.editor` (Adjoint toolbar, line 3 of `Packages/manifest.json`) and
 `com.coplaydev.unity-mcp` (the MCP bridge) both ship a type named `AssetPathUtility` →
@@ -58,7 +64,9 @@ a version without the clash.
 
 ---
 
-## 🟠 TASK 2 — Run the full test suite and record the real number
+</details>
+
+## 🟠 TASK 2 — Run the full test suite and record the real number ← **YOU ARE HERE**
 
 **Why:** every quoted count ("45/45", "53/53") is stale; the suite has NEVER run with the
 newest fixtures (incl. `PatrolCameoGeometryTests`).
@@ -171,7 +179,10 @@ the consent promise).
 
 ---
 
-## 🔵 TASK 12 — The researcher email (send NOW — it's on HER clock, not yours)
+## 🔵 TASK 12 — The researcher email — **DRAFTED, ready to send**
+Full text sits in **`promp/Researcher_Email_Draft.md`** (seven points, each with a
+recommendation and a paste-back reply template). Edit greeting → send → +0.5 lands.
+The seven points, for reference:
 
 One email, seven points (evidence packs live in `Documentation/`):
 1. **Content sign-off + freeze request** — ~130 machine-edited strings across the validity
@@ -197,18 +208,18 @@ One email, seven points (evidence packs live in `Documentation/`):
 
 ---
 
-## ⚪ OPEN DECISIONS (each ~2 min to decide; where to change is listed)
+## ⚪ OPEN DECISIONS — with Claude's RULINGS (owner holds the veto; zero ledger weight)
 
-| # | Decision | Where it changes | Recommendation |
+| # | Decision | Claude's ruling | Grounding |
 |---|---|---|---|
-| D1 | Reading window **12 s vs 17 s** (100 wpm vs 70 wpm reader) | `GameRules.RacePreviewLeadSeconds` | time one race during Task 3 first |
-| D2 | Timer chip visibility | `GameRules.RaceGateTimerVisibleSeconds` = 12 (whole window) / 5 (last 5 s only) / 0 (off) | keep 12; drop to 5 if playtest shows clock-fixation |
-| D3 | Show finished time on Results ("Your race: 1:42!") | small Results addition | nice-to-have; after Task 3 |
-| D4 | Reader persistent coach line | small Reader addition | optional |
-| D5 | NEED HINT? button on Arrange (alongside auto-hint) | small Arrange addition | optional |
-| D6 | One tablet per learner vs shared | operations only | one per learner |
-| D7 | Passive-run stance (a child who never steers) | none — detectable in `racePicks[].lane` | accept, note as limitation |
-| D8 | "Change PIN" button behind the gate | ~30-min TeacherMenu addition | optional convenience |
+| D1 | Reading window **12 s vs 17 s** | **Test first, lean 17** — read one race slowly in Task 3; if tight, take 17 **paired with** `RaceSecondsPerGate`→~29 (17 alone collapses difficulty on 2 of 3 levels) | the study *selects* low-mastery readers (p.25) — its own population argues for time |
+| D2 | Timer chip visibility (`RaceGateTimerVisibleSeconds` 12/5/0) | **Keep 12** — it aids pacing; drop to 5 only if Task 3 shows clock-fixation | honest version of the prototype's clock |
+| D3 | Finished time on Results ("Your race: 1:42!") | **YES — do it** (~30 min, slot into the Task-3 window) | prototype's racing-clock spirit at zero validity cost |
+| D4 | Reader persistent coach line | **NO for the study** — clutter vs the story text; post-study | Reader already gained better equivalents (narration, hints, tips) |
+| D5 | NEED HINT? button on Arrange | **NO** — a button gives confident kids help and shy kids none = **uneven scaffolding across learners**; the auto-hint reaches all 40 equally | uniform support is a validity property |
+| D6 | Tablets per learner | **One per learner** | identity mixups are unrecoverable after export |
+| D7 | Passive-run stance | **Accept + report** — detectable in `racePicks[].lane`; a countermeasure would punish non-steering | D7/never-punish |
+| D8 | "Change PIN" button | **Skip for the study** — set once, same PIN ×40, recorded once; post-study convenience | less gate surface = fewer study-day failure modes |
 
 ## ⚫ EXPLICITLY POST-STUDY (do not spend pre-study time here)
 
@@ -245,8 +256,13 @@ device-RAM budget applied · offline enforced by test · all finalization docs
 
 ---
 
-### The short version
-**Today:** Task 1 (one manifest line) → 2 → 3 → 4.
-**Build day (one focused day):** 5 → 6 → 7 → 8 → 9 → 10.
-**Install day:** 11. **In parallel, today:** 12 (the email).
-Nothing else stands between this project and 40 tablets.
+### The short version (updated)
+**✅ Done:** Task 1 (package collision removed, `7bb6fec`) · Task 12 draft
+(`promp/Researcher_Email_Draft.md` — sending it lands the credit).
+**Now:** Task 2 (Test Runner ▸ EditMode ▸ Run All — record the number) → Task 3 (full-loop
+portrait playtest, non-s01; includes D1/D2 observation and, if approved, D3's 30-min
+finished-time addition) → Task 4 (hero-art compression).
+**Build day (one focused day):** 5 → 6 → 7 → 8 → 9 → 10 — ends with the APK on a real
+device and the export proven.
+**Install day:** 11.
+**Score: 82/100.** Nothing else stands between this project and 40 tablets.
