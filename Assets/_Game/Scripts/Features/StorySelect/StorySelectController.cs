@@ -108,6 +108,10 @@ namespace SummaRace.Features.StorySelect
         private const float RingBreathSeconds = 1.1f;
         private const string BadgeName = "PlayBadge";
 
+        /// <summary>Where a playable card's title must stop so it never runs under the PLAY
+        /// badge (which starts at x 0.60 — see BuildPlayBadge).</summary>
+        private const float TitleClearOfBadgeX = 0.58f;
+
         private void Start()
         {
             if (titleText != null)
@@ -372,6 +376,19 @@ namespace SummaRace.Features.StorySelect
             if (badge == null) badge = BuildPlayBadge(card, root);
 
             if (badge != null) badge.gameObject.SetActive(true);
+
+            // The badge occupies x 0.60–0.94 of the card, and the scene-authored title rect
+            // runs underneath it (EasyCard's reaches 0.90), so a long title vanished behind
+            // the pill (owner playtest 2026-08-21: "The Crowded House: A Folktale"). Clamp the
+            // title's right edge to end before the badge; its autosize + wrap absorb the lost
+            // width. Only the playable card is clamped — locked cards carry no badge.
+            if (card.titleText != null)
+            {
+                var trect = card.titleText.rectTransform;
+                if (trect.anchorMax.x > TitleClearOfBadgeX)
+                    trect.anchorMax = new Vector2(TitleClearOfBadgeX, trect.anchorMax.y);
+            }
+
             if (ring == null) return;
 
             ring.gameObject.SetActive(true);

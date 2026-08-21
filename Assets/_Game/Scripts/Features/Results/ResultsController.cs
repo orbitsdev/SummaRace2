@@ -153,6 +153,14 @@ namespace SummaRace.Features.Results
                 yield return RevealTreasure();
 
                 if (praiseText != null) praiseText.text = SummaRace.Core.Praise.ForStars(stars);
+                // D3: the finished race time, hung under the praise on the same beat. Only when
+                // a real run produced one — played direct-in-editor there is no race result,
+                // and the praise then stands alone exactly as before.
+                var race = SummaRace.Core.GameManager.Instance != null
+                    ? SummaRace.Core.GameManager.Instance.LastRaceResult : null;
+                if (race != null && race.runSeconds > 0f && praiseText != null)
+                    SummaRace.UI.SubtitleLine.Add(praiseText,
+                        GameText.ResultsRaceTime(Mathf.RoundToInt(race.runSeconds)));
                 // Ms. Lumi reacts on the same beat as the praise, so the line has a face saying
                 // it. Null-safe: no badge object or no badge art leaves the screen unchanged.
                 if (_lumi != null) _lumi.Celebrate();

@@ -77,10 +77,13 @@ the greeting, send. Her replies gate the content freeze, not the score.
 
 ---
 
-## Small non-scored leftovers (any "go" and Claude does them)
-- **UI-spec sync** — 6 stale lines where the build is ahead of the spec (~15 min).
-- **CLAUDE.md validity numbers** — refresh 45.3%→36.0%, 31.0%→29.3%, 53→52 chars (~5 min).
-- **D3 finished-time on Results** — if you approve it during the playtest (~30 min).
+## Small non-scored leftovers — **ALL DONE 2026-08-21 evening**
+- ✅ UI-spec sync (16 stale lines) · ✅ CLAUDE.md validity numbers refreshed.
+- ✅ **D3 finished-time on Results** — built and verified live ("Your race: 1:37!" pill
+  under the praise; only shown after a real run, never during one).
+- ✅ StorySelect long-title clamp — titles now wrap left of the PLAY badge.
+- ✅ Owner race feedback: always-on bigger gate timer · patrol cameo redesigned as a
+  behind-to-ahead **overtake** with synced run animation (57/57 tests green).
 
 ## NOT tasks (do not spend time)
 Owner decisions D1–D9 (recorded with rulings in `promp/SummaRace_Remaining_Tasks.md` §⚪) ·

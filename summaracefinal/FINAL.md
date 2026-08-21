@@ -57,9 +57,11 @@ one email.
   Android ▸ Icon ▸ Adaptive. 10 min, do it on build day (Task 7 window).
 - ℹ️ **F-7 · Windows Addressables content exists** (built 2026-08-13) — proves the content
   pipeline works; changes nothing for Android. No action.
-- ℹ️ **F-8 · Results finish-time is logged (`raceRunSeconds`) but not displayed** — the only
-  spec element with zero code anywhere. That is decision **D3** (ruling: YES, ~30 min),
-  not a defect. Slot into the Task 3 window if approved.
+- [x] **F-8 · RESOLVED — D3 built (2026-08-21 evening, owner's "go do it"):** "Your race:
+  1:37!" now appears on a pill under the Results praise, from the logged `runSeconds`.
+  Only after a real run (editor-direct shows nothing); plain fact, no "fast", no target —
+  L1/D7 hold. Verified live with an injected 4/5 result. The last unbuilt spec element is
+  gone; the UI spec is now 100% on disk.
 
 ## §3 · THE FINISH LINE — do these in order, tick as you go
 
@@ -91,9 +93,10 @@ never-played session-5 story); owner feel-pass still wanted**
   decide **D3** (finished-time on Results, ~30 min).
 - **Findings from the drive:** ⓐ **FIXED** — Reader's Ms. Lumi rendered ~2.1× too big and
   covered the story text (`Teacher` localScale 2.11 authored for the pre-F58 sprite; now
-  1.0, re-rendered clean). ⓑ **OPEN, cosmetic** — StorySelect: a long story title runs
-  under the PLAY badge ("The Crowded House: A Folktale"); needs a title-width clamp or
-  badge-aware wrap. ⓒ Editor-only: Trash Dash's focus-pause freezes the race when the
+  1.0, re-rendered clean). ⓑ **FIXED (same night)** — StorySelect long titles ran
+  under the PLAY badge; playable cards now clamp the title's right edge to x 0.58 (the
+  badge starts at 0.60) and the title wraps — verified live on "The Crowded House: A
+  Folktale". ⓒ Editor-only: Trash Dash's focus-pause freezes the race when the
   Unity window loses focus mid-drive — irrelevant on a tablet (app always focused).
 - **Owner feel-pass feedback (2026-08-21 evening) — all three FIXED same night, 57/57
   tests green, re-verified live with screenshots:** ① *"I don't see the timer"* → chip

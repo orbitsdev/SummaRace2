@@ -405,6 +405,17 @@ namespace SummaRace.Constants
         /// </summary>
         public const string ResultsYourSummary = "You wrote: “{0}”";
 
+        /// <summary>D3 (owner approved 2026-08-21): the finished race time on Results — the
+        /// prototype's racing-clock spirit at zero validity cost, because it appears AFTER the
+        /// run ends and never during it (L1: no clock on the learner while reading). Plain
+        /// fact, not a score: no "fast", no comparison, no target to beat — a slower reader's
+        /// time is as celebrated as anyone's (D7).</summary>
+        public static string ResultsRaceTime(int totalSeconds)
+        {
+            if (totalSeconds < 0) totalSeconds = 0;
+            return "Your race: " + (totalSeconds / 60) + ":" + (totalSeconds % 60).ToString("00") + "!";
+        }
+
         /// <summary>Continue button AFTER the third story of a session, when it leaves for the
         /// Session Map. "Mission" means a session everywhere else in the game (SessionMapTitle,
         /// SessionLockedHint), so this wording is only true on that branch.</summary>
