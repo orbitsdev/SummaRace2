@@ -44,6 +44,9 @@ namespace SummaRace.Features.Reader
         [SerializeField] private Button[] optionButtons = new Button[3];
         [SerializeField] private TMP_Text[] optionLabels = new TMP_Text[3];
         [SerializeField] private TMP_Text feedbackText;
+        [Tooltip("Optional. The nudge under the question naming WHICH story part it asks "
+               + "about. Self-built into the card's free band when the scene has none.")]
+        [SerializeField] private TMP_Text hintText;
 
         [Header("Reading buddy")]
         // Ms. Lumi hides during the question so the learner focuses on the answers,
@@ -72,6 +75,12 @@ namespace SummaRace.Features.Reader
         // 5.57:1.
         private static readonly Color FeedbackCorrect = Theme.GreenDeep; // deep green
         private static readonly Color FeedbackNotQuite = new Color(0.62f, 0.32f, 0.02f); // deep warm amber, never harsh
+
+        /// <summary>The hint line under the question. Slate rather than the body brown so
+        /// it reads as a note ABOUT the question rather than as part of it - a learner must
+        /// never mistake it for a fourth thing to answer. Measured 8.3:1 on the card's cream
+        /// (see Theme's contrast table), so it is quieter without being faint.</summary>
+        private static readonly Color HintInk = Theme.Slate;
 
         // Small-chip palette: the navy pill (Resources/UI/bar_bg) is the HUD's own language
         // (F16), the gold pill (bar_fill) is what "armed" looks like everywhere else.
@@ -304,6 +313,17 @@ namespace SummaRace.Features.Reader
             RefreshSecondaryControls(readingPage: false);
 
             if (questionText != null) questionText.text = question.text;
+
+            // The nudge names the SWBST part this page teaches. It is keyed by PAGE, which
+            // is the same index the element carries, so page 3 asks about BUT and the hint
+            // points at the problem. Blank (a story with a different page count) hides the
+            // line rather than leaving an empty band under the question.
+            if (hintText != null)
+            {
+                string hint = GameText.ReaderSlotHint(_pageIndex);
+                hintText.text = hint;
+                hintText.gameObject.SetActive(!string.IsNullOrEmpty(hint));
+            }
 
             ShuffleDisplayOrder(question.options.Length);
 
@@ -604,10 +624,56 @@ namespace SummaRace.Features.Reader
                         GameText.ReaderReplayLabel, 28f, out replayButtonLabel);
             }
 
+            EnsureHintLine();
+
             if (backButtonLabel != null) backButtonLabel.text = GameText.ReaderBackLabel;
             if (replayButtonLabel != null) replayButtonLabel.text = GameText.ReaderReplayLabel;
             ApplyChipStyle(backButton, armed: false);
             ApplyChipStyle(replayButton, armed: false);
+        }
+
+        /// <summary>
+        /// Builds the question's hint line when the scene carries no object for it. It goes
+        /// inside the question CARD, not on the canvas, so it travels with the card and is
+        /// hidden by the same SetActive that hides the question - a hint that outlived its
+        /// question would sit over the story page naming a part the learner is not being
+        /// asked about.
+        ///
+        /// The band is measured, not guessed: within QCard the question text ends at y 0.80
+        /// and option A begins at 0.72, so 0.73-0.79 is the one gap on this card that is
+        /// already empty. Nothing moves; if a scene later wires its own hintText, that
+        /// reference wins and none of this runs.
+        /// </summary>
+        private void EnsureHintLine()
+        {
+            if (hintText != null || questionText == null) return;
+
+            var card = questionText.transform.parent;
+            if (card == null) return;
+
+            var go = new GameObject("HintText", typeof(RectTransform));
+            go.transform.SetParent(card, false);
+            var rect = (RectTransform)go.transform;
+            rect.anchorMin = new Vector2(0.06f, 0.73f);
+            rect.anchorMax = new Vector2(0.94f, 0.79f);
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+
+            var label = go.AddComponent<TextMeshProUGUI>();
+            // Borrow the question's own face so the card keeps one typeface.
+            if (questionText.font != null) label.font = questionText.font;
+            label.fontStyle = FontStyles.Italic;   // the second channel: it is not the question
+            label.enableAutoSizing = true;
+            label.fontSizeMin = 22f;               // the readability audit's acuity floor
+            label.fontSizeMax = 30f;
+            label.alignment = TextAlignmentOptions.Center;
+            label.textWrappingMode = TextWrappingModes.Normal;
+            label.color = HintInk;
+            label.raycastTarget = false;           // never steals a tap meant for option A
+            label.text = string.Empty;
+            go.SetActive(false);                   // ShowQuestion turns it on with real text
+
+            hintText = label;
         }
 
         /// <summary>One small pill button, Fredoka-labelled like every other button in the kit.</summary>

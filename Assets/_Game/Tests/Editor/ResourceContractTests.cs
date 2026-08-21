@@ -29,6 +29,7 @@ namespace SummaRace.Tests.EditMode
             "UI/bar_bg",        // loading progress track, Reader VOICE pill, Summary pill
             "UI/bar_fill",      // loading progress fill, Reader VOICE pill (armed)
             "UI/mslumi_wave",   // Ms. Lumi presenting the mission
+            "UI/chip_tan",      // Story Select's AVERAGE difficulty chip
         };
 
         [Test]

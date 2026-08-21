@@ -32,6 +32,9 @@ namespace SummaRace.Features.StorySelect
             public Image heroImage;
             public TMP_Text titleText;
             public TMP_Text chipText;
+            /// <summary>Optional. Falls back to the Image on chipText's parent, which is
+            /// where all three cards keep it (Text &lt; Chip).</summary>
+            public Image chipBackground;
             public Image lockIcon;
             public TMP_Text lockedLabel;
             public TMP_Text lockedHint;
@@ -64,6 +67,32 @@ namespace SummaRace.Features.StorySelect
         /// than white and the scrim only subtracts further, so those two numbers are floors.
         /// </summary>
         private static readonly Color HeroLocked = new Color(0.30f, 0.32f, 0.36f);
+
+        /// <summary>
+        /// The difficulty chips, brought to the prototype's three colours: EASY green,
+        /// AVERAGE tan, HARD red-orange. Before this, AVERAGE wore the kit's orange pill and
+        /// HARD its light-red one, so the ladder read green-orange-red with AVERAGE and HARD
+        /// too close to tell apart at a glance.
+        ///
+        /// The AVERAGE change could not be a tint. An Image MULTIPLIES its sprite, so the kit
+        /// orange (236, 144, 35) can only be made darker - tan (189, 172, 126) needs more
+        /// green and nearly four times the blue. Hence the one new asset in this pass: the
+        /// kit's own GOLDEN pill copied into Resources so it can be swapped in at runtime
+        /// without a scene edit. It carries the same 9-slice border (24, 20, 24, 20) as the
+        /// other two, so the three chips stay the same shape.
+        ///
+        /// HARD is a tint, because red-orange IS light red with the blue pulled down:
+        /// (247, 80, 87) x (1, 1, 0.46) = (247, 80, 40).
+        ///
+        /// CONTRAST, measured, because this is the part that was actually broken: every chip
+        /// label is white, and white on the old orange was 2.45:1 - below WCAG AA even for
+        /// large text. White on tan would be worse (2.24:1). So AVERAGE gets dark-brown ink
+        /// (6.18:1) while the other two keep white (green 5.26:1, red-orange 3.42:1, which
+        /// clears the 3.0 large-text bar these bold chips sit on).
+        /// </summary>
+        private static readonly Color HardChipTint = new Color(1f, 1f, 0.46f);
+        private static readonly Color ChipInkLight = Color.white;
+        private static readonly Color ChipInkDark = Theme.TextBrownDeep;
 
         // Set from here rather than left in the scene so the pairing above stays a measured
         // property of the code: the ceiling is worthless if the label drifts darker later.
@@ -129,6 +158,7 @@ namespace SummaRace.Features.StorySelect
             if (card == null) return;
 
             if (card.chipText != null) card.chipText.text = DifficultyLabel(difficulty);
+            StyleChip(card, difficulty);
 
             // A story that fails to load must never present itself as playable.
             bool playable = unlocked && story != null;
@@ -225,6 +255,44 @@ namespace SummaRace.Features.StorySelect
 
             var progress = learner.progress.Find(p => p.storyId == storyId);
             return progress != null && progress.completed;
+        }
+
+        /// <summary>Paints one difficulty chip. Leaves EASY exactly as the scene has it -
+        /// green was already right, and the fewer chips this touches the fewer can regress.</summary>
+        private static void StyleChip(DifficultyCard card, string difficulty)
+        {
+            if (card == null || card.chipText == null) return;
+
+            var background = card.chipBackground;
+            if (background == null && card.chipText.transform.parent != null)
+                background = card.chipText.transform.parent.GetComponent<Image>();
+
+            switch (difficulty)
+            {
+                case "average":
+                    if (background != null)
+                    {
+                        var tan = Resources.Load<Sprite>("UI/chip_tan");
+                        // A missing sprite must not leave the chip tinted for art it never got.
+                        if (tan != null)
+                        {
+                            background.sprite = tan;
+                            // Simple, not Sliced: the other two chips are Simple, and the
+                            // three kit pills already have different native widths (164 /
+                            // 130 / 198) stretched into the same rect. Matching them keeps
+                            // the corner radius reading the same across the row.
+                            background.type = Image.Type.Simple;
+                            background.color = Color.white;
+                            card.chipText.color = ChipInkDark;
+                        }
+                    }
+                    break;
+
+                case "hard":
+                    if (background != null) background.color = HardChipTint;
+                    card.chipText.color = ChipInkLight;
+                    break;
+            }
         }
 
         private static string DifficultyLabel(string difficulty)

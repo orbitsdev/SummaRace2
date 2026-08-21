@@ -108,7 +108,18 @@ namespace SummaRace.Features.Summary
             }
 
             if (titleText != null) titleText.text = GameText.SummaryTitle;
-            if (placeholderText != null) placeholderText.text = GameText.SummaryPlaceholder;
+            if (placeholderText != null)
+            {
+                // The ghost is built from THIS story's own Somebody and Wanted, so the frame
+                // the learner is copying is already about the story they just ran. It is a
+                // placeholder and nothing else - TMP draws it only while the field is empty,
+                // it cannot be submitted, and the first keystroke removes it (L6: the child
+                // produces every word). It also breaks off at "but...", leaving the three
+                // parts the summary is really judged on entirely to them.
+                placeholderText.text = _story.elements != null && _story.elements.Length >= 2
+                    ? GameText.SummaryGhost(_story.elements[0].correct, _story.elements[1].correct)
+                    : GameText.SummaryPlaceholder;
+            }
             if (submitLabel != null) submitLabel.text = GameText.SubmitLabel;
             if (hintText != null)
             {
@@ -136,6 +147,7 @@ namespace SummaRace.Features.Summary
                 AudioManager.Instance.PlayVoice(AudioKeys.VoSummaryHint, true);
             }
 
+            EnsureTipsBlock();
             EnsureDoneTypingChip();
             if (doneTypingButton != null)
             {
@@ -357,6 +369,69 @@ namespace SummaRace.Features.Summary
         }
 
         /// <summary>
+        /// <summary>
+        /// The two tips under SUBMIT. They answer the only two questions a learner has in
+        /// front of an empty box - how much do I write, and is one sentence really enough -
+        /// and they are guidance, never a grade: the app does not score a summary (L6).
+        ///
+        /// Placed in the one empty band this screen has. Measured from the scene: SUBMIT
+        /// bottoms out at y 0.13 and nothing else lives below it, so 0.02-0.11 is free and
+        /// nothing has to move. It sits BELOW the input on purpose - the Android keyboard
+        /// covers this band while typing, and these are pre-writing tips, so losing them at
+        /// the moment the learner starts writing is correct rather than a defect. Anything
+        /// they need mid-sentence (the frame, the reference list, DONE TYPING) is already
+        /// above the keyboard line.
+        ///
+        /// On the navy pill for the same reason the other chips are: this screen's backdrop
+        /// is a photographic sky, and Paper on Navy measures 12.9:1 whatever is behind it,
+        /// where slate type straight on the sky depends on the pixel it lands over.
+        /// </summary>
+        private void EnsureTipsBlock()
+        {
+            var tips = GameText.SummaryTips;
+            if (tips == null || tips.Length == 0) return;
+
+            var root = ResolveSceneCanvas();
+            if (root == null) return;
+
+            var panelGo = new GameObject("TipsBlock", typeof(RectTransform));
+            panelGo.transform.SetParent(root, false);
+            var rect = (RectTransform)panelGo.transform;
+            rect.anchorMin = new Vector2(0.05f, 0.020f);
+            rect.anchorMax = new Vector2(0.95f, 0.110f);
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+
+            var image = panelGo.AddComponent<Image>();
+            var pill = Resources.Load<Sprite>("UI/bar_bg"); // navy 9-sliced pill
+            if (pill != null) { image.sprite = pill; image.type = Image.Type.Sliced; }
+            else image.color = ChipFallback;
+            image.raycastTarget = false;   // never intercepts a tap aimed at SUBMIT
+
+            var labelGo = new GameObject("Label", typeof(RectTransform));
+            labelGo.transform.SetParent(panelGo.transform, false);
+            var label = labelGo.AddComponent<TextMeshProUGUI>();
+            // Body face, not SUBMIT's Fredoka: these are two sentences to read, and the
+            // reference list beside them is already set in the body face.
+            if (hintText != null && hintText.font != null) label.font = hintText.font;
+            label.text = string.Join(System.Environment.NewLine, tips);
+            label.fontSize = 26f;
+            label.enableAutoSizing = true;
+            label.fontSizeMin = 22f;       // the readability audit's acuity floor
+            label.fontSizeMax = 26f;
+            label.alignment = TextAlignmentOptions.Center;
+            label.textWrappingMode = TextWrappingModes.Normal;
+            label.color = ChipText;
+            label.raycastTarget = false;
+            var labelRect = label.rectTransform;
+            labelRect.anchorMin = Vector2.zero;
+            labelRect.anchorMax = Vector2.one;
+            labelRect.offsetMin = new Vector2(18f, 8f);
+            labelRect.offsetMax = new Vector2(-18f, -8f);
+
+            panelGo.AddComponent<SummaRace.UI.PanelIntro>();
+        }
+
         /// Builds the chip when the scene has no object for it. Serialized wiring wins if it
         /// ever gains one; built here so the escape hatch ships without a scene edit (same
         /// idiom as SceneLoader's overlay and the race briefing).

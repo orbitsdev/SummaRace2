@@ -224,6 +224,71 @@ namespace SummaRace.Constants
         /// it must never read as a second SUBMIT.</summary>
         public const string SummaryDoneTyping = "DONE TYPING";
 
+
+        /// <summary>The two tips beside the Summary box (from the web prototype). Between
+        /// them they answer the only two questions a 9-year-old has in front of an empty box
+        /// - how much do I write, and is one sentence really allowed - and they define a good
+        /// summary without grading the one being written. The app never scores a summary
+        /// (L6); the paper rubric is the outcome measure.</summary>
+        public static readonly string[] SummaryTips =
+        {
+            "A good summary is short but complete.",
+            "One sentence is enough if it includes all the key events.",
+        };
+
+        /// <summary>
+        /// Story-specific GHOST text for the summary box, built from that story's own
+        /// SOMEBODY and WANTED. An empty box plus an abstract frame ("Somebody wanted ___")
+        /// asks the learner to instantiate the frame before they can begin; showing the frame
+        /// already started ON THIS STORY removes that step without writing any of their
+        /// sentence for them.
+        ///
+        /// It is a placeholder and nothing more - never insertable, never pre-filled, and
+        /// gone the moment a key is pressed (L6: the child produces every word, and
+        /// summaryText is stored verbatim as the record). It also stops one part short on
+        /// purpose, breaking off at "but...", so the three elements the summary is really
+        /// judged on are still entirely the learner's.
+        ///
+        /// Verified against all 30 stories: 24 WANTED lines start "To ...", 5 are bare noun
+        /// phrases ("A pet to bring home"), and s01_easy alone starts "She wanted ...", which
+        /// is why the leading pronoun-plus-wanted is stripped - without that strip the very
+        /// first story every learner plays would read "Molly wanted she wanted to swing".
+        /// </summary>
+        public static string SummaryGhost(string somebody, string wanted)
+        {
+            if (string.IsNullOrWhiteSpace(somebody) || string.IsNullOrWhiteSpace(wanted))
+                return SummaryPlaceholder;
+
+            string who = somebody.Trim();
+            string want = StripLeadingWanted(wanted.Trim(), who);
+            if (string.IsNullOrEmpty(want)) return SummaryPlaceholder;
+
+            return $"{who} wanted {LowerFirst(want)}, but...";
+        }
+
+        /// <summary>Removes a leading "She wanted " / "Marusia wanted " so the ghost does not
+        /// say "wanted" twice. Matched case-insensitively against the four pronouns the
+        /// stories use and against this story's own SOMEBODY.</summary>
+        private static string StripLeadingWanted(string wanted, string somebody)
+        {
+            string[] leads = { "he", "she", "they", "it", somebody };
+            foreach (var lead in leads)
+            {
+                if (string.IsNullOrEmpty(lead)) continue;
+                string prefix = lead + " wanted ";
+                if (wanted.Length > prefix.Length &&
+                    wanted.StartsWith(prefix, System.StringComparison.OrdinalIgnoreCase))
+                    return wanted.Substring(prefix.Length).TrimStart();
+            }
+            return wanted;
+        }
+
+        /// <summary>Lowercases the FIRST letter only, so a WANTED line that was written as a
+        /// sentence reads as the middle of one - while a proper noun further along
+        /// ("...wanted Baba Yaga to leave") keeps its capital.</summary>
+        private static string LowerFirst(string s) =>
+            string.IsNullOrEmpty(s) ? s : char.ToLowerInvariant(s[0]) + s.Substring(1);
+
         // Gentle nudges shown when a summary needs another try (GDD §4.5)
         public static readonly string[] SummaryNudges =
         {
@@ -250,6 +315,13 @@ namespace SummaRace.Constants
             new[]                                   // 3 stars
             {
                 "Amazing! You found every story part!",
+                // The web prototype celebrates here with "you're a summarizing
+                // superstar!". Kept the moment, changed the grammar: that line praises
+                // the CHILD ("you are a ..."), and every pool in this file is
+                // deliberately process praise for the reason given above it - ability
+                // praise makes learners avoid harder tasks, across ten sessions. This
+                // names the thing they just did instead, at the same volume.
+                "You summarized the whole story!",
                 "Perfect run — every part, first try!",
                 "You read every page carefully!",
             },
@@ -270,6 +342,9 @@ namespace SummaRace.Constants
             "That's it!",
             "You got it!",
             "You picked the right one!",
+            // From the web prototype's per-pick feedback — the one praise line that also
+            // TEACHES: it ties the pick to the summary the child will write two stages later.
+            "That belongs in your summary!",
             "Exactly right!",
             "Good thinking!",
             "You read that carefully!",
@@ -402,6 +477,42 @@ namespace SummaRace.Constants
         /// processing question's choices as "A. / B. / C.", so the Reader matches it.</summary>
         public static readonly string[] OptionLetters = { "A.", "B.", "C." };
 
+
+        /// <summary>
+        /// The hint line under each Reader question - a nudge toward WHICH SWBST slot the
+        /// question is asking about, indexed BY PAGE (page i teaches element i; that pairing
+        /// is what SummaRace_Story_Alignment_Audit.md measured, so this index is load-bearing
+        /// in exactly the same way LoadingTips' is).
+        ///
+        /// Safe to show because the Reader is the SUPPORTED rung of the ladder: the page text
+        /// is on screen, the framework is being pre-taught, and the race is where support is
+        /// removed. It names the SLOT, never the answer - it is identical for all three
+        /// options and for all 30 stories, so it cannot be used to pick an option without
+        /// reading, which is the exploit F44/F47 spent two passes closing in the race.
+        ///
+        /// Phrased as a QUESTION rather than as LoadingTips' definitions on purpose: the
+        /// definition already appears on the loading overlay and as the Arrange hint, and a
+        /// learner who reads "BUT is the problem the character had" directly above a question
+        /// about the problem is handed the sentence frame instead of prompted to think.
+        ///
+        /// No emoji glyph in the string. The web prototype draws a lamp here, but Fredoka and
+        /// Nunito SDF carry no emoji, so a literal one would render as a missing-glyph box on
+        /// the tablet - the Reader styles this line instead (see ReaderController).
+        /// </summary>
+        public static readonly string[] ReaderSlotHints =
+        {
+            "Who is this story about?",
+            "What does the character want?",
+            "What is the problem stopping them?",
+            "What did the character do about it?",
+            "How does the story end?",
+        };
+
+        /// <summary>Safe accessor - a story whose page count ever drifts from five must not
+        /// throw on the screen that teaches. Returns empty, and the line hides itself.</summary>
+        public static string ReaderSlotHint(int pageIndex) =>
+            pageIndex >= 0 && pageIndex < ReaderSlotHints.Length ? ReaderSlotHints[pageIndex] : "";
+
         // Race briefing — the "get ready" beat between the Reader and the run.
         /// <summary>Was "Your Mission", which collided with the game's other meaning of mission
         /// (a whole session of three stories — SessionMapTitle, SessionLockedHint). One race is
@@ -459,6 +570,24 @@ namespace SummaRace.Constants
             + "\n\nRead the 3 answers at the top.\nTap the answer you want."
             + "\n\nOr tap the left, middle, or right side of the screen.";
 
+        /// <summary>
+        /// The patrol sentence, appended to the briefing ONLY when the cameo is switched on
+        /// (GameRules.RacePatrolCameoEnabled). Kept out of RaceBriefingBody so the two cannot
+        /// drift: turn the cameo off and the briefing stops promising a character that will
+        /// never appear, with no second edit and no re-recording, because this line has its own
+        /// clip (AudioKeys.VoRaceBriefingPatrol) queued after the main one.
+        ///
+        /// NOT the prototype's "PATROL IS COMING!". That shouts, and worse, it is not true of
+        /// what the game does: nothing comes for the learner. The cop appears AHEAD on the
+        /// shoulder for under two seconds and is left behind - he has no rule, ends nothing, and
+        /// timesCaught is 0 for every run ever logged (D7/L3). A briefing that threatens a catch
+        /// which cannot happen teaches a nine-year-old to fear a beat that is only decoration,
+        /// which is the opposite of never-punish. So it names the beat and closes the door on
+        /// the fear in the same breath.
+        /// </summary>
+        public const string RaceBriefingPatrol =
+            "If you miss a part, the patrol races past. It never catches you!";
+
         /// <summary>3-2-1-GO! steps. Last entry is treated as the "go" beat.</summary>
         public static readonly string[] RaceCountdown = { "3", "2", "1", "GO!" };
 
@@ -488,12 +617,71 @@ namespace SummaRace.Constants
         public const string RaceFinishCard = "FINISH";
         public const string RaceRunToFinish = "Run to the FINISH!";
 
+        /// <summary>
+        /// The gate-arrival countdown chip, e.g. "Next part in 8s".
+        ///
+        /// "Next PART", not "next gate": a gate is the designer's word for this thing and the
+        /// learner is never taught it, while "story parts" is the vocabulary Arrange and Summary
+        /// already use for the same five items - and the thing arriving IS the next SWBST part.
+        /// So the chip reinforces the framework instead of naming a mechanism.
+        ///
+        /// Counts the REAL seconds until the cards reach the runner (integrated against the
+        /// acceleration, so it does not lie). At zero the part simply arrives - there is no fail
+        /// state attached to it, and no global race clock anywhere (L1).
+        /// </summary>
+        public static string RaceGateTimer(int seconds) =>
+            $"Next part in {(seconds < 0 ? 0 : seconds)}s";
+
+
+        /// <summary>
+        /// The framing line in the race feedback pill on a wrong pick, one beat BEFORE the
+        /// answer itself appears on the reading panel (EndlessRaceDirector.HitWrong then
+        /// ShowAnswerReveal).
+        ///
+        /// The pill used to show the correct answer and the panel then showed it again, so
+        /// the moment said one thing twice and said nothing about why the pick was wrong.
+        /// These lines do the teaching that repetition was wasting: the distractors are
+        /// usually TRUE of the story - what makes them wrong is that they are not the part
+        /// being collected. Naming that is the whole point of the framework.
+        ///
+        /// Warm, never scolding (D7): no "wrong", no "no", nothing that reads as a buzzer.
+        /// The answer follows immediately, so the learner is never left holding only a
+        /// correction.
+        /// </summary>
+        public static readonly string[] RaceWrongLines =
+        {
+            "That detail isn't the most important.",
+            "Not quite - here's the part we need!",
+            "Close! That's not the part we're collecting.",
+            "That happened, but it isn't this part.",
+        };
+
         /// <summary>Race HUD banner, e.g. "Collect: SOMEBODY  1/5".</summary>
         public static string RaceCollectBanner(string elementType, int number, int total) =>
             $"Collect: {elementType}  {number}/{total}";
 
         // Arrange screen
+        /// <summary>The screen's plain title. No longer drawn - ArrangeLumiIntro took the
+        /// bubble - but kept because it is the shortest correct statement of what this
+        /// screen asks, and the two nearby strings (ArrangeIntroStatus, ArrangeLumiIntro)
+        /// are both worded to agree with it. Delete it and the next edit to either one has
+        /// nothing to agree with.</summary>
         public const string ArrangeTitle = "Put the story parts in order!";
+
+
+        /// <summary>Ms. Lumi's line as Arrange opens. It names what just happened before it
+        /// asks for anything, which is the whole job of this beat: the learner arrives here
+        /// straight off a run, and the screen otherwise begins with an instruction and no
+        /// acknowledgement that they just finished the race.
+        ///
+        /// "S.W.B.S.T" is spelled with stops because the five slots on screen are five
+        /// separate words - the learner is matching letters to labels, not reading an acronym
+        /// they have never heard said aloud. "Put the story parts in order" rather than the
+        /// prototype's "organize the story elements": "organize" and "element" are the
+        /// designer's words for this screen, and ArrangeTitle/ArrangeIntroStatus already
+        /// teach the learner's ("story parts"). One vocabulary per screen.</summary>
+        public const string ArrangeLumiIntro =
+            "Great running! Now put the story parts in S.W.B.S.T order.";
         public const string UndoLabel = "UNDO";
         /// <summary>"Verify" is a designer's word; the learner is checking their work.</summary>
         public const string VerifyLabel = "CHECK ORDER";

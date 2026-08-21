@@ -49,7 +49,10 @@ namespace SummaRace.Constants
         // A missing clip is silence, never an error (AudioManager.GetClip warns once and
         // caches the miss), so the wiring is safe ahead of the audio.
 
-        /// <summary>"Put the story parts in order!" (GameText.ArrangeTitle)</summary>
+        /// <summary>Ms. Lumi's hand-off line as Arrange opens (GameText.ArrangeLumiIntro).
+        /// Re-recorded when that string changed - the spoken line and the printed line have
+        /// to match, because this narration IS the support for a learner who cannot read
+        /// the title.</summary>
         public const string VoArrangeTitle = "vo_arrange_title";
         /// <summary>"Tap a story part, then tap where it goes." (GameText.ArrangeIntroStatus)</summary>
         public const string VoArrangeHow = "vo_arrange_how";
@@ -71,6 +74,10 @@ namespace SummaRace.Constants
         /// generated OUTSIDE Assets/ and then moved over the existing file, so the .meta
         /// (guid + loadType 1 / Vorbis / mono / no preload / load in background) survives.</summary>
         public const string VoRaceBriefing = "vo_race_briefing";
+
+        /// <summary>GameText.RaceBriefingPatrol, queued after VoRaceBriefing. Separate clip so
+        /// the patrol cameo can be switched off without re-recording the briefing.</summary>
+        public const string VoRaceBriefingPatrol = "vo_race_briefing_patrol";
 
         // The five SWBST definitions on the loading overlay (GameText.LoadingTips).
         public const string VoTipSomebody = "vo_tip_somebody";

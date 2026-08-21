@@ -43,6 +43,12 @@ namespace SummaRace.Core
                 : Generic();
         }
 
+        /// <summary>The warm framing line shown for a beat after a WRONG race pick,
+        /// before the answer itself appears. Not praise - but it is drawn the same way
+        /// so a learner having a hard run does not hear the same sentence five times.
+        /// </summary>
+        public static string RaceNotQuite() => Draw("racewrong", GameText.RaceWrongLines);
+
         /// <summary>Praise for a completed Arrange grid.</summary>
         public static string ArrangePerfect() => Draw("arrange", GameText.ArrangePerfectPool);
 

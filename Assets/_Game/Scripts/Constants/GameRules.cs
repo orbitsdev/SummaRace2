@@ -27,6 +27,47 @@ namespace SummaRace.Constants
         /// warnings in this file behind noise about code we are deliberately keeping.</remarks>
         public static readonly bool RacePatrolEnabled = false;
 
+        /// <summary>
+        /// The patrol CAMEO (F59) — a different thing from the chase above, which stays off.
+        ///
+        /// The chase failed three times for one reason, and it is worth stating precisely
+        /// because it is what this design avoids: every version of it tried to hold the cop at a
+        /// small offset from the runner, and at a small offset the approved camera (5m back, 4m
+        /// up, ~15deg down, 58.7 FOV, portrait) leaves nowhere to put him. Behind = inside the
+        /// kid or under the frame; level on the shoulder = a jogging companion, half off a
+        /// portrait screen; bounds-following = chasing his own stride.
+        ///
+        /// The cameo does not hold an offset at all. He appears WELL AHEAD on the shoulder,
+        /// draws in to PatrolCameoNearAhead, then falls back out — so the two bodies are never
+        /// less than five metres apart ALONG THE RUN and an overlap is impossible by
+        /// construction rather than by tuning. That single property is what all three chase
+        /// attempts were fighting for and never got.
+        ///
+        /// Solved against the camera in the scene, not eyeballed. With the cop at
+        /// x = PatrolCameoLateralX and z between the two Ahead values, his worst projected
+        /// corner sits at 0.81 of the frame half-extent — fully inside, with ~19% margin — for
+        /// the whole sweep. He is also outside the outermost answer card (|x| 2.2) and inside
+        /// the corridor F54 verified clear of scenery (|x| &lt; 3), so he can neither be mistaken
+        /// for something to dodge nor spawn inside a wall.
+        ///
+        /// He still never catches anybody: timesCaught stays 0 (D7/L3), he carries no rule, and
+        /// he is AHEAD of the runner throughout, so there is nothing for him to catch. This is
+        /// the kill-switch the blueprint's L4 asks to keep — turn it off and the wrong-answer
+        /// beat falls back to the amber vignette and the feedback line exactly as it does today.
+        /// </summary>
+        public static readonly bool RacePatrolCameoEnabled = true;
+
+        /// <summary>How far out on the shoulder the cameo runs. Outside the outermost answer
+        /// card (2.2) and inside the scenery-free corridor (3.0).</summary>
+        public const float PatrolCameoLateralX = 2.5f;
+
+        /// <summary>Closest he comes, in metres AHEAD of the runner. Never less than this, which
+        /// is what makes a body overlap impossible.</summary>
+        public const float PatrolCameoNearAhead = 5f;
+
+        /// <summary>Where he enters and leaves, in metres ahead of the runner.</summary>
+        public const float PatrolCameoFarAhead = 10f;
+
         // Patrol chaser (visual pressure only — it never catches, GDD D7).
         // "Appear only on a bump": out of frame through a clean run, closes in for
         // PatrolMenaceSeconds after a wrong pick, then drops back out. Placed relative to the
@@ -180,6 +221,24 @@ namespace SummaRace.Constants
         // difficulty setting and no speed can take the breather away — at hard the multiplier
         // would otherwise drop the gap below the reading window itself.
         public const float RaceQuietRunSeconds = 6f;
+
+        /// <summary>
+        /// How many seconds before a gate arrives the countdown chip becomes visible. The chip
+        /// counts down the REAL arrival of the next SWBST part ("Next part in 12s"), integrated
+        /// against the runner's acceleration - it is not a clock on the learner.
+        ///
+        /// This is the honest replacement for the prototype's 90-second race countdown, which
+        /// stays out for good (L1): a global clock scores reading SPEED and pressures exactly
+        /// the strugglers the study is about, and it implies a time-out fail state the game does
+        /// not have. This one cannot fail anybody - at 0 the gate is simply there and the normal
+        /// pick/miss rules apply, unchanged.
+        ///
+        /// Default matches the reading window, so the chip appears with the options and counts
+        /// them down together. THE PLAYTEST LEVER: if anxious readers fixate on it, drop this to
+        /// 5 and it only appears for the last five seconds. Set it to 0 to remove the chip
+        /// entirely without touching any other code.
+        /// </summary>
+        public const float RaceGateTimerVisibleSeconds = RacePreviewLeadSeconds;
 
         // The option panel's arrival cue is NOT tunable from here. EndlessRaceDirector's
         // PulseArrivalGlow writes its four legs out longhand so the pulse frequency stays

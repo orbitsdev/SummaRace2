@@ -43,8 +43,24 @@ namespace SummaRace.Features.Arrange
         private static readonly Color LabelFilled = new Color(0.25f, 0.20f, 0.12f);
         private static readonly Color SlotLocked = new Color(0.55f, 0.85f, 0.45f);
         private static readonly Color SlotWrong = new Color(0.95f, 0.65f, 0.3f);
-        private static readonly Color PieceNormal = new Color(0.96f, 0.87f, 0.70f);
+        /// <summary>The pool pills. Warm YELLOW, and deliberately not SlotFilled's cream:
+        /// the two were byte-identical (0.96, 0.87, 0.70), so a part waiting in the pool and a
+        /// part already placed in a slot were the same colour, and the board never showed at a
+        /// glance how much was left to do. Now the screen reads in three states - pastel
+        /// element colour = empty slot, yellow = still to place, cream = placed, green =
+        /// checked and locked.
+        ///
+        /// Measured against the pill's own ink (0.2, 0.2, 0.25, set in the scene): 8.6:1, well
+        /// clear of WCAG AA, and these labels carry the whole story text so they are the most
+        /// read type on the screen.</summary>
+        private static readonly Color PieceNormal = new Color(0.99f, 0.82f, 0.36f);
         private static readonly Color PieceSelected = new Color(0.5f, 0.75f, 1f);
+
+        /// <summary>Built once per scene load; the two dash sprites are shared and cached
+        /// across loads so replaying a story does not allocate a new texture each time.</summary>
+        private bool _slotBoardBuilt;
+        private static Sprite _dashH;
+        private static Sprite _dashV;
 
         private StoryData _story;
         private string[] _pieceTexts = new string[5];   // piece i = element i's correct text
@@ -98,6 +114,8 @@ namespace SummaRace.Features.Arrange
             // absent object or absent badge art simply leaves the screen as it was.
             SummaRace.UI.MsLumiReactor.AttachBadge();
 
+            EnsureSlotBoard();
+
             // Pieces come from the race result when available (same texts either way).
             var result = SummaRace.Core.GameManager.Instance != null ? SummaRace.Core.GameManager.Instance.LastRaceResult : null;
             for (int i = 0; i < 5; i++)
@@ -125,7 +143,21 @@ namespace SummaRace.Features.Arrange
             if (verifyButton != null) verifyButton.onClick.AddListener(OnVerify);
             if (undoButton != null) undoButton.onClick.AddListener(OnUndo);
 
-            if (titleText != null) titleText.text = GameText.ArrangeTitle;
+            if (titleText != null)
+            {
+                // The bubble now acknowledges the run before it instructs - the learner arrives
+                // here straight off the race, and the screen used to open with a bare command.
+                titleText.text = GameText.ArrangeLumiIntro;
+
+                // Autosizing was OFF at a pinned 34pt. Measured, the bubble's title band is
+                // ~739 x 83 px, and this longer line needs two wrapped lines at 34pt (~82 px)
+                // - i.e. it fit only by luck and any font-metric difference would have clipped
+                // it on the device. The floor is the readability audit's 24pt acuity minimum.
+                titleText.enableAutoSizing = true;
+                titleText.fontSizeMax = titleText.fontSize;
+                titleText.fontSizeMin = 24f;
+                titleText.textWrappingMode = TMPro.TextWrappingModes.Normal;
+            }
             if (undoLabel != null) undoLabel.text = GameText.UndoLabel;
             if (verifyLabel != null) verifyLabel.text = GameText.VerifyLabel;
 
@@ -142,6 +174,119 @@ namespace SummaRace.Features.Arrange
                 AudioManager.Instance.PlayVoice(AudioKeys.VoArrangeTitle, true);
                 AudioManager.Instance.PlayVoice(AudioKeys.VoArrangeHow, true);
             }
+        }
+
+
+        // ---------- the slot board ----------
+
+        /// <summary>
+        /// A dashed gold rectangle drawn AROUND the five slots, so the board the learner is
+        /// filling reads as one object instead of five loose bars floating on the sky. The
+        /// pool below it is deliberately left unframed - the frame is what says "these five
+        /// places are the answer".
+        ///
+        /// Two things here are not arbitrary:
+        ///
+        /// It is a SIBLING inserted at Slot_0's own index, never a child of anything. uGUI
+        /// draws in hierarchy order, so a child drawn "behind" its parent is impossible and a
+        /// frame parented to the slots would paint over them - that is exactly the bug F58(d)
+        /// found in the race's arrival cue, where a rim meant to sit behind a board covered
+        /// its interior. Taking Slot_0's index puts it behind all five and leaves every other
+        /// element's relative order untouched.
+        ///
+        /// The dashes are a TILED one-dash sprite on four thin strips, not N dot objects: one
+        /// texture, four Images, no per-dot GameObjects to place or to keep in step when the
+        /// board's size changes.
+        ///
+        /// Bounds are measured from the scene, not guessed: Slot_0 spans y 0.820-0.885 and
+        /// Slot_4 spans 0.520-0.585, so 0.505-0.900 clears both with a little air, and
+        /// x 0.03-0.97 sits just outside the slots' own 0.06-0.94.
+        /// </summary>
+        private void EnsureSlotBoard()
+        {
+            if (_slotBoardBuilt) return;
+            var anchorSlot = slotButtons != null && slotButtons.Length > 0 ? slotButtons[0] : null;
+            if (anchorSlot == null) return;
+
+            var parent = anchorSlot.transform.parent;
+            if (parent == null) return;
+            _slotBoardBuilt = true;
+
+            var boardGo = new GameObject("SlotBoard", typeof(RectTransform));
+            boardGo.transform.SetParent(parent, false);
+            var rect = (RectTransform)boardGo.transform;
+            rect.anchorMin = new Vector2(0.030f, 0.505f);
+            rect.anchorMax = new Vector2(0.970f, 0.900f);
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+            // Behind the slots, ahead of the sky.
+            boardGo.transform.SetSiblingIndex(anchorSlot.transform.GetSiblingIndex());
+
+            var dashH = DashSprite(horizontal: true);
+            var dashV = DashSprite(horizontal: false);
+            const float T = 6f;   // strip thickness in reference px
+
+            BuildEdge(rect, "Top",    new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -T), new Vector2(0f, 0f),  dashH);
+            BuildEdge(rect, "Bottom", new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 0f),  new Vector2(0f, T),  dashH);
+            BuildEdge(rect, "Left",   new Vector2(0f, 0f), new Vector2(0f, 1f), new Vector2(0f, 0f),  new Vector2(T, 0f),  dashV);
+            BuildEdge(rect, "Right",  new Vector2(1f, 0f), new Vector2(1f, 1f), new Vector2(-T, 0f),  new Vector2(0f, 0f), dashV);
+        }
+
+        /// <summary>One dashed edge of the board.</summary>
+        private static void BuildEdge(RectTransform board, string name, Vector2 aMin, Vector2 aMax,
+                                      Vector2 offMin, Vector2 offMax, Sprite dash)
+        {
+            var go = new GameObject(name, typeof(RectTransform));
+            go.transform.SetParent(board, false);
+            var r = (RectTransform)go.transform;
+            r.anchorMin = aMin;
+            r.anchorMax = aMax;
+            r.offsetMin = offMin;
+            r.offsetMax = offMax;
+
+            var img = go.AddComponent<Image>();
+            img.sprite = dash;
+            img.type = Image.Type.Tiled;
+            img.color = Theme.GoldDeep;
+            img.raycastTarget = false;   // the slots underneath must keep every tap
+        }
+
+        /// <summary>
+        /// One dash plus its gap, as a 1-bit sprite the Image tiles along an edge. Built in
+        /// code rather than imported for the same reason the loading bar's pills are: it is
+        /// two colours and a rectangle, and an imported PNG would be one more asset to keep
+        /// in step with the palette.
+        /// </summary>
+        private static Sprite DashSprite(bool horizontal)
+        {
+            if (horizontal && _dashH != null) return _dashH;
+            if (!horizontal && _dashV != null) return _dashV;
+
+            const int Dash = 14, Gap = 10, Thick = 6;
+            int w = horizontal ? Dash + Gap : Thick;
+            int h = horizontal ? Thick : Dash + Gap;
+
+            var tex = new Texture2D(w, h, TextureFormat.RGBA32, false)
+            {
+                filterMode = FilterMode.Bilinear,
+                wrapMode = TextureWrapMode.Clamp,
+                name = horizontal ? "dash_h" : "dash_v",
+            };
+            var px = new Color32[w * h];
+            for (int y = 0; y < h; y++)
+                for (int x = 0; x < w; x++)
+                {
+                    int along = horizontal ? x : y;
+                    bool ink = along < Dash;
+                    px[y * w + x] = ink ? new Color32(255, 255, 255, 255) : new Color32(255, 255, 255, 0);
+                }
+            tex.SetPixels32(px);
+            tex.Apply(false, true);   // no mips, then make it non-readable to free the CPU copy
+
+            var sprite = Sprite.Create(tex, new Rect(0f, 0f, w, h), new Vector2(0.5f, 0.5f), 100f);
+            sprite.name = tex.name;
+            if (horizontal) _dashH = sprite; else _dashV = sprite;
+            return sprite;
         }
 
         // ---------- interactions ----------

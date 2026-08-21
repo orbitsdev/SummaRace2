@@ -18,6 +18,7 @@ namespace SummaRace.Features.Results
         [SerializeField] private TMP_Text titleText;
         [SerializeField] private Image[] starImages = new Image[3];
         [SerializeField] private TMP_Text praiseText;
+        private SummaRace.UI.MsLumiReactor _lumi;
         [SerializeField] private GameObject mainIdeaPanel;
         [SerializeField] private TMP_Text mainIdeaText;
         [SerializeField] private Button nextButton;
@@ -97,6 +98,7 @@ namespace SummaRace.Features.Results
             if (titleText != null) titleText.text = _story.title;
             if (mainIdeaHeader != null) mainIdeaHeader.text = GameText.MainIdeaHeader;
             if (praiseText != null) praiseText.text = "";
+            EnsureLumiBadge();
             if (mainIdeaPanel != null) mainIdeaPanel.SetActive(false);
             if (mainIdeaText != null) mainIdeaText.text = _story.mainIdea;
 
@@ -151,6 +153,9 @@ namespace SummaRace.Features.Results
                 yield return RevealTreasure();
 
                 if (praiseText != null) praiseText.text = SummaRace.Core.Praise.ForStars(stars);
+                // Ms. Lumi reacts on the same beat as the praise, so the line has a face saying
+                // it. Null-safe: no badge object or no badge art leaves the screen unchanged.
+                if (_lumi != null) _lumi.Celebrate();
                 if (AudioManager.Instance != null) AudioManager.Instance.PlayMusic(AudioKeys.MusicVictory, false);
 
                 yield return new WaitForSeconds(0.8f);
@@ -166,6 +171,56 @@ namespace SummaRace.Features.Results
             {
                 if (nextButton != null) nextButton.gameObject.SetActive(true);
             }
+        }
+
+
+        /// <summary>
+        /// Puts Ms. Lumi on the results celebration. She is on every other learning screen
+        /// (Reader, race briefing, Arrange, Summary) and was missing from the one that
+        /// congratulates - so the run ended with nobody in it.
+        ///
+        /// Built rather than scene-wired because this scene has no avatar object at all, and
+        /// it is named TeacherAvatar so the existing MsLumiReactor.AttachBadge finds it by the
+        /// same name it uses on Arrange and Summary - including its guards, which bail when
+        /// the badge pools are empty rather than adding a component that would do nothing.
+        ///
+        /// Placement is measured against this scene, not copied from the others: the title
+        /// band here is a banner with a trophy in it (x 0.12-0.88), and the Results title has
+        /// already had to be fixed once for crossing that trophy, so the top-left corner the
+        /// other screens use is not free. The left margin beside the stars is: Star_0 begins
+        /// at x 0.14 and the star row spans y 0.70-0.86, so a square at x 0.015-0.135,
+        /// y 0.745-0.813 sits clear of it, on the panel, right beside the celebration.
+        /// </summary>
+        private void EnsureLumiBadge()
+        {
+            if (_lumi != null) return;
+            if (GameObject.Find(SummaRace.UI.MsLumiReactor.BadgeObjectName) == null)
+            {
+                var root = ResolveSceneCanvas();
+                if (root == null) return;
+
+                var go = new GameObject(SummaRace.UI.MsLumiReactor.BadgeObjectName,
+                                        typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+                go.transform.SetParent(root, false);
+                var rect = (RectTransform)go.transform;
+                rect.anchorMin = new Vector2(0.015f, 0.745f);
+                rect.anchorMax = new Vector2(0.135f, 0.813f);
+                rect.offsetMin = Vector2.zero;
+                rect.offsetMax = Vector2.zero;
+
+                var img = go.GetComponent<Image>();
+                img.preserveAspect = true;
+                img.raycastTarget = false;
+                go.AddComponent<SummaRace.UI.UIFloat>();
+            }
+
+            // AttachBadge sets her resting pose and the cheer pool. It returns null when there
+            // is no badge art, which leaves the empty Image above drawing nothing.
+            _lumi = SummaRace.UI.MsLumiReactor.AttachBadge();
+            if (_lumi == null) return;
+
+            // headPixels stays 0, so ApplyPose swaps the sprite without touching the
+            // RectTransform above - the framing measured for this scene is the framing kept.
         }
 
         /// <summary>

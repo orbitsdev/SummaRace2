@@ -296,6 +296,14 @@ namespace SummaRace.Features.Race.Endless
         // Pause. Never a fail state and never an ending — see OpenPause.
         private GameObject _pauseRoot;      // full-screen overlay, its own canvas above everything
         private GameObject _pauseChip;      // the small control that opens it
+
+        /// <summary>The gate-arrival countdown (F59). Lives in the banner band, which is
+        /// free by construction: SetBanner writes text there only for element 5, and this
+        /// chip only ever shows for elements 0-4, so the two can never be on screen at
+        /// once.</summary>
+        private GameObject _gateTimerChip;
+        private TextMeshProUGUI _gateTimerText;
+        private int _gateTimerShown = -1;   // last whole second painted, so we repaint once a second
         private RectTransform _pauseChipRect;
         private TextMeshProUGUI _leaveLabel;
         private bool _paused;
@@ -628,6 +636,7 @@ namespace SummaRace.Features.Race.Endless
             // the same frame — that is the case where the track spawned late and the learner is
             // already inside the reading distance.
             UpdatePreviewWindow(track);
+            UpdateGateTimer(track);
             CheckStranded(track);
 
             // Their Resume() unconditionally re-shows the pause button after a
@@ -1158,11 +1167,16 @@ namespace SummaRace.Features.Race.Endless
             if (SummaRace.Core.AudioManager.Instance != null)
                 SummaRace.Core.AudioManager.Instance.PlaySfx(SummaRace.Constants.AudioKeys.SfxNotQuite);
 
-            // The answer itself, in the feedback pill. It is story content, not a UI string, so
-            // it needs no GameText constant — and GameText.RaceWrongFeedback ("Not quite - get the
-            // glowing card!") is now false, since there is no card to get. See the report: the
-            // framing wording is a GameText change for whoever owns that file.
-            ShowFeedback(_story.elements[pickup.elementIndex].correct, Theme.StoryGold);
+            // The FRAMING line, in the feedback pill; the answer itself follows a beat later on
+            // the reading panel (ShowAnswerReveal, below). The pill used to carry the answer too,
+            // so the moment said the same sentence twice and never said what was actually wrong
+            // with the pick. These lines do: the distractors are usually TRUE of the story, and
+            // what makes one wrong is that it is not the PART being collected.
+            //
+            // Drawn from a shuffle bag rather than fixed, because a learner having a hard run
+            // can see this up to five times in one race. Amber, never red (D7); the answer keeps
+            // the gold, so the two beats stay visually distinct.
+            ShowFeedback(SummaRace.Core.Praise.RaceNotQuite(), Theme.AmberWarn);
 
             // Surge the chaser into view for a beat — the visible half of "not quite".
             _menaceTimer = SummaRace.Constants.GameRules.PatrolMenaceSeconds;
@@ -1546,6 +1560,11 @@ namespace SummaRace.Features.Race.Endless
 
             // Nothing to pause or read any more — the run is over and Arrange is next.
             if (_pauseChip != null) _pauseChip.SetActive(false);
+            // Hidden HERE and not by UpdateGateTimer: Update returns early once _finished
+            // is set, so the countdown would freeze on screen showing whatever second it
+            // last painted, for the whole victory beat.
+            HideGateTimer();
+            HidePatrolCameo();
             HideOptionPreview();
 
             var track = TrackManager.instance;
@@ -1696,6 +1715,7 @@ namespace SummaRace.Features.Race.Endless
             // never chose, on the measure that IS the star count, and it silently disarmed the whole
             // documented point of ApplyTapBlockers ("one gesture can never register twice").
             BuildPauseChip(canvasGo.transform);
+            BuildGateTimer(canvasGo.transform);
             BuildOptionPreview(canvasGo.transform);
             BuildPauseOverlay();
         }
@@ -2086,6 +2106,147 @@ namespace SummaRace.Features.Race.Endless
         /// Accidentally opening it costs nothing (the world simply waits); the destructive half
         /// is the LEAVE chip inside, which arms before it acts.
         /// </summary>
+
+        // ---------- gate-arrival countdown (F59) ----------
+
+        /// <summary>
+        /// How long, in seconds, until the runner covers <paramref name="metres"/> - integrating
+        /// the track's acceleration instead of assuming a constant speed.
+        ///
+        /// This is the exact inverse of the seconds-to-metres conversion in NextGateGap, and it
+        /// exists for the same reason that one does: their track adds k_Acceleration (0.2 m/s^2)
+        /// every second up to maxSpeed, so metres / speed OVERSTATES the time - by enough to
+        /// matter. A chip that says "8s" and delivers the gate in 6 is worse than no chip,
+        /// because the whole point of showing it is that it is honest.
+        /// </summary>
+        private static float SecondsToCover(TrackManager track, float metres)
+        {
+            if (track == null || metres <= 0f) return 0f;
+
+            const float accel = 0.2f;   // TrackManager.k_Acceleration (protected const there)
+            float v = Mathf.Max(track.speed, track.minSpeed);
+            float vMax = Mathf.Max(track.maxSpeed, v);
+
+            // Distance available before the runner tops out.
+            float toTop = accel > 0f ? (vMax - v) / accel : 0f;
+            float dTop = v * toTop + 0.5f * accel * toTop * toTop;
+
+            if (metres <= dTop || accel <= 0f)
+            {
+                // 0.5*a*t^2 + v*t - d = 0, positive root.
+                float disc = v * v + 2f * accel * metres;
+                if (accel <= 0f) return v > 0f ? metres / v : 0f;
+                return (Mathf.Sqrt(Mathf.Max(disc, 0f)) - v) / accel;
+            }
+
+            return toTop + (metres - dTop) / Mathf.Max(vMax, 0.01f);
+        }
+
+        /// <summary>
+        /// Paints the countdown to the next SWBST part. Shown only for ANSWER gates (0-4): the
+        /// finish has no options to read, so it has no reading window to count down, and the
+        /// banner owns that band for the final stretch anyway.
+        ///
+        /// Deliberately NOT a race clock (L1). It counts toward an arrival, not a deadline -
+        /// nothing happens at zero except that the cards are there, and every pick/miss rule is
+        /// exactly what it was without it. It also hides itself during a pause, a leave, the
+        /// answer reveal and the finish, so it can never tick at a learner who is not running.
+        /// </summary>
+        private void UpdateGateTimer(TrackManager track)
+        {
+            if (_gateTimerChip == null) return;
+
+            bool show = false;
+            int seconds = 0;
+
+            if (track != null && _runReleased && !_finished && !_paused && !_leaving && !_revealing
+                && SummaRace.Constants.GameRules.RaceGateTimerVisibleSeconds > 0f)
+            {
+                bool active = _activeGateRoot != null;
+                int element = active ? _activeElement : _pendingElement;
+                float target = active ? _activeGateDistance : _pendingGateDistance;
+
+                if (element >= 0 && element < 5 && target >= 0f)
+                {
+                    float remaining = SecondsToCover(track, target - track.worldDistance);
+                    if (remaining <= SummaRace.Constants.GameRules.RaceGateTimerVisibleSeconds)
+                    {
+                        show = true;
+                        // Ceil, so the chip never shows "0s" while the gate is still ahead - it
+                        // reads 1s until the part actually arrives, then disappears.
+                        seconds = Mathf.CeilToInt(remaining);
+                    }
+                }
+            }
+
+            if (_gateTimerChip.activeSelf != show) _gateTimerChip.SetActive(show);
+            if (!show) { _gateTimerShown = -1; return; }
+
+            // Repaint on the second, not every frame: TMP rebuilds its mesh on every text set.
+            if (seconds == _gateTimerShown) return;
+            _gateTimerShown = seconds;
+            if (_gateTimerText != null)
+                _gateTimerText.text = SummaRace.Constants.GameText.RaceGateTimer(seconds);
+        }
+
+        /// <summary>
+        /// The countdown chip itself. Same wood plaque as the feedback pill and the pause chip,
+        /// so it reads as part of the same HUD, and centred in the banner band directly under
+        /// the reading panel - the clock belongs with the thing it is timing.
+        ///
+        /// raycastTarget is off on both the plaque and its label: the three preview columns and
+        /// the screen thirds below are steering surfaces, and a readout that swallowed a tap
+        /// would cost the learner a lane change at exactly the moment they are about to need one.
+        /// </summary>
+        /// <summary>Hides the countdown and forgets the second it was showing, so it
+        /// repaints cleanly when the run resumes.</summary>
+        private void HideGateTimer()
+        {
+            if (_gateTimerChip != null) _gateTimerChip.SetActive(false);
+            _gateTimerShown = -1;
+        }
+
+        /// <summary>Takes the patrol cameo off screen and ends the beat. Needed at every exit
+        /// that stops LateUpdate: it returns on _paused/_leaving, and the cameo is skipped once
+        /// _finished, so a wrong pick in the closing seconds of a run would otherwise leave the
+        /// cop standing in frame through the victory beat, or frozen over the pause menu.</summary>
+        private void HidePatrolCameo()
+        {
+            if (_patrol != null && _patrol.gameObject.activeSelf) _patrol.gameObject.SetActive(false);
+            _menaceTimer = 0f;
+            _menaceSurging = false;
+            _wasSurging = false;
+        }
+
+        private void BuildGateTimer(Transform parent)
+        {
+            var chip = new GameObject("GateTimerChip");
+            chip.transform.SetParent(parent, false);
+            var img = chip.AddComponent<UnityEngine.UI.Image>();
+            img.sprite = WoodPlaqueSprite();
+            img.type = UnityEngine.UI.Image.Type.Sliced;
+            img.color = Theme.Alpha(Theme.Ink, 0.82f);
+            img.raycastTarget = false;
+
+            var rt = img.rectTransform;
+            // Hung off the reading band's underside exactly as the banner is, so the two stay
+            // together at every aspect ratio (see BuildHud for why a fixed pixel offset does not).
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, PreviewBandBottom);
+            rt.pivot = new Vector2(0.5f, 1f);
+            rt.anchoredPosition = new Vector2(0f, -14f);
+            rt.sizeDelta = new Vector2(420f, 86f);
+
+            _gateTimerText = MakeHudText(chip.transform, new Vector2(0.5f, 0.5f), Vector2.zero, 42f);
+            _gateTimerText.rectTransform.sizeDelta = new Vector2(400f, 78f);
+            _gateTimerText.enableAutoSizing = true;
+            _gateTimerText.fontSizeMin = 26f;   // the readability audit's acuity floor
+            _gateTimerText.fontSizeMax = 42f;
+            _gateTimerText.color = Theme.Gold;  // 12.2:1 on Ink, per Theme's contrast table
+
+            _gateTimerChip = chip;
+            chip.SetActive(false);   // only while an answer gate is actually on its way
+        }
+
         private void BuildPauseChip(Transform parent)
         {
             var chip = new GameObject("PauseChip");
@@ -2297,6 +2458,11 @@ namespace SummaRace.Features.Race.Endless
             DisarmLeave();
             if (_pauseRoot != null) _pauseRoot.SetActive(true);
             if (_pauseChip != null) _pauseChip.SetActive(false);
+            // Same reason as the finish: Update returns on _paused before it reaches the
+            // countdown, so a chip left visible would sit there counting nothing while the
+            // world is frozen - which is the one thing a timer must never look like.
+            HideGateTimer();
+            HidePatrolCameo();
             ApplyPreviewVisibility();
 
             SummaRace.Core.EventBus.Raise(new SummaRace.Core.RacePauseChanged { paused = true });
@@ -2688,7 +2854,11 @@ namespace SummaRace.Features.Race.Endless
             // vignette and the feedback line. Two days from a study, a character that reads as a
             // rendering fault is worse than no character. Flip this to true only alongside a
             // camera change, and re-read the three failures above first.
-            if (!SummaRace.Constants.GameRules.RacePatrolEnabled) return;
+            // ...but the CAMEO (RacePatrolCameoEnabled) does spawn him. It never holds an
+            // offset from the runner, which is the property all three failures above were
+            // fighting for — see the constant for the geometry and how it was solved.
+            if (!SummaRace.Constants.GameRules.RacePatrolEnabled
+                && !SummaRace.Constants.GameRules.RacePatrolCameoEnabled) return;
 
             var runner = TrackManager.instance != null ? TrackManager.instance.characterController : null;
             if (runner == null) return;
@@ -2722,7 +2892,99 @@ namespace SummaRace.Features.Race.Endless
             // the live bounds on its first frame, before he is ever visible.
             _patrol.position = new Vector3(p.x + _patrolSide * 6f, p.y, p.z - _patrolGap);
             _patrol.rotation = Quaternion.identity; // faces down the road, same as the runner
-            go.SetActive(_runReleased);
+            // The cameo starts hidden ALWAYS and shows itself only for the wrong-answer
+            // beat; only the retired chase wanted him on screen for the whole run.
+            go.SetActive(_runReleased && !SummaRace.Constants.GameRules.RacePatrolCameoEnabled);
+        }
+
+
+        /// <summary>
+        /// The patrol CAMEO (F59): a scripted sweep on the shoulder during the wrong-answer
+        /// surge, not a chase. He is hidden for the whole of a clean run; a wrong pick sets
+        /// _menaceTimer, and while that runs he sweeps in from PatrolCameoFarAhead to
+        /// PatrolCameoNearAhead and back out, then hides again.
+        ///
+        /// WHY AHEAD RATHER THAN BEHIND. This is the whole design, and it is the answer to the
+        /// three failures listed on SpawnPatrol. Every previous version held him at a small
+        /// offset from the runner, and under this camera a small offset has no valid solution -
+        /// behind is inside the kid or below the frame, level is a jogging companion half off a
+        /// portrait screen. Ahead has an enormous valid region: solved against the scene camera,
+        /// the whole sweep sits at worst 0.81 of the frame half-extent, and because he is never
+        /// closer than five metres ALONG THE RUN their bounds cannot touch whatever the stride,
+        /// the lane or the smoothing does. No Bounds.Intersects check is needed because the
+        /// geometry cannot produce one.
+        ///
+        /// He never catches anyone and there is nothing to catch: he is in front the whole time,
+        /// and the runner simply outpaces him as the surge ends (D7/L3, timesCaught stays 0).
+        /// </summary>
+        private void UpdatePatrolCameo(TrackManager track)
+        {
+            if (_patrol == null || track == null) return;
+            var runner = track.characterController;
+            if (runner == null) return;
+
+            bool surging = _menaceSurging;
+
+            if (!surging)
+            {
+                // Off the moment the beat ends. Hidden rather than parked off-screen: a hidden
+                // renderer costs nothing, and there is no position to preserve between beats.
+                if (_patrol.gameObject.activeSelf) _patrol.gameObject.SetActive(false);
+                _wasSurging = false;
+                return;
+            }
+
+            var playerPos = runner.transform.position;
+
+            if (!_wasSurging)
+            {
+                // First frame of a surge: choose the shoulder and place him at the far end of
+                // the sweep before he is ever drawn. The side is the one the kid is NOT on, so
+                // he never appears in the lane the runner is looking down - at |x| 2.5 he is
+                // outside every lane anyway, but this keeps him out of the forward sightline so
+                // he cannot read as an obstacle to swerve around.
+                var bodyT = runner.characterCollider != null
+                    ? runner.characterCollider.transform
+                    : runner.transform;
+                float kidX = bodyT.position.x;
+                if (kidX > SummaRace.Constants.GameRules.PatrolSideDeadband) _patrolSide = -1f;
+                else if (kidX < -SummaRace.Constants.GameRules.PatrolSideDeadband) _patrolSide = 1f;
+
+                // Ground height captured once, as the chase did: following the runner's live y
+                // would lift him on every jump.
+                _patrolGroundY = playerPos.y;
+                _patrolGrounded = true;
+
+                _patrol.gameObject.SetActive(true);
+                if (_patrolAnim != null)
+                {
+                    _patrolAnim.SetBool("Running", true);
+                    // Their Animator ships as CullUpdateTransforms and resolves visibility from
+                    // the PREVIOUS frame, so the first visible frame would draw the authored
+                    // bind pose - and this cop is a 19-part RIGID rig, so an unposed frame is
+                    // limbs scattered at bind offsets rather than a slightly wrong pose.
+                    _patrolAnim.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+                }
+                _wasSurging = true;
+            }
+
+            // Sweep position: 0 at the start of the beat, 1 at its end.
+            float total = Mathf.Max(SummaRace.Constants.GameRules.PatrolMenaceSeconds, 0.01f);
+            float t = Mathf.Clamp01(1f - (_menaceTimer / total));
+            // In and back out: far -> near -> far across the beat.
+            float ease = 1f - Mathf.Abs(t * 2f - 1f);          // 0 -> 1 -> 0
+            ease = Mathf.SmoothStep(0f, 1f, ease);
+            float ahead = Mathf.Lerp(SummaRace.Constants.GameRules.PatrolCameoFarAhead,
+                                     SummaRace.Constants.GameRules.PatrolCameoNearAhead, ease);
+
+            _patrol.position = new Vector3(
+                _patrolSide * SummaRace.Constants.GameRules.PatrolCameoLateralX,
+                _patrolGrounded ? _patrolGroundY : playerPos.y,
+                playerPos.z + ahead);
+            // Faces down the road like the runner. Deliberately NOT yawed toward the kid: on
+            // this rigid rig a yaw swings the mesh sideways off its pivot (measured at 0.65m
+            // during the chase work), which is exactly how a safe offset stops being safe.
+            _patrol.rotation = Quaternion.identity;
         }
 
         /// <summary>Hides the BitGem cop's weapons and its two detached hand props. The
@@ -3112,6 +3374,11 @@ namespace SummaRace.Features.Race.Endless
 
             var body = MakeHudText(card.transform, new Vector2(0.5f, 0.63f), Vector2.zero, 42f);
             body.text = SummaRace.Constants.GameText.RaceBriefingBody(_story.title);
+            // Only when the cameo is actually on, so the briefing can never promise a character
+            // the kill-switch has removed.
+            if (SummaRace.Constants.GameRules.RacePatrolCameoEnabled)
+                body.text += System.Environment.NewLine + System.Environment.NewLine
+                           + SummaRace.Constants.GameText.RaceBriefingPatrol;
             body.color = Theme.TextBrown;
             // 300 -> 380 TALL, AND CENTRE-PIVOTED, BECAUSE THE COPY GREW AND THE OLD BOX ALREADY
             // OVERLAPPED THE CHIPS ON A SQUARE TABLET.
@@ -3265,6 +3532,11 @@ namespace SummaRace.Features.Race.Endless
             if (SummaRace.Core.AudioManager.Instance != null)
                 SummaRace.Core.AudioManager.Instance.PlayVoice(
                     SummaRace.Constants.AudioKeys.VoRaceBriefing, true);
+            // Its own queued clip, on the same switch as the printed line above.
+            if (SummaRace.Constants.GameRules.RacePatrolCameoEnabled &&
+                SummaRace.Core.AudioManager.Instance != null)
+                SummaRace.Core.AudioManager.Instance.PlayVoice(
+                    SummaRace.Constants.AudioKeys.VoRaceBriefingPatrol, true);
         }
 
         /// <summary>Their Loadout/HUD is hidden and the track exists — the learner may now
@@ -3684,7 +3956,11 @@ namespace SummaRace.Features.Race.Endless
 
             // After TrackManager.Update has moved the runner, so the cop is placed against
             // THIS frame's player position rather than last frame's.
-            if (_runReleased && track != null && !_finished) UpdatePatrol(track);
+            if (_runReleased && track != null && !_finished)
+            {
+                if (SummaRace.Constants.GameRules.RacePatrolCameoEnabled) UpdatePatrolCameo(track);
+                else UpdatePatrol(track);
+            }
 
             if (_runReleased) return;
             if (track != null) HoldRunnerPreRace(track); // final word each frame -> no run-back blip
