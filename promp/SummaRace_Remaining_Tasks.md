@@ -6,8 +6,29 @@ pushed (branch `experiment/endless-override-2`). Companion docs:
 `summaracefinal/SUMMARACE_BLUEPRINT.md` (design/logic — incl. §15 acceptance argument) ·
 `SUMMARACE_UI_SPEC.md` (visuals).
 
-**Completion snapshot: ~80/100** — ~98% built, ~40% proven. Build day (Tasks 5–10) moves it
-to 98; install day (Task 11) closes it. The entire path starts at Task 1.
+**Completion snapshot: 80/100 — and this list is the exact remaining 20.** Each task carries
+its credit below; complete them all and the project is 100 by construction. The ⚪ decisions
+and ⚫ post-study items carry **zero weight** — 100% never depends on optional work.
+
+### The percent ledger (80 → 100)
+
+| Task | Credit | Running total |
+|---|---|---|
+| 1 — package collision removed, Editor tooling back | +2 | 82 |
+| 2 — full test suite green, count recorded | +2 | 84 |
+| 3 — full-loop portrait playtest clean (non-s01) | +5 | 89 |
+| 4 — hero-art compression | +1 | 90 |
+| 5 — Android Build Support installed | +1 | 91 |
+| 6 — platform switched to Android | +0.5 | 91.5 |
+| 7 — Preflight: every ✖ fixed | +0.5 | 92 |
+| 8 — APK #1 built, tagged, keystore backed up | +2 | 94 |
+| 9 — one-tablet smoke test passed (all 7 checks) | +2 | 96 |
+| 10 — `adb pull` export proven, row verified | +2 | 98 |
+| 11 — 40 tablets installed + full ritual | +1.5 | 99.5 |
+| 12 — researcher email sent (her replies gate content freeze, not the %) | +0.5 | **100** |
+
+*(Weights follow risk retired, not hours: Task 3 retires the most unknowns, Tasks 9–10
+retire the on-device unknowns, Task 12 is credit for sending — the reply is her clock.)*
 
 **Legend:** 🔴 blocker · 🟠 do immediately after · 🟡 ship pipeline · 🔵 other people's clocks ·
 ⚪ decision · ⚫ optional/post-study
