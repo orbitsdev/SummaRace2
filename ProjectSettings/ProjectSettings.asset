@@ -339,92 +339,116 @@ PlayerSettings:
   m_BuildTargetPlatformIcons:
   - m_BuildTarget: Android
     m_Icons:
-    - m_Textures: []
+    - m_Textures:
+      - {fileID: 2800000, guid: 723b58660b123804c91facf6808d1df6, type: 3}
+      - {fileID: 2800000, guid: 7424d73009f29ec489222998392e4952, type: 3}
       m_Width: 432
       m_Height: 432
       m_Kind: 2
       m_SubKind: 
-    - m_Textures: []
+    - m_Textures:
+      - {fileID: 2800000, guid: 723b58660b123804c91facf6808d1df6, type: 3}
+      - {fileID: 2800000, guid: 7424d73009f29ec489222998392e4952, type: 3}
       m_Width: 324
       m_Height: 324
       m_Kind: 2
       m_SubKind: 
-    - m_Textures: []
+    - m_Textures:
+      - {fileID: 2800000, guid: 723b58660b123804c91facf6808d1df6, type: 3}
+      - {fileID: 2800000, guid: 7424d73009f29ec489222998392e4952, type: 3}
       m_Width: 216
       m_Height: 216
       m_Kind: 2
       m_SubKind: 
-    - m_Textures: []
+    - m_Textures:
+      - {fileID: 2800000, guid: 723b58660b123804c91facf6808d1df6, type: 3}
+      - {fileID: 2800000, guid: 7424d73009f29ec489222998392e4952, type: 3}
       m_Width: 162
       m_Height: 162
       m_Kind: 2
       m_SubKind: 
-    - m_Textures: []
+    - m_Textures:
+      - {fileID: 2800000, guid: 723b58660b123804c91facf6808d1df6, type: 3}
+      - {fileID: 2800000, guid: 7424d73009f29ec489222998392e4952, type: 3}
       m_Width: 108
       m_Height: 108
       m_Kind: 2
       m_SubKind: 
-    - m_Textures: []
+    - m_Textures:
+      - {fileID: 2800000, guid: 723b58660b123804c91facf6808d1df6, type: 3}
+      - {fileID: 2800000, guid: 7424d73009f29ec489222998392e4952, type: 3}
       m_Width: 81
       m_Height: 81
       m_Kind: 2
       m_SubKind: 
-    - m_Textures: []
+    - m_Textures:
+      - {fileID: 2800000, guid: 101643a65c7e7cd4fa261b323f27ac0e, type: 3}
       m_Width: 192
       m_Height: 192
       m_Kind: 1
       m_SubKind: 
-    - m_Textures: []
+    - m_Textures:
+      - {fileID: 2800000, guid: 101643a65c7e7cd4fa261b323f27ac0e, type: 3}
       m_Width: 144
       m_Height: 144
       m_Kind: 1
       m_SubKind: 
-    - m_Textures: []
+    - m_Textures:
+      - {fileID: 2800000, guid: 101643a65c7e7cd4fa261b323f27ac0e, type: 3}
       m_Width: 96
       m_Height: 96
       m_Kind: 1
       m_SubKind: 
-    - m_Textures: []
+    - m_Textures:
+      - {fileID: 2800000, guid: 101643a65c7e7cd4fa261b323f27ac0e, type: 3}
       m_Width: 72
       m_Height: 72
       m_Kind: 1
       m_SubKind: 
-    - m_Textures: []
+    - m_Textures:
+      - {fileID: 2800000, guid: 101643a65c7e7cd4fa261b323f27ac0e, type: 3}
       m_Width: 48
       m_Height: 48
       m_Kind: 1
       m_SubKind: 
-    - m_Textures: []
+    - m_Textures:
+      - {fileID: 2800000, guid: 101643a65c7e7cd4fa261b323f27ac0e, type: 3}
       m_Width: 36
       m_Height: 36
       m_Kind: 1
       m_SubKind: 
-    - m_Textures: []
+    - m_Textures:
+      - {fileID: 2800000, guid: 101643a65c7e7cd4fa261b323f27ac0e, type: 3}
       m_Width: 192
       m_Height: 192
       m_Kind: 0
       m_SubKind: 
-    - m_Textures: []
+    - m_Textures:
+      - {fileID: 2800000, guid: 101643a65c7e7cd4fa261b323f27ac0e, type: 3}
       m_Width: 144
       m_Height: 144
       m_Kind: 0
       m_SubKind: 
-    - m_Textures: []
+    - m_Textures:
+      - {fileID: 2800000, guid: 101643a65c7e7cd4fa261b323f27ac0e, type: 3}
       m_Width: 96
       m_Height: 96
       m_Kind: 0
       m_SubKind: 
-    - m_Textures: []
+    - m_Textures:
+      - {fileID: 2800000, guid: 101643a65c7e7cd4fa261b323f27ac0e, type: 3}
       m_Width: 72
       m_Height: 72
       m_Kind: 0
       m_SubKind: 
-    - m_Textures: []
+    - m_Textures:
+      - {fileID: 2800000, guid: 101643a65c7e7cd4fa261b323f27ac0e, type: 3}
       m_Width: 48
       m_Height: 48
       m_Kind: 0
       m_SubKind: 
-    - m_Textures: []
+    - m_Textures:
+      - {fileID: 2800000, guid: 101643a65c7e7cd4fa261b323f27ac0e, type: 3}
       m_Width: 36
       m_Height: 36
       m_Kind: 0
@@ -432,7 +456,7 @@ PlayerSettings:
   m_BuildTargetBatching:
   - m_BuildTarget: Android
     m_StaticBatching: 1
-    m_DynamicBatching: 0
+    m_DynamicBatching: 1
   - m_BuildTarget: Standalone
     m_StaticBatching: 1
     m_DynamicBatching: 0

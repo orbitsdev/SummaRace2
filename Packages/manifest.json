@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "com.adjoint.editor": "https://github.com/adjointdev/adjoint-beta-dist.git",
     "com.coplaydev.unity-mcp": "https://github.com/CoplayDev/unity-mcp.git?path=/MCPForUnity#main",
     "com.kyrylokuzyk.primetween": "file:../Assets/Plugins/PrimeTween/internal/com.kyrylokuzyk.primetween.tgz",
     "com.unity.2d.sprite": "1.0.0",
