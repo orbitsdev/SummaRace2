@@ -220,6 +220,7 @@ One email, seven points (evidence packs live in `Documentation/`):
 | D6 | Tablets per learner | **One per learner** | identity mixups are unrecoverable after export |
 | D7 | Passive-run stance | **Accept + report** — detectable in `racePicks[].lane`; a countermeasure would punish non-steering | D7/never-punish |
 | D8 | "Change PIN" button | **Skip for the study** — set once, same PIN ×40, recorded once; post-study convenience | less gate surface = fewer study-day failure modes |
+| D9 | Remove TeacherMenu + PIN entirely? (owner asked 2026-08-21: "seems not needed") | **NO — keep both.** Three study functions live ONLY behind that PIN: ① session unlocking (p.29 "uniform exposure" — learners must not self-advance), ② participant codes (the only join between tablet logs and each child's paper pretest/posttest), ③ Export + the post-study wipe (the entire dataset leaves the tablet here; the wipe is the consent promise). The child never sees it — it's a discreet corner. **Post-study**, for a public/consumer release, it CAN go: one condition swap makes missions finish-to-unlock, and codes/export/wipe stop existing as needs | p.29 + p.33 of the study PDF; blueprint §15.1 teacher-layer parity row; settled-audit note below ("The PIN is in NO prototype") |
 
 ## ⚫ EXPLICITLY POST-STUDY (do not spend pre-study time here)
 
