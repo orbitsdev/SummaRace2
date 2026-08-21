@@ -37,23 +37,24 @@ namespace SummaRace.Constants
         /// kid or under the frame; level on the shoulder = a jogging companion, half off a
         /// portrait screen; bounds-following = chasing his own stride.
         ///
-        /// The cameo does not hold an offset at all. He appears WELL AHEAD on the shoulder,
-        /// draws in to PatrolCameoNearAhead, then falls back out — so the two bodies are never
-        /// less than five metres apart ALONG THE RUN and an overlap is impossible by
-        /// construction rather than by tuning. That single property is what all three chase
-        /// attempts were fighting for and never got.
+        /// The cameo does not hold an offset at all. It is an OVERTAKE (owner playtest call,
+        /// 2026-08-21 — the earlier pop-in-ahead sweep read as "the police is in front of the
+        /// player"): he enters from BEHIND the frame edge — invisible by construction, the
+        /// camera is 6m back — and sprints forward past the kid on the shoulder, one direction
+        /// of travel the whole beat, so his run animation and his motion agree and the
+        /// briefing's "the patrol races past" is literally what the learner sees.
         ///
-        /// Solved against the camera in the scene, not eyeballed. With the cop at
-        /// x = PatrolCameoLateralX and z between the two Ahead values, his worst projected
-        /// corner sits at 0.81 of the frame half-extent — fully inside, with ~19% margin — for
-        /// the whole sweep. He is also outside the outermost answer card (|x| 2.2) and inside
-        /// the corridor F54 verified clear of scenery (|x| &lt; 3), so he can neither be mistaken
-        /// for something to dodge nor spawn inside a wall.
+        /// Overlap is impossible laterally: the pass happens at x = PatrolCameoLateralX, which
+        /// clears the runner's widest possible reach by 0.4m with the cop never yawed (a yaw
+        /// swings the rigid rig 0.65m off its pivot — the measured failure of the old chase).
+        /// He is also outside the outermost answer card (|x| 2.2) and inside the corridor F54
+        /// verified clear of scenery (|x| &lt; 3), so he can neither be mistaken for something to
+        /// dodge nor spawn inside a wall. Locked by PatrolCameoGeometryTests.
         ///
         /// He still never catches anybody: timesCaught stays 0 (D7/L3), he carries no rule, and
-        /// he is AHEAD of the runner throughout, so there is nothing for him to catch. This is
-        /// the kill-switch the blueprint's L4 asks to keep — turn it off and the wrong-answer
-        /// beat falls back to the amber vignette and the feedback line exactly as it does today.
+        /// he only ever pulls AWAY from the runner. This is the kill-switch the blueprint's L4
+        /// asks to keep — turn it off and the wrong-answer beat falls back to the amber
+        /// vignette and the feedback line exactly as it does today.
         /// </summary>
         public static readonly bool RacePatrolCameoEnabled = true;
 
@@ -61,12 +62,18 @@ namespace SummaRace.Constants
         /// card (2.2) and inside the scenery-free corridor (3.0).</summary>
         public const float PatrolCameoLateralX = 2.5f;
 
-        /// <summary>Closest he comes, in metres AHEAD of the runner. Never less than this, which
-        /// is what makes a body overlap impossible.</summary>
-        public const float PatrolCameoNearAhead = 5f;
+        /// <summary>Where the overtake STARTS, in metres BEHIND the runner (owner call
+        /// 2026-08-21: the old pop-in-ahead sweep read as the cop being "in front of the
+        /// player"). He enters below/behind the frame edge — the camera sits 6m behind the
+        /// runner, so this is off-screen by construction — and sprints forward past the kid.</summary>
+        public const float PatrolCameoEnterBehind = 4f;
 
-        /// <summary>Where he enters and leaves, in metres ahead of the runner.</summary>
-        public const float PatrolCameoFarAhead = 10f;
+        /// <summary>Where the overtake ENDS, in metres ahead of the runner. Monotonic
+        /// behind-to-ahead: one direction of travel the whole beat, so his run animation and
+        /// his motion agree, and the briefing's "the patrol races past" is literally what
+        /// happens. Bodies can never meet: the pass happens at PatrolCameoLateralX (2.5),
+        /// 0.4m clear of the runner's widest reach (1.8 + half-width).</summary>
+        public const float PatrolCameoExitAhead = 26f;
 
         // Patrol chaser (visual pressure only — it never catches, GDD D7).
         // "Appear only on a bump": out of frame through a clean run, closes in for
@@ -233,12 +240,12 @@ namespace SummaRace.Constants
         /// not have. This one cannot fail anybody - at 0 the gate is simply there and the normal
         /// pick/miss rules apply, unchanged.
         ///
-        /// Default matches the reading window, so the chip appears with the options and counts
-        /// them down together. THE PLAYTEST LEVER: if anxious readers fixate on it, drop this to
-        /// 5 and it only appears for the last five seconds. Set it to 0 to remove the chip
-        /// entirely without touching any other code.
+        /// 999 = the whole approach (owner call, 2026-08-21 playtest: at 12 the chip hid for
+        /// the first half of every gap and read as "no timer at all"). THE PLAYTEST LEVER
+        /// still works the other way: drop to 12 to match the reading window, 5 for the last
+        /// five seconds only, 0 to remove the chip entirely — no other code changes.
         /// </summary>
-        public const float RaceGateTimerVisibleSeconds = RacePreviewLeadSeconds;
+        public const float RaceGateTimerVisibleSeconds = 999f;
 
         // The option panel's arrival cue is NOT tunable from here. EndlessRaceDirector's
         // PulseArrivalGlow writes its four legs out longhand so the pulse frequency stays

@@ -2234,13 +2234,15 @@ namespace SummaRace.Features.Race.Endless
             rt.anchorMin = rt.anchorMax = new Vector2(0.5f, PreviewBandBottom);
             rt.pivot = new Vector2(0.5f, 1f);
             rt.anchoredPosition = new Vector2(0f, -14f);
-            rt.sizeDelta = new Vector2(420f, 86f);
+            // 560x112 @ 56pt max (was 420x86 @ 42) — owner playtest 2026-08-21: at the old
+            // size the chip did not register at all while steering ("I don't see the timer").
+            rt.sizeDelta = new Vector2(560f, 112f);
 
-            _gateTimerText = MakeHudText(chip.transform, new Vector2(0.5f, 0.5f), Vector2.zero, 42f);
-            _gateTimerText.rectTransform.sizeDelta = new Vector2(400f, 78f);
+            _gateTimerText = MakeHudText(chip.transform, new Vector2(0.5f, 0.5f), Vector2.zero, 56f);
+            _gateTimerText.rectTransform.sizeDelta = new Vector2(536f, 102f);
             _gateTimerText.enableAutoSizing = true;
-            _gateTimerText.fontSizeMin = 26f;   // the readability audit's acuity floor
-            _gateTimerText.fontSizeMax = 42f;
+            _gateTimerText.fontSizeMin = 32f;   // above the readability audit's acuity floor
+            _gateTimerText.fontSizeMax = 56f;
             _gateTimerText.color = Theme.Gold;  // 12.2:1 on Ink, per Theme's contrast table
 
             _gateTimerChip = chip;
@@ -2899,23 +2901,24 @@ namespace SummaRace.Features.Race.Endless
 
 
         /// <summary>
-        /// The patrol CAMEO (F59): a scripted sweep on the shoulder during the wrong-answer
-        /// surge, not a chase. He is hidden for the whole of a clean run; a wrong pick sets
-        /// _menaceTimer, and while that runs he sweeps in from PatrolCameoFarAhead to
-        /// PatrolCameoNearAhead and back out, then hides again.
+        /// The patrol CAMEO: an OVERTAKE on the shoulder during the wrong-answer surge, not a
+        /// chase. He is hidden for the whole of a clean run; a wrong pick sets _menaceTimer,
+        /// and while that runs he enters from BEHIND the frame edge and sprints forward past
+        /// the kid to PatrolCameoExitAhead, then hides again.
         ///
-        /// WHY AHEAD RATHER THAN BEHIND. This is the whole design, and it is the answer to the
-        /// three failures listed on SpawnPatrol. Every previous version held him at a small
-        /// offset from the runner, and under this camera a small offset has no valid solution -
-        /// behind is inside the kid or below the frame, level is a jogging companion half off a
-        /// portrait screen. Ahead has an enormous valid region: solved against the scene camera,
-        /// the whole sweep sits at worst 0.81 of the frame half-extent, and because he is never
-        /// closer than five metres ALONG THE RUN their bounds cannot touch whatever the stride,
-        /// the lane or the smoothing does. No Bounds.Intersects check is needed because the
-        /// geometry cannot produce one.
+        /// WHY AN OVERTAKE (owner playtest 2026-08-21). The previous sweep popped in ahead and
+        /// drifted back toward the runner, which read as "the police is in front of the player"
+        /// and its to-and-fro motion never matched a run cycle. Behind-and-visible is
+        /// geometrically impossible under this camera (6m back — anything behind the runner is
+        /// outside the frame, measured in F34), so the one honest motion is entering from
+        /// off-frame BEHIND and racing PAST: one direction of travel the whole beat, so the run
+        /// animation and the motion agree, and the briefing's "the patrol races past. It never
+        /// catches you!" is literally what happens on screen.
         ///
-        /// He never catches anyone and there is nothing to catch: he is in front the whole time,
-        /// and the runner simply outpaces him as the surge ends (D7/L3, timesCaught stays 0).
+        /// Bodies can never meet: the pass happens at PatrolCameoLateralX (2.5), 0.4m clear of
+        /// the runner's widest reach even mid-lane-change, and he is yawed nowhere (a yaw
+        /// swings this rigid rig 0.65m off its pivot). He never catches anyone and there is
+        /// nothing to catch (D7/L3, timesCaught stays 0). Locked by PatrolCameoGeometryTests.
         /// </summary>
         private void UpdatePatrolCameo(TrackManager track)
         {
@@ -2964,18 +2967,21 @@ namespace SummaRace.Features.Race.Endless
                     // bind pose - and this cop is a 19-part RIGID rig, so an unposed frame is
                     // limbs scattered at bind offsets rather than a slightly wrong pose.
                     _patrolAnim.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+                    // Overtaking means his ground speed is the runner's PLUS the sweep rate, so
+                    // the run clip at 1x reads as skating. 1.35x is a sprint cadence.
+                    _patrolAnim.speed = 1.35f;
                 }
                 _wasSurging = true;
             }
 
-            // Sweep position: 0 at the start of the beat, 1 at its end.
+            // Overtake position: 0 at the start of the beat (off-frame behind), 1 at its end
+            // (far ahead). Monotonic — one direction of travel — with SmoothStep easing so he
+            // accelerates past rather than teleporting in.
             float total = Mathf.Max(SummaRace.Constants.GameRules.PatrolMenaceSeconds, 0.01f);
             float t = Mathf.Clamp01(1f - (_menaceTimer / total));
-            // In and back out: far -> near -> far across the beat.
-            float ease = 1f - Mathf.Abs(t * 2f - 1f);          // 0 -> 1 -> 0
-            ease = Mathf.SmoothStep(0f, 1f, ease);
-            float ahead = Mathf.Lerp(SummaRace.Constants.GameRules.PatrolCameoFarAhead,
-                                     SummaRace.Constants.GameRules.PatrolCameoNearAhead, ease);
+            float ease = Mathf.SmoothStep(0f, 1f, t);
+            float ahead = Mathf.Lerp(-SummaRace.Constants.GameRules.PatrolCameoEnterBehind,
+                                     SummaRace.Constants.GameRules.PatrolCameoExitAhead, ease);
 
             _patrol.position = new Vector3(
                 _patrolSide * SummaRace.Constants.GameRules.PatrolCameoLateralX,

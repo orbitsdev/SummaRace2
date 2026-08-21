@@ -59,8 +59,14 @@ namespace SummaRace.Tests.EditMode
             _haveCamera = TryReadCamera(out _camPos, out _camPitch, out _camFov);
         }
 
+        /// <summary>The overtake's ENTRY (behind the kid) is off-frame BY DESIGN — the camera
+        /// sits 6m back, so behind-the-runner is invisible (F34); that is what makes the entry
+        /// read as "he came from behind". The framed part of the pass is everything from this
+        /// many metres ahead onward, and THAT stretch must stay whole on screen.</summary>
+        private const float FramedFromAhead = 5f;
+
         [Test]
-        public void CameoStaysInsideTheFrameForTheWholeSweep()
+        public void CameoStaysInsideTheFrameForTheFramedPartOfTheOvertake()
         {
             if (!CameoIsOn()) return;
             if (!_haveCamera)
@@ -73,13 +79,11 @@ namespace SummaRace.Tests.EditMode
             float worst = 0f;
             string worstAt = "";
 
-            // Both shoulders, across the whole beat, at the same easing the director uses.
+            // Both shoulders, across the framed stretch of the monotonic overtake
+            // (FramedFromAhead .. ExitAhead). The behind-frame entry is exempt by design.
             for (int i = 0; i <= 40; i++)
             {
-                float t = i / 40f;
-                float ease = Mathf.SmoothStep(0f, 1f, 1f - Mathf.Abs(t * 2f - 1f));
-                float ahead = Mathf.Lerp(GameRules.PatrolCameoFarAhead,
-                                         GameRules.PatrolCameoNearAhead, ease);
+                float ahead = Mathf.Lerp(FramedFromAhead, GameRules.PatrolCameoExitAhead, i / 40f);
 
                 for (int s = -1; s <= 1; s += 2)
                 {
@@ -106,16 +110,22 @@ namespace SummaRace.Tests.EditMode
         {
             if (!CameoIsOn()) return;
 
-            // The whole safety argument in one assertion: he is never less than this far AHEAD
-            // along the run, so no stride, lane change or smoothing lag can bring the two bodies
-            // together. Every previous version relied on a lateral gap instead, and every one of
-            // them overlapped.
-            Assert.GreaterOrEqual(GameRules.PatrolCameoNearAhead, CopHalfDepth * 2f + 2f,
-                "PatrolCameoNearAhead is small enough that the cop and the runner could meet. " +
-                "The cameo's safety comes from along-run separation, not from tuning.");
+            // The overtake passes BESIDE the kid (along-run separation crosses zero once, by
+            // design), so the safety argument is lateral: at the moment of the pass the cop's
+            // near edge must clear the runner's widest possible reach with real margin, and he
+            // is never yawed (a yaw swings this rigid rig 0.65m off its pivot — the measured
+            // failure of every earlier version).
+            Assert.GreaterOrEqual(GameRules.PatrolCameoLateralX - KidWidestX - CopHalfWidth, 0.3f,
+                "The overtake passes too close: at PatrolCameoLateralX the cop's near edge is " +
+                "within 0.3m of the runner's widest lane reach. Widen the lateral, do not trust " +
+                "the stride.");
 
-            Assert.GreaterOrEqual(GameRules.PatrolCameoFarAhead, GameRules.PatrolCameoNearAhead,
-                "The cameo sweeps from far to near and back; far must not be nearer than near.");
+            // Monotonic geometry: a real entry behind, a real exit ahead. Zero or negative on
+            // either side degenerates the overtake back into the pop-in the owner rejected.
+            Assert.Greater(GameRules.PatrolCameoEnterBehind, 0f,
+                "The overtake must START behind the runner (off-frame) to read as a chase.");
+            Assert.Greater(GameRules.PatrolCameoExitAhead, FramedFromAhead,
+                "The overtake must END well ahead, past the framed stretch this fixture checks.");
         }
 
         [Test]

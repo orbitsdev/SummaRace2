@@ -95,6 +95,17 @@ never-played session-5 story); owner feel-pass still wanted**
   under the PLAY badge ("The Crowded House: A Folktale"); needs a title-width clamp or
   badge-aware wrap. ⓒ Editor-only: Trash Dash's focus-pause freezes the race when the
   Unity window loses focus mid-drive — irrelevant on a tablet (app always focused).
+- **Owner feel-pass feedback (2026-08-21 evening) — all three FIXED same night, 57/57
+  tests green, re-verified live with screenshots:** ① *"I don't see the timer"* → chip
+  enlarged 420×86→560×112 (font max 42→56) and now visible for the WHOLE approach
+  (`RaceGateTimerVisibleSeconds` 12→999), not just the last 12s. ② *"the patrol is in
+  front of the player instead of behind"* → the cameo is now an **overtake**: he enters
+  from BEHIND the frame edge (behind-and-visible is geometrically impossible — the camera
+  is 6m back, F34) and sprints forward past the kid, so the briefing's "the patrol races
+  past" is literally what happens; new `PatrolCameoEnterBehind`/`ExitAhead` constants,
+  geometry tests rewritten to lock the new path. ③ *"patrol movement not synced/buggy"* →
+  motion is now monotonic (one direction the whole beat, no to-and-fro) and the run clip
+  plays at 1.35× to match his overtaking ground speed.
 
 **Gate 2 — build day (Tasks 5–8, one focused day, +4 → 94)**
 - [ ] Install Android Build Support (+OpenJDK+SDK/NDK) for **6000.4.1f1**, Editor closed.
