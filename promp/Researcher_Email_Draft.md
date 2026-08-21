@@ -1,7 +1,7 @@
 # Researcher email — ready to send
 
 Drafted 2026-08-21 for **Task 12**. Everything below is verified against the build and the
-story files; the two numbers in point 7 come from `Documentation/SummaRace_Critique.md` and the
+story files; the two numbers in point 6 come from `Documentation/SummaRace_Critique.md` and the
 anti-carryover measurements. Edit the greeting/sign-off to taste and send.
 
 **Why this is urgent:** six of the seven points need *her* decision, not ours. The build is

@@ -358,8 +358,10 @@ the run is abandoned partway through.
 
 1. Main Menu → teacher-corner button → enter PIN → **OK**.
 2. On the Teacher actions screen, tap **"Export logs"**.
-3. The status line then shows either:
-   - **"No logs to export yet"** (nobody has finished a story on this tablet yet), or
+3. The status line then shows one of three outcomes — read it, don't assume:
+   - **"No logs to export yet"** (nobody has finished a story on this tablet yet),
+   - **"Export failed…"** — the write itself failed; the logs are still on the tablet. Free up
+     storage or retry; do NOT treat this as "nothing to export", or
    - **the full on-device file path** of the export — read it directly off the screen, because
      you'll need it in the next step.
 
@@ -382,7 +384,9 @@ Android version):
 
 **After tapping Export, read the status line.** As well as the file path it now warns if any
 learner on that tablet has no participant code, or if two share one (§1.2b). Fix it before the next
-session — codes cannot be back-filled onto rows already written.
+session. (The export itself repairs what it can: rows written before a learner's code was set get
+the code back-filled **in the exported file** — the on-device `.jsonl` is never rewritten. A
+learner who never gets a code at all still cannot be joined, so set it early.)
 
 **The tablet is the only copy, by design — and now actually.** GDD §11.4 requires Android's
 automatic cloud backup to be off, because otherwise the operating system copies the app's private
