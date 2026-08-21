@@ -645,3 +645,64 @@ device token shows the switch) · mid-study rebuild = same machine, install over
 5. **Data collection is operationally fragile by design** (offline): logs live only on
    tablets until exported — hence the export-every-session rule and the Day-1 `adb pull`
    proof.
+
+---
+
+# 15. HOW WE JUSTIFY "FINISHED" — the acceptance argument
+
+**The claim we can make today:** *the game is feature-complete against the validated
+prototype flow* — every screen and beat of the 27-screen Canva prototype and the playable
+web demo is either **implemented**, **implemented in a validity-safe equivalent form**, or
+**declined with a recorded reason** (§13). Nothing was dropped silently.
+
+### 15.1 Prototype-parity matrix (the flow, beat by beat)
+
+| Prototype beat (Canva/web) | In the game | Status |
+|---|---|---|
+| Title + tagline + TAP TO START | Boot + Main Menu | ✅ |
+| Teacher-guide welcome (Ms. Lumi) | Lumi across Reader/Race briefing/Arrange/Summary/Results | ✅ |
+| Day tabs / story levels (E-A-H, locked ladder) | Session Map (10 missions) + Story Select | ✅ (richer than prototype) |
+| Page-by-page reading, voice toggle, progress "n/5", NEXT | Reader | ✅ |
+| Per-page question, A/B/C, correct revealed, praise | Reader questions (+ shuffle the prototype lacked) | ✅ |
+| Patrol briefing → Start Mission | Race briefing + cameo framing line | ✅ |
+| Run & collect S→W→B→S→T, 1 correct + 2 distractors, 3 lanes | The race, 5 gates in order | ✅ |
+| Race countdown timer | **Part-arrival timer** "Next part in 8s" (real, non-punitive) | ✅ equivalent |
+| Multiplier / speed reward | Speed boost + praise + stars + gems (no losable score) | ✅ equivalent |
+| Patrol pressure on wrong | Slow + amber surge + **patrol cameo sweep** (never catches) | ✅ equivalent |
+| "Don't let the patrol catch you" (catch = fail) | ❌ declined — never-punish + measure integrity (L3) — *even the study text commits only to "slow"* | recorded |
+| Emoji icons on options | ❌ declined — pickable without reading (L5) | recorded |
+| FINISH LINE beat | FINISH gate + victory beat | ✅ |
+| Arrange: slots + pool + UNDO + VERIFY + hint | Arrange (slots SWBST-labelled; pool side-by-side yellow wrapped pills; auto-hint ladder; assist) | ✅ |
+| Arrange 30 s timer + red INCORRECT ORDER! | ❌ declined (L1/L9) — amber wiggle + hint instead | recorded |
+| Write ONE sentence + SWBST reference + example ghost + tips + SUBMIT | Summary (ghost from the story's own S+W; tips; ≤2 nudges then accept) | ✅ |
+| Mission Cleared: stars + praise + NEXT MISSION | Results: stars + gems + main idea + the child's own sentence + next routing | ✅ (richer) |
+
+### 15.2 The evidence trail (how each layer was verified)
+
+1. **Design fidelity:** this blueprint §5–§8 against the study PDF pp.27–29, the 27 Canva
+   screens and 29 web screenshots — all read in full, the matrix above is the diff.
+2. **Content:** all 30 stories load through the real runtime loader with 0 validation
+   failures; 150+10 narration clips resolve; anti-tell passes are locked by test fixtures
+   *in the repo*.
+3. **Code:** every change compile-verified against the runtime assembly; race cameo/timer
+   geometry solved from the scene's own camera and locked by `PatrolCameoGeometryTests`;
+   Arrange re-layout verified by an actual **portrait render**.
+4. **Earlier live verifications on record:** the full loop Boot→…→Results has been played
+   live in-Editor and owner-verified (recorded in the repo's build history), including a
+   stars-match-the-run check.
+
+### 15.3 What "finished" does NOT yet include — the remaining verification protocol
+
+Honest gap between *feature-complete* and *verified-finished*. Three steps close it:
+
+| # | Step | Closes |
+|---|---|---|
+| V1 | Resolve the package collision → run the ~56-fixture EditMode suite → record the count | automated verification (currently blocked, §12 step 0) |
+| V2 | **Portrait playtest of the full loop on a NON-s01 story** — the nine new §9 changes have never been rendered; 27/30 stories never played end-to-end | the prototype-flow test, on our own build |
+| V3 | First APK → device smoke test → `adb pull` export proof | the definition of done itself |
+
+**So the truthful sentence for the thesis/adviser:** "The application implements the
+complete validated prototype flow (§15.1), with three prototype mechanics replaced by
+validity-preserving equivalents and each substitution documented (§13); it is verified at
+the design, content, and code levels (§15.2), with final verification — automated suite,
+full-loop portrait playtest, and on-device testing — scheduled as the ship gate (§15.3)."
