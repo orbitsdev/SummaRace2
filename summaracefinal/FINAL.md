@@ -30,17 +30,12 @@ one email.
 
 ## §2 · Findings from this sweep
 
-- [ ] **F-1 · Uncommitted `com.adjoint.editor` is back in the working-tree `Packages/manifest.json`.**
-  This is the exact package Task 1 removed (its `AssetPathUtility` collided with the MCP
-  bridge and blocked ALL editor tooling). It likely re-added itself via the Adjoint toolbar.
-  **Decide: keep it or revert the line.** If keeping, verify after the next editor restart
-  that the editor assembly still compiles (F-2 will tell you immediately). If tests won't
-  load after restart → revert this line first, ask questions later.
-- [ ] **F-2 · Editor assembly DLL missing from `Library/ScriptAssemblies`.** The compile is
-  clean (0 errors; DLL exists in Bee artifacts) but the copy step failed silently — so the
-  56-case test suite, `SummaRace ▸ Build Preflight`, and every `_Game/Editor` tool are dead
-  in the current editor session. **Fix: restart Unity, then Test Runner ▸ EditMode ▸ Run All.
-  Must be ~57 green / 0 red before anything else.** (If red/absent → see F-1.)
+- [x] **F-1 · RESOLVED (verified live 2026-08-21 evening):** `com.adjoint.editor` is no
+  longer in the working-tree manifest — the collision package is gone again.
+- [x] **F-2 · RESOLVED (verified live 2026-08-21 evening):** the editor assembly is loaded
+  (`Assembly-CSharp-Editor` in the domain, DLL in `ScriptAssemblies`, Preflight type + 11
+  fixture types present) and the **full EditMode suite ran over MCP: 57 / 57 passed, 0
+  failed, 4.3 s**. Editor tooling is fully back.
 - [x] **F-3 · Three doc corrections** (found by audit ⑥, applied 2026-08-21): researcher
   email "point 7"→"point 6"; runbook no longer claims codes "cannot be back-filled"
   (export backfills them since F56); runbook §5.2 now lists the third Export outcome
@@ -68,10 +63,9 @@ one email.
 
 ## §3 · THE FINISH LINE — do these in order, tick as you go
 
-**Gate 0 — editor health (today, 10 min)**
-- [ ] Restart Unity → confirm menu `SummaRace ▸ Build Preflight` exists → Test Runner ▸
-  EditMode ▸ Run All → **record the green count here: ______** (expect ~57/0). If broken:
-  revert the manifest's adjoint line (F-1) and repeat.
+**Gate 0 — editor health ✅ CLOSED 2026-08-21**
+- [x] Editor assembly loaded, Preflight present, manifest clean, and EditMode suite run
+  live over MCP: **57 green / 0 red** (4.3 s). Nothing stands before Gate 1.
 
 **Gate 1 — the playtest (Task 3, +5 → 90)**
 - [ ] Full loop, portrait, on a **non-s01 story (session 5+)**: Boot → MainMenu → map →
