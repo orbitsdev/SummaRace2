@@ -1,9 +1,13 @@
 # SUMMARACE — REMAINING TASKS, UPDATES & FIXES
 ### Every open item, in execution order, with exact steps, owner, time, and how to verify
 
-**2026-08-21.** Everything NOT listed here is done, committed, and pushed
-(branch `experiment/endless-override-2`, HEAD `03c8013`). Companion docs:
-`summaracefinal/SUMMARACE_BLUEPRINT.md` (design/logic) · `SUMMARACE_UI_SPEC.md` (visuals).
+**2026-08-21 (rev 2, HEAD `e0591c5`).** Everything NOT listed here is done, committed, and
+pushed (branch `experiment/endless-override-2`). Companion docs:
+`summaracefinal/SUMMARACE_BLUEPRINT.md` (design/logic — incl. §15 acceptance argument) ·
+`SUMMARACE_UI_SPEC.md` (visuals).
+
+**Completion snapshot: ~80/100** — ~98% built, ~40% proven. Build day (Tasks 5–10) moves it
+to 98; install day (Task 11) closes it. The entire path starts at Task 1.
 
 **Legend:** 🔴 blocker · 🟠 do immediately after · 🟡 ship pipeline · 🔵 other people's clocks ·
 ⚪ decision · ⚫ optional/post-study
@@ -204,6 +208,19 @@ own-sentence card + Lumi · all 30 stories + 160 voice clips + 30 real hero imag
 logging schema 6 + participant codes + atomic saves + export/wipe · teacher gate complete ·
 device-RAM budget applied · offline enforced by test · all finalization docs
 (`summaracefinal/`) · everything committed & pushed.
+
+**Also settled (owner audits, answered & recorded — don't reopen):**
+- **The PIN is in NO prototype** — correct, and deliberate: it's a beyond-prototype addition
+  required by the study itself (p.29 uniform exposure, p.33 data handling). The web demo even
+  shows "DAY 2 🔒" with no mechanism to open it — the PIN is that missing key. Recorded as
+  its own row in the blueprint's parity matrix (§15.1), ready for the panel question.
+- **Timers:** prototypes had 3 countdowns (race/arrange/summary); the build ships the honest
+  race part-timer only, arrange/summary untimed, durations logged invisibly (§9.0 policy).
+- **Two lock systems:** Easy→Average→Hard unlocks by finishing (normal game); missions unlock
+  by PIN (research dose control). Post-study, one condition swap makes missions
+  finish-to-unlock too.
+- **Arrange pool** now matches the prototype: side-by-side wrapped pills (2+2+1), yellow vs
+  the slots — layout verified by portrait render.
 
 ---
 
