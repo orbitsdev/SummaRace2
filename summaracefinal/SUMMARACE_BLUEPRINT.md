@@ -676,6 +676,7 @@ web demo is either **implemented**, **implemented in a validity-safe equivalent 
 | Arrange 30 s timer + red INCORRECT ORDER! | ❌ declined (L1/L9) — amber wiggle + hint instead | recorded |
 | Write ONE sentence + SWBST reference + example ghost + tips + SUBMIT | Summary (ghost from the story's own S+W; tips; ≤2 nudges then accept) | ✅ |
 | Mission Cleared: stars + praise + NEXT MISSION | Results: stars + gems + main idea + the child's own sentence + next routing | ✅ (richer) |
+| *(not in any prototype)* Teacher menu: PIN, session unlock, export, participant codes, wipe | Built from the STUDY's own requirements, not the prototypes: p.29 "access restricted solely to prescribed session days… uniform exposure" and p.33 data-handling/ethics. Note the web demo shows "DAY 2 🔒" with **no mechanism to ever open it** — the PIN answers a question the prototype raised and left open. The prototypes model only the child's half of the app; the research half (logging, identity, export) appears in no prototype either | ✅ beyond-prototype, doc-required |
 
 ### 15.2 The evidence trail (how each layer was verified)
 
