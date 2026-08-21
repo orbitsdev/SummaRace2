@@ -7,7 +7,7 @@ Everything NOT listed here is done, committed, and pushed (branch
 (design/logic — incl. §15 acceptance argument) · `SUMMARACE_UI_SPEC.md` (visuals) ·
 `promp/Researcher_Email_Draft.md` (Task 12, ready to send).
 
-**Completion snapshot: 80/100 — and this list is the exact remaining 20.** Each task carries
+**Completion snapshot: 85/100 — this list is the exact remaining 15.** Each task carries
 its credit below; complete them all and the project is 100 by construction. The ⚪ decisions
 and ⚫ post-study items carry **zero weight** — 100% never depends on optional work.
 
@@ -15,7 +15,7 @@ and ⚫ post-study items carry **zero weight** — 100% never depends on optiona
 
 | Task | Credit | Running total |
 |---|---|---|
-| ✅ 1 — package collision removed, Editor tooling back — **DONE** (`7bb6fec`; `Assembly-CSharp-Editor.dll` compiled 14:32) | +2 | **82 ← we are here** |
+| ✅ 1 — package collision removed, Editor tooling back — **DONE** (`7bb6fec`; `Assembly-CSharp-Editor.dll` compiled 14:32) | +2 | 82 |
 | ✅ 2 — **DONE**: suite ran for the FIRST TIME in project history — **57 green / 0 red** (56 SummaRace fixtures + the Addressables stub), owner-witnessed | +2 | 84 |
 | ▶ 3 — full-loop portrait playtest clean (non-s01) — **NEXT** | +5 | 90 (after T3) |
 | ✅ 4 — **DONE** (`e645bee`): all 30 heroes resized 1020×680 (÷4, exact 3:2) — compression unblocked; sources 57.2→30.8 MB; spot-check ASTC format during Task 3 | +1 | **85 ← we are here** (T3 pending) |
@@ -66,7 +66,7 @@ a version without the clash.
 
 </details>
 
-## 🟠 TASK 2 — Run the full test suite and record the real number ← **YOU ARE HERE**
+## ✅ TASK 2 — DONE: 57 green / 0 red (first full run in project history)
 
 **Why:** every quoted count ("45/45", "53/53") is stale; the suite has NEVER run with the
 newest fixtures (incl. `PatrolCameoGeometryTests`).
@@ -76,7 +76,7 @@ before proceeding — these fixtures guard the study's validity (offline complia
 tells, cameo geometry, export backfill…).
 **Owner:** Claude. **Time:** 5 min.
 
-## 🟠 TASK 3 — Full-loop PORTRAIT playtest on a NON-s01 story
+## 🟠 TASK 3 — Full-loop PORTRAIT playtest on a NON-s01 story ← **YOU ARE HERE**
 
 **Why:** nine recent changes have **never been rendered or played**: race part-timer chip
 ("Next part in 8s"), patrol cameo sweep, Reader hint lines, Story-Select chip tints at
@@ -94,7 +94,7 @@ TYPING) → Results (star count matches the run · gems match per-element · own
 **Verify against:** `SUMMARACE_UI_SPEC.md` screen by screen; screenshot anything off.
 **Owner:** you playing (Claude can drive + screenshot over MCP). **Time:** 30–60 min.
 
-## 🟠 TASK 4 — Hero-art import fix (~50 MB off the APK)
+## ✅ TASK 4 — DONE (`e645bee`): heroes resized 1020×680, compression unblocked
 
 **Problem:** the 30 hero PNGs are 1024×683 — 683 is not divisible by 4, so Android texture
 compression silently fails and each ships **uncompressed RGB24 (~2 MB each, ~59 MB total)**.
