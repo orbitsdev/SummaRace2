@@ -9,6 +9,9 @@ Evidence base (read in full): the study PDF (103 pp), the researcher's 30-story 
 29 web-prototype screenshots, the entire build (55 scripts / 16,394 lines, 12 scenes walked
 live in the Editor).
 
+**Companion file:** `SUMMARACE_UI_SPEC.md` — the visual checklist (what every screen looks
+like, element by element). This blueprint owns logic/plan; the spec owns pixels.
+
 ---
 
 ## 0. TABLE OF CONTENTS
@@ -255,22 +258,36 @@ Format per screen: **Purpose · UI · Logic · Transitions · Edge cases**.
   - **Pause chip** (top-right gutter, 48 dp) → pause overlay (RESUME / two-tap LEAVE).
   - **Reading panel** (sky band) — the 3 options as readable text in lane order, identical
     styling; **each column is a tap target that steers to its lane**.
-  - **⏳ Gate timer chip** *(being added — §9)* — counts down the REAL seconds until the next
-    gate arrives ("Gate in 12s… 11s…"). Honest urgency: at 0 the gate is simply there; the
-    normal pick/miss rules apply. No global race countdown, ever (L1).
-  - **Feedback pill** — praise on correct; on wrong/miss the panel itself shows the correct
-    answer in gold for 2.2 s.
-  - **Amber vignette** — screen-edge surge for ~2 s after a wrong pick; the **patrol cameo**
-    *(being added — §9)* sweeps the frame edge during this surge; never catches (L3/L4).
+  - **✅ Part timer chip** (banner band — free there by construction) — counts down the REAL
+    seconds until the next part arrives: **"Next part in 8s"** ("part", not "gate" — the
+    learner is never taught the designer's word), integrated against the runner's real
+    acceleration so it never over-promises. At 0 the gate is simply there; normal pick/miss
+    rules apply. Hidden on pause/finish. Playtest lever:
+    `GameRules.RaceGateTimerVisibleSeconds` (12 = whole window · 5 = last five seconds only ·
+    0 = no chip). No global race countdown, ever (L1).
+  - **Feedback pill** — praise on correct; on a wrong pick it carries one of 4 rotating
+    framing lines in amber ("That detail isn't the most important." …) while the panel shows
+    the correct answer in gold for 2.2 s.
+  - **Amber vignette** — screen-edge surge for ~2 s after a wrong pick; during it the
+    **✅ patrol cameo** appears on the FREE shoulder 5–10 m AHEAD, sweeps in and back out,
+    then hides — geometry solved against the scene's own camera (worst corner 0.812 of the
+    frame, overlap impossible: 5 m along-run separation) and locked by
+    `PatrolCameoGeometryTests`. Never catches (L3/L4); own switch
+    `GameRules.RacePatrolCameoEnabled`; briefing line + narration: *"If you miss a part, the
+    patrol races past. It never catches you!"*
   - **Banner** — final-stretch only: "Run to the FINISH!".
 - **World:** 3-lane road, one gate (3 cards) live at a time, story-seeded world recipe
   (theme/zone/sky/greenery/light/weather), Ms. Lumi briefing before, 3-2-1-GO countdown.
 - **Logic, transitions, guarantees:** deep spec in §6.
 
 ### 5.8 Arrange
-- **UI:** "Put the story parts in order!" title · 5 slots (SOMEBODY…THEN, pastel element
-  colour + element-ink label when empty; cream + text when filled; green when locked) · 5
-  full-width wrapped pool pills (shuffled) · UNDO · VERIFY · status line · Ms. Lumi badge.
+- **UI:** "Put the story parts in order!" title · 5 full-width slots (SOMEBODY…THEN, pastel
+  element colour + element-ink label when empty; cream + text when filled; green when locked)
+  · **the pool: 5 warm-YELLOW pills side-by-side, 2 per row (2+2+1, last left-aligned),
+  text wrapping to 2 lines** — deliberately a different shape AND colour from the slot rows
+  so the two halves of the screen can't be confused (prototype parity; layout landed
+  2026-08-21, yellow tint compiles in with the pending reload) · UNDO (grey pill) ·
+  VERIFY ORDER (green pill, already in build) · status line · Ms. Lumi badge.
 - **Logic:** tap piece → tap empty slot places it; tap filled slot returns it; UNDO pops the
   last placement; VERIFY: correct slots lock (sound per lock), wrong wiggle amber and
   return; every submitted order logged; hint after 3 misses on the same piece (and always on
@@ -442,7 +459,7 @@ art), 150 story narration clips + 10 instructional clips (one voice), Ms. Lumi 2
 
 | Where | Prototype | This game | Why |
 |---|---|---|---|
-| **Race** | 90 s global countdown | 🔨 **⏳ gate-arrival timer** ("Gate in 12s…") — a REAL countdown to the next gate; at 0 the gate simply arrives, normal pick/miss rules apply | urgency restored honestly; a *global* race clock would score reading speed and imply a time-out fail state (L1) |
+| **Race** | 90 s global countdown | ✅ **BUILT: part-arrival timer** — "Next part in 8s", a REAL countdown to the next gate, acceleration-integrated; at 0 the gate simply arrives, normal pick/miss rules apply; visibility lever `RaceGateTimerVisibleSeconds` (12/5/0) | urgency restored honestly; a *global* race clock would score reading speed and imply a time-out fail state (L1) |
 | **Arrange** | "30 SECS" red chip | 🚫 no countdown | sequencing under panic measures panic, not structure knowledge; the screen already ends itself via the assist ladder — it cannot drag forever |
 | **Summary** | "25 SEC" chip | 🚫 no countdown | the produce stage must not be rushed — it is the rehearsal of the paper test, which is also not per-sentence timed |
 | **Results** | — | ❓ **NEW OPTION: show the finished time** — "Your race: 1:42!" (and best time on replays) | time shown AFTER the task is pure celebration: the racing fantasy gets its clock with zero pressure during learning; replays are already marked in the data. ~30 min |
@@ -468,7 +485,7 @@ art), 150 story narration clips + 10 instructional clips (one voice), Ms. Lumi 2
 | **Race** | ✅ **Safe patrol cameo** — and the reason it can work this time is a change of geometry, not of tuning. All three retired chases held the cop at a *small offset* from the runner, and under this camera (5 m back, 4 m up, 14.95°, FOV 58.7, portrait) a small offset has no valid solution. The cameo never holds an offset: he appears on the shoulder **5–10 m AHEAD**, sweeps in and back out over the 2 s surge, then hides. **Solved against the camera read out of the scene file, not eyeballed:** worst projected corner **0.812** of the frame half-extent across the whole sweep on both shoulders — fully in frame with 19% margin — at \|x\| 2.5, which is outside the outermost answer card (2.2) and inside the corridor F54 measured free of props (3.0). Overlap is **impossible by construction**: 5 m of along-run separation, so no stride, lane change or smoothing lag can close it. Locked in by a new fixture, `PatrolCameoGeometryTests`, which **reads the camera from `MainSummaRace.unity`** so a future camera retune fails there instead of on a tablet. Own kill-switch (`RacePatrolCameoEnabled`); the retired chase stays off and untouched. Briefing line is **"If you miss a part, the patrol races past. It never catches you!"** with its own narration clip on the same switch — not "PATROL IS COMING!", which shouts and is not true: nothing comes for the learner, `timesCaught` is 0, and threatening a catch that cannot happen is the opposite of never-punish (D7/L3) | done |
 | Race | ✅ wrong-pick line rotation (`GameText.RaceWrongLines`, 4 lines, shuffle-bag via `Praise.RaceNotQuite`). The pill had been showing the correct answer *and* the panel then showed it again — the same sentence twice, saying nothing about why the pick was wrong. Pill now carries the framing line in amber, panel keeps the answer in gold | done |
 | Race | ❓ reading window 12 s (100 wpm) vs 17 s (70 wpm) — one constant; time one race first | 5 min + test |
-| **Arrange** | ✅ (a) dashed gold frame around the 5 slots — a tiled one-dash sprite on four strips, inserted at Slot_0's **sibling** index so it draws behind them (a child would paint over: the F58ⓓ bug) · (b) pool pills warm-yellow — they had been **byte-identical** to a filled slot (0.96, 0.87, 0.70), so the board never showed what was left to do; now pastel = empty, yellow = to place, cream = placed, green = locked · (c) Lumi line in the bubble, **and `vo_arrange_title.mp3` re-recorded to match** (the title is narrated; changing the text alone would have desynced the one support a non-reader has), title autosizing turned on because it was pinned at 34pt and the longer line fit only by luck · (d) **already done** — VerifyButton has used the kit's green pill all along. Label stays "CHECK ORDER", not "VERIFY ORDER!" (`GameText.VerifyLabel` deliberately avoids the designer's word) | done |
+| **Arrange** | ✅ **pool re-laid SIDE-BY-SIDE** (2026-08-21): the 5 pool pieces were full-width bars visually identical to the slot rows (10 same-looking bars stacked — owner-reported); now **2 per row (2+2+1, last left-aligned), x 0.06–0.485 / 0.515–0.94, taller bands (0.08) so 2-line wrap fits**, labels wrap-then-shrink (floor 24pt) — verified by portrait render. Plus: (a) dashed gold frame around the 5 slots — a tiled one-dash sprite on four strips, inserted at Slot_0's **sibling** index so it draws behind them (a child would paint over: the F58ⓓ bug) · (b) pool pills warm-yellow — they had been **byte-identical** to a filled slot (0.96, 0.87, 0.70), so the board never showed what was left to do; now pastel = empty, yellow = to place, cream = placed, green = locked · (c) Lumi line in the bubble, **and `vo_arrange_title.mp3` re-recorded to match** (the title is narrated; changing the text alone would have desynced the one support a non-reader has), title autosizing turned on because it was pinned at 34pt and the longer line fit only by luck · (d) **already done** — VerifyButton has used the kit's green pill all along. Label stays "CHECK ORDER", not "VERIFY ORDER!" (`GameText.VerifyLabel` deliberately avoids the designer's word) | done |
 | Arrange | ❓ NEED HINT? on-demand button alongside the auto-hint | 30 min |
 | Summary | ✅ story-specific ghost from the story's own S+W, breaking off at "but…" so the three parts the summary is judged on stay the learner's. **Verified against all 30 stories, 0 malformed** — which needed a strip rule: 24 WANTED lines start "To …", 5 are bare noun phrases, and `s01_easy` alone starts "She wanted …", so without it the very first story every learner plays would read "Molly wanted she wanted to swing" | done |
 | Summary | ✅ tips block, on the navy pill in the one empty band (below SUBMIT, y 0.02–0.11). The Android keyboard covers that band while typing — correct, not a defect: these are pre-writing tips, and everything needed mid-sentence (frame, reference list, DONE TYPING) is above the keyboard line | done |
@@ -537,7 +554,7 @@ and in the landscape game view.
 | 2 All 11 screens built & audited | ✅ (+ §9 polish list) |
 | 3 Race core (gates/panel/tracker/worlds/pause) | ✅ — 🟡 patrol cameo & window decision |
 | 4 Study machinery (log schema 6, codes, PIN, export, atomic saves) | ✅ |
-| 5 Quality (device budget, audits, tests+preflight) | 🔧 tests & preflight compiled but awaiting ONE editor domain-reload (click the Unity window once), then run & record the count |
+| 5 Quality (device budget, audits, tests+preflight) | ⛔ **blocked by a PACKAGE COLLISION, not by the reload**: `com.adjoint.editor` and `com.coplaydev.unity-mcp` both ship `AssetPathUtility` → CS0433 → `Assembly-CSharp-Editor` never compiles → all 11 test fixtures unloadable, Preflight menu absent, Play mode blocked. Fix = update/remove one of the two packages (owner call — one is the Adjoint toolbar, the other the MCP bridge this session runs on). Runtime assembly is unaffected and clean |
 | **6 SHIP** | ⬜ **the only phase with real work left** — §12 |
 | 7 Study operations | ✅ built; rituals in §12 |
 | 8 Post-study wishlist | park-style track art · girl runner tied to avatar · menu Lumi cameo · CC0 audio swaps · legacy scene/package cleanup · repo private |
@@ -546,8 +563,13 @@ and in the landscape game view.
 
 # 12. SHIP PROCEDURE (exact steps)
 
-0. **Today:** click the Unity window once (releases the queued reload) → verify
-   `SummaRace ▸ Build Preflight` exists → Test Runner ▸ EditMode ▸ Run All → record count.
+0. **Today — unblock the editor tooling.** The gate is a package collision (see §11 phase 5):
+   remove or update **`com.adjoint.editor`** in `Packages/manifest.json` (it collides with
+   the MCP bridge; if the toolbar isn't needed for the study, removing it is the clean fix —
+   close Unity first if the resolve fights) → reopen → verify `SummaRace ▸ Build Preflight`
+   exists → Test Runner ▸ EditMode ▸ Run All → record the count → then walk
+   Reader → Arrange → Summary → Results in **portrait** (nine §9 changes have never been
+   rendered).
 1. **Android Build Support** (the only hard blocker): close Unity → Unity Hub → Installs →
    **6000.4.1f1** → Add modules → Android + child modules (JDK/SDK/NDK). Proof:
    `…\PlaybackEngines\AndroidPlayer\` exists.
@@ -593,7 +615,7 @@ device token shows the switch) · mid-study rebuild = same machine, install over
 | L1 | No global countdown timers (the prototypes' 90 s/30 s/25 s) | a clock scores reading *speed* and pressures exactly the strugglers the study is about; the **gate-arrival countdown** is the approved, truthful urgency |
 | L2 | No score / multiplier | a score you can lose is punishment; boost+praise+stars+gems carry motivation |
 | L3 | No catch, no game-over, no restart; `timesCaught` ≡ 0 | never-punish + a re-run corrupts the first-pick measure; even the study text commits only to "slow" |
-| L4 | Patrol = pressure cameo only (edge sweep during the surge), kill-switch retained | three chase placements each failed under the locked camera; the beat, not the chase, is the point |
+| L4 | Patrol = pressure cameo only (**built**: appears 5–10 m ahead on the free shoulder during the surge, geometry test-locked; `RacePatrolCameoEnabled` = on, the retired chase `RacePatrolEnabled` stays off) | three chase placements each failed under the locked camera; the beat, not the chase, is the point — and it never catches |
 | L5 | Race options: text-only, identical styling; the Reader's question is NOT repeated | any surface cue is pickable without reading (~85% exploit, twice audited); the race is the *unsupported* stage |
 | L6 | No auto-fill in Summary (ghost frame at most) | the child must produce every word; verbatim text is the record |
 | L7 | Arrange slots labelled SOMEBODY…THEN; greens lock; hint ladder; assist after 4 | the framework labels are the teaching; progress is never lost; helped ≠ solved in the log |
@@ -615,8 +637,11 @@ device token shows the switch) · mid-study rebuild = same machine, install over
 3. **Never measured until the first device run:** frame rate on the 2 GB floor, real APK
    size, portrait layout on the actual tablet model, Android BACK behaviour, tap-to-lane
    feel. (Step 6 exists to measure exactly these.)
-4. **The single hard blocker** is environmental, not code: Android Build Support has never
-   been installed, so no APK has ever existed. Everything after that step is measurement.
+4. **Two hard blockers, both environmental, not game code:** ① Android Build Support has
+   never been installed, so no APK has ever existed; ② the `com.adjoint.editor` ↔ MCP-bridge
+   **package collision** (duplicate `AssetPathUtility`) stops the editor assembly compiling —
+   no tests, no Preflight, no Play mode until one package is removed/updated (§12 step 0).
+   Everything after those two steps is measurement.
 5. **Data collection is operationally fragile by design** (offline): logs live only on
    tablets until exported — hence the export-every-session rule and the Day-1 `adb pull`
    proof.
