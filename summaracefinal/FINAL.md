@@ -67,15 +67,34 @@ one email.
 - [x] Editor assembly loaded, Preflight present, manifest clean, and EditMode suite run
   live over MCP: **57 green / 0 red** (4.3 s). Nothing stands before Gate 1.
 
-**Gate 1 — the playtest (Task 3, +5 → 90)**
-- [ ] Full loop, portrait, on a **non-s01 story (session 5+)**: Boot → MainMenu → map →
-  StorySelect → Reader (HEAR AGAIN · VOICE off/on · BACK-before-first-answer) → Race
-  (briefing · ONE countdown · timer chip · panel taps steer · wrong pick = surge + cameo +
-  reveal · tracker fills · pause RESUME and pause LEAVE) → Arrange (hint@3 · assist@4) →
-  Summary (ghost · nudges ≤2 · DONE TYPING) → Results (stars = the run · gems = per-element)
-  → NEXT routing. Checklist detail: Remaining-Tasks Task 3. While playing, judge **D1/D2**
-  (reading window & timer-chip feel) and confirm **D3** (add finished-time? ~30 min).
-- [ ] Spot-check 2–3 hero cards in StorySelect for visual quality (post-resize).
+**Gate 1 — the playtest (Task 3, +5 → 90) — ✅ MECHANICALLY VERIFIED 2026-08-21 evening
+(Claude drove the FULL loop live over MCP, portrait 720×1280, on `s05_easy` — a
+never-played session-5 story); owner feel-pass still wanted**
+- [x] Full loop completed with zero dead ends: Boot → MainMenu → map (session 5 glow) →
+  StorySelect (chip tints live) → Reader (Q1 deliberately wrong: "Not quite — here is the
+  answer!" · HEAR AGAIN fired · VOICE OFF→ON persisted to prefs · A./B./C. + 💡 slot hints
+  rendered) → Race in the **overcast-industrial world with LIVE RAIN**: briefing + softened
+  patrol line + chips + Lumi · single countdown · **"Next part in 7s→1s" chip counting
+  honestly** · reading panel mirrored the road cards exactly · steered by lane · gates went
+  wrong-right-wrong-right-wrong on purpose · **cameo captured on camera: cop sweeps the
+  OPPOSITE shoulder, amber vignette, gold answer reveal, tracker fills, timesCaught 0** ·
+  pause → KEEP RUNNING resumed at speed 11.3 (no reseed) → FINISH → Arrange (2-column
+  yellow pool · "Almost! The parts already in place are right" · locked slots) → Summary
+  (story-specific ghost · tips · verbatim echo) → Results (**1 star = exactly 2/5 correct;
+  gems lit ONLY for W and SO — matching the run pick-for-pick**) → NEXT STORY → StorySelect
+  with AVERAGE unlocked and best-stars 1 persisted. **Log row verified on disk: s05_easy,
+  schemaVersion 6, starsEarned 1, timesCaught 0, isPartial false, summaryText verbatim.**
+  Evidence: 20 screenshots + a 20-frame burst in the session scratchpad.
+- [x] Hero art spot-checked in StorySelect — real art renders crisply post-resize.
+- [ ] **Owner feel-pass (the human half that MCP cannot judge):** does the reading window
+  feel right at real speed (D1/D2)? · sound/narration by ear · real touch input ·
+  decide **D3** (finished-time on Results, ~30 min).
+- **Findings from the drive:** ⓐ **FIXED** — Reader's Ms. Lumi rendered ~2.1× too big and
+  covered the story text (`Teacher` localScale 2.11 authored for the pre-F58 sprite; now
+  1.0, re-rendered clean). ⓑ **OPEN, cosmetic** — StorySelect: a long story title runs
+  under the PLAY badge ("The Crowded House: A Folktale"); needs a title-width clamp or
+  badge-aware wrap. ⓒ Editor-only: Trash Dash's focus-pause freezes the race when the
+  Unity window loses focus mid-drive — irrelevant on a tablet (app always focused).
 
 **Gate 2 — build day (Tasks 5–8, one focused day, +4 → 94)**
 - [ ] Install Android Build Support (+OpenJDK+SDK/NDK) for **6000.4.1f1**, Editor closed.

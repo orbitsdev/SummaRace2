@@ -391,6 +391,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ba5c5b49667967c4cb0211b7f7a77c6e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SummaRace.UI.ButtonSquash
+  playSound: 0
 --- !u!114 &407531477
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -699,6 +700,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ba5c5b49667967c4cb0211b7f7a77c6e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SummaRace.UI.ButtonSquash
+  playSound: 0
 --- !u!114 &650583367
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -916,6 +918,7 @@ MonoBehaviour:
   - {fileID: 1329242883}
   - {fileID: 1530908974}
   feedbackText: {fileID: 2007911221}
+  hintText: {fileID: 0}
   teacherGroup: {fileID: 1532069982}
 --- !u!4 &939358096
 Transform:
@@ -1698,6 +1701,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ba5c5b49667967c4cb0211b7f7a77c6e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SummaRace.UI.ButtonSquash
+  playSound: 0
 --- !u!114 &1483392442
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2094,7 +2098,7 @@ RectTransform:
   m_GameObject: {fileID: 1532069976}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: -309.4}
-  m_LocalScale: {x: 2.107, y: 2.107, z: 2.107}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 1890616202}
@@ -2326,6 +2330,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ba5c5b49667967c4cb0211b7f7a77c6e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SummaRace.UI.ButtonSquash
+  playSound: 0
 --- !u!114 &1665849062
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3081,6 +3086,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ba5c5b49667967c4cb0211b7f7a77c6e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SummaRace.UI.ButtonSquash
+  playSound: 0
 --- !u!114 &2103098874
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -9,18 +9,17 @@ and in `FINAL.md` §3 as they close.
 
 ---
 
-## 1 · The playtest — Task 3 (+5 → 90) — **the only thing Claude + you can do TODAY**
-**Who:** you play in the Editor (Claude drives/screenshots over MCP alongside).
-**How:** Play from Boot, pick a **session-5+ story** (never played before) and run the
-whole loop: Reader (HEAR AGAIN · VOICE off/on · BACK before first answer) → Race
-(briefing · one countdown · "Next part in Ns" chip · panel-tap steering · one deliberate
-wrong pick to see surge + cameo + reveal · pause RESUME · pause LEAVE on a second run) →
-Arrange (miss 3× to see the hint, 4× the assist) → Summary (ghost text, DONE TYPING) →
-Results (stars/gems match the run) → NEXT.
-**Done when:** the loop completes with no dead end and no visual break vs
-`SUMMARACE_UI_SPEC.md`; while playing, decide **D1/D2** (does the reading window feel
-right?) and **D3** (want "Your race: 1:42" on Results? ~30 min to add — the ONLY spec
-element that exists nowhere in code).
+## 1 · The playtest — Task 3 (+5 → 90) — **✅ mechanical half DONE (2026-08-21 evening);
+your feel-pass remains**
+Claude drove the FULL loop live over MCP on `s05_easy` (portrait): every screen, every
+never-rendered feature, mixed right/wrong picks, pause/resume, the cameo on camera, and
+the log row verified on disk (1 star = exactly 2/5 correct picks; gems match pick-for-pick).
+One defect found and **already fixed** (Reader's Ms. Lumi rendered 2.1× too big — scene
+scale corrected); one cosmetic left open (long StorySelect title runs under the PLAY badge).
+**What's left is the HUMAN half only, ~15 min:** play one story yourself and judge
+ⓐ does the reading window feel right at speed (D1/D2)? ⓑ sound + narration by ear
+ⓒ decide **D3** ("Your race: 1:42" on Results — the only spec element not in code, ~30 min).
+**Done when:** you say the feel is right (or name what isn't).
 
 ## 2 · Android Build Support — Task 5 (+1 → 91)
 **Who:** you. **How:** close Unity → Unity Hub → Installs → **6000.4.1f1** → Add modules →
