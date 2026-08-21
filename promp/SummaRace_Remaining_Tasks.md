@@ -1,7 +1,7 @@
 # SUMMARACE — REMAINING TASKS, UPDATES & FIXES
 ### Every open item, in execution order, with exact steps, owner, time, and how to verify
 
-**2026-08-21 (rev 4, HEAD `7bb6fec`+). CURRENT SCORE: 82/100 — Task 1 is DONE.**
+**2026-08-21 (rev 4, HEAD `7bb6fec`+). CURRENT SCORE: 85/100 — Tasks 1, 2 and 4 are DONE.**
 Everything NOT listed here is done, committed, and pushed (branch
 `experiment/endless-override-2`). Companion docs: `summaracefinal/SUMMARACE_BLUEPRINT.md`
 (design/logic — incl. §15 acceptance argument) · `SUMMARACE_UI_SPEC.md` (visuals) ·
@@ -16,9 +16,9 @@ and ⚫ post-study items carry **zero weight** — 100% never depends on optiona
 | Task | Credit | Running total |
 |---|---|---|
 | ✅ 1 — package collision removed, Editor tooling back — **DONE** (`7bb6fec`; `Assembly-CSharp-Editor.dll` compiled 14:32) | +2 | **82 ← we are here** |
-| ▶ 2 — full test suite green, count recorded — **NEXT** (Window ▸ General ▸ Test Runner ▸ EditMode ▸ Run All; expect ~56) | +2 | 84 |
-| 3 — full-loop portrait playtest clean (non-s01) | +5 | 89 |
-| 4 — hero-art compression | +1 | 90 |
+| ✅ 2 — **DONE**: suite ran for the FIRST TIME in project history — **57 green / 0 red** (56 SummaRace fixtures + the Addressables stub), owner-witnessed | +2 | 84 |
+| ▶ 3 — full-loop portrait playtest clean (non-s01) — **NEXT** | +5 | 90 (after T3) |
+| ✅ 4 — **DONE** (`e645bee`): all 30 heroes resized 1020×680 (÷4, exact 3:2) — compression unblocked; sources 57.2→30.8 MB; spot-check ASTC format during Task 3 | +1 | **85 ← we are here** (T3 pending) |
 | 5 — Android Build Support installed | +1 | 91 |
 | 6 — platform switched to Android | +0.5 | 91.5 |
 | 7 — Preflight: every ✖ fixed | +0.5 | 92 |
@@ -253,6 +253,11 @@ device-RAM budget applied · offline enforced by test · all finalization docs
   finish-to-unlock too.
 - **Arrange pool** now matches the prototype: side-by-side wrapped pills (2+2+1), yellow vs
   the slots — layout verified by portrait render.
+- **Scratch scenes:** only ONE leftover actually ships — legacy `Race.unity` (build index 6,
+  zero call sites, ~12–20 MB of APK via its 51.5 MB dependency closure; drop only if the
+  measured APK nears 300 MB). Trash Dash's own Main/Start/Shop, the _Recovery autosaves and
+  ~75 plugin/TMP demo scenes are NOT in Build Settings and cost the APK nothing — leave them
+  until post-study.
 
 ---
 
