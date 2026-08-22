@@ -117,7 +117,11 @@ namespace SummaRace.Features.SessionMap
                 // most: the same sprite in the same row one tap away (Story Select) means "how
                 // well you did", while here it means "stories finished" — so an unlabelled two
                 // stars is read wrongly by a teacher, not just by a child.
-                SummaRace.UI.SubtitleLine.Add(titleText, GameText.SessionMapSubtitle);
+                // Drawn LAST so the newly framed board (StyleBoard) cannot swallow it — the
+                // board's top edge moved up when it gained its rim, and the subtitle sat right
+                // under the title, half-behind it in the first capture.
+                var subtitle = SummaRace.UI.SubtitleLine.Add(titleText, GameText.SessionMapSubtitle);
+                if (subtitle != null) subtitle.transform.parent.SetAsLastSibling();
             }
 
             // Android BACK now answers instead of being swallowed (owner, 2026-08-22).
@@ -134,14 +138,21 @@ namespace SummaRace.Features.SessionMap
             int unlocked = UnlockedSession();
             int current = CurrentSession(unlocked);
 
+            // The board the ten tiles sit on, styled BEFORE them (owner references, 2026-08-23:
+            // "gold border and wood back, then dark card"). Every level-select he sent is one
+            // panel — gold rim, wood body, tiles floating on a darker inner face — and ours was
+            // a washed-out pale rectangle, which is why ten wood planks on it looked like too
+            // much wood: nothing framed them.
+            StyleBoard();
+
             for (int i = 0; i < stops.Length; i++)
                 SetupStop(stops[i], i + 1, unlocked, current);
 
-            // The ten stops were designed as a snaking journey but rendered as two columns of
-            // unconnected chips (owner device report, 2026-08-23: "is grid... the space of grid
-            // is small") — nothing said the stops are one road. A dotted trail drawn stop to
-            // stop makes the path readable without moving a single anchor.
-            BuildPathDots();
+            // NO PATH DOTS. They were my own addition, not from any reference the owner sent,
+            // and on the framed board they read as debris between the tiles ("what is that
+            // diamond in centre", 2026-08-23). A level-select board is a GRID of tiles; the
+            // journey is already told by the numbers and by which ones are open.
+            // BuildPathDots() intentionally not called.
 
             // Only explain the locks when some are actually locked.
             if (lockedHintText != null)
@@ -171,6 +182,62 @@ namespace SummaRace.Features.SessionMap
                 ? Core.GameManager.Instance.ConsumeJustCompletedSession()
                 : 0;
             if (justFinished > 0) StartCoroutine(CelebrateSession(justFinished));
+        }
+
+        /// <summary>
+        /// The level-select board: gold rim → wood body → dark inner face, the composition every
+        /// reference the owner sent is built on. Three layers because that is what makes the
+        /// tiles read: a wood tile on a wood board is camouflage, a wood tile on a DARK face is
+        /// a button. Built once (found by name on a revisit) and null-safe — no board, no change.
+        /// The inner face is inserted as the board's FIRST child so every tile still draws over it.
+        /// </summary>
+        private void StyleBoard()
+        {
+            var first = stops != null && stops.Length > 0 && stops[0] != null ? stops[0].button : null;
+            var board = first != null ? first.transform.parent as RectTransform : null;
+            if (board == null) return;
+
+            var boardImg = board.GetComponent<Image>();
+            var plank = Resources.Load<Sprite>("UI/wood_plaque");
+            if (boardImg != null && plank != null)
+            {
+                boardImg.sprite = plank;
+                boardImg.type = Image.Type.Sliced;
+                boardImg.color = Color.white;          // the wood body
+            }
+
+            if (board.Find("BoardFace") != null) return;
+
+            // Dark inner face, inset so the wood shows as a frame around it.
+            var face = new GameObject("BoardFace", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            var frt = (RectTransform)face.transform;
+            frt.SetParent(board, false);
+            frt.SetAsFirstSibling();
+            frt.anchorMin = Vector2.zero; frt.anchorMax = Vector2.one;
+            // Inset further at the TOP so the board's wood body shows as a real frame there and
+            // the subtitle above it is not swallowed by the new edge (first capture, 2026-08-23).
+            frt.offsetMin = new Vector2(30f, 30f); frt.offsetMax = new Vector2(-30f, -46f);
+            var faceImg = face.GetComponent<Image>();
+            faceImg.sprite = plank;
+            if (plank != null) faceImg.type = Image.Type.Sliced;
+            // Dark enough that a wood tile reads as a button on it, light enough that the board
+            // still looks like wood in shadow rather than a black hole — the references keep
+            // their inner face visibly brown, not near-black.
+            faceImg.color = new Color(0.34f, 0.24f, 0.16f, 0.90f);
+            faceImg.raycastTarget = false;
+
+            // Gold rim around the whole board — border only, so the wood body stays visible.
+            var rim = new GameObject("BoardRim", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            var rrt = (RectTransform)rim.transform;
+            rrt.SetParent(board, false);
+            rrt.SetAsLastSibling();                     // over the tiles' plates, but it is border-only
+            rrt.anchorMin = Vector2.zero; rrt.anchorMax = Vector2.one;
+            rrt.offsetMin = new Vector2(-6f, -6f); rrt.offsetMax = new Vector2(6f, 6f);
+            var rimImg = rim.GetComponent<Image>();
+            rimImg.sprite = Resources.Load<Sprite>("UI/panel_gold");
+            if (rimImg.sprite != null) rimImg.type = Image.Type.Sliced;
+            rimImg.fillCenter = false;                  // the gold edge only
+            rimImg.raycastTarget = false;
         }
 
         /// <summary>The thin wood picture-frame behind an OPEN stop — the owner's storybook
@@ -324,34 +391,68 @@ namespace SummaRace.Features.SessionMap
             // to gold-on-parchment. A LOCKED stop keeps the grey sprite and dark tint: "not
             // yet" reading as a dimmed object is exactly right, and the value gap between the
             // two states is finally real instead of 1.03:1.
+            // ---- THE LEVEL-SELECT TILE (owner references, 2026-08-23) ----------------------
+            // Redesigned against the wood level-select boards he sent: every tile is a WOOD
+            // PLANK — open or locked — with a big centred number, the three stars sitting
+            // UNDER the tile rather than crowded inside it, and a locked tile trading its
+            // number for a big padlock. Locked is the same plank drained and darkened, so the
+            // board reads as one set of ten and not as two different controls.
+            // ---- THE TILE MUST CONTRAST WITH WHAT IT SITS ON ------------------------------
+            // Wood tiles on a wood board is camouflage — that is the "weird" the owner kept
+            // seeing, and no amount of re-toning the board fixes it. The references work
+            // because their tiles are LIGHTER than the panel behind them. So: dark wood board
+            // (StyleBoard), LIGHT PARCHMENT tiles with dark ink numbers. Locked tiles are the
+            // same page dimmed, so the ten still read as one set.
             var background = stop.button.GetComponent<Image>();
-            // Owner's storybook rule, refined on device 2026-08-23: "wood only in border —
-            // don't use it in all design." A solid wood plate fought the parchment board, so
-            // an OPEN stop is a parchment page wearing a thin wood picture-frame (built
-            // below), with its number in the book's own ink. Locked keeps the dimmed grey.
-            var parchment = Resources.Load<Sprite>("UI/panel_gold");
-            if (playable && parchment != null && background != null)
+            var page = Resources.Load<Sprite>("UI/panel_gold");
+            if (background != null)
             {
-                background.sprite = parchment;
-                background.type = Image.Type.Sliced;
-                background.color = Color.white;
-                if (stop.numberText != null) stop.numberText.color = Theme.TextBrownDeep;
-                EnsureStopFrame(stop);
-            }
-            else if (background != null)
-            {
-                background.color = playable ? StopPlayable : StopLocked;
-                if (stop.numberText != null) stop.numberText.color = Color.white;
+                if (page != null)
+                {
+                    background.sprite = page;
+                    background.type = Image.Type.Sliced;
+                    background.color = playable ? Color.white : new Color(0.62f, 0.58f, 0.54f);
+                }
+                else background.color = playable ? StopPlayable : StopLocked;
             }
 
-            // Earned stars are gold on the page; empty ones are the page's own ink at a
-            // whisper — the olive steel used before read as mud on both plate styles.
+            // Number: dark ink on the page, hidden when locked (the padlock speaks instead).
+            if (stop.numberText != null)
+            {
+                stop.numberText.color = playable ? Theme.TextBrownDeep
+                                                 : Theme.Alpha(Theme.TextBrownDeep, 0.75f);
+                stop.numberText.fontStyle = TMPro.FontStyles.Bold;
+                stop.numberText.gameObject.SetActive(playable);
+            }
+
+            // Padlock: centred and large, the way every level-select in the references does it.
+            if (stop.lockIcon != null && !playable)
+            {
+                var lrt = stop.lockIcon.rectTransform;
+                lrt.anchorMin = lrt.anchorMax = lrt.pivot = new Vector2(0.5f, 0.5f);
+                lrt.anchoredPosition = Vector2.zero;
+                lrt.sizeDelta = new Vector2(96f, 96f);
+                stop.lockIcon.preserveAspect = true;
+                stop.lockIcon.color = Color.white;   // the padlock art on the dimmed page
+            }
+
+            // Stars UNDER the tile: gold when earned, a faint outline of the same when not, so
+            // the row reads as "3 to fill" instead of as scattered dots.
             if (stop.stars != null)
                 for (int i = 0; i < stop.stars.Length; i++)
                     if (stop.stars[i] != null)
-                        stop.stars[i].color = i < done
-                            ? (playable && parchment != null ? Theme.GoldDeep : StarOn)
-                            : (playable && parchment != null ? Theme.Alpha(Theme.TextBrownDeep, 0.28f) : StarOff);
+                    {
+                        stop.stars[i].color = i < done ? Theme.GoldDeep
+                                                       : Theme.Alpha(Theme.Wood, 0.45f);
+                        stop.stars[i].transform.localScale = Vector3.one * (i < done ? 1.25f : 1.1f);
+                        var srt = stop.stars[i].rectTransform;
+                        srt.anchorMin = srt.anchorMax = srt.pivot = new Vector2(0.5f, 0f);
+                        // Clear of the plank's own bottom edge: at -26 they were half-swallowed
+                        // by it (first capture of this design). The row sits fully below the
+                        // tile, like the references, and draws last so nothing overlaps it.
+                        srt.anchoredPosition = new Vector2((i - 1) * 42f, -44f);
+                        stop.stars[i].transform.SetAsLastSibling();
+                    }
 
             // The plates were sized for a board with far more breathing room than ten stops
             // need; on the device they read as small chips lost in cream. Scaled here rather
