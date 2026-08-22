@@ -67,10 +67,17 @@ Study_Operations_Runbook. No code change.
 ## 2d · Settings
 Stays cut (F43). VOICE lives in Reader, music behind the PIN. Post-study wishlist only.
 
-## Finish line (what "done" means)
-1. Six-fix verification in Play mode (Phase 1) ✅ code-committed, awaiting Editor restart
-2. 2a+2b landed and re-rendered
-3. EditMode tests green (restart unblocks the suite — expect 45+)
-4. SummaRace ▸ Build Preflight: FAIL 0
-5. APK built with Addressables, installed on the Infinix, full loop smoke test on device
-6. Owner plays 2-3 stories on device; researcher email sent
+## Finish line (what "done" means) — status 2026-08-22 23:15
+1. ✅ Six-fix verification in Play mode DONE: overlay raycaster/scaler probed live; MainMenu
+   BACK card on screen; badge in learner pill on screen; PLAY badge gold-on-navy on screen;
+   rain avgVel (0, -23.5, +5) probed + vertical streaks on screen; Lumi alpha 1.00 during
+   cheer → 0.00 after, probed. Race pause→leave exit path re-verified (timeScale/audio clean).
+2. ✅ 2b done (Results BACK registered — commit 163eb4e; runtime check pending next full loop).
+   2a readability: fresh captures of MainMenu/StorySelect/Race clean; TeacherMenu badge row +
+   Results BACK are the two owner-eyeball leftovers.
+3. ✅ EditMode tests: 59/59 PASSED in 2.7s (first run since the CS0433 collision).
+4. ⬜ OWNER: run SummaRace ▸ Build Preflight from the menu (must not be triggered via MCP —
+   it ends in a modal dialog that kills the bridge).
+5. ⬜ OWNER: Build APK (Addressables build with player, Android) → install on the Infinix →
+   full-loop smoke test on device.
+6. ⬜ OWNER: play 2-3 stories on device; send Documentation/Researcher_Email_Draft.md.
