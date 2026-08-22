@@ -59,5 +59,19 @@ namespace SummaRace.Constants
         /// that colour a word inside a longer line of body text.</summary>
         public static string InkHexForIndex(int index) =>
             ColorUtility.ToHtmlStringRGB(InkForIndex(index));
+
+        /// <summary>
+        /// Hex string (no #) of <see cref="PastelForIndex"/> - the light-on-DARK counterpart of
+        /// <see cref="InkHexForIndex"/>, for a coloured word inside a line of body text that
+        /// sits on one of this game's dark plaques rather than on cream.
+        ///
+        /// Measured against the race's question plaque (Theme.Ink at 0.86 alpha) over the three
+        /// backgrounds the road can actually supply - pure ink, a mid world, a bright sky - the
+        /// five pastels land at 8.4:1 to 13.4:1. The FULL palette colours over that same plaque
+        /// fall to 3.55-3.65:1 in the bright-sky case, which clears AA only for large text and
+        /// only just. Pastel on dark, Ink on cream; measure before inventing a third.
+        /// </summary>
+        public static string PastelHexForIndex(int index) =>
+            ColorUtility.ToHtmlStringRGB(PastelForIndex(index));
     }
 }

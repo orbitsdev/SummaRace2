@@ -784,6 +784,22 @@ namespace SummaRace.Constants
         /// </summary>
         public const string RaceGateTimerFar = "Next part coming up";
 
+        /// <summary>
+        /// The same chip on the FIFTH gate. Both prototypes mark the last one - mockup 19 puts a
+        /// large "FINISH LINE!" over the THEN cards - and we said nothing there at all.
+        ///
+        /// Worded as a milestone, never a warning. "Last part" is a fact about where the learner
+        /// is in the story; anything shaped like "last chance" would be a threat, and there is
+        /// nothing to be threatened by - a missed gate costs the first pick and the run carries
+        /// on to the finish exactly as it would have.
+        /// </summary>
+        public static string RaceLastGateTimer(int seconds) =>
+            "Last part in " + (seconds < 0 ? 0 : seconds) + "s";
+
+        /// <summary>The fifth gate's far form. Keeps an exclamation the near form does not, so
+        /// the LAST part arriving is the more emphatic of the two, not the less.</summary>
+        public const string RaceLastGateTimerFar = "Last part coming up!";
+
 
         /// <summary>
         /// The framing line in the race feedback pill on a wrong pick, one beat BEFORE the
@@ -808,7 +824,16 @@ namespace SummaRace.Constants
             "That happened, but it isn't this part.",
         };
 
-        /// <summary>Race HUD banner, e.g. "Collect: SOMEBODY  1/5".</summary>
+        /// <summary>
+        /// Race HUD banner, e.g. "Collect: SOMEBODY  1/5".
+        ///
+        /// UNUSED - zero call sites, verified 2026-08-22. The HUD element it describes does not
+        /// exist: progress is the five-plaque tracker, and the slot word now rides on the
+        /// question line (EndlessRaceDirector.SetQuestionForElement). Kept rather than deleted
+        /// only because the EditMode fixtures cannot be compiled while the Adjoint/MCP package
+        /// collision stands, so a deletion cannot be checked against them today. Delete it in
+        /// the same pass that gets Assembly-CSharp-Editor building again.
+        /// </summary>
         public static string RaceCollectBanner(string elementType, int number, int total) =>
             $"Collect: {elementType}  {number}/{total}";
 

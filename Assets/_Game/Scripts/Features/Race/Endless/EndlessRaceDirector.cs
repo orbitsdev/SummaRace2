@@ -225,6 +225,10 @@ namespace SummaRace.Features.Race.Endless
         [SerializeField] private GameObject finishFxPrefab;
         private UnityEngine.AnimatorOverrideController _danceOverride;
 
+        /// <summary>Whether the chip's last-painted text used the fifth gate's wording. Part of
+        /// the repaint cache key alongside the second, so the two forms cannot stick.</summary>
+        private bool _gateTimerLastShown;
+
         private Transform _patrol;
         private Animator _patrolAnim;
         /// <summary>The run state on PatrolAnimator. A name, because the cop's controller is
@@ -2533,8 +2537,37 @@ namespace SummaRace.Features.Race.Endless
         {
             if (_questionLabel == null) return;
             var hints = SummaRace.Constants.GameText.ReaderSlotHints;
-            _questionLabel.text = (element >= 0 && hints != null && element < hints.Length)
-                ? hints[element] : string.Empty;
+            if (element < 0 || hints == null || element >= hints.Length)
+            {
+                _questionLabel.text = string.Empty;
+                return;
+            }
+
+            // THE FIVE WORDS WERE ABSENT FROM THE ENTIRE RACE, and this line is where they
+            // belong. Before this the run showed a pulsing "S" on the tracker and asked "Who is
+            // this story about?", and never once said that the S stands for SOMEBODY or that the
+            // two are the same slot. Both prototypes name the framework - the canva banner reads
+            // "Collect: SOMEBODY", the web one "Who is the story about? (Somebody)" - and the
+            // race is the rung of the ladder where the support is gone, so a learner who has
+            // lost the label loses the gate for a VOCABULARY reason rather than a comprehension
+            // one. That is measurement error, not difficulty.
+            //
+            // The question stays and the word is appended, rather than swapping to the canva's
+            // "Collect: X" alone: the short form reads faster but assumes the learner already
+            // knows what SOMEBODY means, which is the assumption the run is testing.
+            //
+            // Validity is untouched, by the same argument as the question itself: the word is
+            // identical for all three options and identical across all thirty stories, so it
+            // cannot be used to choose without reading. It names the SLOT, never the answer.
+            //
+            // Pastel, not the full palette colour - this plaque is Theme.Ink and the full
+            // colours fall to 3.6:1 over a bright sky. See SwbstPalette.PastelHexForIndex.
+            var type = (_story != null && _story.elements != null && element < _story.elements.Length)
+                ? _story.elements[element].type : null;
+            if (string.IsNullOrEmpty(type)) { _questionLabel.text = hints[element]; return; }
+
+            _questionLabel.text = hints[element] + "   <color=#"
+                + SummaRace.Constants.SwbstPalette.PastelHexForIndex(element) + ">" + type + "</color>";
         }
 
         private void HideOptionPreview()
@@ -2627,6 +2660,17 @@ namespace SummaRace.Features.Race.Endless
 
             bool show = false;
             int seconds = 0;
+            // MOCKUP 19 PAIRS THE LAST GATE WITH A BIG "FINISH LINE!" while the THEN cards are
+            // still on screen. We had no equivalent: the banner stays empty for the whole of the
+            // fifth gate and only speaks AFTER it resolves, so the one beat of a 90-107s run
+            // that most wants a "nearly there" was the one beat that said nothing.
+            //
+            // It goes in the CHIP rather than the banner deliberately. Both hang off the same
+            // anchor under the reading board - banner at -12px, chip at -14px - and they only
+            // coexist today because the banner speaks solely at element 5, where the chip is
+            // hidden. A fifth-gate line in the banner would land on top of the countdown that is
+            // still running. Same plaque, same moment, no new geometry.
+            bool lastGate = false;
 
             if (track != null && _runReleased && !_finished && !_paused && !_leaving && !_revealing
                 && SummaRace.Constants.GameRules.RaceGateTimerVisibleSeconds > 0f)
@@ -2634,6 +2678,7 @@ namespace SummaRace.Features.Race.Endless
                 bool active = _activeGateRoot != null;
                 int element = active ? _activeElement : _pendingElement;
                 float target = active ? _activeGateDistance : _pendingGateDistance;
+                lastGate = element == 4;
 
                 if (element >= 0 && element < 5 && target >= 0f)
                 {
@@ -2657,12 +2702,17 @@ namespace SummaRace.Features.Race.Endless
             if (!show) { _gateTimerShown = -1; return; }
 
             // Repaint on the second, not every frame: TMP rebuilds its mesh on every text set.
-            if (seconds == _gateTimerShown) return;
+            // The last-gate flag is part of the cache key - without it, a fifth gate arriving on
+            // the same second reading as the fourth would keep the fourth's wording.
+            if (seconds == _gateTimerShown && lastGate == _gateTimerLastShown) return;
             _gateTimerShown = seconds;
+            _gateTimerLastShown = lastGate;
             if (_gateTimerText != null)
                 _gateTimerText.text = seconds == FarSentinel
-                    ? SummaRace.Constants.GameText.RaceGateTimerFar
-                    : SummaRace.Constants.GameText.RaceGateTimer(seconds);
+                    ? (lastGate ? SummaRace.Constants.GameText.RaceLastGateTimerFar
+                                : SummaRace.Constants.GameText.RaceGateTimerFar)
+                    : (lastGate ? SummaRace.Constants.GameText.RaceLastGateTimer(seconds)
+                                : SummaRace.Constants.GameText.RaceGateTimer(seconds));
         }
 
         /// <summary>
@@ -4460,8 +4510,29 @@ namespace SummaRace.Features.Race.Endless
             letter.color = SummaRace.Constants.SwbstPalette.InkForIndex(index);   // 5.2-7.4:1 on cream
             letter.fontStyle = FontStyles.Bold;
             letter.rectTransform.sizeDelta = new Vector2(150f, 140f);
-            // Lifted clear of the accent strip so a letter never sits on it.
-            letter.rectTransform.anchoredPosition = new Vector2(0f, 8f);
+            // Lifted clear of the accent strip AND of the word beneath it.
+            letter.rectTransform.anchoredPosition = new Vector2(0f, 22f);
+
+            // THE WORD ITSELF, under its initial. The briefing is the one place in the race with
+            // no reading-time pressure - the world is held until the learner taps START - so it
+            // is the cheapest place to teach the mapping the in-race tracker then uses as
+            // shorthand. A chip showing only "S" is a mnemonic for something never stated.
+            //
+            // Autosized with NoWrap rather than clipped: SOMEBODY is the long one and it must
+            // SHRINK to fit, never ellipsise into "SOMEB..." - the exact defect F47 had to fix
+            // on the tracker, and there is no reason to reintroduce it here.
+            if (!string.IsNullOrEmpty(type))
+            {
+                var word = MakeHudText(chip.transform, new Vector2(0.5f, 0f), new Vector2(0f, 32f), 20f);
+                word.text = type;
+                word.color = SummaRace.Constants.SwbstPalette.InkForIndex(index);
+                word.fontStyle = FontStyles.Bold;
+                word.enableAutoSizing = true;
+                word.fontSizeMin = 10f;
+                word.fontSizeMax = 20f;
+                word.textWrappingMode = TextWrappingModes.NoWrap;
+                word.rectTransform.sizeDelta = new Vector2(150f, 34f);
+            }
 
             // The five parts introduce themselves one by one.
             chip.transform.localScale = Vector3.zero;
