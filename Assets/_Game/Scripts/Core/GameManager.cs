@@ -376,13 +376,18 @@ namespace SummaRace.Core
 
         /// <summary>Pins the active learner so the next launch resumes the same child rather
         /// than silently reverting to the first profile.</summary>
-        private static void SaveActiveLearnerId(string id)
+        /// <summary>
+        /// Persists who is holding the tablet. Returns false only when a write was attempted and
+        /// failed - no SaveManager (editor-direct) and "already this id" both count as success,
+        /// because in neither case is there anything the caller should warn about.
+        /// </summary>
+        private static bool SaveActiveLearnerId(string id)
         {
-            if (SaveManager.Instance == null) return;
+            if (SaveManager.Instance == null) return true;   // editor-direct: nothing to write
             var settings = SaveManager.Instance.LoadSettings();
-            if (string.Equals(settings.activeLearnerId, id, StringComparison.Ordinal)) return;
+            if (string.Equals(settings.activeLearnerId, id, StringComparison.Ordinal)) return true;
             settings.activeLearnerId = id;
-            SaveManager.Instance.SaveSettings(settings);
+            return SaveManager.Instance.SaveSettings(settings);
         }
 
         /// <summary>Updates profile progress and writes it to disk.</summary>

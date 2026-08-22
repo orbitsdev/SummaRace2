@@ -49,8 +49,36 @@ namespace SummaRace.Features.Summary
         private const float HintTailX = 0.12f;
         private const float HintTailSize = 34f;
 
+        /// <summary>Padding around the nudge line's backing pill, in reference pixels. Wider than
+        /// tall: the nudge band (y 0.265-0.32) is only 106 px, so vertical padding would eat the
+        /// text's own room, while the band spans x 0.03-0.97 with margin to spare either side.</summary>
+        private const float NudgePadX = 40f;
+        private const float NudgePadY = 14f;
+
+        // --- remaining-characters cue (see EnsureCharCounter) ---------------------------
+        /// <summary>Remaining characters at which the counter appears. Deliberately late: a
+        /// counter that is on screen from the first keystroke turns a writing task into a
+        /// budgeting one, and 28 of the 30 stories cannot get near the cap at all. Local rather
+        /// than in GameRules for the same reason the layout constants above are — it is a
+        /// property of THIS screen's cue, not a rule of the game.</summary>
+        private const int CharCounterShowAt = 40;
+
+        /// <summary>Remaining characters at which the counter turns amber. Attention, never a
+        /// punishment (Theme.AmberWarn exists for exactly this distinction).</summary>
+        private const int CharCounterUrgentAt = 15;
+
         private StoryData _story;
         private int _nudgeCount;
+
+        /// <summary>Navy pill drawn behind the nudge line, shown only while a nudge is up.</summary>
+        private GameObject _nudgeBacking;
+
+        private GameObject _charCounterRoot;
+        private TMP_Text _charCounter;
+
+        /// <summary>Latches the one sound the cap gets, so holding a key down at the limit does
+        /// not machine-gun it.</summary>
+        private bool _capAnnounced;
 
         /// <summary>Guards the hand-off. Two taps on SUBMIT used to raise SummarySubmitted
         /// twice and ask for the Results scene twice — the second load is swallowed by
@@ -131,14 +159,18 @@ namespace SummaRace.Features.Summary
                 hintText.text = GameText.SummaryHint;
                 BuildHintBubble();
             }
-            if (nudgeText != null) nudgeText.text = "";
+            if (nudgeText != null)
+            {
+                nudgeText.text = "";
+                EnsureNudgeBacking();
+            }
             if (summaryInput != null)
             {
                 summaryInput.characterLimit = GameRules.SummaryMaxChars;
                 // A nudge that stays on screen while the learner is already fixing the
                 // sentence reads as "still wrong" and is the one thing here that could feel
                 // like being told off. It clears the moment they start typing again.
-                summaryInput.onValueChanged.AddListener(_ => ClearNudge());
+                summaryInput.onValueChanged.AddListener(OnSummaryChanged);
             }
             if (submitButton != null) submitButton.onClick.AddListener(OnSubmit);
 
@@ -153,7 +185,11 @@ namespace SummaRace.Features.Summary
             }
 
             EnsureTipsBlock();
+            EnsureCharCounter();
             EnsureDoneTypingChip();
+            // Once, with whatever is already in the box (nothing, in every real run) so the
+            // counter starts in a state that matches the field rather than merely hidden.
+            if (summaryInput != null) RefreshCharCounter(summaryInput.text);
             if (doneTypingButton != null)
             {
                 // Through OnDoneTyping, not StopTyping directly: the tap needs its own click, and
@@ -249,8 +285,7 @@ namespace SummaRace.Features.Summary
             if (_nudgeCount < GameRules.SummaryMaxNudges && !PassesLightChecks(text))
             {
                 if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxNotQuite);
-                if (nudgeText != null)
-                    nudgeText.text = GameText.SummaryNudges[NudgeIndexFor(text)];
+                SetNudge(GameText.SummaryNudges[NudgeIndexFor(text)]);
                 _nudgeCount++;
                 return;
             }
@@ -260,7 +295,71 @@ namespace SummaRace.Features.Summary
 
         private void ClearNudge()
         {
-            if (nudgeText != null && nudgeText.text.Length > 0) nudgeText.text = "";
+            if (nudgeText != null && nudgeText.text.Length > 0) SetNudge("");
+        }
+
+        /// <summary>
+        /// Writes the nudge and shows or hides its backing together, so the pill can never be
+        /// left on screen empty and the words can never be left on screen bare.
+        /// </summary>
+        private void SetNudge(string message)
+        {
+            if (nudgeText != null) nudgeText.text = message;
+            if (_nudgeBacking != null) _nudgeBacking.SetActive(!string.IsNullOrEmpty(message));
+        }
+
+        /// <summary>Every keystroke: clear a stale nudge, and keep the room-left cue honest.</summary>
+        private void OnSummaryChanged(string value)
+        {
+            ClearNudge();
+            RefreshCharCounter(value);
+        }
+
+        /// <summary>
+        /// THE CAP WAS COMPLETELY SILENT. At GameRules.SummaryMaxChars the field simply stops
+        /// accepting keys — no counter, no colour, no sound, nothing on screen changes — so to a
+        /// nine-year-old the tablet has broken mid-sentence. It is not hypothetical. Measured
+        /// across all 30 stories, the five SWBST `correct` lines concatenated with NO connecting
+        /// words at all come to more than 200 characters in two of them (worst case s04_hard at
+        /// 244) and to more than 180 in thirteen — so once a child adds "wanted", "but", "so",
+        /// "then" and punctuation, a large part of the corpus can reach the cap while doing
+        /// exactly what this screen asked.
+        ///
+        /// ⚠️ If GameRules.SummaryMaxChars is ever raised, ResultsController's summary card must
+        /// be re-measured with it — its padding and font floor were sized against exactly 200.
+        ///
+        /// This is a CUE, not a limit and not a target. It says nothing about the sentence, only
+        /// about the box: it stays hidden until the last stretch, warms to amber near the end,
+        /// and at zero says the box is full rather than that the learner is wrong.
+        /// </summary>
+        private void RefreshCharCounter(string value)
+        {
+            if (_charCounterRoot == null || _charCounter == null) return;
+
+            int used = value != null ? value.Length : 0;
+            int remaining = Mathf.Max(0, GameRules.SummaryMaxChars - used);
+            bool show = remaining <= CharCounterShowAt;
+
+            if (_charCounterRoot.activeSelf != show) _charCounterRoot.SetActive(show);
+            if (!show)
+            {
+                _capAnnounced = false;   // re-arms if they delete back below the cap and refill
+                return;
+            }
+
+            _charCounter.text = GameText.SummaryCharsLeft(remaining);
+            // Amber on the navy pill measures 7.3:1 — well past AA, and amber rather than red
+            // because running out of room is not a mistake (D7).
+            _charCounter.color = remaining <= CharCounterUrgentAt ? Theme.AmberWarn : ChipText;
+
+            if (remaining == 0 && !_capAnnounced)
+            {
+                _capAnnounced = true;
+                // Deliberately SfxPop, the neutral "something appeared" sound, and NOT
+                // SfxNotQuite: the keys stopping is a fact about the box, and the nudge sound
+                // would tell a child their sentence had been judged.
+                if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxPop);
+            }
         }
 
         /// <summary>
@@ -268,37 +367,149 @@ namespace SummaRace.Features.Summary
         /// the list in order: a learner who wrote three good lines but never named the Somebody
         /// used to be told "try writing a little more", which is advice for a different problem
         /// and cannot be acted on. The nudge count the study logs is unchanged.
+        ///
+        /// THERE ARE THREE WAYS TO FAIL AND THERE WERE ONLY TWO NUDGES. The clamp meant the
+        /// third mode — wrote plenty, named the Somebody, but used three sentences — collapsed
+        /// onto nudge 1, which told the child to "start with the Somebody" they had already
+        /// named. Being corrected for something you did right is worse than no feedback at all,
+        /// and it burned one of the only two nudges the screen is allowed.
+        ///
+        /// Ordered by what the learner can act on first: with fewer than SummaryMinWords there
+        /// is nothing else worth judging; a missing protagonist is a gap in the CONTENT; and the
+        /// sentence count is the last thing left once the content is there. The clamp stays so
+        /// that a GameText.SummaryNudges array with only two entries degrades to the previous
+        /// behaviour instead of throwing on a screen the learner cannot leave.
         /// </summary>
         private int NudgeIndexFor(string text)
         {
-            bool tooShort = string.IsNullOrWhiteSpace(text) ||
-                            text.Split(' ', System.StringSplitOptions.RemoveEmptyEntries).Length
-                                < GameRules.SummaryMinWords;
-            return Mathf.Clamp(tooShort ? 0 : 1, 0, GameText.SummaryNudges.Length - 1);
+            int index;
+            if (!HasEnoughWords(text)) index = 0;            // wrote too little
+            else if (!MentionsSomebody(text)) index = 1;     // never said who it is about
+            else index = 2;                                  // more than one sentence
+            return Mathf.Clamp(index, 0, GameText.SummaryNudges.Length - 1);
         }
 
+        /// <summary>
+        /// The accept test, expressed as the same three predicates NudgeIndexFor asks about, so
+        /// the two cannot disagree about why a sentence was held back. Never a score: it decides
+        /// whether to nudge, and after GameRules.SummaryMaxNudges the answer stops being asked.
+        /// </summary>
         private bool PassesLightChecks(string text)
+        {
+            return HasEnoughWords(text) && IsOneSentence(text) && MentionsSomebody(text);
+        }
+
+        /// <summary>At least a few words of effort.</summary>
+        private static bool HasEnoughWords(string text)
+        {
+            return !string.IsNullOrWhiteSpace(text)
+                && text.Split(' ', System.StringSplitOptions.RemoveEmptyEntries).Length
+                       >= GameRules.SummaryMinWords;
+        }
+
+        /// <summary>One sentence: no sentence break before the final punctuation.</summary>
+        private static bool IsOneSentence(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return true;
+            string body = text.TrimEnd('.', '!', '?', ' ');
+            return body.IndexOfAny(new[] { '.', '!', '?' }) < 0;
+        }
+
+        /// <summary>
+        /// Does the sentence name the story's Somebody?
+        ///
+        /// TWO DEFECTS, and both of them polluted a logged variable. The old test was
+        /// <c>word.Length &gt; 2 &amp;&amp; lower.Contains(word)</c>, so:
+        ///
+        /// (1) SUBSTRING, not word. "the" from "The Giant" matched "there", "then", "other",
+        ///     "together", "brother"; "and" matched "sand", "handed", "understand"; "her"
+        ///     matched "there", "other", "where". Nine of the thirty Somebody lines contain one
+        ///     of those four words, and on every one of them ANY sentence carrying the substring
+        ///     passed this check. <c>nudgeCount</c> is exported per run, so part of what it was
+        ///     measuring was WHICH STORY THE CHILD HAPPENED TO DRAW.
+        /// (2) The length floor was 3 characters (<c>&gt; 2</c>), which is exactly what let those
+        ///     four function words be candidates in the first place.
+        ///
+        /// Now: whole-word matching, and function words are not candidates. Punctuation does not
+        /// break a match, so "Molly's" and "Molly," still name Molly.
+        ///
+        /// If nothing survives the filter — a Somebody made entirely of short function words —
+        /// the check PASSES. Nudging a child twice for something no sentence of theirs could
+        /// satisfy is the failure mode this is guarding, the same reasoning as the
+        /// no-elements case below (GDD D7, never punish). Verified against all 30 stories:
+        /// every one leaves at least one candidate word today, so this is a guard, not a path.
+        /// </summary>
+        private bool MentionsSomebody(string text)
         {
             if (string.IsNullOrWhiteSpace(text)) return false;
 
-            // At least a few words of effort.
-            if (text.Split(' ', System.StringSplitOptions.RemoveEmptyEntries).Length < GameRules.SummaryMinWords)
-                return false;
+            // A story with no elements cannot supply a Somebody to look for, so this could only
+            // ever fail. Broken content passes instead (GDD D7).
+            if (_story == null || _story.elements == null || _story.elements.Length == 0) return true;
+            var somebody = _story.elements[0] != null ? _story.elements[0].correct : null;
+            if (string.IsNullOrWhiteSpace(somebody)) return true;
 
-            // One sentence: no sentence breaks before the final punctuation.
-            string body = text.TrimEnd('.', '!', '?', ' ');
-            if (body.IndexOfAny(new[] { '.', '!', '?' }) >= 0) return false;
-
-            // A story with no elements cannot supply a Somebody to look for, so the check
-            // below could only ever fail — the learner would be nudged twice for something no
-            // sentence of theirs could fix. Broken content passes instead (GDD D7).
-            if (_story.elements == null || _story.elements.Length == 0) return true;
-
-            // Mentions the Somebody (any word of it, e.g. "Molly").
             string lower = text.ToLowerInvariant();
-            foreach (var word in _story.elements[0].correct.ToLowerInvariant().Split(' '))
-                if (word.Length > 2 && lower.Contains(word)) return true;
+            bool anyCandidate = false;
+            foreach (var raw in somebody.ToLowerInvariant().Split(' '))
+            {
+                string word = TrimToWord(raw);
+                if (word.Length == 0 || IsSomebodyStopWord(word)) continue;
+                anyCandidate = true;
+                if (ContainsWholeWord(lower, word)) return true;
+            }
+            return !anyCandidate;
+        }
 
+        /// <summary>
+        /// Function words that must never stand in for the Somebody. All four are three
+        /// characters, so the length rule below already excludes them — they are named anyway
+        /// because they are the ones that actually occur in the thirty Somebody lines, so a
+        /// later edit that relaxes the length rule cannot quietly re-open the hole.
+        /// </summary>
+        private static readonly string[] SomebodyStopWords = { "and", "the", "his", "her" };
+
+        private static bool IsSomebodyStopWord(string word)
+        {
+            if (word.Length <= 3) return true;
+            foreach (var stop in SomebodyStopWords)
+                if (word == stop) return true;
+            return false;
+        }
+
+        /// <summary>Strips punctuation off both ends of a word — the Somebody lines carry commas
+        /// ("Maggie, Travis, and Lucy") and the learner's typing carries everything.</summary>
+        private static string TrimToWord(string raw)
+        {
+            int start = 0, end = raw.Length;
+            while (start < end && !char.IsLetterOrDigit(raw[start])) start++;
+            while (end > start && !char.IsLetterOrDigit(raw[end - 1])) end--;
+            return raw.Substring(start, end - start);
+        }
+
+        /// <summary>
+        /// <paramref name="needle"/> as a WHOLE word inside <paramref name="haystack"/> (both
+        /// already lowercased). A letter or digit on either side breaks the match; punctuation
+        /// does not, so "Molly's" and "(Molly)" both count. Scans past a failed boundary rather
+        /// than giving up, so a later legitimate occurrence is still found.
+        /// </summary>
+        private static bool ContainsWholeWord(string haystack, string needle)
+        {
+            if (string.IsNullOrEmpty(haystack) || string.IsNullOrEmpty(needle)) return false;
+
+            int from = 0;
+            while (from <= haystack.Length - needle.Length)
+            {
+                int at = haystack.IndexOf(needle, from, System.StringComparison.Ordinal);
+                if (at < 0) return false;
+
+                bool leftClear = at == 0 || !char.IsLetterOrDigit(haystack[at - 1]);
+                int end = at + needle.Length;
+                bool rightClear = end >= haystack.Length || !char.IsLetterOrDigit(haystack[end]);
+                if (leftClear && rightClear) return true;
+
+                from = at + 1;
+            }
             return false;
         }
 
@@ -437,6 +648,123 @@ namespace SummaRace.Features.Summary
             panelGo.AddComponent<SummaRace.UI.PanelIntro>();
         }
 
+        /// <summary>
+        /// A backing pill behind the nudge line.
+        ///
+        /// The nudge is the ONLY feedback this screen ever gives, and it was drawn straight onto
+        /// the painted sky backdrop at about 2.15:1 — under WCAG's 4.5:1 floor for body text,
+        /// and varying with whichever pixel of sky it happened to land over. So the one sentence
+        /// a struggling learner is meant to act on was the least readable thing on the screen.
+        ///
+        /// Same construction as EnsureTipsBlock, for the same reason: Paper on the navy pill is
+        /// 12.9:1 whatever the backdrop does. NOTE the sprite at Resources/UI/bar_bg is ITSELF
+        /// navy and Image.color MULTIPLIES it — tinting it cream yields near-black. It is left
+        /// at the default white so the navy shows through, which is the pairing already proven
+        /// by the tips block and the DONE TYPING chip on this screen.
+        ///
+        /// A SIBLING inserted at the nudge's own index, never a child: uGUI draws a parent's
+        /// graphic before its children, so a child would cover the words it is meant to sit
+        /// behind (the same trap the hint bubble above documents). Hidden until there is
+        /// something to say — see SetNudge.
+        /// </summary>
+        private void EnsureNudgeBacking()
+        {
+            if (_nudgeBacking != null) return;
+
+            var host = nudgeText.rectTransform;
+            var parent = host.parent as RectTransform;
+            if (parent == null) return;
+
+            _nudgeBacking = new GameObject("NudgeBacking", typeof(RectTransform));
+            _nudgeBacking.transform.SetParent(parent, false);
+            _nudgeBacking.transform.SetSiblingIndex(host.GetSiblingIndex());
+
+            var image = _nudgeBacking.AddComponent<Image>();
+            var pill = Resources.Load<Sprite>("UI/bar_bg");   // navy 9-sliced pill
+            if (pill != null) { image.sprite = pill; image.type = Image.Type.Sliced; }
+            else image.color = ChipFallback;                  // no sprite: flat navy, still legible
+            image.raycastTarget = false;                      // never intercepts a tap aimed at SUBMIT
+
+            var rt = (RectTransform)_nudgeBacking.transform;
+            rt.anchorMin = host.anchorMin;
+            rt.anchorMax = host.anchorMax;
+            rt.pivot = host.pivot;
+            rt.anchoredPosition = host.anchoredPosition;
+            rt.sizeDelta = host.sizeDelta + new Vector2(NudgePadX, NudgePadY);
+
+            // Cream on navy. The nudge inherited a colour chosen for the sky it used to sit on.
+            nudgeText.color = ChipText;
+
+            _nudgeBacking.SetActive(false);   // nothing to say yet
+        }
+
+        /// <summary>
+        /// The room-left cue (see RefreshCharCounter for WHY it exists).
+        ///
+        /// WHERE, and why it is the only place it can go. Measured off Summary.unity, the
+        /// portrait screen is full: SpeechBubble 0.885-0.962, ReferenceCard 0.66-0.88, the hint
+        /// row 0.60-0.655, the input 0.33-0.585, the nudge 0.265-0.32, SUBMIT 0.13-0.225 and the
+        /// tips block 0.02-0.11. The only gaps are a few reference pixels wide.
+        ///
+        /// It also has to be ABOVE the soft keyboard, which covers roughly the bottom 45% of a
+        /// portrait tablet — a counter the learner cannot see WHILE TYPING is no counter at all,
+        /// which rules out every band under y 0.45, including the input's own bottom edge. That
+        /// leaves the hint row, so this takes its right-hand end and the DONE TYPING chip
+        /// narrows to make room (the hint's typing clamp is 0.63, leaving a 16 px gutter, so the
+        /// sentence frame's wrapping is untouched). Both are only ever on screen while typing,
+        /// and neither can now sit on the other.
+        ///
+        /// Two lines inside one small pill: the number large, the word small under it. "40" on
+        /// its own is a riddle, and there is no horizontal room for "40 characters left".
+        /// </summary>
+        private void EnsureCharCounter()
+        {
+            if (_charCounterRoot != null) return;
+
+            var root = ResolveSceneCanvas();
+            if (root == null) return;
+
+            _charCounterRoot = new GameObject("CharCounter", typeof(RectTransform));
+            _charCounterRoot.transform.SetParent(root, false);
+            var rect = (RectTransform)_charCounterRoot.transform;
+            rect.anchorMin = new Vector2(0.645f, 0.598f);
+            rect.anchorMax = new Vector2(0.735f, 0.652f);
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+            rect.SetAsLastSibling();
+
+            var image = _charCounterRoot.AddComponent<Image>();
+            var pill = Resources.Load<Sprite>("UI/bar_bg");   // navy 9-sliced pill, as above
+            if (pill != null) { image.sprite = pill; image.type = Image.Type.Sliced; }
+            else image.color = ChipFallback;
+            image.raycastTarget = false;   // it is a readout, not a control
+
+            var labelGo = new GameObject("Label", typeof(RectTransform));
+            labelGo.transform.SetParent(_charCounterRoot.transform, false);
+            _charCounter = labelGo.AddComponent<TextMeshProUGUI>();
+            // SUBMIT's face (Fredoka) — this is a number to glance at, not prose to read.
+            if (submitLabel != null && submitLabel.font != null) _charCounter.font = submitLabel.font;
+            _charCounter.text = "";
+            _charCounter.enableAutoSizing = true;
+            // Floor at the readability audit's 22 pt acuity minimum for the 10.1" target; the
+            // ceiling lets a one- or two-digit number fill the pill. Wrapping is ON because the
+            // string is deliberately two lines.
+            _charCounter.fontSizeMin = 22f;
+            _charCounter.fontSizeMax = 34f;
+            _charCounter.alignment = TextAlignmentOptions.Center;
+            _charCounter.textWrappingMode = TextWrappingModes.Normal;
+            _charCounter.color = ChipText;
+            _charCounter.raycastTarget = false;
+
+            var labelRect = _charCounter.rectTransform;
+            labelRect.anchorMin = Vector2.zero;
+            labelRect.anchorMax = Vector2.one;
+            labelRect.offsetMin = new Vector2(8f, 4f);
+            labelRect.offsetMax = new Vector2(-8f, -4f);
+
+            _charCounterRoot.SetActive(false);   // silent until the cap is in sight
+        }
+
         /// Builds the chip when the scene has no object for it. Serialized wiring wins if it
         /// ever gains one; built here so the escape hatch ships without a scene edit (same
         /// idiom as SceneLoader's overlay and the race briefing).
@@ -453,8 +781,11 @@ namespace SummaRace.Features.Summary
             chipGo.transform.SetParent(root, false);
             var rect = (RectTransform)chipGo.transform;
             // Level with the hint, right-hand end: above the input box and far above anything
-            // the keyboard can reach.
-            rect.anchorMin = new Vector2(0.66f, 0.598f);
+            // the keyboard can reach. Left edge 0.66 -> 0.74 to seat the room-left counter
+            // beside it (EnsureCharCounter owns 0.645-0.735); at 0.23 wide the pill still gives
+            // "DONE TYPING" 228 px of inner width against roughly 150 px at the 22 pt floor, so
+            // the NoWrap label has not lost any headroom.
+            rect.anchorMin = new Vector2(0.74f, 0.598f);
             rect.anchorMax = new Vector2(0.97f, 0.652f);
             rect.offsetMin = Vector2.zero;
             rect.offsetMax = Vector2.zero;

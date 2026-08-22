@@ -191,6 +191,32 @@ namespace SummaRace.Constants
             $"WARNING: {code} is on two learners here. The export cannot tell them apart.";
         public static string TeacherActiveLearner(string name) => $"Now playing: {name}";
 
+        /// <summary>
+        /// The learner switch did not persist. Said this loudly because the failure is silent and
+        /// expensive: the tablet plays as the new child for this session and reverts on the next
+        /// launch, so that session's stars, unlocks and log rows land on the WRONG CHILD, and
+        /// nothing detects it until analysis.
+        /// </summary>
+        public const string TeacherLearnerSwitchFailed =
+            "Could not switch learner on this device - this tablet is still set to the previous " +
+            "child. Do not start a session until this is fixed.";
+
+        /// <summary>A settings write failed. Its own line, because reporting it with the success
+        /// string ("Music is on for this tablet") is what this replaced.</summary>
+        public const string TeacherMusicSaveFailed =
+            "Could not change the music setting on this device.";
+
+        /// <summary>
+        /// AppendLog is fire-and-forget and returns void, so a tablet that filled up or lost write
+        /// permission throws on every row with no symptom at all except an export that looks like
+        /// an unused tablet. This is the last moment the problem is visible while the tablet is
+        /// still in the researcher's hand.
+        /// </summary>
+        public static string TeacherStorageWarning(int count, string reason) =>
+            $"This tablet has had {count} storage problem(s) this session" +
+            (string.IsNullOrEmpty(reason) ? "." : $" (latest: {reason}).") +
+            " Some log rows may be missing - export and check before the next session.";
+
         /// <summary>Discreet line on the Main Menu. A run recorded against the wrong child is
         /// unrecoverable, so it is worth naming who the tablet thinks is playing.</summary>
         public static string PlayingAs(string name) => $"Playing as {name}";
@@ -280,6 +306,25 @@ namespace SummaRace.Constants
         /// with (the EASY card has no lock label of its own).</summary>
         public static string LockedCardLine(string hint) => $"{LockedLabel} — {hint}";
 
+        /// <summary>The badge on a card whose story is already finished. It used to say PLAY,
+        /// which is what the ONE unfinished card says - so once a mission was part-done, two or
+        /// three identical PLAY badges meant "tap any of these" and the screen stopped pointing
+        /// anywhere. Replaying is still welcome; it is just not the ask.</summary>
+        public const string ReplayBadge = "REPLAY";
+
+        /// <summary>Under the star row on every Story Select card. Three gold stars mean
+        /// FIRST-PICK RACE ACCURACY here and STORIES FINISHED on the Session Map one tap earlier -
+        /// same sprite, same corner, opposite meanings, and neither screen said which.
+        /// SessionMapSubtitle already names the other one.</summary>
+        public const string StorySelectStarCaption = "Stars = your race score";
+
+        /// <summary>Story Select never named the mission its three stories belong to, even though
+        /// SelectedSession is already read there - so neither a learner nor a teacher glancing at
+        /// a tablet could tell session 3 from session 7. "Mission" is the word the Session Map
+        /// already uses for a session.</summary>
+        public static string StorySelectMissionLine(int session) =>
+            $"Mission {session}  ·  {StorySelectSubtitle}";
+
         /// <summary>Ms. Lumi's cheer on the race briefing.</summary>
         public const string RaceBriefingLumi = "Ready, runner?";
 
@@ -297,6 +342,20 @@ namespace SummaRace.Constants
         /// the device — "close keyboard" would ask a 9-year-old to think about the tablet, and
         /// it must never read as a second SUBMIT.</summary>
         public const string SummaryDoneTyping = "DONE TYPING";
+
+        /// <summary>
+        /// The room-left readout beside the summary box. Two lines because the pill it lives in
+        /// is only ~97 reference px wide and a bare "40" is a riddle; at zero it stops counting
+        /// and states the fact instead.
+        ///
+        /// It describes the BOX, never the sentence - no "too long", no "shorten this". The cap
+        /// stopping the keyboard silently is the thing this exists to explain.
+        /// </summary>
+        public static string SummaryCharsLeft(int remaining)
+        {
+            if (remaining <= 0) return "FULL";
+            return remaining + System.Environment.NewLine + "left";
+        }
 
 
         /// <summary>The two tips beside the Summary box (from the web prototype). Between
@@ -367,7 +426,8 @@ namespace SummaRace.Constants
         public static readonly string[] SummaryNudges =
         {
             "Write a little more — use the story parts above!",
-            "Almost! Try one sentence. Start with the Somebody.",
+            "Almost! Name the Somebody — who the story is about.",
+            "So close! Try putting it all into one sentence.",
         };
 
         // Praise lines by star count (index 1..3) — one picked at random per result
@@ -486,6 +546,20 @@ namespace SummaRace.Constants
         /// <summary>Small header above the tip card on the loading overlay.</summary>
         public const string LoadingLabel = "Loading...";
 
+        /// <summary>
+        /// Shown when the [Core] singletons failed to build. Plain language, no error code, no
+        /// blame - a Grade-4 learner may be the one holding the tablet, and until now this
+        /// failure produced a fully drawn MainMenu whose TAP TO START silently did nothing.
+        /// </summary>
+        public const string BootFailedBody =
+            "The game did not start.\nTap TRY AGAIN, or ask your teacher.";
+
+        /// <summary>The recovery button on that card. It reloads Boot directly through
+        /// SceneManager rather than SceneLoader, because SceneLoader may be the thing that
+        /// failed and Go() no-ops silently without an Instance - the retry would be the dead
+        /// end.</summary>
+        public const string BootFailedRetry = "TRY AGAIN";
+
         // Results screen
         public const string MainIdeaHeader = "Main Idea";
 
@@ -526,6 +600,18 @@ namespace SummaRace.Constants
         /// SAME session. Calling that "next mission" taught the wrong word for where the learner
         /// was going — the mission has not changed, only the story.</summary>
         public const string ResultsNextStoryLabel = "NEXT STORY";
+
+        /// <summary>The headline after the LAST story of the LAST session. Ten sessions of work
+        /// used to end on "Mission Cleared!" - the same line as the other twenty-nine - with a
+        /// button reading NEXT MISSION pointing at a map with no next mission on it. Same grammar
+        /// as ResultsCleared on purpose, so it reads as that line escalated rather than as a
+        /// different screen.</summary>
+        public const string ResultsAllMissionsCleared = "Every Mission Cleared!";
+
+        /// <summary>Continue button in that same final state. It still goes to the Session Map -
+        /// the only screen that shows all ten stops at once - so it names the journey rather than
+        /// a next thing that does not exist.</summary>
+        public const string ResultsJourneyDoneLabel = "SEE MY JOURNEY";
 
         // Reader narration toggle
         /// <summary>

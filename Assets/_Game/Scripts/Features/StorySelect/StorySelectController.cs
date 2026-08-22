@@ -112,15 +112,74 @@ namespace SummaRace.Features.StorySelect
         /// badge (which starts at x 0.60 — see BuildPlayBadge).</summary>
         private const float TitleClearOfBadgeX = 0.58f;
 
+        /// <summary>
+        /// What state a card is being dressed in. The screen used to know only two
+        /// (locked / playable), and that is exactly why the "tap this one" marking broke down:
+        /// a finished story stays replayable, so it stayed "playable" and kept its gold ring
+        /// and PLAY badge forever. After Easy was done two cards shouted; after all three,
+        /// three did — the signal died precisely when the learner most needs pointing.
+        /// </summary>
+        private enum CardState
+        {
+            /// <summary>Not open yet, or its story JSON is missing. Never the learner's fault.</summary>
+            Locked,
+            /// <summary>The one card being asked for. Gold ring + breath + glow + PLAY.</summary>
+            Next,
+            /// <summary>Already finished. Still tappable, but quietly: REPLAY, no ring.</summary>
+            Cleared
+        }
+
+        // --- the scene's floating glow (see PlaceGlow) ---------------------------------
+        /// <summary>Scene name of the soft gold halo under the cards. Historical — it was
+        /// authored behind the EASY card and hard-anchored there, which is the bug PlaceGlow
+        /// exists to undo. Renaming it would need a scene edit, so the name stays.</summary>
+        private const string GlowName = "EasyGlow";
+        /// <summary>How far the halo spills past the card it marks, as a fraction of the
+        /// board. X keeps the authored 0.145; Y is smaller because the cards are stacked and
+        /// a taller halo would bleed onto the neighbour it is trying NOT to point at.</summary>
+        private const float GlowPadX = 0.145f;
+        private const float GlowPadY = 0.12f;
+
+        // --- card title (see SetupCard) ------------------------------------------------
+        /// <summary>Autosize floor for a story title. The scene authored 8pt, which on the
+        /// longest title in the corpus ("Baba Yaga, the Girl, and the Hedgehog", 37 chars, on
+        /// the narrowest of the three boxes) is smaller than the difficulty chip beside it and
+        /// well under the study's 20-arcmin legibility floor. Measured against the clamped box
+        /// (0.04–0.58 of a 943px card = 509px wide, 93px tall): 37 chars wrap to two lines at
+        /// ~28pt and still fit, so raising the floor costs nothing and no title needs 8pt.</summary>
+        private const float TitleFontMin = 20f;
+
+        // --- star-row caption (see BuildStarCaption) ------------------------------------
+        private const string StarCaptionName = "StarCaption";
+        /// <summary>TODO GameText: move to GameText.StorySelectStarCaption. Kept local because
+        /// this pass may not edit Constants/. Three gold stars mean FIRST-PICK RACE ACCURACY
+        /// here and STORIES FINISHED on the Session Map one tap earlier — same sprite, same
+        /// row, opposite meanings, and nothing on either screen said which.</summary>
+
+        /// <summary>TODO GameText: move to GameText.ReplayBadge. The badge on a card whose
+        /// story is already finished. It said PLAY, which is what the ONE unfinished card
+        /// says — so three identical PLAY badges meant "tap any of these".</summary>
+
+        /// <summary>TODO GameText: move to GameText.StorySelectMissionLine(int). Nothing on
+        /// this screen named the mission the learner is inside, even though SelectedSession is
+        /// already read here — so a teacher checking a tablet over a shoulder could not tell
+        /// session 3 from session 7, and neither could the child.</summary>
+
+
         private void Start()
         {
+            // Read before the title, which now names it.
+            int session = Core.GameManager.Instance != null ? Core.GameManager.Instance.SelectedSession : 1;
+
             if (titleText != null)
             {
                 titleText.text = GameText.StorySelectTitle;
                 SummaRace.UI.TitleBannerSkin.Apply(titleText);
-                // Names the rule the three cards already follow but never stated. Without it a
-                // learner sees two padlocks and no reason for them.
-                SummaRace.UI.SubtitleLine.Add(titleText, GameText.StorySelectSubtitle);
+                // Names the rule the three cards already follow but never stated, AND which
+                // mission these three stories belong to. Without the first a learner sees two
+                // padlocks and no reason for them; without the second the screen never says
+                // where in the ten-session ladder they are.
+                SummaRace.UI.SubtitleLine.Add(titleText, GameText.StorySelectMissionLine(session));
             }
 
             // Android BACK now answers instead of being swallowed (owner, 2026-08-22).
@@ -135,23 +194,53 @@ namespace SummaRace.Features.StorySelect
             // menu costs nothing.
             if (AudioManager.Instance != null) AudioManager.Instance.PlayMusic(AudioKeys.MusicMenu);
 
-            int session = Core.GameManager.Instance != null ? Core.GameManager.Instance.SelectedSession : 1;
+            // TWO PASSES, deliberately. Which card is the "tap this one" card can only be known
+            // after every card's story and progress is resolved, so nothing may be dressed
+            // during the walk that resolves them — that single-pass shape is what forced the
+            // old code to mark every playable card instead of the one that matters.
+            int count = Mathf.Min(cards.Length, StoryIds.Difficulties.Length);
+            var ids = new string[count];
+            var stories = new StoryData[count];
+            var open = new bool[count];     // unlocked by the difficulty ladder
+            var finished = new bool[count]; // actually completed by THIS learner
 
             // Easy is always open; each later difficulty waits on the one before it.
             bool unlocked = true;
-            int count = Mathf.Min(cards.Length, StoryIds.Difficulties.Length);
             for (int i = 0; i < count; i++)
             {
-                string difficulty = StoryIds.Difficulties[i];
-                string storyId = StoryIds.For(session, difficulty);
-                var story = StoryLoader.Load(storyId);
-                SetupCard(cards[i], difficulty, storyId, story, unlocked);
+                ids[i] = StoryIds.For(session, StoryIds.Difficulties[i]);
+                stories[i] = StoryLoader.Load(ids[i]);
+                open[i] = unlocked;
+                finished[i] = stories[i] != null && IsCompleted(ids[i]);
 
                 // A story whose JSON is missing can never be cleared, so gating on it would
                 // lock the whole session behind content the learner cannot reach. Missing
                 // content opens the gate instead of closing it (GDD D7).
-                unlocked = unlocked && (story == null || IsCleared(storyId));
+                unlocked = unlocked && (stories[i] == null || IsCleared(ids[i]));
             }
+
+            // The one card being asked for: the first open, loadable story not yet finished.
+            // -1 when the whole mission is done — then nothing is singled out, which is the
+            // truth (the next thing to tap is BACK, to the map).
+            int next = -1;
+            for (int i = 0; i < count; i++)
+                if (open[i] && stories[i] != null && !finished[i]) { next = i; break; }
+
+            for (int i = 0; i < count; i++)
+            {
+                // Keyed on the index rather than on finished[i] so exactly ONE card can ever
+                // carry the ring. Cards that reach Cleared here are always earlier than `next`,
+                // and open[] is built from the same completion test, so the label cannot lie.
+                CardState state = !(open[i] && stories[i] != null) ? CardState.Locked
+                                : i == next ? CardState.Next
+                                : CardState.Cleared;
+                SetupCard(cards[i], StoryIds.Difficulties[i], ids[i], stories[i], state);
+            }
+
+            // The scene's halo is one object, always on, hard-anchored behind EASY and never
+            // referenced by this controller — so the screen's largest animated attention magnet
+            // pointed at the wrong card the moment Easy was finished. Drive it, or hide it.
+            PlaceGlow(next >= 0 ? cards[next] : null);
 
             // The learner arrived MainMenu → SessionMap → here, so back is the map: picking
             // another story in the same session stays one tap.
@@ -164,15 +253,15 @@ namespace SummaRace.Features.StorySelect
         }
 
         private void SetupCard(DifficultyCard card, string difficulty, string storyId,
-                               StoryData story, bool unlocked)
+                               StoryData story, CardState state)
         {
             if (card == null) return;
 
             if (card.chipText != null) card.chipText.text = DifficultyLabel(difficulty);
             StyleChip(card, difficulty);
 
-            // A story that fails to load must never present itself as playable.
-            bool playable = unlocked && story != null;
+            // A story that fails to load never reaches anything but Locked (see Start).
+            bool playable = state != CardState.Locked;
 
             // Missing content is not the learner's doing, so it says so in its own words
             // instead of borrowing the "finish the story above" hint.
@@ -182,7 +271,22 @@ namespace SummaRace.Features.StorySelect
             // scene, so it named a story sitting right beside "this story isn't ready yet" —
             // and a learner who taps it gets nothing but a nudge. Say nothing rather than
             // promise a story that cannot open; the hint below does the explaining.
-            if (card.titleText != null) card.titleText.text = story != null ? story.title : string.Empty;
+            if (card.titleText != null)
+            {
+                card.titleText.text = story != null ? story.title : string.Empty;
+
+                // THE SCENE AUTHORED AN 8pt FLOOR on the two CardTitle boxes, so a long title
+                // simply shrank until it fitted on one line — smaller than the EASY/MEDIUM/HARD
+                // chip beside it, on the field that says what the story IS. Raise the floor and
+                // let it wrap instead. Ellipsis rather than Overflow so a freak title clips
+                // inside its own box instead of spilling across the hero art (the failure F46
+                // had to fix on the race tracker); measured, no title in the corpus reaches it.
+                card.titleText.enableAutoSizing = true;
+                card.titleText.fontSizeMax = Mathf.Max(card.titleText.fontSizeMax, TitleFontMin + 8f);
+                card.titleText.fontSizeMin = TitleFontMin;
+                card.titleText.enableWordWrapping = true;
+                card.titleText.overflowMode = TextOverflowModes.Ellipsis;
+            }
 
             // Hero art is optional: a story with no illustration yet falls back to the
             // title-only card rather than showing a broken image (TDD §9.4).
@@ -239,7 +343,11 @@ namespace SummaRace.Features.StorySelect
                         var background = card.button.GetComponent<Image>();
             if (background != null) background.color = playable ? Color.white : CardLocked;
 
-            MarkPlayable(card, playable);
+            // Says what THESE three stars count, on the screen they are on. Built after the
+            // stars so a card with no star row simply never gets one.
+            BuildStarCaption(card);
+
+            MarkPlayable(card, state);
 
             card.button.onClick.RemoveAllListeners();
             if (playable)
@@ -263,6 +371,21 @@ namespace SummaRace.Features.StorySelect
         {
             var learner = Core.GameManager.Instance != null ? Core.GameManager.Instance.CurrentLearner : null;
             if (learner == null) return true;
+
+            return IsCompleted(storyId);
+        }
+
+        /// <summary>
+        /// Has this learner actually FINISHED this story? Deliberately not IsCleared: that one
+        /// answers "may the next difficulty open" and says yes with no profile at all, so every
+        /// one of the 30 stories stays reachable when the scene is played directly (TDD §13).
+        /// That fallback is right for unlocking and wrong for display — it would paint all three
+        /// cards "done" in the editor and leave the screen with no card to point at.
+        /// </summary>
+        private static bool IsCompleted(string storyId)
+        {
+            var learner = Core.GameManager.Instance != null ? Core.GameManager.Instance.CurrentLearner : null;
+            if (learner == null) return false;
 
             var progress = learner.progress.Find(p => p.storyId == storyId);
             return progress != null && progress.completed;
@@ -362,7 +485,7 @@ namespace SummaRace.Features.StorySelect
         /// runtime from the learner's progress: a scene-authored marker would sit on the wrong
         /// card for two visits out of every three.
         /// </summary>
-        private void MarkPlayable(DifficultyCard card, bool playable)
+        private void MarkPlayable(DifficultyCard card, CardState state)
         {
             if (card == null || card.button == null) return;
 
@@ -372,23 +495,33 @@ namespace SummaRace.Features.StorySelect
             var ring = root.parent != null ? root.parent.Find(RingName(root)) : null;
             var badge = root.Find(BadgeName);
 
-            if (!playable)
+            if (state == CardState.Locked)
             {
                 if (ring != null) ring.gameObject.SetActive(false);
                 if (badge != null) badge.gameObject.SetActive(false);
                 return;
             }
 
-            if (ring == null) ring = BuildPlayRing(card, root);
+            // A CLEARED story stays open — replaying is allowed and encouraged — but it must not
+            // compete with the card being asked for. So it keeps a badge (the state still has to
+            // be READ, not just noticed) and loses the ring, the breath and the gold.
+            bool cleared = state == CardState.Cleared;
+
+            if (!cleared && ring == null) ring = BuildPlayRing(card, root);
             if (badge == null) badge = BuildPlayBadge(card, root);
 
-            if (badge != null) badge.gameObject.SetActive(true);
+            if (badge != null)
+            {
+                badge.gameObject.SetActive(true);
+                StyleBadge(badge, cleared);
+            }
 
             // The badge occupies x 0.60–0.94 of the card, and the scene-authored title rect
             // runs underneath it (EasyCard's reaches 0.90), so a long title vanished behind
             // the pill (owner playtest 2026-08-21: "The Crowded House: A Folktale"). Clamp the
             // title's right edge to end before the badge; its autosize + wrap absorb the lost
-            // width. Only the playable card is clamped — locked cards carry no badge.
+            // width. Clamped for BOTH badge states (PLAY and REPLAY) — only a locked card,
+            // which carries no badge at all, keeps the authored full-width title.
             if (card.titleText != null)
             {
                 var trect = card.titleText.rectTransform;
@@ -398,12 +531,174 @@ namespace SummaRace.Features.StorySelect
 
             if (ring == null) return;
 
+            if (cleared)
+            {
+                // Only reachable if a previous dressing left one behind; a cleared card is
+                // never given a ring in the first place.
+                ring.gameObject.SetActive(false);
+                return;
+            }
+
             ring.gameObject.SetActive(true);
             // Breathe on the RING, never on the card root: the root carries ButtonSquash, which
             // drives the same localScale from its own tween, and two tweens on one transform
             // leave it wherever the last one wrote. Same rule as the punches elsewhere here.
             Tween.Scale(ring, Vector3.one * RingBreath, RingBreathSeconds, Ease.InOutSine,
                         cycles: -1, cycleMode: CycleMode.Yoyo);
+        }
+
+        /// <summary>
+        /// PLAY on gold for the card being asked for; REPLAY on a quiet dark pill for one
+        /// already finished. Both are WORDS — the difference between "do this next" and "you
+        /// can do this again" must survive a muted tablet, a colour-blind reader and a child
+        /// who is not looking for it. Cream on the dark pill measures far past WCAG AA; dark
+        /// brown on gold is the pairing the gold badge was already measured for (Theme).
+        /// </summary>
+        private static void StyleBadge(Transform badge, bool cleared)
+        {
+            if (badge == null) return;
+
+            var pill = badge.GetComponent<Image>();
+            if (pill != null) pill.color = cleared ? Theme.Alpha(Theme.Ink, 0.72f) : Theme.GoldDeep;
+
+            var label = badge.GetComponentInChildren<TMP_Text>(true);
+            if (label == null) return;
+
+            label.text = cleared ? GameText.ReplayBadge : GameText.PlayBadge;
+            label.color = cleared ? Theme.Cream : Theme.TextBrownDeep;
+            // REPLAY is 6 chars against PLAY's 4 in the same pill, so give autosize room to
+            // find a smaller size rather than letting it run over the pill's rounded ends.
+            label.fontSizeMin = cleared ? 14f : 18f;
+        }
+
+        /// <summary>
+        /// Puts the scene's floating halo behind ONE card — the card the learner is being asked
+        /// to tap — instead of leaving it where it was authored.
+        ///
+        /// It cannot be a scene decision: which card is next is decided at runtime from the
+        /// learner's progress, so a fixed position is wrong on two visits out of three. It also
+        /// was not even centred on the card it was drawn for (authored y 0.34–1.125 against
+        /// EASY's 0.68–1.0, so half of it hung over AVERAGE).
+        ///
+        /// Null-safe in both directions: no halo in the scene, nothing happens; no next card,
+        /// the halo is switched off rather than left pointing at a finished story.
+        /// </summary>
+        private void PlaceGlow(DifficultyCard card)
+        {
+            var glow = FindGlow();
+            if (glow == null) return;
+
+            var target = card != null && card.button != null
+                ? card.button.GetComponent<RectTransform>()
+                : null;
+
+            // Every mission story finished: nothing here is "next", so the screen says nothing
+            // rather than something false.
+            if (target == null || target.parent != glow.parent)
+            {
+                glow.gameObject.SetActive(false);
+                return;
+            }
+
+            glow.anchorMin = new Vector2(target.anchorMin.x - GlowPadX, target.anchorMin.y - GlowPadY);
+            glow.anchorMax = new Vector2(target.anchorMax.x + GlowPadX, target.anchorMax.y + GlowPadY);
+            glow.pivot = target.pivot;
+            glow.anchoredPosition = target.anchoredPosition;
+            glow.sizeDelta = Vector2.zero;
+
+            // Behind all three cards. uGUI draws by sibling order, and BuildPlayRing inserts the
+            // ring at its card's own index — so without this the halo could end up drawn over
+            // the very card it is pointing at.
+            glow.SetAsFirstSibling();
+            glow.gameObject.SetActive(true);
+        }
+
+        /// <summary>The halo lives beside the cards, not under one, so it is found from
+        /// whichever card is actually wired up rather than from a fixed path.</summary>
+        private RectTransform FindGlow()
+        {
+            if (cards == null) return null;
+
+            for (int i = 0; i < cards.Length; i++)
+            {
+                var button = cards[i] != null ? cards[i].button : null;
+                var parent = button != null ? button.transform.parent : null;
+                var found = parent != null ? parent.Find(GlowName) : null;
+                if (found != null) return found as RectTransform;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// One line under the star row saying what these stars mean.
+        ///
+        /// The same three-star sprite in the same corner one tap earlier (Session Map) means
+        /// "stories finished"; here it means how many race answers were right first time. A
+        /// teacher reading two stars here as "two of three stories done" is wrong, and nothing
+        /// on either screen distinguished them. Built in code because neither card has a field
+        /// for it, and it brings its own dark pill because it sits over hero art whose brightest
+        /// pixels are unknown — the worst pixel under a glyph decides legibility, not the mean.
+        ///
+        /// Idempotent and null-safe: no star row or no chip to borrow a font from, no caption.
+        /// </summary>
+        private void BuildStarCaption(DifficultyCard card)
+        {
+            if (card == null || card.chipText == null) return;
+            if (card.stars == null || card.stars.Length == 0 || card.stars[0] == null) return;
+
+            var root = card.button != null ? card.button.GetComponent<RectTransform>() : null;
+            if (root == null) return;
+            if (root.Find(StarCaptionName) != null) return;   // already built
+
+            var pillGo = new GameObject(StarCaptionName, typeof(RectTransform));
+            pillGo.transform.SetParent(root, false);
+
+            var pill = pillGo.AddComponent<Image>();
+            pill.sprite = Resources.Load<Sprite>("UI/bar_bg");
+            if (pill.sprite != null) pill.type = Image.Type.Sliced;
+            pill.color = pill.sprite != null
+                ? Theme.Alpha(Color.white, 0.88f)
+                : Theme.Alpha(Theme.Ink, 0.75f);
+            pill.raycastTarget = false;   // never steal the card's own tap
+
+            // Directly under the star row (card y 0.84–0.96, x 0.62–0.97), widened left so the
+            // words have somewhere to go; clear of the locked labels below (top edge 0.65) and
+            // of the PLAY badge at the card's foot.
+            var prect = pill.rectTransform;
+            prect.anchorMin = new Vector2(0.44f, 0.735f);
+            prect.anchorMax = new Vector2(0.98f, 0.825f);
+            prect.offsetMin = Vector2.zero;
+            prect.offsetMax = Vector2.zero;
+
+            var labelGo = Instantiate(card.chipText.gameObject, pillGo.transform, false);
+            labelGo.name = "Label";
+            labelGo.SetActive(true);
+
+            var label = labelGo.GetComponent<TMP_Text>();
+            if (label == null) { Destroy(labelGo); return; }
+
+            // Strip anything the chip carried that would re-style or animate this line.
+            foreach (var extra in labelGo.GetComponents<MonoBehaviour>())
+                if (!(extra is TMP_Text)) Destroy(extra);
+
+            label.text = GameText.StorySelectStarCaption;
+            label.color = Theme.Paper;
+            label.alignment = TextAlignmentOptions.Center;
+            label.fontStyle = FontStyles.Normal;   // the chip is bold; this is a footnote
+            label.enableWordWrapping = false;      // one line or nothing — it is a caption
+            label.enableAutoSizing = true;
+            label.fontSizeMin = 13f;
+            label.fontSizeMax = 22f;
+            label.raycastTarget = false;
+
+            var lrect = label.rectTransform;
+            lrect.localScale = Vector3.one;
+            lrect.localRotation = Quaternion.identity;
+            lrect.anchorMin = Vector2.zero;
+            lrect.anchorMax = Vector2.one;
+            lrect.pivot = new Vector2(0.5f, 0.5f);
+            lrect.offsetMin = new Vector2(10f, 2f);
+            lrect.offsetMax = new Vector2(-10f, -2f);
         }
 
         private static string RingName(Transform card) => "PlayRing_" + card.name;

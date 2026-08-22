@@ -631,7 +631,23 @@ namespace SummaRace.Constants
 
         // Summary light checks (GDD §4.5)
         public const int SummaryMinWords = 5;
-        public const int SummaryMaxChars = 200;
+        /// <summary>
+        /// RAISED 200 -> 320 on 2026-08-22, as a data-integrity fix rather than polish.
+        ///
+        /// Measured across all thirty stories, the five `correct` lines concatenated with NO
+        /// connecting words at all: two stories already exceed 200 (worst is s04_hard at 244) and
+        /// THIRTEEN exceed 180. A real one-sentence summary then adds "wanted / but / so / then"
+        /// and punctuation, roughly 25-40 characters - so about half the corpus could hit the cap
+        /// while the child is doing exactly what the screen asked, and the keyboard would simply
+        /// stop responding.
+        ///
+        /// `summaryText` is logged verbatim and the paper rubric is the study's outcome measure,
+        /// so a truncated sentence is both a corrupted data point and a child's own words cut off.
+        /// The Results echo card was sized against 200; it now ellipsises rather than spilling
+        /// (ResultsController.BuildSummaryCard), which is the right way round - the DATA is
+        /// complete and only the on-screen echo abbreviates.
+        /// </summary>
+        public const int SummaryMaxChars = 320;
         public const int SummaryMaxNudges = 2;
 
         // Content (GDD §3.1): 10 sessions x 3 difficulties = 30 stories.

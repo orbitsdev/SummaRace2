@@ -32,7 +32,23 @@ namespace SummaRace.Features.Results
         [SerializeField] private TMP_Text nextButtonLabel;
 
         // Sprite is already golden — off = dark silhouette, on = full color.
-        private static readonly Color StarOff = new Color(0.35f, 0.35f, 0.38f);
+        //
+        // MEASURED against what is actually behind it, not picked by eye. The three stars sit on
+        // ResultsPanel (0.05..0.95 x 0.30..0.90), whose teal samples at sRGB 54,107,125 =
+        // relative luminance 0.1278. The old 0.35/0.35/0.38 grey lands at 0.1018, which is
+        // 1.17:1 against that panel — an unlit star was very nearly the panel itself. So a
+        // ONE-STAR result read as a single star sitting slightly off-centre rather than as "one
+        // of three", and the two empty slots that give the earned one its meaning were invisible.
+        // On the study's headline measure, that is the difference between a child seeing what
+        // they got and a child seeing nothing at all.
+        //
+        // This is the panel's own hue taken to 25% — a recessed slot rather than a neutral
+        // near-black hole (see Theme.Wood on why near-black fills read as holes in this game's
+        // art) — and it measures 3.02:1, clear of WCAG's 3.0 non-text floor while staying
+        // unmistakably unlit. DARKER rather than lighter on purpose: the sprite is gold, so a
+        // lighter off state would read as "lit but pale", the one thing this must never be
+        // confusable with. Nothing about how stars are COUNTED changes here.
+        private static readonly Color StarOff = new Color(0.05f, 0.10f, 0.12f);
         private static readonly Color StarOn = Color.white;
 
         // The learner's own sentence, shown back to them (see BuildSummaryCard). Cream card,
@@ -73,6 +89,16 @@ namespace SummaRace.Features.Results
         private const float SummaryFontMin = 14f;
 
         private StoryData _story;
+
+        /// <summary>Set by a tap anywhere during the reveal. It does NOT abandon the reveal — it
+        /// collapses every wait to zero so the same beats all still run, in order, and the
+        /// coroutine still reaches the finally that hands back the only exit.</summary>
+        private bool _skipRequested;
+
+        /// <summary>The full-screen tap catcher that sets <see cref="_skipRequested"/>. Destroyed
+        /// by the reveal's finally, BEFORE the continue button is shown, so it can never sit on
+        /// top of the exit and eat the tap aimed at it.</summary>
+        private GameObject _skipCatcher;
 
         private void Start()
         {
@@ -115,6 +141,19 @@ namespace SummaRace.Features.Results
                 nextButton.onClick.AddListener(OnNextMission);
             }
 
+            // NextButtonFrame is a SEPARATE Canvas child on the button's exact rect (0.22..0.78 x
+            // 0.22..0.31) — a ring drawn behind it, not its parent — so hiding only the button
+            // left that ring on screen, empty, for the whole ~4.4s reveal. The screen spent its
+            // longest stretch showing a conspicuous slot with nothing in it, which reads as
+            // something failing to load rather than as something still to come.
+            SetNextFrameActive(false);
+
+            // The reveal is ~4.4s and a learner sits through it thirty times across the study,
+            // by which point they know exactly what it is going to say. A tap now completes it.
+            // Built BEFORE the coroutine starts so even the first beat is skippable, and torn
+            // down by the coroutine's finally.
+            BuildSkipCatcher();
+
             if (SummaRace.Core.GameManager.Instance != null) SummaRace.Core.GameManager.Instance.CompleteStory(stars);
 
             // Label AFTER CompleteStory, and from the same test the button routes on: this run
@@ -122,8 +161,23 @@ namespace SummaRace.Features.Results
             // story of a session still reads as unfinished. Mid-session the button goes back to
             // the three story cards of the SAME session — calling that "NEXT MISSION" told the
             // learner they were leaving for a new mission when the mission had not changed.
+            //
+            // THE END OF THE GAME had no marker of any kind. After the last story of session 10
+            // the headline still read "Mission Cleared!" exactly like the other twenty-nine, and
+            // the button still said NEXT MISSION while pointing at a map with no next mission on
+            // it — ten sessions of work ending on a label that was simply untrue. The final state
+            // is decided from the same recorded progress, in the same place, so the headline, the
+            // label and the destination cannot drift apart.
+            bool allMissionsDone = IsFinalMissionDone();
+
             if (nextButtonLabel != null)
-                nextButtonLabel.text = IsSessionDone() ? GameText.NextMissionLabel : GameText.ResultsNextStoryLabel;
+                nextButtonLabel.text = allMissionsDone ? GameText.ResultsJourneyDoneLabel
+                                     : IsSessionDone() ? GameText.NextMissionLabel
+                                     : GameText.ResultsNextStoryLabel;
+
+            // Re-assigned rather than folded into the block above because TitleBannerSkin.Apply
+            // has already run there and only ever touches colour, never the string.
+            if (allMissionsDone && titleText != null) titleText.text = GameText.ResultsAllMissionsCleared;
 
             StartCoroutine(RevealRoutine(stars));
         }
@@ -140,9 +194,7 @@ namespace SummaRace.Features.Results
         /// </summary>
         private void PunchByName(string path, float strength, float seconds)
         {
-            var root = ResolveSceneCanvas();
-            if (root == null) return;
-            var t = root.Find(path);
+            var t = FindByName(path);
             if (t == null) return;
             Tween.StopAll(onTarget: t);
             t.localScale = Vector3.one;
@@ -156,11 +208,13 @@ namespace SummaRace.Features.Results
             // no exit at all. The finally hands the button back however this routine ends.
             try
             {
-                yield return new WaitForSeconds(0.6f);
+                yield return WaitOrSkip(0.6f);
 
                 // The fanfare starts WITH the first star rather than after the praise. It used
                 // to begin four beats late, so three stars landed under the menu loop and the
-                // victory sting arrived once the celebration had already peaked.
+                // victory sting arrived once the celebration had already peaked. This is the
+                // ONLY place it starts — it used to be started a second time after the praise,
+                // which restarted the sting on top of itself two beats in.
                 if (AudioManager.Instance != null) AudioManager.Instance.PlayMusic(AudioKeys.MusicVictory, false);
 
                 int lit = starImages != null ? Mathf.Min(stars, starImages.Length) : 0;
@@ -178,13 +232,13 @@ namespace SummaRace.Features.Results
                         Tween.PunchScale(starImages[i].transform,
                                          Vector3.one * (0.45f + 0.20f * i), 0.4f + 0.08f * i);
                     }
-                    if (AudioManager.Instance != null)
-                        AudioManager.Instance.PlaySfx(AudioKeys.SfxStar, 1f + 0.08f * i);
+                    RevealSfx(AudioKeys.SfxStar, 1f + 0.08f * i);
                     // A star landing is one of the two moments GDD §11.4 asks to be felt. It also
                     // matters more than it sounds: a classroom tablet is usually muted, so for a
                     // learner with the sound off this is the only channel the celebration has
-                    // besides the animation.
-                    SummaRace.Core.Haptics.Play(SummaRace.Core.Haptics.Medium);
+                    // besides the animation. Suppressed on a skip for the same reason the sounds
+                    // are: three taps fired inside one frame is one long buzz, not three stars.
+                    if (!_skipRequested) SummaRace.Core.Haptics.Play(SummaRace.Core.Haptics.Medium);
 
                     // The trophy sits in the banner through the whole reveal and never moves,
                     // on the screen that is entirely about having earned it. It reacts once, to
@@ -193,7 +247,7 @@ namespace SummaRace.Features.Results
                     // strand the learner, which is what the try/finally around this exists for.
                     if (i == lit - 1) PunchByName("TitleBanner/TrophyIcon", 0.30f, 0.5f);
 
-                    yield return new WaitForSeconds(0.45f - 0.06f * i);
+                    yield return WaitOrSkip(0.45f - 0.06f * i);
                 }
 
                 yield return RevealTreasure();
@@ -208,7 +262,7 @@ namespace SummaRace.Features.Results
                     // appearing, not reacting.
                     praiseText.transform.localScale = Vector3.zero;
                     Tween.Scale(praiseText.transform, Vector3.one, 0.35f, Ease.OutBack);
-                    if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxPop);
+                    RevealSfx(AudioKeys.SfxPop);
                 }
 
                 // THE STORY'S NAME MOVED HERE when the banner took the headline. It rides the
@@ -234,19 +288,28 @@ namespace SummaRace.Features.Results
                 // Ms. Lumi reacts on the same beat as the praise, so the line has a face saying
                 // it. Null-safe: no badge object or no badge art leaves the screen unchanged.
                 if (_lumi != null) _lumi.Celebrate();
-                if (AudioManager.Instance != null) AudioManager.Instance.PlayMusic(AudioKeys.MusicVictory, false);
 
-                yield return new WaitForSeconds(0.8f);
+                yield return WaitOrSkip(0.8f);
                 if (mainIdeaPanel != null) mainIdeaPanel.SetActive(true);
 
                 // Last beat, after the story's own main idea: the learner's sentence beside it.
                 // Deliberately not before — the reveal builds from what the app gave them to
                 // what they made of it, and their words are the thing to end on.
-                yield return new WaitForSeconds(0.55f);
+                yield return WaitOrSkip(0.55f);
                 BuildSummaryCard();
             }
             finally
             {
+                // The catcher goes FIRST and unconditionally. It is a full-screen raycast target,
+                // so leaving it up for even one more statement would put an invisible sheet over
+                // the continue button — the exact trap the try/finally exists to prevent, just
+                // wearing a different shape. Destroy on an already-destroyed object is a no-op,
+                // so this is safe on scene teardown too.
+                if (_skipCatcher != null) { Destroy(_skipCatcher); _skipCatcher = null; }
+
+                // The empty ring comes back with the button it belongs to.
+                SetNextFrameActive(true);
+
                 if (nextButton != null)
                 {
                     nextButton.gameObject.SetActive(true);
@@ -261,6 +324,102 @@ namespace SummaRace.Features.Results
             }
         }
 
+
+        /// <summary>A child of this screen's own canvas, by path, or null. Same reasoning as
+        /// PunchByName: everything this looks for already exists in the scene, and a null here
+        /// must only ever cost a flourish — never throw inside the reveal.</summary>
+        private Transform FindByName(string path)
+        {
+            var root = ResolveSceneCanvas();
+            return root == null ? null : root.Find(path);
+        }
+
+        /// <summary>Shows or hides the ring drawn behind the continue button. Separate from the
+        /// button because the two are siblings, not parent and child.</summary>
+        private void SetNextFrameActive(bool visible)
+        {
+            var frame = FindByName("NextButtonFrame");
+            if (frame != null) frame.gameObject.SetActive(visible);
+        }
+
+        /// <summary>
+        /// A wait that a tap can collapse to nothing.
+        ///
+        /// Deliberately NOT "stop the coroutine": every beat after the skip still runs, in the
+        /// same order, so a skipped reveal ends with exactly the same screen as a watched one —
+        /// all the stars lit, all the gems placed, the praise, the main idea and the learner's
+        /// own sentence — and, critically, still falls through to the finally that hands back the
+        /// only exit. Nothing here can leave the reveal half-built.
+        ///
+        /// Unscaled time on purpose: Results is the last screen of the loop and a timeScale left
+        /// at zero by anything upstream must not be able to freeze the reveal, because the exit
+        /// does not exist until the reveal ends.
+        /// </summary>
+        private IEnumerator WaitOrSkip(float seconds)
+        {
+            float elapsed = 0f;
+            while (elapsed < seconds)
+            {
+                if (_skipRequested) yield break;
+                elapsed += Time.unscaledDeltaTime;
+                yield return null;
+            }
+        }
+
+        /// <summary>Reveal sounds, muted once the learner has skipped: a skipped reveal fires
+        /// every beat inside one frame, and eight stings at once is noise, not a celebration.</summary>
+        private void RevealSfx(string key, float pitch = 1f)
+        {
+            if (_skipRequested) return;
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(key, pitch);
+        }
+
+        /// <summary>
+        /// A full-screen, fully transparent tap target that completes the reveal.
+        ///
+        /// A transparent Image is still a raycast target in uGUI, so this needs no art. It is
+        /// safe to cover the whole screen for the duration: while the reveal runs, the continue
+        /// button is hidden and nothing else on Results is interactive — and the reveal's finally
+        /// destroys this before the button comes back, so the exit is never underneath it.
+        ///
+        /// Built in code, like the treasure gems and the summary card, so it ships without a
+        /// scene edit; with no canvas to build on the reveal is simply not skippable, which is
+        /// the behaviour that already existed.
+        /// </summary>
+        private void BuildSkipCatcher()
+        {
+            if (_skipCatcher != null) return;
+            var root = ResolveSceneCanvas();
+            if (root == null) return;
+
+            _skipCatcher = new GameObject("RevealSkipCatcher",
+                                          typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            _skipCatcher.transform.SetParent(root, false);
+            var rect = (RectTransform)_skipCatcher.transform;
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+            rect.SetAsLastSibling();
+
+            var image = _skipCatcher.GetComponent<Image>();
+            image.color = new Color(0f, 0f, 0f, 0f);   // invisible, still hit-tested
+            image.raycastTarget = true;
+
+            var button = _skipCatcher.AddComponent<Button>();
+            button.transition = Selectable.Transition.None;   // nothing to highlight; it is not a control
+            button.targetGraphic = image;
+            button.onClick.AddListener(OnSkipReveal);
+        }
+
+        /// <summary>The learner tapping through the celebration. It answers with a click so the
+        /// tap is plainly registered — a screen that simply jumps reads as a glitch.</summary>
+        private void OnSkipReveal()
+        {
+            if (_skipRequested) return;
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxClick);
+            _skipRequested = true;
+        }
 
         /// <summary>
         /// Puts Ms. Lumi on the results celebration. She is on every other learning screen
@@ -332,8 +491,16 @@ namespace SummaRace.Features.Results
 
             for (int i = 0; i < gems; i++)
             {
-                bool earned = result == null || result.firstPickCorrect == null
-                    || i >= result.firstPickCorrect.Length || result.firstPickCorrect[i];
+                // NOT earned when there is no race result, which is the opposite of what this
+                // used to say. CalculateStars answers 1 to the same null (GameManager:100), so
+                // playing Results directly in the editor showed ONE star above FIVE full-colour
+                // gems — a screen contradicting itself about the same run, and the two readings
+                // are the study's headline measure and its per-element breakdown. Dimmed gems
+                // are also the honest reading of "no run happened": a gem is lit by a correct
+                // FIRST pick, and there were none. Same answer for an element the run never
+                // reached, which is how CountFirstPickCorrect already scores it.
+                bool earned = result != null && result.firstPickCorrect != null
+                    && i < result.firstPickCorrect.Length && result.firstPickCorrect[i];
 
                 var chip = new GameObject("Gem_" + i, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
                 chip.transform.SetParent(treasureRow, false);
@@ -365,8 +532,8 @@ namespace SummaRace.Features.Results
 
                 chip.transform.localScale = Vector3.zero;
                 Tween.Scale(chip.transform, Vector3.one, 0.3f, Ease.OutBack);
-                if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxCoin);
-                yield return new WaitForSeconds(0.16f);
+                RevealSfx(AudioKeys.SfxCoin);
+                yield return WaitOrSkip(0.16f);
             }
         }
 
@@ -441,11 +608,16 @@ namespace SummaRace.Features.Results
             label.enableAutoSizing = true;
             label.fontSizeMin = SummaryFontMin;
             label.fontSizeMax = SummaryFontMax;
+            // Ellipsis, not the default Overflow. This band was measured against a 200-character
+            // cap and GameRules.SummaryMaxChars is now 320, so a long sentence would otherwise
+            // paint straight out of the card and across its neighbours. The child's words are
+            // logged in full either way - this is only the echo, and an echo may abbreviate.
+            label.overflowMode = TextOverflowModes.Ellipsis;
             label.raycastTarget = false;
 
             cardGo.transform.localScale = Vector3.zero;
             Tween.Scale(cardGo.transform, Vector3.one, 0.32f, Ease.OutBack);
-            if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxPop);
+            RevealSfx(AudioKeys.SfxPop);
         }
 
         /// <summary>
@@ -476,6 +648,13 @@ namespace SummaRace.Features.Results
             // Mid-session there are still stories to pick, so go back to the three cards.
             // After the third one, the session is done — return to the map, which celebrates
             // it on arrival (GDD §3.1).
+            //
+            // The FINAL state deliberately keeps this destination. The Session Map is the only
+            // screen in the game that shows the whole journey at once, so ten cleared stops IS
+            // the payoff view; sending the last run to MainMenu instead would hide the thing that
+            // was just finished behind a start button. What changes at the end is the headline
+            // and the label (see Start) — the map is still the right place to arrive, and it is
+            // never a dead end.
             SceneLoader.Go(IsSessionDone() ? SceneNames.SessionMap : SceneNames.StorySelect);
         }
 
@@ -506,6 +685,36 @@ namespace SummaRace.Features.Results
                 // False is the safe answer: it routes to Story Select rather than the map, which
                 // is never a dead end from here.
                 Debug.LogWarning("[Results] session-complete check failed: " + e.Message);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Was that the last story of the LAST session — i.e. is the whole ten-session journey
+        /// finished? Drives the one state the screen never had.
+        ///
+        /// Built on IsSessionDone rather than beside it so the two can only ever agree: the final
+        /// state is strictly the session-complete state plus "and there is no session after this
+        /// one". Session numbers are 1..GameRules.SessionCount, and the comparison is >= rather
+        /// than == so a story JSON carrying an out-of-range session still resolves to "the end"
+        /// instead of silently falling back to NEXT MISSION and pointing at nothing.
+        ///
+        /// Same defensiveness as IsSessionDone, and for the same reason: this runs in Start while
+        /// the exit is hidden and before RevealRoutine's finally exists to hand it back. False is
+        /// the safe answer — it is exactly the behaviour that shipped before this existed.
+        /// </summary>
+        private static bool IsFinalMissionDone()
+        {
+            try
+            {
+                var gm = SummaRace.Core.GameManager.Instance;
+                return gm != null && gm.CurrentStory != null
+                    && gm.CurrentStory.session >= GameRules.SessionCount
+                    && IsSessionDone();
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning("[Results] final-mission check failed: " + e.Message);
                 return false;
             }
         }

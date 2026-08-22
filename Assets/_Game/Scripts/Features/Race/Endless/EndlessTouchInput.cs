@@ -12,7 +12,9 @@ namespace SummaRace.Features.Race.Endless
     ///     legibility work upstream buys reading time, not dexterity time;
     ///   * their axis test sends any gesture with |dy| &gt; |dx| to Jump, so a hurried diagonal
     ///     flick — the most likely gesture a nine-year-old under time pressure produces — makes
-    ///     the runner jump instead of changing lane;
+    ///     the runner jump instead of changing lane (and in our race Jump/Slide no-op, so such a
+    ///     flick does nothing at all; that is the correct outcome, see Update for why guessing a
+    ///     lane from it was worse than nothing);
     ///   * a swipe is simply a higher-dexterity input than a tap, and the learners this study is
     ///     about are the ones least well served by it.
     /// The legacy race (PlayerRunner) already accepted taps, so this is precedent, not novelty.
@@ -43,8 +45,11 @@ namespace SummaRace.Features.Race.Endless
         private Vector2 _startPos;
         private float _startTime;
 
-        /// <summary>Screen rects (in pixels) that own their own taps — the pause chip. A tap
-        /// there must not also move the runner.</summary>
+        /// <summary>Screen rects (in pixels) that own their own taps — the pause chip, the SWBST
+        /// tracker, the question plaque and (while a question is up) the three reading-panel
+        /// columns. A tap on any of them must not also move the runner. Set by
+        /// EndlessRaceDirector.ApplyTapBlockers, which swaps the list as the panel changes
+        /// state; inactive rects are skipped, so a hidden blocker costs nothing.</summary>
         private RectTransform[] _blockers;
 
         public void SetBlockers(params RectTransform[] blockers) => _blockers = blockers;
@@ -78,21 +83,34 @@ namespace SummaRace.Features.Race.Endless
 
             if (dragFraction > SummaRace.Constants.GameRules.RaceTapMaxDrag)
             {
-                // Past the tap tolerance, so normally theirs — but only a HORIZONTAL swipe is
-                // actually theirs. Their handler routes any |dy| > |dx| gesture to Jump()/Slide(),
-                // and both begin with `if (EndlessRaceMode.Active) return;` because our race has
-                // no obstacles to clear. So a vertical or diagonal flick — named in this class's
-                // own docstring as the likeliest gesture a nine-year-old under time pressure
-                // produces — was landing in a gap between the two handlers and doing NOTHING:
-                // no lane change, no jump, no feedback. If that was the child's attempt to reach
-                // a card, the gate is run past and written to the study as first-pick-incorrect.
-                // Claim it as a lane request; theirs cannot double-fire because it no-ops.
-                if (Mathf.Abs(delta.y) <= Mathf.Abs(delta.x)) return;   // horizontal: theirs steers
+                // PAST THE TAP TOLERANCE: NOT OURS, WHICHEVER WAY IT WENT.
+                //
+                // A HORIZONTAL swipe is theirs — their CharacterInputController steers on it, and
+                // claiming it here as well is the documented double-binding that once made lane
+                // changes skip two lanes at a time.
+                //
+                // A VERTICAL or diagonal flick is nobody's, and that is now deliberate. It used
+                // to fall through to the lane mapping below, on the reasoning that their
+                // Jump()/Slide() no-op in our race (no obstacles), so the child's gesture was
+                // otherwise doing nothing at all. The reasoning was right about the gap and wrong
+                // about the fix: THE LANE IS DERIVED FROM THE RELEASE X, and the release x of a
+                // vertical flick is just wherever the thumb happened to be resting — usually the
+                // side of the screen the child holds the tablet on, which has nothing to do with
+                // the card they want. So a flick up produced a confident, unrequested move to
+                // lane 0 or lane 2, quite possibly OFF the card they were already lined up with.
+                //
+                // Doing nothing is strictly better than steering somewhere the learner did not
+                // ask for: `raceFirstPickCorrect` is the star count and the study's headline
+                // measure, and a lane the child never chose corrupts it in a way nothing
+                // downstream can detect or undo. Tap is the taught, one-gesture-to-any-lane
+                // input (GameText.RaceBriefingBody names it first) and it is unaffected.
+                return;
             }
-            else if (Time.unscaledTime - _startTime > SummaRace.Constants.GameRules.RaceTapMaxSeconds)
+            if (Time.unscaledTime - _startTime > SummaRace.Constants.GameRules.RaceTapMaxSeconds)
             {
-                // Tap-length gesture held too long to be a tap. (Deliberately not applied to the
-                // swipe branch above: a deliberate flick can easily outlast the tap window.)
+                // Short enough to be a tap in DISTANCE, but held too long to be one in TIME —
+                // a thumb resting on the screen, not a choice. (Only reachable for gestures
+                // inside the drag tolerance; anything larger already returned above.)
                 return;
             }
 

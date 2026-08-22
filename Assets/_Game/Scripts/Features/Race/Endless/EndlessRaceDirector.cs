@@ -50,6 +50,11 @@ namespace SummaRace.Features.Race.Endless
         private static readonly Color StoryGold = Theme.StoryGold;
         private UnityEngine.UI.Image _vignette; // amber screen-edge danger vignette (TDD §11.5)
         private Sprite _vignetteSprite;        // generated per race entry; freed in OnDestroy
+        /// <summary>The coach hand's soft disc — a SECOND MakeVignetteSprite, minted in
+        /// BuildRaceCoach and, until 2026-08-22, owned by nobody: OnDestroy freed
+        /// <see cref="_vignetteSprite"/> only, so this sprite and its texture leaked on every
+        /// race entry that showed the coach. Held here so OnDestroy can free both.</summary>
+        private Sprite _coachSprite;
 
         // Distance to gate 1, and the reason it is not 80 any more, live on
         // GameRules.RaceFirstGateDistance (80m from a standing start was 7.4s — the shortest
@@ -79,30 +84,41 @@ namespace SummaRace.Features.Race.Endless
         // times, and then the element was silently written off.
         private const float RepresentSeconds = 3.2f;
         private const float RepresentMinGap = 45f;   // never closer than this, however slow the run
-        private const int MaxRepresentMisses = 6;    // consecutive dodges before anti-frustration auto-resolve
+        // MaxRepresentMisses is GONE. It counted consecutive dodges of a re-presented card before
+        // an anti-frustration auto-resolve, and F55 deleted the re-present entirely — a missed or
+        // wrong gate now shows the answer on the panel and the run moves on, so there is nothing
+        // left to dodge and nothing left to count. It survived as a declared-but-never-read
+        // constant, and a tuning number nobody reads is worse than no number: it invites a future
+        // pass to "adjust" it and believe the race changed.
         private const float CardY = 0.5f;
         // Watchdog: seconds with nothing in the world and nothing scheduled before the run is
         // treated as stranded and FINISH is forced back. Long enough that no legitimate
         // placement gap can trip it (placements are scheduled in the same frame they clear).
         private const float StrandedSeconds = 2f;
         // Depth of an answer card's catch volume, along the run. The character is moved in
-        // TrackManager.Update, so triggers are sampled once per RENDERED frame, and their
-        // MusicPlayer.Awake pins targetFrameRate to 30 — at the scene's maxSpeed of 30 that is
-        // a full metre of travel per sample. The old 0.5m (≈1.4m of window once the runner's
-        // own collider is counted) left barely one frame of margin at the last gates, and a
-        // single dropped frame on the 2GB floor device stepped the card over. That reads as a
-        // WRONG ANSWER in the study data (HandleMissedActiveGate records first-pick false),
-        // so it is a measurement problem, not just a feel one. The card's visible size is
-        // unchanged — F30 sized the card, not the trigger.
-        // 1.6, not 2.5: with the runner's own ~0.93m collider that is a ~2.5m catch window,
-        // still 2.5 frames of margin at the worst case (30fps x maxSpeed 30 = 1.0m per sample),
-        // but the card is "collected" only ~0.8m before contact instead of ~1.25m, and the
-        // window in which two lanes' cards can both fire is correspondingly smaller.
-        // FINISH got 3m in F43 for exactly this reason; the answer gates were left at 1.6m, which
-        // is a 1.27m catch window against 1.0m of travel per frame at 30fps/maxSpeed — a 27%
-        // margin. One long frame tunnels the card, and a tunnelled answer gate is recorded as a
-        // WRONG ANSWER (HandleMissedActiveGate), i.e. a rendering hitch silently becomes study
-        // data. Still well inside the half-lane, so it cannot credit two lanes at once.
+        // TrackManager.Update, so triggers are sampled once per RENDERED frame, and a card that
+        // is stepped OVER between two samples is recorded as a WRONG ANSWER
+        // (HandleMissedActiveGate records first-pick false). That makes this a measurement
+        // number, not a feel number: a rendering hitch would silently become study data on the
+        // measure that IS the star count. The card's visible size is unchanged — F30 sized the
+        // card, not the trigger.
+        //
+        // ⚠️ THE MARGIN IS ~0.9m, NOT THE "2.5 frames" THIS COMMENT USED TO CLAIM (corrected
+        // 2026-08-22). The old arithmetic costed a frame at 1/30s x maxSpeed 30 = 1.0m per
+        // sample, which was true when it was written and stopped being true the moment
+        // GameRules.RaceMaxDeltaTime was introduced. Time.maximumDeltaTime is set to that value
+        // (0.10s) in Start precisely so a hitch cannot advance the world arbitrarily far in one
+        // step — so the WORST CASE single-frame advance is 0.10 x maxSpeed 30 = 3.0m, three
+        // times what the old note assumed.
+        //
+        // Against that, the real budget: 3m of trigger depth + the runner's own ~0.93m collider
+        // = a ~3.93m catch window, against 3.0m of travel in the worst permitted frame. That is
+        // 0.93m of headroom — about 31%, i.e. LESS THAN ONE spare frame, not two and a half.
+        // It still cannot be tunnelled (3.0 < 3.93) and it is still well inside the half-lane so
+        // it cannot credit two lanes at once, but there is no slack here: if RaceMaxDeltaTime is
+        // ever raised above 0.131s (= 3.93 / 30), answer gates start being missable by physics
+        // alone and the study data goes with them. Change one of these two numbers and re-derive
+        // the other.
         private const float TriggerDepth = 3f;
         // Catch volume WIDTH, deliberately narrower than the visible card (1.425).
         // Measured: half a lane is 0.75, but card 1.425/2 + runner 0.576/2 = 1.0005, so a
@@ -133,7 +149,13 @@ namespace SummaRace.Features.Race.Endless
         // One pending placement at a time — resolved into an active gate by TryPlacePending.
         private float _pendingGateDistance = -1f;
         private int _pendingElement;
-        private bool _pendingIsRepresent;
+        // _pendingIsRepresent / _preparedIsRepresent / _activeIsRepresent / _previewIsRepresent /
+        // _selectorCentreOnly are all GONE (2026-08-22). F55 removed the re-present, and every
+        // one of those flags was left behind writing `false` to itself: three of them were never
+        // read at all, and the two that were read gated branches no execution path could enter
+        // (the "no boost on a re-present" rule in CollectCorrect and the centre-lane-only marker
+        // in UpdateLaneSelector). A permanently-false flag is worse than a deleted one — it
+        // documents a mechanic that does not exist and makes the code that reads it look live.
 
         // The upcoming gate's three options, DECIDED WHEN THE GATE IS SCHEDULED rather than when
         // it is placed. The shuffle used to live in PlaceAnswerGate, which meant nothing knew the
@@ -146,17 +168,14 @@ namespace SummaRace.Features.Race.Endless
         private readonly bool[] _gateCorrect = new bool[3];
         private readonly int[] _gateOptionIndex = new int[3];
         private int _preparedElement = -1;      // which element the arrays above describe
-        private bool _preparedIsRepresent;
 
         // "You are here" marker on the live gate — see BuildLaneSelector.
         private Transform _laneSelector;
         private SpriteRenderer _laneSelectorSr;
-        private bool _selectorCentreOnly; // a re-present gate has a card in the centre lane only
 
         // One active gate at a time.
         private Transform _activeGateRoot;
         private int _activeElement = -1;
-        private bool _activeIsRepresent;
         private float _activeGateDistance;
         private float _strandedTimer; // seconds the run has had nothing to present
         // Identity of the live gate. A monotonic serial, never reused, because the element
@@ -278,9 +297,11 @@ namespace SummaRace.Features.Race.Endless
 
         private float _patrolGroundY;      // fixed run-height captured on activation
         private bool _patrolGrounded;      // has _patrolGroundY been captured yet
-        private float _patrolGap = 30f;    // metres the cop trails behind the player (constant once running)
-        private float _patrolMoveVel;      // SmoothDamp velocity for his slide in/out of frame
-        private float _patrolSide = 1f;    // which shoulder he takes: +1 right, -1 left
+        // _patrolGap / _patrolMoveVel / _patrolSide are GONE with UpdatePatrol (2026-08-22).
+        // The cameo runs the cop in the kid's OWN lane at a gap it derives every frame from
+        // _patrolStep, so there is no held gap to cache, no SmoothDamp velocity to carry and no
+        // shoulder to choose. Their only surviving use was one off-screen parking position in
+        // SpawnPatrol, which now states its own numbers.
         private bool _wasSurging;          // so the shoulder is chosen once per surge, never mid-slide
         private Renderer[] _patrolRenderers; // cached for the per-frame body measurement
         private float _patrolFootFix;      // pivot-to-feet correction, measured once per beat
@@ -310,7 +331,6 @@ namespace SummaRace.Features.Race.Endless
         // not opened yet. The window opens RacePreviewLeadSeconds before the gate (UpdatePreviewWindow).
         private bool _previewArmed;
         private readonly string[] _previewTexts = new string[3];
-        private bool _previewIsRepresent;
         // Which SWBST slot the armed panel belongs to, so the question line cannot drift from
         // the three options under it. Captured at ARM time from _preparedElement rather than
         // read at reveal time from _pendingElement/_activeElement: those two swap over as a
@@ -327,8 +347,10 @@ namespace SummaRace.Features.Race.Endless
         /// be tapped, and only in that state do the columns claim taps away from the road.</summary>
         private bool _previewTappable = true;
         private EndlessTouchInput _tapInput;
-        private RectTransform[] _tapBlockersPlain;      // pause chip only
-        private RectTransform[] _tapBlockersWithPanel;  // pause chip + the three panel columns
+        // Pause chip + the two non-interactive HUD surfaces a confused learner taps (tracker,
+        // question plaque). See ApplyTapBlockers for why those two are here.
+        private RectTransform[] _tapBlockersPlain;
+        private RectTransform[] _tapBlockersWithPanel;  // the above + the three panel columns
 
         // The answer reveal that replaced the re-presented pickup. A wrong pick used to bring the
         // correct card back alone for the learner to drive into — which is not a choice, teaches
@@ -408,17 +430,30 @@ namespace SummaRace.Features.Race.Endless
         /// repainted once on entry like any other value rather than every frame.</summary>
         private const int FarSentinel = int.MinValue;
         private RectTransform _pauseChipRect;
+        /// <summary>The SWBST tracker board and the question plaque, as tap blockers. Neither is
+        /// interactive, and that is exactly why they need to be here: a child who does not yet
+        /// know how to steer taps the thing the game is asking them about, and both of these sit
+        /// in the upper third of a portrait screen where a tap resolves to "lane 2". See
+        /// ApplyTapBlockers.</summary>
+        private RectTransform _trackerRect;
+        private RectTransform _questionRect;
         private TextMeshProUGUI _leaveLabel;
         private bool _paused;
         private bool _leaving;              // exit in flight; nothing may run after this
         private bool _leaveArmed;
-        private float _leaveArmedAt;
         private GameObject _leaveConfirmRoot;   // the real confirm panel, not a label swap
         private bool _wasMovingBeforePause;
 
 
         // Persistent SWBST inventory tracker (top strip): 5 slots, current pulses, collected
         // fill in-order. Teaches the framework and answers "what to collect next" (F40).
+        /// <summary>The unfilled plaque face — used by BOTH the upcoming state and the
+        /// "collected, but the learner did not find it" state, which is exactly the point: the
+        /// cream fill is the reward, and everything else shares one neutral wood. Lifted from the
+        /// original near-black on 2026-08-22 (see Theme.Wood for why a text token made a bad
+        /// fill); cream type on it measures ~7.4:1, so the letter is never the dim half of the
+        /// distinction. Named rather than repeated so the two call sites cannot drift apart.</summary>
+        private static readonly Color SlotWoodEmpty = new Color(0.40f, 0.29f, 0.18f);
         private readonly UnityEngine.UI.Image[] _slotBg = new UnityEngine.UI.Image[5];
         private readonly UnityEngine.UI.Image[] _slotAccent = new UnityEngine.UI.Image[5];
         private readonly TextMeshProUGUI[] _slotLabel = new TextMeshProUGUI[5];
@@ -494,13 +529,12 @@ namespace SummaRace.Features.Race.Endless
             // nothing reclaims it until an incidental Resources.UnloadUnusedAssets. Three
             // stories a session across ten sessions adds up on the 2GB floor device, where
             // texture memory is the real pressure. Free it explicitly.
-            if (_vignetteSprite != null)
-            {
-                var tex = _vignetteSprite.texture;
-                Destroy(_vignetteSprite);
-                if (tex != null) Destroy(tex);
-                _vignetteSprite = null;
-            }
+            // BOTH generated sprites, not just the vignette's: BuildRaceCoach mints a second one
+            // for the coach hand. Freed here rather than in HideRaceCoach because Destroy on a
+            // GameObject is deferred to end of frame, so the coach's Image is still alive (and
+            // still referencing this sprite) for the rest of the frame it is dismissed in.
+            FreeGeneratedSprite(ref _vignetteSprite);
+            FreeGeneratedSprite(ref _coachSprite);
 
             // Never hand the rest of the app a frozen clock. Their GameState.Pause sets
             // Time.timeScale = 0 and AudioListener.pause = true on focus loss, and the only
@@ -558,10 +592,9 @@ namespace SummaRace.Features.Race.Endless
 
             _pendingGateDistance = SummaRace.Constants.GameRules.RaceFirstGateDistance;
             _pendingElement = 0;
-            _pendingIsRepresent = false;
             BuildHud();
             // After BuildHud, because arming fills the panel it just built.
-            PrepareGateOptions(0, false);
+            PrepareGateOptions(0);
             UpdateBanner();
             // Up before their Loadout/track boot so the learner never sees the spin-up:
             // the scrim doubles as the mask for it (the old MaskLoadoutFlash only hides
@@ -641,8 +674,9 @@ namespace SummaRace.Features.Race.Endless
             // on that same corner ended the run. The confirmation is now a modal panel whose
             // only leave control is a separate button inside it, so there is no stray tap to
             // guard against - and a panel that closes itself while a nine-year-old is still
-            // reading the question is worse than one that waits. _leaveArmedAt is kept only as
-            // a record of when the question was asked.
+            // reading the question is worse than one that waits. The `_leaveArmedAt` timestamp
+            // that survived the removal went with it (2026-08-22): it was written by ArmLeave
+            // and read by nothing, so it recorded a moment no code could ever consult.
 
             // Paused: the world, their scripts and ours are all held. Nothing below this line
             // may run — the pass-by check, the stranded watchdog and the pending placement all
@@ -842,10 +876,8 @@ namespace SummaRace.Features.Race.Endless
             }
 
             int element = _pendingElement;
-            bool isRepresent = _pendingIsRepresent;
             _activeGateDistance = placeDist;
             _activeElement = element;
-            _activeIsRepresent = isRepresent;
             _activeGateId = ++_gateSerial; // fresh identity; every card below is stamped with it
             _pendingGateDistance = -1f;
 
@@ -875,8 +907,8 @@ namespace SummaRace.Features.Race.Endless
             // reading panel could open long before the segment carrying the gate existed. Re-run
             // it here only if something scheduled a gate without preparing it — the arrays are
             // the single source of truth for both the road and the panel.
-            if (_preparedElement != elementIndex || _preparedIsRepresent)
-                PrepareGateOptions(elementIndex, false);
+            if (_preparedElement != elementIndex)
+                PrepareGateOptions(elementIndex);
 
             var texts = _gateTexts;
             var correctFlags = _gateCorrect;
@@ -903,13 +935,13 @@ namespace SummaRace.Features.Race.Endless
                 pickup.lane = lane;
                 pickup.optionText = text;
             }
-            BuildLaneSelector(root, elementIndex, new Vector2(cardWidth, 0.85f), laneOffset, false);
+            BuildLaneSelector(root, elementIndex, new Vector2(cardWidth, 0.85f), laneOffset);
             // The cards themselves are physically unreadable at any distance worth reading them
             // at (the derivation is on GameRules.RaceFirstGateDistance) — the HUD preview is
             // where the learner actually reads the three options. It was ARMED when this gate was
             // scheduled and may already be on screen; arming again is a no-op that keeps the
             // panel correct if a gate ever reaches the world without having been scheduled.
-            ArmOptionPreview(texts, false);
+            ArmOptionPreview(texts);
             // No in-world type pill: the top SWBST tracker now shows the current element (F40).
         }
 
@@ -926,27 +958,23 @@ namespace SummaRace.Features.Race.Endless
         /// lane ended up holding (0 = correct, 1/2 = distractors) through the same swaps: without
         /// it the log can say the learner was wrong at "But" but never which wrong idea they took.
         /// </summary>
-        private void PrepareGateOptions(int elementIndex, bool isRepresent)
+        /// <remarks>
+        /// The `isRepresent` parameter and its one-card-in-the-centre-lane branch were removed on
+        /// 2026-08-22. All three call sites passed `false` — F55 deleted the re-present — so the
+        /// branch was unreachable, and unreachable code that builds a DIFFERENT set of options is
+        /// the most dangerous kind to leave lying around in this method: it is the single source
+        /// of truth for both the road cards and the reading panel, and the shuffle below is what
+        /// keeps lane position carrying no information (the race is the study's measure).
+        /// </remarks>
+        private void PrepareGateOptions(int elementIndex)
         {
             _preparedElement = elementIndex;
-            _preparedIsRepresent = isRepresent;
             if (_story == null || elementIndex < 0 || elementIndex >= _story.elements.Length)
             {
                 _gateTexts[0] = _gateTexts[1] = _gateTexts[2] = null;
                 return;
             }
             var element = _story.elements[elementIndex];
-
-            if (isRepresent)
-            {
-                // A re-present is ONE card in the centre lane. The panel says so honestly rather
-                // than pretending there are still three options (see ArmOptionPreview).
-                _gateTexts[0] = null; _gateTexts[1] = element.correct; _gateTexts[2] = null;
-                _gateCorrect[0] = false; _gateCorrect[1] = true; _gateCorrect[2] = false;
-                _gateOptionIndex[0] = -1; _gateOptionIndex[1] = 0; _gateOptionIndex[2] = -1;
-                ArmOptionPreview(_gateTexts, true);
-                return;
-            }
 
             _gateTexts[0] = element.correct;
             _gateTexts[1] = element.distractors[0];
@@ -960,7 +988,7 @@ namespace SummaRace.Features.Race.Endless
                 var tmpFlag = _gateCorrect[i]; _gateCorrect[i] = _gateCorrect[j]; _gateCorrect[j] = tmpFlag;
                 var tmpOpt = _gateOptionIndex[i]; _gateOptionIndex[i] = _gateOptionIndex[j]; _gateOptionIndex[j] = tmpOpt;
             }
-            ArmOptionPreview(_gateTexts, false);
+            ArmOptionPreview(_gateTexts);
         }
 
         // PlaceRepresentGate is GONE (F55). It built the "one gold card in the centre lane" that
@@ -988,8 +1016,11 @@ namespace SummaRace.Features.Race.Endless
         /// the parameter documents which gate this marker belongs to at every call site, and
         /// removing it would make a future "colour it by element" change look like a one-line
         /// addition rather than the validity regression it is.</param>
+        /// <remarks>The `centreOnly` parameter went with the re-present (2026-08-22): the only
+        /// caller passed false, so <c>_selectorCentreOnly</c> was permanently false and both of
+        /// the branches it gated in <see cref="UpdateLaneSelector"/> were dead.</remarks>
         private void BuildLaneSelector(Transform root, int elementIndex, Vector2 cardSize,
-            float laneOffset, bool centreOnly)
+            float laneOffset)
         {
             var go = new GameObject("LaneSelector");
             go.transform.SetParent(root, false);
@@ -1030,13 +1061,12 @@ namespace SummaRace.Features.Race.Endless
 
             _laneSelector = go.transform;
             _laneSelectorSr = sr;
-            _selectorCentreOnly = centreOnly;
         }
 
-        /// <summary>Slides the marker onto the card in the runner's lane. A re-present gate only
-        /// has a centre card, so there the marker hides when the runner is not in that lane —
-        /// "you will not collect this where you are", which is the nudge that gets them back
-        /// across, rather than a marker parked on a card they are going to miss.</summary>
+        /// <summary>Slides the marker onto the card in the runner's lane. Every answer gate
+        /// carries a card in all three lanes, so the runner is always lined up with one and the
+        /// marker is always shown — the old "hide it when the runner is not on the single centre
+        /// card" behaviour belonged to the re-present and went with it (F55).</summary>
         private void UpdateLaneSelector(TrackManager track)
         {
             if (_laneSelector == null) return;
@@ -1049,12 +1079,7 @@ namespace SummaRace.Features.Race.Endless
             if (laneOffset <= 0.01f) return;
             float kidX = bodyT.position.x;
 
-            bool onACard = !_selectorCentreOnly || Mathf.Abs(kidX) < laneOffset * 0.5f;
-            if (_laneSelector.gameObject.activeSelf != onACard)
-                _laneSelector.gameObject.SetActive(onACard);
-            if (!onACard) return;
-
-            int lane = _selectorCentreOnly ? 0 : Mathf.Clamp(Mathf.RoundToInt(kidX / laneOffset), -1, 1);
+            int lane = Mathf.Clamp(Mathf.RoundToInt(kidX / laneOffset), -1, 1);
             var p = _laneSelector.localPosition;
             float target = lane * laneOffset;
             // Exactly the kid's own lane-change speed, so the marker arrives with him instead of
@@ -1196,7 +1221,6 @@ namespace SummaRace.Features.Race.Endless
         private void CollectCorrect(EndlessOptionPickup pickup)
         {
             var track = TrackManager.instance;
-            bool wasRepresent = _activeIsRepresent;
             int element = pickup.elementIndex;
 
             if (SummaRace.Core.AudioManager.Instance != null)
@@ -1245,10 +1269,14 @@ namespace SummaRace.Features.Race.Endless
             _laneSelectorSr = null;
             HideOptionPreview(); // this gate's options are answered; the next placement re-fills it
 
-            // TDD §11.4: the boost bundle (sfx + speed) is reserved for a first-hit correct
-            // pick — collecting a re-presented gold card still resolves the element, just
-            // without the extra reward.
-            if (!wasRepresent && track != null)
+            // TDD §11.4: the boost bundle (sfx + speed) rewards a correct pick.
+            //
+            // The `!wasRepresent &&` guard that used to sit here is gone (2026-08-22). It carved
+            // out "no boost when the learner drives into a re-presented gold card", and F55
+            // deleted the re-present, so `_activeIsRepresent` had been permanently false ever
+            // since and the rule was inert: every correct pick already got the boost. Deleted
+            // rather than left as a comment-shaped promise the code was not keeping.
+            if (track != null)
             {
                 if (SummaRace.Core.AudioManager.Instance != null)
                     SummaRace.Core.AudioManager.Instance.PlaySfx(SummaRace.Constants.AudioKeys.SfxBoost);
@@ -1256,7 +1284,7 @@ namespace SummaRace.Features.Race.Endless
             }
 
             if (track != null) AdvanceToNext(track, element);
-            else { _activeGateRoot = null; _activeElement = -1; _activeGateId = 0; _activeIsRepresent = false; }
+            else { _activeGateRoot = null; _activeElement = -1; _activeGateId = 0; }
         }
 
         /// <summary>
@@ -1364,10 +1392,24 @@ namespace SummaRace.Features.Race.Endless
             _answerReveal = null;
         }
 
-        /// <summary>A gate or re-present the player ran past without any hit. First-pick is
-        /// recorded false if this is the first miss for the element; either way the correct
-        /// answer comes back as a re-present, up to <see cref="MaxRepresentMisses"/> dodges
-        /// before an anti-frustration auto-resolve moves on.</summary>
+        /// <summary>
+        /// An answer gate the learner ran past without touching any of its three cards.
+        ///
+        /// ⚠️ The summary this replaces (corrected 2026-08-22) described a mechanic F55 removed:
+        /// it promised the correct answer "comes back as a re-present, up to MaxRepresentMisses
+        /// dodges before an anti-frustration auto-resolve". There is no re-present, no dodge
+        /// counter and no auto-resolve — and a doc that describes a second chance the learner
+        /// does not get is exactly the kind of thing that makes a later pass "restore" a rule
+        /// that was deliberately deleted.
+        ///
+        /// What actually happens: the first pick is closed as INCORRECT if this is the first
+        /// time this element has resolved (a run-past is the same outcome in the log as a wrong
+        /// pick, so it must be the same outcome on screen), the gate is destroyed, the next one
+        /// is scheduled, and the answer is shown on the reading panel for a beat.
+        /// <c>raceFirstPickCorrect</c> is the star count and the study's headline measure, so the
+        /// first-pick close here is load-bearing and must not be made conditional on anything
+        /// the learner cannot control.
+        /// </summary>
         private void HandleMissedActiveGate(TrackManager track)
         {
             int element = _activeElement;
@@ -1397,7 +1439,6 @@ namespace SummaRace.Features.Race.Endless
             DestroyActiveGate();
             _activeElement = -1;
             _pendingElement = 5;
-            _pendingIsRepresent = false;
             _pendingGateDistance = track.worldDistance + RepresentDistance(track);
             _preparedElement = -1;   // FINISH has no options and no panel
             TryPlacePending();
@@ -1494,30 +1535,27 @@ namespace SummaRace.Features.Race.Endless
             HideOptionPreview();
         }
 
-        /// <summary>Element fully resolved (correct first hit, re-present collected, or
-        /// resolved either way — clears the active slot and schedules the next answer gate, or
+        /// <summary>Element fully resolved, whichever way it went (collected correct, collected
+        /// wrong, or run past) — clears the active slot and schedules the next answer gate, or
         /// FINISH once element 4 is done, through the same pending mechanism.</summary>
         private void AdvanceToNext(TrackManager track, int completedElement)
         {
             _activeGateRoot = null;
             _activeElement = -1;
             _activeGateId = 0;   // see DestroyActiveGate: -1 must never be indexable
-            _activeIsRepresent = false;
 
             int next = completedElement + 1;
             if (next < 5)
             {
                 _pendingElement = next;
-                _pendingIsRepresent = false;
                 _pendingGateDistance = track.worldDistance + NextGateGap(track);
                 // Options decided now, not at placement — this is what lets the reading window
                 // open on a clock instead of when the track happens to spawn far enough.
-                PrepareGateOptions(next, false);
+                PrepareGateOptions(next);
             }
             else
             {
                 _pendingElement = 5;
-                _pendingIsRepresent = false;
                 _pendingGateDistance = track.worldDistance + FinishRunway(track);
                 _preparedElement = -1;   // FINISH has no options and no panel
             }
@@ -1526,10 +1564,6 @@ namespace SummaRace.Features.Race.Endless
             TryPlacePending();
         }
 
-        /// <summary>Metres to the next answer gate. Derived from <see cref="SummaRace.Constants.GameRules.RaceSecondsPerGate"/>
-        /// against the run's top speed so the learner always gets at least that long to read
-        /// and choose (the run never exceeds maxSpeed, so real time is >= the target). The
-        /// story's checkpointSpacing stays a hard floor.</summary>
         /// <summary>
         /// The menu music follows us in from MainMenu and keeps looping under their race
         /// track, so two pieces of music play at once. Their MusicPlayer owns audio in this
@@ -1568,6 +1602,26 @@ namespace SummaRace.Features.Race.Endless
                 if (p != null && p != keep) Destroy(p.gameObject);
         }
 
+        /// <summary>
+        /// Metres of runway to the next answer gate.
+        ///
+        /// ⚠️ THIS METHOD HAD NO SUMMARY AT ALL until 2026-08-22, because the one written for it
+        /// had drifted DOWN the file and come to rest above <c>SilenceOurMenuMusic</c> — so the
+        /// gate-pacing documentation was attached to a call that stops the menu music, and the
+        /// method that actually sets the race's pacing looked undocumented. Both were fixed
+        /// together; if a doc comment here ever seems to be describing something else, check
+        /// whether it belongs to the member below it.
+        ///
+        /// It is derived from SECONDS, converted to metres by integrating the track's own
+        /// acceleration, and it deliberately does NOT read
+        /// <c>GameRules.RaceSecondsPerGate</c> — that constant has zero live readers anywhere in
+        /// the project and naming it here is how the previous summary managed to describe a
+        /// lever that does nothing. The seconds come from <see cref="ReadWindowSeconds"/> (the
+        /// per-difficulty reading budget) plus <c>GameRules.RaceQuietRunSeconds</c> scaled by
+        /// this gate's <see cref="GateRhythm"/>. The story's <c>checkpointSpacing</c> and
+        /// <c>GameRules.RaceMinGateGap</c> are hard floors under all of it, and
+        /// <c>RaceMaxGateGap</c> is the ceiling.
+        /// </summary>
         private float NextGateGap(TrackManager track)
         {
             // Against the speed we are ACTUALLY running, not maxSpeed. Their track starts at
@@ -1628,8 +1682,12 @@ namespace SummaRace.Features.Race.Endless
             }
             float floor = Mathf.Max(Mathf.Max(_story.mission.checkpointSpacing,
                 SummaRace.Constants.GameRules.RaceMinGateGap), secondsFloor);
-            return Mathf.Clamp(floor, floor,
-                SummaRace.Constants.GameRules.RaceMaxGateGap);
+            // Mathf.Min, not Mathf.Clamp(floor, floor, max). The clamp form was a leftover from
+            // when a separate `bySpeed` term was clamped between the floor and the ceiling; once
+            // that term went, its first two arguments were the same value, which makes the lower
+            // bound a no-op that reads like a copy-paste bug every time someone lands here.
+            // Same result, one obvious operation: the floor, capped by the ceiling.
+            return Mathf.Min(floor, SummaRace.Constants.GameRules.RaceMaxGateGap);
         }
 
         /// <summary>
@@ -2048,7 +2106,8 @@ namespace SummaRace.Features.Race.Endless
             canvasGo.AddComponent<UnityEngine.UI.GraphicRaycaster>();
 
             // Amber danger vignette (TDD §11.5): darkest at the screen edges, clear in the
-            // middle, alpha driven by danger in UpdatePatrol. Drawn behind the text.
+            // middle, alpha driven by the wrong-answer menace surge in UpdateDangerVignette
+            // (NOT by a danger meter, and not by the patrol — see that method). Behind the text.
             var vgo = new GameObject("DangerVignette");
             vgo.transform.SetParent(canvasGo.transform, false);
             _vignette = vgo.AddComponent<UnityEngine.UI.Image>();
@@ -2319,6 +2378,12 @@ namespace SummaRace.Features.Race.Endless
             qrt.anchorMin = new Vector2(0.06f, QuestionBandBottom);
             qrt.anchorMax = new Vector2(0.94f, QuestionBandTop);
             qrt.offsetMin = Vector2.zero; qrt.offsetMax = Vector2.zero;
+            // Registered as a tap blocker (see ApplyTapBlockers). raycastTarget stays FALSE:
+            // these are two different mechanisms and only one of them is in play here. The
+            // EventSystem is not involved at all — EndlessTouchInput reads the pointer directly
+            // and tests its own rect list, so this suppresses the ROAD tap without making the
+            // plaque a button.
+            _questionRect = qrt;
 
             var qLbl = new GameObject("Text");
             qLbl.transform.SetParent(qGo.transform, false);
@@ -2347,9 +2412,26 @@ namespace SummaRace.Features.Race.Endless
             _previewRoot = board;
             board.SetActive(false);
 
-            _tapBlockersPlain = new RectTransform[] { _pauseChipRect };
+            // THE TRACKER AND THE QUESTION PLAQUE ARE BLOCKERS IN *BOTH* STATES.
+            //
+            // They were in neither, which meant a tap on the SWBST tracker or on the line asking
+            // "Who is this story about?" fell straight through to the road mapping and STEERED
+            // THE RUNNER — and both of them sit high on a portrait screen, well right of centre
+            // for the question plaque's right half, so the usual result is an unrequested move
+            // to lane 2. They are also precisely what a confused nine-year-old taps: the tracker
+            // is the widget that says what to collect, and the plaque is the question itself.
+            // A lane the learner never asked for lands on raceFirstPickCorrect, which is the
+            // star count and the study's headline measure.
+            //
+            // Neither is interactive, so blocking costs nothing: the tap simply does nothing,
+            // which is the honest answer to "I tapped the question". IsOverBlocker skips
+            // inactive rects, so listing the question plaque (hidden except during a question)
+            // in the plain array is free — it can only ever block while it is on screen.
+            _tapBlockersPlain = new RectTransform[]
+                { _pauseChipRect, _trackerRect, _questionRect };
             _tapBlockersWithPanel = new RectTransform[]
-                { _pauseChipRect, _previewColumn[0], _previewColumn[1], _previewColumn[2] };
+                { _pauseChipRect, _trackerRect, _questionRect,
+                  _previewColumn[0], _previewColumn[1], _previewColumn[2] };
         }
 
         /// <summary>
@@ -2399,6 +2481,12 @@ namespace SummaRace.Features.Race.Endless
         /// columns stop blocking and a tap in that band falls through to the road mapping exactly
         /// as it did before this existed. (IsOverBlocker already ignores inactive rects, so a hidden
         /// panel needs no swap — only the reveal does.)
+        ///
+        /// BOTH arrays also carry the SWBST tracker board and the question plaque (added
+        /// 2026-08-22). Neither is a button and neither ever will be; they are here because a
+        /// tap on them used to fall through to the road and move the runner. That is the same
+        /// class of defect the pause chip had — a HUD surface silently doubling as a steering
+        /// surface — and it lands on the measure that IS the star count.
         /// </summary>
         private void ApplyTapBlockers()
         {
@@ -2412,13 +2500,15 @@ namespace SummaRace.Features.Race.Endless
         /// <summary>Remembers a gate's three options, indexed BY LANE (0 left, 1 centre, 2 right)
         /// so the panel and the road agree, and ARMS the reading window. It does not put anything
         /// on screen: UpdatePreviewWindow opens the window RacePreviewLeadSeconds before the gate.
-        /// Idempotent, because both scheduling and placement call it for the same gate.</summary>
-        private void ArmOptionPreview(string[] textsByLane, bool isRepresent)
+        /// Idempotent, because both scheduling and placement call it for the same gate.
+        /// <para>The `isRepresent` parameter is gone (2026-08-22): both surviving call sites
+        /// passed false and <c>_previewIsRepresent</c> was written but never read anywhere, so
+        /// it recorded a distinction the panel had no code to act on.</para></summary>
+        private void ArmOptionPreview(string[] textsByLane)
         {
             if (textsByLane == null) return;
             for (int i = 0; i < 3; i++)
                 _previewTexts[i] = i < textsByLane.Length ? textsByLane[i] : null;
-            _previewIsRepresent = isRepresent;
             _previewElement = _preparedElement;
             _previewArmed = true;
         }
@@ -3204,7 +3294,6 @@ namespace SummaRace.Features.Race.Endless
         private void ArmLeave()
         {
             _leaveArmed = true;
-            _leaveArmedAt = Time.unscaledTime;
             if (_leaveConfirmRoot != null) _leaveConfirmRoot.SetActive(true);
             if (SummaRace.Core.AudioManager.Instance != null)
                 SummaRace.Core.AudioManager.Instance.PlaySfx(SummaRace.Constants.AudioKeys.SfxClick);
@@ -3299,6 +3388,9 @@ namespace SummaRace.Features.Race.Endless
             // 880 wide, not 774 — see the slot arithmetic below. Still 100px of margin each
             // side of a 1080-wide reference.
             rrt.sizeDelta = new Vector2(880f, 122f);
+            // Registered as a tap blocker (see ApplyTapBlockers). Captured here rather than
+            // hunted for later so a future reshuffle of BuildHud cannot silently unregister it.
+            _trackerRect = rrt;
 
             var wood = WoodPlaqueSprite();
 
@@ -3401,15 +3493,41 @@ namespace SummaRace.Features.Race.Endless
             }
         }
 
-        /// <summary>Repaints the SWBST slots. Elements resolve in order: slot i is collected
-        /// once the current target has passed it. All three states share ONE uniform dark wood
-        /// plaque (owner 2026-08-21 — five coloured backgrounds read as candy over a moving 3D
-        /// scene); what changes is the FILL and the letter, with the element's colour carried by
-        /// the accent strip along the plaque's foot:
-        ///   upcoming  — dark plaque, dimmed strip, faded "?"
-        ///   current   — dark plaque lifted 12%, full-colour strip, white letter, pulse
-        ///   collected — cream FILLED plaque, full-colour strip, letter in the element's ink
-        /// Fill-vs-dark is the collected/not signal and does not depend on colour vision.</summary>
+        /// <summary>
+        /// Repaints the SWBST slots. Elements resolve in order: slot i is collected once the
+        /// current target has passed it. Every state shares ONE uniform wood plaque shape (owner
+        /// 2026-08-21 — five coloured backgrounds read as candy over a moving 3D scene); what
+        /// changes is the FILL and the letter, with the element's colour carried by the accent
+        /// strip along the plaque's foot:
+        ///   upcoming        — dark plaque, dimmed strip, faded "?"
+        ///   current         — plaque lifted 12%, full-colour strip, white letter, pulse
+        ///   collected       — cream FILLED plaque, full-colour strip, letter in the element's ink
+        ///   collected, missed — dark plaque, full-colour strip, cream letter
+        ///
+        /// THE FOURTH STATE IS NEW (2026-08-22) AND IT IS DELIBERATELY NOT A PUNISHMENT.
+        ///
+        /// Until now a slot filled identically whether the learner chose the right card or the
+        /// wrong one, so the one widget whose job is to teach the framework said nothing at all
+        /// about how the run was going: five cream plaques by the finish line, on a 0/5 run and a
+        /// 5/5 run alike. That is also the one thing a learner CAN act on mid-race — seeing that
+        /// the last part did not land is what makes reading the next question feel worth doing.
+        ///
+        /// What separates the two collected states is the FILL, exactly as fill-vs-dark already
+        /// separates collected from upcoming — so the whole widget is readable without colour
+        /// vision (F49) and no new channel is introduced. A missed slot still gets its real
+        /// letter and its full-strength SWBST strip, because the learner DOES still hold that
+        /// part of the framework: FinishRoutine hands Arrange all five correct pieces regardless,
+        /// and the answer was shown on the panel at the time. It is "you have it, you did not
+        /// find it yourself", not "you failed".
+        ///
+        /// NEVER RED AND NEVER AN X (GDD D7 — a wrong answer is never punished, "caught" is
+        /// friendly, nothing is ever game-over). If a future pass is tempted to make this louder,
+        /// that is the decision it would be overturning, and D7 is LOCKED.
+        ///
+        /// It reads _firstPickDone/_firstPickCorrect and writes neither. Those two arrays ARE the
+        /// star count and the study's headline measure; this is a readout of them and must stay
+        /// one.
+        /// </summary>
         private void RefreshTracker()
         {
             if (_story == null || _slotBg[0] == null) return;
@@ -3417,7 +3535,11 @@ namespace SummaRace.Features.Race.Endless
 
             for (int i = 0; i < 5; i++)
             {
-                if (_slotBg[i] == null) continue;
+                // The label and the rect are created alongside the background in BuildTracker, so
+                // in practice they travel together — but every branch below writes all three, and
+                // a half-built plaque should degrade to "not repainted" rather than throw out of
+                // a method that runs on every gate of every race.
+                if (_slotBg[i] == null || _slotLabel[i] == null || _slotRect[i] == null) continue;
                 var lbl = _slotLabel[i];
                 string type = _story.elements[i].type;
                 string letter = string.IsNullOrEmpty(type) ? "?" : type.Substring(0, 1).ToUpper();
@@ -3425,18 +3547,38 @@ namespace SummaRace.Features.Race.Endless
                 var acc = _slotAccent[i];
                 var swbst = SummaRace.Constants.SwbstPalette.ForIndex(i);
 
-                if (i < current) // collected — the plaque FILLS
+                if (i < current) // resolved — the plaque takes its letter and its full colour
                 {
-                    // Filled cream face with the element's own ink for the letter. Fill-vs-dark
-                    // is what separates collected from not, and it is perceivable without colour
-                    // vision (F49); the colour on top of it is the framework, not the signal.
-                    // InkForIndex rather than DeepForIndex: Ink is the variant measured against
-                    // a cream card (5.18-7.31:1), Deep is a background colour and drops WANTED
-                    // and SO under AA on exactly this background.
-                    _slotBg[i].color = Theme.Cream;
+                    // Was the part found, or only shown? `_firstPickDone` is belt-and-braces:
+                    // anything below `current` has always been closed, but reading the flag makes
+                    // the default (not found) the safe one if that ever stops being true.
+                    bool found = _firstPickDone[i] && _firstPickCorrect[i];
+
+                    if (found)
+                    {
+                        // Filled cream face with the element's own ink for the letter.
+                        // Fill-vs-dark is what separates found from not, and it is perceivable
+                        // without colour vision (F49); the colour on top of it is the framework,
+                        // not the signal. InkForIndex rather than DeepForIndex: Ink is the
+                        // variant measured against a cream card (5.18-7.31:1), Deep is a
+                        // background colour and drops WANTED and SO under AA on this background.
+                        _slotBg[i].color = Theme.Cream;
+                        lbl.color = SummaRace.Constants.SwbstPalette.InkForIndex(i);
+                    }
+                    else
+                    {
+                        // Collected, but not found by the learner: the strip goes to full colour
+                        // and the letter replaces the "?", so the slot is unmistakably DONE — the
+                        // cream fill is simply not awarded. Same dark wood as an upcoming slot,
+                        // which is what makes the difference legible at a glance in a row of five.
+                        // Cream on this wood measures ~7.4:1, comfortably past AA, so the letter
+                        // is never harder to read than a found one — dimmer type would turn a
+                        // gentle distinction into a penalty.
+                        _slotBg[i].color = SlotWoodEmpty;
+                        lbl.color = Theme.Cream;
+                    }
                     if (acc != null) acc.color = swbst;
                     lbl.text = letter;
-                    lbl.color = SummaRace.Constants.SwbstPalette.InkForIndex(i);
                     _slotRect[i].localScale = Vector3.one;
                 }
                 else if (i == current) // current target — lifted, bright letter, pulse
@@ -3450,7 +3592,7 @@ namespace SummaRace.Features.Race.Endless
                 }
                 else // upcoming / empty — dark wood, dimmed strip, faded "?"
                 {
-                    _slotBg[i].color = new Color(0.40f, 0.29f, 0.18f);   // lifted 2026-08-22
+                    _slotBg[i].color = SlotWoodEmpty;
                     if (acc != null) acc.color = Theme.Alpha(Color.Lerp(swbst, Color.black, 0.45f), 0.75f);
                     lbl.text = "?";
                     lbl.color = new Color(1f, 0.96f, 0.85f, 0.5f);
@@ -3611,6 +3753,21 @@ namespace SummaRace.Features.Race.Endless
             return Sprite.Create(tex, new Rect(0, 0, S, S), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect);
         }
 
+        /// <summary>Frees a runtime-generated Sprite AND the Texture2D under it, then nulls the
+        /// reference. Both halves matter: destroying the Sprite alone leaves the texture resident,
+        /// and the texture is the part that costs anything on the 2GB floor device. Null-safe and
+        /// idempotent, so it is safe to call from OnDestroy however the scene was left.
+        /// Do not use this on <see cref="WoodPlaqueSprite"/> — that one is statically cached and
+        /// deliberately outlives the scene.</summary>
+        private static void FreeGeneratedSprite(ref Sprite sprite)
+        {
+            if (sprite == null) { sprite = null; return; }
+            var tex = sprite.texture;
+            Destroy(sprite);
+            if (tex != null) Destroy(tex);
+            sprite = null;
+        }
+
         /// <summary>Spawns the collect sparkle, retinted warm gold, and auto-cleans it.</summary>
         private void SpawnCollectSparkle(Vector3 worldPos)
         {
@@ -3648,13 +3805,18 @@ namespace SummaRace.Features.Race.Endless
             // Nothing is lost by cutting it. It never catches anyone (D7 — timesCaught stays 0),
             // it carries no rule, and the wrong-answer beat is already carried by the amber
             // vignette and the feedback line. Two days from a study, a character that reads as a
-            // rendering fault is worse than no character. Flip this to true only alongside a
-            // camera change, and re-read the three failures above first.
+            // rendering fault is worse than no character. Revive the always-on chase only
+            // alongside a camera change, and re-read the three failures above first — and note
+            // that the code for it no longer exists, so that is a rewrite, not a flag flip.
             // ...but the CAMEO (RacePatrolCameoEnabled) does spawn him. It never holds an
             // offset from the runner, which is the property all three failures above were
             // fighting for — see the constant for the geometry and how it was solved.
-            if (!SummaRace.Constants.GameRules.RacePatrolEnabled
-                && !SummaRace.Constants.GameRules.RacePatrolCameoEnabled) return;
+            // Only the cameo remains, so only the cameo's flag is consulted. RacePatrolEnabled
+            // used to be the other half of this test; the always-on chase it selected is deleted
+            // (see the tombstone below UpdatePatrolCameo), so honouring it here would spawn a cop
+            // that nothing ever moves. PatrolCameoGeometryTests already asserts the two flags are
+            // never both true.
+            if (!SummaRace.Constants.GameRules.RacePatrolCameoEnabled) return;
 
             var runner = TrackManager.instance != null ? TrackManager.instance.characterController : null;
             if (runner == null) return;
@@ -3687,16 +3849,35 @@ namespace SummaRace.Features.Race.Endless
             // Station him out of shot at the depth he will run at for the whole race: the bump
             // moves him sideways, never forward, so there is nothing to ease in from behind.
             var p = runner.transform.position;
-            _patrolGap = SummaRace.Constants.GameRules.PatrolBodyMargin + 1f;
-            // Well outside the frame; UpdatePatrol re-derives both axes from the live camera and
-            // the live bounds on its first frame, before he is ever visible.
-            _patrol.position = new Vector3(p.x + _patrolSide * 6f, p.y, p.z - _patrolGap);
+            // Parked well outside the frame. The exact numbers do not matter and deliberately no
+            // longer pretend to: UpdatePatrolCameo places him from the LIVE runner on the first
+            // frame he is ever activated, before he is drawn, so this is only somewhere harmless
+            // to sit while inactive. 6m to the side and one body-margin back is comfortably out
+            // of shot on the shipped camera.
+            float parkBack = SummaRace.Constants.GameRules.PatrolBodyMargin + 1f;
+            _patrol.position = new Vector3(p.x + 6f, p.y, p.z - parkBack);
             _patrol.rotation = Quaternion.identity; // faces down the road, same as the runner
-            // The cameo starts hidden ALWAYS and shows itself only for the wrong-answer
-            // beat; only the retired chase wanted him on screen for the whole run.
-            go.SetActive(_runReleased && !SummaRace.Constants.GameRules.RacePatrolCameoEnabled);
+            // ALWAYS hidden at spawn. The cameo shows him only while the bump is on; the
+            // retired always-on chase was the only mode that wanted him visible from the start,
+            // and the expression here still carried its condition (which, with the cameo on,
+            // always evaluated to false anyway).
+            go.SetActive(false);
         }
 
+
+        // ⚠️ The long summary that used to sit here belonged to UpdatePatrolCameo, not to
+        // StepPatrol — a second instance of the doc-drift fixed at NextGateGap on 2026-08-22.
+        // It has been moved back down onto the method it describes. If a doc comment in this
+        // file ever seems to be describing something else, check the member below it.
+        /// <summary>
+        /// Moves the patrol's target distance by one step and clamps it. Clamping here rather
+        /// than at the read site is what makes D7 structural: nothing downstream can produce a
+        /// gap shorter than PatrolChaseGap, whatever it is handed.
+        /// </summary>
+        private void StepPatrol(float delta)
+        {
+            _patrolStepTarget = Mathf.Clamp01(_patrolStepTarget + delta);
+        }
 
         /// <summary>
         /// The patrol CAMEO: a TAIL. He runs in the runner's own lane, a constant
@@ -3736,16 +3917,6 @@ namespace SummaRace.Features.Race.Endless
         /// He cannot catch anybody: the gap is constant, so there is nothing to close.
         /// timesCaught stays 0 for every run ever logged (D7/L3).
         /// </summary>
-        /// <summary>
-        /// Moves the patrol's target distance by one step and clamps it. Clamping here rather
-        /// than at the read site is what makes D7 structural: nothing downstream can produce a
-        /// gap shorter than PatrolChaseGap, whatever it is handed.
-        /// </summary>
-        private void StepPatrol(float delta)
-        {
-            _patrolStepTarget = Mathf.Clamp01(_patrolStepTarget + delta);
-        }
-
         private void UpdatePatrolCameo(TrackManager track)
         {
             if (_patrol == null || track == null) return;
@@ -3911,160 +4082,38 @@ namespace SummaRace.Features.Race.Endless
                     if (t.name == hide[i]) { t.gameObject.SetActive(false); break; }
         }
 
-        /// <summary>
-        /// "Appear only on a bump" chaser, arriving from the SIDE instead of from behind. A
-        /// wrong pick sets _menaceTimer; while that runs he slides in beside the kid's shoulder,
-        /// then slides back out of shot. He never catches (GDD D7). His position is recomputed
-        /// from the LIVE player every frame (never a lerp of world-Z toward a target), so a
-        /// floating-origin recenter is absorbed with no stall.
-        ///
-        /// He arrives sideways because arriving from behind is geometrically impossible in this
-        /// frame — the full measurement is on GameRules.PatrolSurgeGap. In short: a chaser behind
-        /// the kid sits between the kid and the lens, so closing the gap only drags him into the
-        /// camera and out of the bottom of the screen (at 2.9m only his hat was in frame, at 2.1m
-        /// his mesh was inside the kid's), and portrait's 35deg horizontal FOV leaves him sharing
-        /// the kid's screen column at every gap. Holding him at a constant depth and moving him
-        /// ACROSS the frame instead puts a whole, readable second runner at the kid's shoulder,
-        /// and keeps him from sweeping through the camera plane on his way in.
-        /// </summary>
-        private void UpdatePatrol(TrackManager track)
-        {
-            if (_patrol == null || track == null) return;
-            var runner = track.characterController;
-            if (runner == null) return;
-
-            if (!_patrol.gameObject.activeSelf)
-            {
-                if (!_runReleased) return;
-                _patrol.gameObject.SetActive(true);
-                // Set Running only now: a bool set on an Animator whose GameObject was
-                // inactive at spawn is reset to its default (false) when the object enables,
-                // so the cop stood still. Setting it post-activation makes the run loop play.
-                if (_patrolAnim != null)
-                {
-                    _patrolAnim.SetBool("Running", true);
-                    // The cop spends every clean run hidden behind the camera. Its Animator
-                    // ships as CullUpdateTransforms, which keeps the state machine ticking but
-                    // does NOT write bone transforms while the renderers are invisible — and
-                    // visibility is resolved from the PREVIOUS frame's culling. So the first
-                    // frame it rushed into view it drew in its authored bind pose and snapped
-                    // into the run only on the next frame. That reads as badly here as it
-                    // possibly could: the BitGem cop is rigid-part, not skinned (19 separate
-                    // mesh renderers), so an unposed frame is limbs scattered at bind offsets.
-                    _patrolAnim.cullingMode = AnimatorCullingMode.AlwaysAnimate;
-                }
-                // Lock the cop to the runner's ground height once, so it no longer floats:
-                // following playerPos.y live made it rise with the runner's jumps / any
-                // character y-offset. The road is flat and recentres only in X/Z, so a
-                // captured constant is stable for the whole run.
-                _patrolGroundY = runner.transform.position.y;
-                _patrolGrounded = true;
-
-                // Snap to his station before the first frame he is visible in. SmoothDamp from
-                // wherever he was left would walk him across the frame in full view of the
-                // learner, which is the one thing "appear only on a bump" must never do.
-                var startPos = runner.transform.position;
-                _patrol.position = new Vector3(startPos.x + _patrolSide * 6f,
-                    _patrolGroundY, startPos.z - _patrolGap);
-                _patrolMoveVel = 0f;
-            }
-
-            // Owned by LateUpdate now, not by this method — see UpdateDangerVignette.
-            bool surging = _menaceSurging;
-
-            var playerPos = runner.transform.position;
-            var cam = Camera.main;
-            // The kid's LANE lives on the character, not on the controller's own transform:
-            // characterController.transform.position.x is 0 for the whole run (measured), the
-            // 1.5m lane offset is on characterCollider/character. So the old "lane-match
-            // smoothing" was lerping toward a constant — the cop ran down the centre line
-            // whatever lane the kid was in, which is half of why he read as misplaced.
-            var bodyT = runner.characterCollider != null
-                ? runner.characterCollider.transform
-                : runner.transform;
-            float kidX = bodyT.position.x;
-
-            // Which shoulder: the one the kid is NOT on, so the two never share a screen column.
-            // Sticky through the middle lane, or he would slide across and back on every pass.
-            //
-            // CHOSEN AT REST OR ON THE FIRST FRAME OF A SURGE, NEVER MID-SURGE. He now runs almost
-            // abreast of the kid (see the framing gap below), so a side flip while he is on screen
-            // would sweep him straight THROUGH the runner. Off screen the choice is free; once he
-            // is in shot he keeps his shoulder and simply slides outward if the kid changes lane
-            // into him.
-            if (!surging || !_wasSurging)
-            {
-                if (kidX > SummaRace.Constants.GameRules.PatrolSideDeadband) _patrolSide = -1f;
-                else if (kidX < -SummaRace.Constants.GameRules.PatrolSideDeadband) _patrolSide = 1f;
-            }
-            _wasSurging = surging;
-
-            // EVERYTHING BELOW POSITIONS HIS VISIBLE BODY, NOT HIS PIVOT. His rendered mass is not
-            // centred on his transform and the offset MOVES: measured live it reaches 0.79m
-            // forward and 0.65m sideways as the run clip translates his 19-part rigid rig while
-            // the transform stays put. So a gap set on the transform was up to 0.8m tighter than
-            // it read, always toward the kid — at a nominal 1.5m gap the two models' bounds still
-            // overlapped by 0.81m along the run. Reading the offset off the live bounds each frame
-            // fixes it for every stride, and for any future character swap, instead of for one
-            // hand-picked number.
-            Bounds copB, kidB;
-            bool haveCop = BodyBounds(_patrol, ref _patrolRenderers, out copB);
-            bool haveKid = BodyBounds(bodyT, ref _kidRenderers, out kidB);
-            Vector3 bodyOffset = haveCop ? copB.center - _patrol.position : Vector3.zero;
-
-            // ---- DEPTH: how far back he runs, solved from the camera's own projection ----
-            //
-            // The old rule was "hold him a fixed 1.75m behind". Measured in play mode that put his
-            // body 3.25m from the lens, where the camera's 15deg downward pitch crops everything
-            // nearer than ~4.1m off the BOTTOM of the frame: 58% of him was below the screen and
-            // 21% off the right edge, i.e. ~27% of the cop was visible, and what was visible was
-            // drawn on top of the runner. Solving "put his feet just inside the bottom edge"
-            // instead gives ~0.6m at the shipped camera — he runs almost abreast of the kid but
-            // well out to the side, and the WHOLE cop is in frame. Separation is then guaranteed
-            // sideways (below) rather than along the run, which is the axis the frame can afford.
-            _patrolGap = FramingGap(cam, playerPos, copB, haveCop);
-
-            // ---- SIDEWAYS: anchored on the KID and on his own SCREEN EDGE ----
-            float targetX = LateralTarget(cam, playerPos, kidX, copB, kidB, haveCop && haveKid, surging);
-            // SmoothDamp so he slides in on a bump and drifts back out after — natural, not snappy.
-            float bodyX = _patrol.position.x + bodyOffset.x;
-            float newBodyX = Mathf.SmoothDamp(bodyX, targetX, ref _patrolMoveVel,
-                SummaRace.Constants.GameRules.PatrolMoveSmoothTime);
-
-            // HARD CLAMP, not a tuned gap. With the two of them nearly level along the run, the
-            // ONLY thing keeping their bounds apart is this: he may never come within the two
-            // half-widths of the kid, whatever the smoothing lag, however fast the lane change,
-            // and whatever any of the numbers above are retuned to. Applied on the side he is
-            // actually on (not the side he is heading for), so it can never teleport him across.
-            if (haveCop && haveKid)
-            {
-                float minSep = kidB.extents.x + copB.extents.x
-                             + SummaRace.Constants.GameRules.PatrolBodyMargin;
-                float side = newBodyX >= kidX ? 1f : -1f;
-                newBodyX = side > 0f ? Mathf.Max(newBodyX, kidX + minSep)
-                                     : Mathf.Min(newBodyX, kidX - minSep);
-            }
-
-            float groundY = _patrolGrounded ? _patrolGroundY : playerPos.y;
-            // y is deliberately NOT offset-corrected: his feet belong on the road, and the
-            // transform is the thing that stands on it.
-            _patrol.position = new Vector3(newBodyX - bodyOffset.x, groundY,
-                playerPos.z - _patrolGap - bodyOffset.z);
-            // He runs straight down the road. He is NOT yawed at the kid, however much better
-            // that would read: turning him swings that forward mesh offset sideways (a 37deg yaw
-            // moved his body 0.65m across, straight back into the kid's column) and inflates his
-            // footprint from 1.2m wide to 1.8m, which is what put him back on top of the runner.
-
-        }
+        // ---- UpdatePatrol IS GONE (2026-08-22) --------------------------------------------
+        //
+        // ~100 lines of "appear only on a bump" chaser (the always-on side-arrival version, with
+        // its FramingGap / LateralTarget / DepthAlongAxis projection helpers and the
+        // _patrolMoveVel SmoothDamp / _patrolSide shoulder-picking state it needed) were deleted
+        // here because THEY COULD NOT RUN. LateUpdate branches on
+        // GameRules.RacePatrolCameoEnabled, which is true, so UpdatePatrolCameo is the only
+        // patrol code the game has ever executed since the cameo landed; the `else` arm was
+        // unreachable, and GameRules.RacePatrolEnabled — the flag that would have selected it —
+        // is false and is asserted mutually exclusive with the cameo by PatrolCameoGeometryTests.
+        //
+        // This mattered more than dead weight usually does: the two implementations disagreed
+        // about the chaser's geometry (side-arrival vs a held tail in the runner's own lane) and
+        // about the reason for the camera pullback, so anyone reading this file to answer "where
+        // does the cop go?" had a 50/50 chance of reading the version that does not run — and
+        // the shipping one, UpdatePatrolCameo, is the one that holds D7 structurally via the
+        // clamp in StepPatrol. Keeping a second, contradictory answer next to it is how a future
+        // pass "fixes" the wrong function and sees nothing change.
+        //
+        // The live path is UpdatePatrolCameo above, driven by _patrolStep / _patrolStepTarget.
+        // Nothing here was salvageable for it: the cameo runs the cop in the kid's OWN lane at a
+        // constant gap, so there is no lateral target to project and no shoulder to choose.
 
         /// <summary>
         /// The amber wrong-answer vignette. Driven by the menace surge and nothing else.
         ///
-        /// This used to live at the tail of <see cref="UpdatePatrol"/>, which returns immediately
-        /// on <c>_patrol == null</c> — and <c>_patrol</c> is ALWAYS null, because
-        /// <see cref="SummaRace.Constants.GameRules.RacePatrolEnabled"/> is false and SpawnPatrol
-        /// returns before creating him. So the vignette never appeared once, and neither did the
-        /// _menaceTimer countdown that drives it. Two things followed from that:
+        /// This used to live at the tail of the old always-on <c>UpdatePatrol</c> (deleted
+        /// 2026-08-22 — see the tombstone above), which returned immediately on
+        /// <c>_patrol == null</c> — and <c>_patrol</c> was ALWAYS null, because
+        /// <c>GameRules.RacePatrolEnabled</c> is false and SpawnPatrol returned before creating
+        /// him. So the vignette never appeared once, and neither did the _menaceTimer countdown
+        /// that drives it. Two things followed from that:
         ///
         ///   * The comment on RacePatrolEnabled justifies cutting the cop with "the wrong-answer
         ///     beat is already carried by the amber vignette and the feedback line" — and half of
@@ -4075,8 +4124,8 @@ namespace SummaRace.Features.Race.Endless
         ///     a full screen of overdraw every frame, on the tile-based GPU of the 2GB floor
         ///     device that has to hold 30fps.
         ///
-        /// Kept out of UpdatePatrol deliberately: this is learner feedback and must not depend on
-        /// a chaser that is currently switched off and may stay off.
+        /// Kept out of the patrol update deliberately: this is learner feedback and must not
+        /// depend on a chaser that can be switched off and may stay off.
         /// </summary>
         private void UpdateDangerVignette(bool surging)
         {
@@ -4088,100 +4137,6 @@ namespace SummaRace.Features.Race.Endless
             // and most frames of a clean run have no surge at all.
             bool visible = vc.a > 0.004f;
             if (_vignette.enabled != visible) _vignette.enabled = visible;
-        }
-
-        /// <summary>
-        /// How far back he runs. Solved from the camera's own projection rather than tuned: find
-        /// the distance at which his FEET land on viewport y = PatrolFeetScreenY, so the whole cop
-        /// is inside the frame instead of a head floating over the bottom edge. Anything nearer
-        /// than that is cropped away by the camera's downward pitch — which is what the shipped
-        /// 1.75m gap was doing (58% of him below the screen, measured).
-        ///
-        /// Derived live off the camera basis, so the three camera retunes this race has already
-        /// had would each have carried him with them instead of silently re-breaking this.
-        /// </summary>
-        private float FramingGap(Camera cam, Vector3 playerPos, Bounds copB, bool haveCop)
-        {
-            float fallback = SummaRace.Constants.GameRules.PatrolBodyMargin
-                           + (haveCop ? copB.extents.z : 1f);
-            if (cam == null || !haveCop) return fallback;
-
-            var f = cam.transform.forward;
-            var u = cam.transform.up;
-            float k = (2f * SummaRace.Constants.GameRules.PatrolFeetScreenY - 1f)
-                    * Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad);
-            float denom = u.z - k * f.z;
-            if (Mathf.Abs(denom) < 0.0001f) return fallback;
-
-            float dy = copB.min.y - cam.transform.position.y;   // his feet, relative to the lens
-            float dz = dy * (k * f.y - u.y) / denom;            // …the depth that frames them
-            float gap = playerPos.z - cam.transform.position.z - dz;
-            return Mathf.Clamp(gap, SummaRace.Constants.GameRules.PatrolMinGap,
-                                    SummaRace.Constants.GameRules.PatrolMaxGap);
-        }
-
-        /// <summary>
-        /// Where the chaser belongs sideways: parked outside the frame at rest, beside the kid
-        /// during a bump.
-        ///
-        /// THIS IS THE FIX FOR "HE APPEARS INSIDE". It used to be a fraction of the view's
-        /// half-width AT HIS OWN DEPTH, anchored on the camera. At his depth the half-width is
-        /// barely a metre, so 0.80 of it is x = 0.82m — inside the kid's own arm swing (live
-        /// bounds +/-0.84m). Measured mid-surge: 0.44m of lateral overlap, 0.22m of separation
-        /// along the run, and screen rects overlapping by 14.4% x 28.7%. Two bodies drawn that
-        /// close with crossing silhouettes read as one fused body, whatever Bounds.Intersects says.
-        ///
-        /// Now the surge position is whichever is further out of:
-        ///   * SCREEN: his near silhouette edge clears the kid's far silhouette edge by
-        ///     PatrolScreenClearance — computed at each body's OWN depth, because they are not at
-        ///     the same distance from the lens and the kid is much wider in frame than in metres;
-        ///   * WORLD: the two half-widths plus PatrolBodyMargin, so their bounds cannot touch.
-        /// Both are read from the live camera and the live bounds, so a camera retune or a
-        /// character swap carries them instead of stranding him.
-        /// </summary>
-        private float LateralTarget(Camera cam, Vector3 playerPos, float kidX,
-                                    Bounds copB, Bounds kidB, bool haveBodies, bool surging)
-        {
-            if (cam == null)
-                return kidX + _patrolSide * (surging ? 1.6f : 3f); // mid-swap: sane and off centre
-
-            float camX = cam.transform.position.x;
-            float tanHalf = Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad);
-            float copHalfWidth = Mathf.Max(0.1f,
-                tanHalf * cam.aspect * DepthAlongAxis(cam, playerPos.z - _patrolGap, copB, haveBodies));
-
-            if (!surging)
-                return camX + _patrolSide * SummaRace.Constants.GameRules.PatrolRestScreenX * copHalfWidth;
-
-            if (!haveBodies)
-                return camX + _patrolSide * 1.0f * copHalfWidth;
-
-            float kidHalfWidth = Mathf.Max(0.1f,
-                tanHalf * cam.aspect * DepthAlongAxis(cam, kidB.center.z, kidB, true));
-
-            // The kid's far silhouette edge, in normalised half-width units at HIS depth.
-            float kidEdge = (kidX + _patrolSide * kidB.extents.x - camX) / kidHalfWidth;
-            // Put the cop's near edge that far out plus the clearance, then convert his own near
-            // edge back into a body centre at HIS depth.
-            float byScreen = camX
-                + (kidEdge + _patrolSide * SummaRace.Constants.GameRules.PatrolScreenClearance) * copHalfWidth
-                + _patrolSide * copB.extents.x;
-            float byWorld = kidX + _patrolSide * (kidB.extents.x + copB.extents.x
-                + SummaRace.Constants.GameRules.PatrolBodyMargin);
-
-            return _patrolSide > 0f ? Mathf.Max(byScreen, byWorld) : Mathf.Min(byScreen, byWorld);
-        }
-
-        /// <summary>Distance from the lens along the camera's own axis for a body whose centre
-        /// sits at world z <paramref name="centreZ"/>. Not simply (z - camZ): the camera is
-        /// pitched, so height matters, and using the flat difference understates the depth (and
-        /// therefore the frame width) by ~20% at this pitch.</summary>
-        private static float DepthAlongAxis(Camera cam, float centreZ, Bounds b, bool haveBounds)
-        {
-            var f = cam.transform.forward;
-            float dy = (haveBounds ? b.center.y : 1f) - cam.transform.position.y;
-            float dz = centreZ - cam.transform.position.z;
-            return Mathf.Max(0.5f, dy * f.y + dz * f.z);
         }
 
         /// <summary>World-space bounds of a rigged model's VISIBLE renderers — what is actually on
@@ -4896,7 +4851,12 @@ namespace SummaRace.Features.Race.Endless
             var hand = new GameObject("Hand");
             hand.transform.SetParent(root.transform, false);
             var himg = hand.AddComponent<UnityEngine.UI.Image>();
-            himg.sprite = MakeVignetteSprite();   // radial falloff = a soft glowing dot
+            // Radial falloff = a soft glowing dot. Kept in a field: this is a runtime-generated
+            // Sprite over a runtime-generated Texture2D, owned by no asset, so nothing reclaims
+            // it until an incidental Resources.UnloadUnusedAssets. Same reasoning as the
+            // vignette's own sprite, and the same place frees it (OnDestroy).
+            _coachSprite = MakeVignetteSprite();
+            himg.sprite = _coachSprite;
             himg.color = new Color(1f, 0.92f, 0.55f, 0.95f);
             himg.raycastTarget = false;
             var hrt = himg.rectTransform;
@@ -5054,8 +5014,8 @@ namespace SummaRace.Features.Race.Endless
 
             var track = TrackManager.instance;
 
-            // The surge clock and the vignette are ticked HERE, before UpdatePatrol, because the
-            // cop is optional and the learner's wrong-answer feedback is not. Paused/leaving
+            // The surge clock and the vignette are ticked HERE, before the cop is placed, because
+            // the cop is optional and the learner's wrong-answer feedback is not. Paused/leaving
             // frames already returned above, so a surge does not burn down behind the pause menu.
             _menaceSurging = _menaceTimer > 0f;
             if (_menaceSurging) _menaceTimer -= Time.deltaTime;
@@ -5069,12 +5029,18 @@ namespace SummaRace.Features.Race.Endless
 
             // After TrackManager.Update has moved the runner, so the cop is placed against
             // THIS frame's player position rather than last frame's.
-            if (_runReleased && track != null && !_finished)
+            // One patrol implementation, one branch. The `else UpdatePatrol(track)` arm was
+            // unreachable (RacePatrolCameoEnabled is true and is asserted mutually exclusive with
+            // RacePatrolEnabled by PatrolCameoGeometryTests) and the method behind it is gone —
+            // see the tombstone below UpdatePatrolCameo. The flag stays as the real off switch:
+            // turned off, the race simply has no chaser, which is a supported state (the
+            // wrong-answer beat is also carried by the vignette and the feedback line).
+            if (_runReleased && track != null && !_finished
+                && SummaRace.Constants.GameRules.RacePatrolCameoEnabled)
             {
-                if (SummaRace.Constants.GameRules.RacePatrolCameoEnabled) UpdatePatrolCameo(track);
-                else UpdatePatrol(track);
+                UpdatePatrolCameo(track);
                 // After the cop is placed, so the frame the camera renders is the frame he is in.
-                if (SummaRace.Constants.GameRules.RacePatrolCameoEnabled) UpdateChaseCameraDolly();
+                UpdateChaseCameraDolly();
             }
 
             if (_runReleased) return;

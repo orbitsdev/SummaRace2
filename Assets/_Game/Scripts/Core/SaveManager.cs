@@ -94,13 +94,23 @@ namespace SummaRace.Core
             return new AppSettings();
         }
 
-        public void SaveSettings(AppSettings settings)
+        /// <summary>
+        /// Writes settings. <b>Returns false if the write failed</b> - callers that TELL SOMEONE
+        /// it happened must check. This carries `activeLearnerId`, and a silently failed write
+        /// there means the tablet reverts to the previous child on next launch while the teacher
+        /// has been told the switch succeeded.
+        /// </summary>
+        public bool SaveSettings(AppSettings settings)
         {
-            TryWrite(PrefKeys.SettingsFile, JsonUtility.ToJson(settings, true));
+            bool ok = TryWrite(PrefKeys.SettingsFile, JsonUtility.ToJson(settings, true));
             // Settings can only change by being written, so this is the one place that has to
             // tell Haptics its cached answer is stale. Keeps the toggle as responsive as the old
             // read-from-disk-every-buzz behaviour, without the disk.
+            //
+            // Invalidated even on a failed write: the in-memory settings object the caller holds
+            // has already changed, so the cache is stale either way.
             Haptics.InvalidateSettingsCache();
+            return ok;
         }
 
         public List<LearnerProfile> LoadProfiles()

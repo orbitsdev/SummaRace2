@@ -75,6 +75,34 @@ namespace SummaRace.Features.SessionMap
         private static readonly Color StarOff = new Color(0.45f, 0.50f, 0.55f);
         private static readonly Color StarOn = Color.white;
 
+        // --- "you can tap this" ring (see MarkPlayableStop) ---------------------------------
+        /// <summary>
+        /// LOCKED AND PLAYABLE DIFFERED BY 1.03:1 IN LUMINANCE. StopPlayable and StopLocked
+        /// above were tuned to fix a different complaint (ten black holes) and landed on the
+        /// same VALUE with different warmth — which reads on a calibrated desk monitor and does
+        /// not read on a classroom tablet at an angle in daylight. That left the padlock
+        /// carrying the entire distinction: one small glyph, on the screen whose whole job is
+        /// "which of these ten may I tap".
+        ///
+        /// Colour cannot be the answer on its own anyway (F49): a shape difference is
+        /// perceivable to everyone. So a playable stop gains a gold rim, the same device Story
+        /// Select already uses for the card it is asking for, which also makes the two screens
+        /// agree about what "open" looks like.
+        /// </summary>
+        private const float StopRingOutset = 16f;
+        private static string StopRingName(Transform stop) => "PlayRing_" + stop.name;
+
+        // --- the session-complete cheer (see EnsureCheerLine) --------------------------------
+        private const string CheerName = "SessionCheer";
+        /// <summary>How far above the hint the cheer pill sits, in reference pixels. Measured
+        /// on the 1080x1920 reference: the hint band is 105.6px tall, so a 24px-shorter pill
+        /// lifted this far occupies canvas y 152-234 — clear of the hint under it and clear of
+        /// the bottom row of stops, whose plates stop at y 243.</summary>
+        private const float CheerLiftPixels = 108f;
+
+        private GameObject _cheerPill;
+        private TMP_Text _cheerText;
+
         private void Start()
         {
             if (titleText != null)
@@ -100,9 +128,10 @@ namespace SummaRace.Features.SessionMap
             if (AudioManager.Instance != null) AudioManager.Instance.PlayMusic(AudioKeys.MusicMenu);
 
             int unlocked = UnlockedSession();
+            int current = CurrentSession(unlocked);
 
             for (int i = 0; i < stops.Length; i++)
-                SetupStop(stops[i], i + 1, unlocked);
+                SetupStop(stops[i], i + 1, unlocked, current);
 
             // Only explain the locks when some are actually locked.
             if (lockedHintText != null)
@@ -146,14 +175,14 @@ namespace SummaRace.Features.SessionMap
             var stop = stops[index].button != null ? stops[index].button.transform : null;
             if (stop == null) yield break;
 
-            if (lockedHintText != null)
-            {
-                // Start hides this label when nothing is locked, and the cheer borrows it — so
-                // on a tablet with all ten sessions open the celebration wrote into a disabled
-                // object and the learner was told nothing at all.
-                lockedHintText.text = GameText.SessionCompleteCheer;
-                lockedHintText.gameObject.SetActive(true);
-            }
+            // THE CHEER GETS ITS OWN LINE. It used to overwrite the locked-sessions hint, and
+            // the arrival that triggers it is the single most likely arrival on this screen —
+            // a learner walks in here having just finished a mission, so the sentence
+            // explaining why the next nine stops are shut ("Your teacher opens the next
+            // mission!") was replaced by a cheer at exactly the moment they turn to the next
+            // stop and find it locked. Two different jobs, two labels; PlayLockedNudge no
+            // longer has to race the celebration to restore the explanation.
+            ShowCheer(GameText.SessionCompleteCheer);
 
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxStar);
 
@@ -173,7 +202,7 @@ namespace SummaRace.Features.SessionMap
                 }
         }
 
-        private void SetupStop(SessionStop stop, int session, int unlockedSession)
+        private void SetupStop(SessionStop stop, int session, int unlockedSession, int currentSession)
         {
             if (stop == null) return;
 
@@ -182,8 +211,12 @@ namespace SummaRace.Features.SessionMap
             if (stop.numberText != null) stop.numberText.text = session.ToString();
             if (stop.lockIcon != null) stop.lockIcon.gameObject.SetActive(!playable);
 
-            // The glow marks where the learner is now, so the current mission is obvious.
-            if (stop.glow != null) stop.glow.gameObject.SetActive(session == unlockedSession);
+            // The glow marks where the learner is now — the mission still being worked on, not
+            // the newest one the teacher happened to open (see CurrentSession).
+            if (stop.glow != null) stop.glow.gameObject.SetActive(session == currentSession);
+
+            // Colour alone was not telling open from locked apart; a rim is a shape.
+            MarkPlayableStop(stop, playable);
 
             int done = CompletedInSession(session);
             if (stop.stars != null)
@@ -221,6 +254,28 @@ namespace SummaRace.Features.SessionMap
             if (learner == null) return GameRules.SessionCount;
 
             return Mathf.Clamp(learner.unlockedSession, 1, GameRules.SessionCount);
+        }
+
+        /// <summary>
+        /// The mission the learner is actually IN: the lowest open one with fewer than three
+        /// stories finished.
+        ///
+        /// The glow used to mark <c>session == unlockedSession</c>, which is a different
+        /// question — how far the TEACHER has opened the game. The two diverge as soon as a
+        /// learner leaves a story unfinished and the teacher opens the next session anyway
+        /// (which is the normal case: sessions open on the classroom schedule, GDD §8.3, not on
+        /// the child's progress). The screen then pointed at the newest stop while an earlier,
+        /// half-finished mission sat looking done with — the one thing this map exists to show.
+        ///
+        /// Falls back to the unlocked session when everything open is already complete, so the
+        /// glow still marks "you are here" while the learner waits for the teacher.
+        /// </summary>
+        private static int CurrentSession(int unlockedSession)
+        {
+            for (int session = 1; session <= unlockedSession; session++)
+                if (CompletedInSession(session) < StoryIds.Difficulties.Length) return session;
+
+            return unlockedSession;
         }
 
         private static int CompletedInSession(int session)
@@ -269,10 +324,9 @@ namespace SummaRace.Features.SessionMap
             if (stop != null && stop.lockIcon != null)
                 Tween.PunchScale(stop.lockIcon.transform, Vector3.one * 0.3f, 0.35f);
 
-            // Re-assert the explanation every time. The session-complete cheer borrows this
-            // same label, so a learner who finished a session and then reached for the next
-            // stop was answered by "Mission complete!" — which says nothing about the lock in
-            // front of them.
+            // Re-assert the explanation every time. The cheer has its own line now, so this is
+            // no longer undoing it — but the hint is hidden by Start when nothing is locked, and
+            // a tap on a locked stop is the one moment it must certainly be on screen.
             if (lockedHintText != null)
             {
                 lockedHintText.text = GameText.SessionLockedHint;
@@ -328,5 +382,168 @@ namespace SummaRace.Features.SessionMap
             return go;
         }
 
+        /// <summary>
+        /// Puts the cheer on screen. Null-safe and cheap: the line is built the first time a
+        /// session is actually finished, so an ordinary visit never creates it.
+        /// </summary>
+        private void ShowCheer(string text)
+        {
+            var label = EnsureCheerLine();
+            if (label == null) return;
+
+            label.text = text;
+            if (_cheerPill != null) _cheerPill.SetActive(true);
+        }
+
+        /// <summary>
+        /// A second line, above the locked-sessions hint, that the celebration owns.
+        ///
+        /// Built the way AddHintBacking builds its pill and for the same reason: this screen
+        /// draws over painted landscape whose brightest pixels are pure white (the grass has
+        /// daisies in it), and an average contrast figure is the wrong statistic — the worst
+        /// pixel under a glyph decides legibility. The label is CLONED from the hint so it
+        /// carries this screen's own TMP font asset and material; a freshly built TMP_Text
+        /// falls back to the project default and reads as a different typeface.
+        ///
+        /// The clone is taken BEFORE the pill is parented, exactly as SubtitleLine does — with
+        /// the order reversed the copy would include the pill about to hold it.
+        /// </summary>
+        private TMP_Text EnsureCheerLine()
+        {
+            if (_cheerText != null) return _cheerText;
+            if (lockedHintText == null || lockedHintText.transform.parent == null) return null;
+
+            var parent = lockedHintText.transform.parent;
+
+            var existing = parent.Find(CheerName);
+            if (existing != null)   // idempotent
+            {
+                _cheerPill = existing.gameObject;
+                _cheerText = existing.GetComponentInChildren<TMP_Text>(true);
+                return _cheerText;
+            }
+
+            var pillGo = new GameObject(CheerName, typeof(RectTransform));
+
+            var pill = pillGo.AddComponent<Image>();
+            pill.sprite = Resources.Load<Sprite>("UI/bar_bg");
+            if (pill.sprite != null) pill.type = Image.Type.Sliced;
+            pill.color = pill.sprite != null
+                ? Theme.Alpha(Color.white, 0.92f)
+                : Theme.Alpha(Theme.Ink, 0.80f);
+            pill.raycastTarget = false;   // never steal a tap from anything under it
+
+            var src = lockedHintText.rectTransform;
+            var rt = pill.rectTransform;
+            rt.anchorMin = src.anchorMin;
+            rt.anchorMax = src.anchorMax;
+            rt.pivot = src.pivot;
+            rt.sizeDelta = src.sizeDelta + new Vector2(36f, -24f);
+            rt.anchoredPosition = src.anchoredPosition + new Vector2(0f, CheerLiftPixels);
+
+            var labelGo = Instantiate(lockedHintText.gameObject, pillGo.transform, false);
+            labelGo.name = "Label";
+            labelGo.SetActive(true);
+
+            // Safe now: the clone was taken while the pill was still unparented.
+            pillGo.transform.SetParent(parent, false);
+            pillGo.transform.SetSiblingIndex(lockedHintText.transform.GetSiblingIndex() + 1);
+
+            var label = labelGo.GetComponent<TMP_Text>();
+            if (label == null) { Destroy(pillGo); return null; }
+
+            // Strip anything the hint carried that would re-word or animate this line.
+            foreach (var extra in labelGo.GetComponents<MonoBehaviour>())
+                if (!(extra is TMP_Text)) Destroy(extra);
+
+            label.text = string.Empty;
+            label.color = Theme.Gold;              // celebratory, and ~11:1 on the navy pill
+            label.alignment = TextAlignmentOptions.Center;
+            label.enableWordWrapping = true;
+            label.enableAutoSizing = true;
+            label.fontSizeMin = 18f;
+            label.fontSizeMax = 34f;
+            label.raycastTarget = false;
+
+            var lrect = label.rectTransform;
+            lrect.localScale = Vector3.one;
+            lrect.localRotation = Quaternion.identity;
+            lrect.anchorMin = Vector2.zero;
+            lrect.anchorMax = Vector2.one;
+            lrect.pivot = new Vector2(0.5f, 0.5f);
+            lrect.offsetMin = new Vector2(18f, 4f);
+            lrect.offsetMax = new Vector2(-18f, -4f);
+
+            pillGo.SetActive(false);   // shown only when there is something to cheer
+
+            _cheerPill = pillGo;
+            _cheerText = label;
+            return _cheerText;
+        }
+
+        /// <summary>
+        /// Shows or hides a stop's gold rim. See StopRingOutset for why a rim and not a colour.
+        /// Null-safe: a stop with no button, or no parent to put the rim in, is left alone.
+        /// </summary>
+        private void MarkPlayableStop(SessionStop stop, bool playable)
+        {
+            if (stop == null || stop.button == null) return;
+
+            var root = stop.button.GetComponent<RectTransform>();
+            if (root == null || root.parent == null) return;
+
+            var ring = root.parent.Find(StopRingName(root));
+
+            if (!playable)
+            {
+                if (ring != null) ring.gameObject.SetActive(false);
+                return;
+            }
+
+            if (ring == null) ring = BuildStopRing(stop, root);
+            if (ring != null) ring.gameObject.SetActive(true);
+
+            // Deliberately NOT animated. Story Select breathes its single ring because there is
+            // exactly one; up to ten breathing at once here would be noise, and the ONE stop
+            // that deserves motion already has the glow.
+        }
+
+        /// <summary>
+        /// A gold silhouette of the stop, slightly larger, inserted at the STOP'S OWN sibling
+        /// index — so it draws behind the plate while every other element keeps its relative
+        /// order (each stop's Glow sits immediately before it and must stay further back).
+        /// It cannot be a child: uGUI draws a parent's graphic first and its children after, so
+        /// a child would land in FRONT of the number and the padlock.
+        ///
+        /// It COPIES the stop's own sprite rather than choosing one, so the rim can never be a
+        /// different shape from the plate it rings.
+        /// </summary>
+        private static Transform BuildStopRing(SessionStop stop, RectTransform root)
+        {
+            var parent = root.parent as RectTransform;
+            if (parent == null) return null;
+
+            var go = new GameObject(StopRingName(root), typeof(RectTransform));
+            go.transform.SetParent(parent, false);
+            go.transform.SetSiblingIndex(root.GetSiblingIndex());
+
+            var img = go.AddComponent<Image>();
+            var plate = stop.button.GetComponent<Image>();
+            if (plate != null)
+            {
+                img.sprite = plate.sprite;
+                img.type = plate.type;
+            }
+            img.color = Theme.GoldDeep;
+            img.raycastTarget = false;   // never steal the stop's own tap
+
+            var rt = (RectTransform)go.transform;
+            rt.anchorMin = root.anchorMin;
+            rt.anchorMax = root.anchorMax;
+            rt.pivot = root.pivot;
+            rt.anchoredPosition = root.anchoredPosition;
+            rt.sizeDelta = root.sizeDelta + new Vector2(StopRingOutset, StopRingOutset);
+            return go.transform;
+        }
     }
 }

@@ -57,6 +57,23 @@ namespace SummaRace.Features.Reader
         private const float OptionFanSeconds = 0.28f;  // per-option pop-in
         private const float OptionFanStagger = 0.06f;  // gap between options
 
+        /// <summary>
+        /// How long the SWBST nudge waits before it appears, and how long it takes to arrive.
+        ///
+        /// THE HINT IS A SCAFFOLD, SO IT MUST NOT ARRIVE WITH THE PROMPT. Drawn in the same frame
+        /// as the question it reads as part of the item — a fourth line of the question rather
+        /// than help offered after a try — so every learner is cued whether they needed it or
+        /// not, and the page measures comprehension-with-a-cue uniformly instead of
+        /// comprehension. The delay gives the reader the question on its own first; the nudge
+        /// then fades in for whoever is still deciding.
+        ///
+        /// Long enough to read a question of this length, short enough that a stuck learner is
+        /// not left alone. It never names the answer or the option letter, only which story part
+        /// is being asked about, so arriving late costs nothing.
+        /// </summary>
+        private const float HintDelaySeconds = 1.7f;
+        private const float HintFadeSeconds = 0.45f;
+
         /// <summary>How long BACK stays armed waiting for its confirming tap. Long enough to
         /// read the second label, short enough that a learner who wandered off does not leave
         /// the story with one later stray tap.</summary>
@@ -83,6 +100,16 @@ namespace SummaRace.Features.Reader
         /// </summary>
         private static readonly Color OptionNormal = new Color(0.87f, 0.83f, 0.78f);
         private static readonly Color OptionCorrect = new Color(0.55f, 0.85f, 0.45f); // friendly green
+
+        /// <summary>
+        /// The pill the learner actually tapped, when it was not the answer. One shade deeper
+        /// than <see cref="OptionNormal"/> and still the same warm neutral — never a red, never
+        /// a second signal colour, because a wrong answer is never punished (D7). It is only the
+        /// quieter half of the acknowledgement; the visible half is the settle in
+        /// <see cref="OnAnswer"/>, because the disabled ColorTint MULTIPLIES this image colour
+        /// and would flatten a colour-only cue along with everything else.
+        /// </summary>
+        private static readonly Color OptionChosen = new Color(0.78f, 0.74f, 0.69f);
 
         // Both feedback colours are read against the question card, which is the kit's
         // "Daily Reward pannel" — a CREAM interior (0.971, 0.923, 0.829 after the card_paper
@@ -134,6 +161,11 @@ namespace SummaRace.Features.Reader
         private readonly int[] _displayOrder = new int[3];
         private bool _questionShown;
 
+        /// <summary>True when the reading card carries its own <see cref="SummaRace.UI.PanelIntro"/>,
+        /// which already animates every page turn. Resolved once in Start — see ShowPage for why
+        /// it decides whether we add a page-turn punch at all.</summary>
+        private bool _cardAnimatesItself;
+
         private void Start()
         {
             // Survive being opened directly in the editor (TDD §13).
@@ -156,6 +188,11 @@ namespace SummaRace.Features.Reader
             // every page of every story. Story Select and the session map start it again on
             // the way back, so stories 2 and 3 are not entered in silence.
             if (AudioManager.Instance != null) AudioManager.Instance.StopMusic();
+
+            // Resolved once: ShowPage needs to know whether anything ELSE is already driving the
+            // reading card's localScale on a page turn, and GetComponent per page turn is waste.
+            _cardAnimatesItself = readingCard != null &&
+                                  readingCard.GetComponent<SummaRace.UI.PanelIntro>() != null;
 
             if (nextButton != null) nextButton.onClick.AddListener(OnNext);
             if (voiceButton != null) voiceButton.onClick.AddListener(ToggleNarration);
@@ -191,16 +228,25 @@ namespace SummaRace.Features.Reader
             if (readingCard != null) readingCard.SetActive(true);
             if (pageText != null) pageText.text = page.text;
 
-            // The text used to be swapped in place with nothing moving - on a screen where the
-            // options fan in, the correct answer punches, the feedback pops and the progress bar
-            // sweeps, the page turn itself was the one silent beat. A small punch on the CARD
-            // (never on pageText, which autosizes) says "new page" without asking the reader to
-            // wait for an animation before they can start reading.
+            // THE PAGE TURN IS ANIMATED BY PanelIntro, NOT BY US — and the comment that used to
+            // sit here had it exactly backwards, so it is worth stating plainly.
             //
-            // Skipped on page 1, where PanelIntro is already playing its own pop-in on this same
-            // transform - two tweens driving one localScale leave it wherever the last one wrote.
-            // StopAll targets the transform only, so PanelIntro's alpha work is untouched.
-            if (readingCard != null && index > 0)
+            // The old claim was "skipped on page 1, where PanelIntro is already playing". In fact
+            // PanelIntro pops in on EVERY page: it fires from OnEnable, and ShowQuestion
+            // deactivates this same card on every page so the question can be its own bright page
+            // — so the SetActive(true) above re-enables it and re-triggers the pop-in each time
+            // (page 1 gets it from the scene's own enable). The `index > 0` guard therefore fired
+            // the punch on precisely the pages where PanelIntro was ALSO running, and this
+            // block's StopAll then killed PanelIntro mid-tween: the reverse of the stated intent,
+            // and why the page turn read inconsistently.
+            //
+            // PICKED: let PanelIntro own it. It is the larger and more legible motion (0.85 → 1
+            // over 0.3s, OutBack) against a 2% punch, it already runs on every page, and one
+            // tween per transform is the standing rule in this file — two driving one localScale
+            // leave it wherever the last one wrote. The punch survives ONLY as the fallback for a
+            // scene whose card has no PanelIntro, so a page turn is never a silent beat on a
+            // screen where everything else moves.
+            if (readingCard != null && !_cardAnimatesItself)
             {
                 var cardT = readingCard.transform;
                 Tween.StopAll(onTarget: cardT);
@@ -220,6 +266,10 @@ namespace SummaRace.Features.Reader
             }
 
             if (questionPanel != null) questionPanel.SetActive(false);
+            // The hint's delayed fade belongs to the question that has just closed. A learner who
+            // answers and taps NEXT inside HintDelaySeconds would otherwise leave it in flight
+            // across the page turn, to land on the NEXT question's nudge and cut its delay short.
+            if (hintText != null) Tween.StopAll(onTarget: hintText);
             if (teacherGroup != null) teacherGroup.alpha = 1f; // buddy is back for reading
             if (nextButton != null) nextButton.gameObject.SetActive(true);
             if (nextButtonLabel != null) nextButtonLabel.text = GameText.NextLabel;
@@ -306,6 +356,21 @@ namespace SummaRace.Features.Reader
         /// </summary>
         private static bool _voicePulsed;
 
+        /// <summary>
+        /// "Once per app launch" only holds if the flag is cleared per launch — and a static
+        /// bool is NOT. With Domain Reload disabled (Enter Play Mode Options, which this project
+        /// benefits from and which is the default a fast iteration loop drifts to), statics
+        /// survive stopping Play mode, so after the first Play of an Editor session the pulse
+        /// never fired again — exactly when someone is trying to look at it, and exactly the
+        /// class of bug that gets logged as "the GDD §11.1 pulse is missing" a second time.
+        ///
+        /// SubsystemRegistration is the earliest hook and runs before any scene loads, so the
+        /// flag is false before Boot's first Reader can read it. Harmless on a real device,
+        /// where the domain is fresh anyway.
+        /// </summary>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetVoicePulseFlag() => _voicePulsed = false;
+
         private void PulseVoiceButtonOnce()
         {
             if (_voicePulsed || voiceButtonLabel == null) return;
@@ -375,20 +440,47 @@ namespace SummaRace.Features.Reader
             if (hintText != null)
             {
                 string hint = GameText.ReaderSlotHint(_pageIndex);
+                bool hasHint = !string.IsNullOrEmpty(hint);
                 hintText.text = hint;
-                hintText.gameObject.SetActive(!string.IsNullOrEmpty(hint));
+                hintText.gameObject.SetActive(hasHint);
+
+                // The hint arrives AFTER the question, never with it — see HintDelaySeconds for
+                // why that distinction is about the measure and not about polish. It stays
+                // active-but-transparent rather than being switched on by the tween, so nothing
+                // depends on whether tweens run against a disabled GameObject; raycastTarget is
+                // already off, so an invisible active line can never steal a tap from option A.
+                Tween.StopAll(onTarget: hintText); // a fast page turn must not stack two fades
+                if (hasHint)
+                {
+                    hintText.alpha = 0f;
+                    Tween.Custom(hintText, 0f, 1f, HintFadeSeconds,
+                        (t, v) => t.alpha = v, Ease.OutQuad, startDelay: HintDelaySeconds);
+                }
+                else hintText.alpha = 1f; // leave the field in a sane state for a wired scene
             }
 
-            ShuffleDisplayOrder(question.options.Length);
+            ShuffleDisplayOrder(question.options != null ? question.options.Length : 0);
 
             for (int i = 0; i < optionButtons.Length; i++)
             {
                 if (optionButtons[i] == null) continue;
-                optionButtons[i].interactable = true;
-                optionButtons[i].image.color = OptionNormal;
 
-                string optionText = question.options[_displayOrder[i]];
-                if (optionLabels[i] != null)
+                // A slot with no option behind it is HIDDEN, never filled — see
+                // ShuffleDisplayOrder for the duplicate-correct-answer defect that caused.
+                // A scene wired with more buttons than _displayOrder has entries reads -1 too,
+                // rather than throwing: an extra pill showing nothing beats a broken question.
+                int optionIndex = i < _displayOrder.Length ? _displayOrder[i] : -1;
+                if (optionIndex < 0 || question.options == null || optionIndex >= question.options.Length)
+                {
+                    optionButtons[i].gameObject.SetActive(false);
+                    continue;
+                }
+                optionButtons[i].gameObject.SetActive(true);
+                optionButtons[i].interactable = true;
+                if (optionButtons[i].image != null) optionButtons[i].image.color = OptionNormal;
+
+                string optionText = question.options[optionIndex];
+                if (optionLabels != null && i < optionLabels.Length && optionLabels[i] != null)
                     optionLabels[i].text = i < GameText.OptionLetters.Length
                         // <indent> hangs the letter to the left so a wrapped second
                         // line starts under the text, not under the "C.".
@@ -406,11 +498,26 @@ namespace SummaRace.Features.Reader
             }
         }
 
-        /// <summary>Fisher-Yates over the on-screen slots, reshuffled for every question.</summary>
+        /// <summary>
+        /// Fisher-Yates over the on-screen slots, reshuffled for every question.
+        ///
+        /// A slot with no option behind it gets <b>-1</b>, and every caller treats that as
+        /// "hide this button". It used to get <b>0</b>, which DUPLICATED the first option into
+        /// the surplus slot: a question with two options rendered the same answer twice, and
+        /// whenever option 0 was the correct one the screen carried TWO correct answers — both
+        /// of which map back through <c>_displayOrder[slot]</c> and log as correct. That is a
+        /// scoring defect sitting directly on readingFirstCorrect, not a cosmetic one, and it
+        /// fails silently: the row exports as perfectly valid.
+        ///
+        /// Latent today — all 150 questions carry exactly 3 options and StoryLoader validates it
+        /// — but the measure must not depend on the content staying that way.
+        /// </summary>
         private void ShuffleDisplayOrder(int optionCount)
         {
-            int n = Mathf.Min(optionCount, _displayOrder.Length);
-            for (int i = 0; i < _displayOrder.Length; i++) _displayOrder[i] = i < n ? i : 0;
+            // Clamp, not Min: a negative/absent options array would otherwise write past nothing
+            // and leave stale indices from the previous question in every slot.
+            int n = Mathf.Clamp(optionCount, 0, _displayOrder.Length);
+            for (int i = 0; i < _displayOrder.Length; i++) _displayOrder[i] = i < n ? i : -1;
 
             for (int i = n - 1; i > 0; i--)
             {
@@ -423,6 +530,20 @@ namespace SummaRace.Features.Reader
         private void OnAnswer(int slot)
         {
             if (_questionAnswered) return;
+
+            var question = _story.pages[_pageIndex].question;
+            if (question == null) return;
+
+            // Map the tapped slot back to the story's own option index, so the logged choice
+            // means the same thing for every learner regardless of how their page was shuffled.
+            int chosenIndex = slot >= 0 && slot < _displayOrder.Length ? _displayOrder[slot] : -1;
+
+            // An EMPTY slot holds no option and must never be logged as an answer. Its button is
+            // hidden by ShowQuestion so this cannot fire normally — but the latches below are
+            // one-way, and spending them on a non-answer would lock the learner out of the item
+            // and write a chosenIndex of -1 into the study data. Checked BEFORE the latches.
+            if (chosenIndex < 0) return;
+
             _questionAnswered = true;
 
             // From here the play-through is study data: SessionLogService records the FIRST
@@ -430,18 +551,17 @@ namespace SummaRace.Features.Reader
             _answerCommitted = true;
             RefreshSecondaryControls(readingPage: false);
 
-            var question = _story.pages[_pageIndex].question;
-
-            // Map the tapped slot back to the story's own option index, so the logged choice
-            // means the same thing for every learner regardless of how their page was shuffled.
-            int chosenIndex = _displayOrder[Mathf.Clamp(slot, 0, _displayOrder.Length - 1)];
             bool correct = chosenIndex == question.correctIndex;
 
             // Always reveal the correct answer; never block (GDD §4.3).
             for (int i = 0; i < optionButtons.Length; i++)
             {
                 if (optionButtons[i] == null) continue;
-                bool isCorrect = _displayOrder[i] == question.correctIndex;
+                // Hidden slots hold no option and take no part in the reveal (ShuffleDisplayOrder);
+                // same out-of-range tolerance as ShowQuestion so the two can never disagree.
+                int optionIndex = i < _displayOrder.Length ? _displayOrder[i] : -1;
+                if (optionIndex < 0) continue;
+                bool isCorrect = optionIndex == question.correctIndex;
 
                 // Grey out the options that are NOT the answer, but leave the correct one
                 // enabled. These buttons use ColorTint with a disabled colour of 0.784 grey at
@@ -456,7 +576,7 @@ namespace SummaRace.Features.Reader
 
                 if (isCorrect)
                 {
-                    optionButtons[i].image.color = OptionCorrect;
+                    if (optionButtons[i].image != null) optionButtons[i].image.color = OptionCorrect;
                     // The "you got it" beat — the flattest moment in the scene until now.
                     // Stop + reset first: these buttons carry ButtonSquash, whose release tween
                     // (0.18s back to scale 1) is still running on this same transform when the
@@ -469,6 +589,43 @@ namespace SummaRace.Features.Reader
                     Tween.StopAll(onTarget: punched);
                     punched.localScale = Vector3.one;
                     Tween.PunchScale(punched, Vector3.one * 0.12f, 0.45f);
+                }
+            }
+
+            // ACKNOWLEDGE THE TAP THAT WAS ACTUALLY MADE.
+            //
+            // Until now a wrong pick looked identical to the two options the learner never
+            // touched: the loop above greys all three with the same disabled tint and only the
+            // correct one moves. So the screen answered "here is the answer" without ever
+            // answering "here is what YOU chose" — and a learner who fat-fingered the wrong pill
+            // could not tell a slip from a misunderstanding, on the one screen whose first
+            // answers are the study's readingFirstCorrect.
+            //
+            // This is deliberately a SETTLE, not a rejection: it eases DOWN and stays there, like
+            // a key pressed in. No red, no shake, no bounce-back — those read as "wrong of you"
+            // and D7 forbids punishing a wrong answer. It is also deliberately quieter and
+            // shorter than the correct answer's punch (0.94 over 0.22s against a 12% punch over
+            // 0.45s), so the reveal stays the loudest thing on screen.
+            //
+            // Scale is the channel because the disabled ColorTint MULTIPLIES image colour, so a
+            // colour-only cue would be flattened along with the other two; OptionChosen is only
+            // the supporting half. Nothing here depends on which option was correct — it marks
+            // the tapped slot, so it cannot leak the answer.
+            if (!correct)
+            {
+                int chosenSlot = Mathf.Clamp(slot, 0, optionButtons.Length - 1);
+                var chosen = optionButtons.Length > 0 ? optionButtons[chosenSlot] : null;
+                if (chosen != null)
+                {
+                    if (chosen.image != null) chosen.image.color = OptionChosen;
+
+                    // Same ButtonSquash guard as the correct-answer punch above: its release
+                    // tween is still driving this localScale when the click handler fires, and
+                    // two tweens on one transform leave it wherever the last one wrote.
+                    var chosenT = chosen.transform;
+                    Tween.StopAll(onTarget: chosenT);
+                    chosenT.localScale = Vector3.one;
+                    Tween.Scale(chosenT, Vector3.one * 0.94f, 0.22f, Ease.OutQuad);
                 }
             }
 

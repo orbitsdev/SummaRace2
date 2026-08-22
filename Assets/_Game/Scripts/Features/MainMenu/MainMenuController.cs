@@ -1,3 +1,5 @@
+using System.Collections;
+using PrimeTween;
 using SummaRace.Constants;
 using SummaRace.Core;
 using TMPro;
@@ -30,14 +32,42 @@ namespace SummaRace.Features.MainMenu
         private GameObject _activeLearnerPill;
 
         /// <summary>
-        /// One naming detour per arrival, so this screen can never trade places with Name Entry
-        /// forever. SceneLoader answers a scene that is missing from Build Settings by loading
-        /// the Main Menu instead — and this project has had its build list wiped twice by asset
-        /// imports — so an unguarded redirect would have bounced MainMenu → NameEntry → MainMenu
-        /// with no way out. Cleared again the moment we arrive with a named learner, which means
-        /// the detour worked and the next switch may use it too.
+        /// How many naming detours this process may attempt before giving up and letting the
+        /// learner stay on a working Main Menu. SceneLoader answers a scene that is missing
+        /// from Build Settings by loading the Main Menu instead — and this project has had its
+        /// build list wiped twice by asset imports — so an unguarded redirect bounces
+        /// MainMenu → NameEntry → MainMenu with no way out.
         /// </summary>
-        private static bool _nameEntryOffered;
+        private const int MaxNameEntryOffers = 2;
+
+        /// <summary>How long to wait before deciding a dispatched redirect was DROPPED. A load
+        /// that takes destroys this object and its coroutine long before this elapses.</summary>
+        private const float NameEntryRedirectGraceSeconds = 2f;
+
+        /// <summary>
+        /// Naming detours attempted this process.
+        ///
+        /// THIS WAS A PLAIN static bool AND IT WAS WRONG IN BOTH DIRECTIONS. Written as
+        /// `_nameEntryOffered = needsNaming`, it (a) latched true the instant a redirect was
+        /// DISPATCHED, never checking that it landed, so one dropped hand-off disarmed the
+        /// unnamed-learner safety net for the rest of the process and the next run was filed
+        /// against a nameless profile — unjoinable to the child's paper booklet, and invisible
+        /// until export; and (b) it did not even stop the ping-pong it existed for, because the
+        /// bounced-back arrival computed `needsNaming == false` and therefore wrote the flag
+        /// back to FALSE, re-arming the redirect on the arrival after that: a two-beat loop
+        /// rather than a one-beat one.
+        ///
+        /// A count fixes both. It only ever RISES while the learner is unnamed (so the loop is
+        /// hard-capped), it is reset to zero only on an arrival with a NAMED learner (which
+        /// proves the detour worked and the next learner switch may use it too), and an attempt
+        /// that is still sitting here <see cref="NameEntryRedirectGraceSeconds"/> later is
+        /// refunded, because a redirect that never happened must not spend the net.
+        /// </summary>
+        private static int _nameEntryOffers;
+
+        /// <summary>Set when this arrival's redirect was dispatched and did not take, so the
+        /// screen can say so instead of quietly recording the run against "Runner".</summary>
+        private bool _nameEntryDropped;
 
         private void Start()
         {
@@ -62,8 +92,23 @@ namespace SummaRace.Features.MainMenu
             // from the post-study wipe and from the documented PIN-recovery reset, both of which
             // mint a blank unnamed profile and then return here. So: dress and wire the screen
             // first, and let the redirect be an optimisation rather than a load-bearing step.
-            bool needsNaming = learner != null && !learner.named && !_nameEntryOffered;
-            _nameEntryOffered = needsNaming;
+            bool unnamed = learner != null && !learner.named;
+            bool needsNaming = unnamed && _nameEntryOffers < MaxNameEntryOffers;
+            if (needsNaming) _nameEntryOffers++;
+            // Only a NAMED arrival re-arms the net. Never clear it on an unnamed arrival — that
+            // is the two-beat ping-pong the old bool created (see the field's note).
+            else if (learner != null && learner.named) _nameEntryOffers = 0;
+
+            if (unnamed && !needsNaming)
+            {
+                // Out of attempts: NameEntry is unreachable (almost always missing from Build
+                // Settings). Say so once, loudly, because from here every run on this tablet is
+                // logged against the default profile and cannot be joined to a paper booklet.
+                Debug.LogError("MainMenu: the learner has no name and Name Entry could not be " +
+                               "reached after " + MaxNameEntryOffers + " attempts. Runs will be " +
+                               "logged against the default profile — check NameEntry is in Build Settings.");
+                _nameEntryDropped = true;
+            }
 
             if (startLabel != null) startLabel.text = GameText.TapToStart;
             if (subtitleText != null) subtitleText.text = GameText.BootTagline;
@@ -77,6 +122,19 @@ namespace SummaRace.Features.MainMenu
                 // An empty pill reads as a UI glitch, so the chip goes with the name.
                 if (_activeLearnerPill != null) _activeLearnerPill.SetActive(learner != null);
             }
+            else if (learner != null)
+            {
+                // The line could not be built AND the scene does not wire one — so the single
+                // safeguard against a wrong-learner run does not exist on this screen. It used
+                // to fail exactly this quietly (BuildActiveLearnerLine returns null on three
+                // separate paths, all of them silent), which is how a shared tablet could record
+                // a whole session against the wrong child with nothing on screen to catch it.
+                Debug.LogError("MainMenu: no active-learner line — this run will be recorded " +
+                               "against '" + learner.displayName + "' with nothing on screen saying so.");
+            }
+
+            // Set above when the attempts ran out; applied here because the pill only exists now.
+            if (_nameEntryDropped) MarkLearnerUnnamed();
 
             // Survive being opened directly in the editor for testing (TDD §13).
             if (AudioManager.Instance != null)
@@ -86,15 +144,110 @@ namespace SummaRace.Features.MainMenu
                 startButton.onClick.AddListener(OnStartTapped);
 
             if (teacherButton != null)
+            {
+                // The teacher corner is the only button on this screen with NO press feedback —
+                // it never got a ButtonSquash, and it is deliberately low-contrast, so on a
+                // muted classroom tablet a tap on it is answered by nothing at all and reads as
+                // a broken control. Squash on the ROOT (the standard component, and this root
+                // carries no other scale tween) plus a punch on the LABEL, which is a different
+                // transform — two tweens driving ONE localScale leave it wherever the last one
+                // wrote, which is why the punch must never go on the root as well.
+                if (teacherButton.GetComponent<SummaRace.UI.ButtonSquash>() == null)
+                    teacherButton.gameObject.AddComponent<SummaRace.UI.ButtonSquash>();
+
+                var teacherLabel = teacherButton.GetComponentInChildren<TMP_Text>(true);
+
                 teacherButton.onClick.AddListener(() =>
                 {
                     if (AudioManager.Instance != null)
                         AudioManager.Instance.PlaySfx(AudioKeys.SfxClick);
+                    // Motion, not just sound: the scene change that follows is the real
+                    // confirmation, but SceneLoader's fade takes a moment to appear.
+                    if (teacherLabel != null)
+                        Tween.PunchScale(teacherLabel.transform, Vector3.one * 0.22f, 0.35f);
                     SceneLoader.Go(SceneNames.TeacherMenu);
                 });
+            }
 
-            // Now that the screen works on its own, take the naming detour.
-            if (needsNaming) SceneLoader.Go(SceneNames.NameEntry);
+            SilenceDecorRaycasts();
+
+            // Now that the screen works on its own, take the naming detour — and watch it, so a
+            // dispatch that does not land is noticed rather than assumed.
+            if (needsNaming) StartCoroutine(OfferNameEntry());
+        }
+
+        /// <summary>
+        /// Dispatches the Name Entry redirect and refunds the attempt if it never lands.
+        ///
+        /// A load that takes destroys this GameObject, which kills this coroutine — so simply
+        /// still being here after the grace period IS the failure signal, with no need to ask
+        /// SceneLoader anything (and nothing to ask: Go() returns void and no-ops silently when
+        /// there is no Instance).
+        /// </summary>
+        private IEnumerator OfferNameEntry()
+        {
+            SceneLoader.Go(SceneNames.NameEntry);
+
+            // Realtime: a paused or slowed timeScale must not stretch a safety check.
+            yield return new WaitForSecondsRealtime(NameEntryRedirectGraceSeconds);
+
+            // Refund, so the net stays armed for the next arrival instead of disarming itself
+            // for the whole process — the exact failure the old static bool had.
+            _nameEntryOffers = Mathf.Max(0, _nameEntryOffers - 1);
+            _nameEntryDropped = true;
+            Debug.LogError("MainMenu: the Name Entry redirect was dispatched and did not land. " +
+                           "The learner is unnamed and this run would be logged against the " +
+                           "default profile — check NameEntry is in Build Settings.");
+            MarkLearnerUnnamed();
+        }
+
+        /// <summary>
+        /// Recolours the learner chip when the profile never got named. A log line reaches
+        /// nobody on a tablet in a classroom, and this is the one condition under which the
+        /// exported rows cannot be joined to the child's paper booklet — so it has to be
+        /// visible to the adult standing there. Amber, not red: nothing about it is the
+        /// learner's fault, and the game itself keeps working normally.
+        /// </summary>
+        private void MarkLearnerUnnamed()
+        {
+            if (_activeLearnerPill != null)
+            {
+                var pill = _activeLearnerPill.GetComponent<Image>();
+                // Tint, not replace: with a sprite the Image colour multiplies it, without one
+                // it IS the fill, and amber reads as amber either way.
+                if (pill != null) pill.color = Theme.AmberWarn;
+                _activeLearnerPill.SetActive(true);
+            }
+            // Amber is a FILL colour in this project's theme and fails as a text background for
+            // light type (see Theme's measured pairs), so the label flips to dark brown.
+            if (activeLearnerText != null) activeLearnerText.color = Theme.TextBrownDeep;
+        }
+
+        /// <summary>
+        /// Turns off raycasts on the purely decorative art.
+        ///
+        /// `DecorCoins`, `DecorGems` and the three logo `Sparkle_*` images are Images with
+        /// `raycastTarget` left at its default ON, they sit above the rest of the canvas, and
+        /// the two decor pieces are in the BOTTOM band — so the shiniest, most tappable-looking
+        /// objects on the screen swallow a tap and answer with silence, next to a TAP TO START
+        /// that a child has not found yet. Done by name at runtime because the scene is out of
+        /// scope for this pass; every lookup is null-safe and a renamed object simply skips.
+        /// </summary>
+        private void SilenceDecorRaycasts()
+        {
+            var canvas = ResolveSceneCanvas();
+            if (canvas == null) return;
+
+            // Whole subtree, including inactive: an object switched on later must not
+            // re-introduce the same dead tap.
+            foreach (var graphic in canvas.GetComponentsInChildren<Graphic>(true))
+            {
+                if (graphic == null) continue;
+                string n = graphic.gameObject.name;
+                // Prefix match on Sparkle so all three (and any future one) are covered.
+                if (n == "DecorCoins" || n == "DecorGems" || n.StartsWith("Sparkle"))
+                    graphic.raycastTarget = false;
+            }
         }
 
         /// <summary>
@@ -109,19 +262,52 @@ namespace SummaRace.Features.MainMenu
         /// </summary>
         private TMP_Text BuildActiveLearnerLine()
         {
-            if (subtitleText == null) return null;
+            // Canvas first, and from ANY wired reference. The old code could only reach it
+            // through `subtitleText`, so a scene that did not wire the SUBTITLE silently lost
+            // the LEARNER LINE as well — two unrelated things failing together.
+            var canvas = ResolveSceneCanvas();
+            if (canvas == null)
+            {
+                Debug.LogError("MainMenu: no scene canvas — the active-learner line cannot be built.");
+                return null;
+            }
 
-            var canvas = subtitleText.GetComponentInParent<Canvas>();
-            if (canvas == null) return null;
+            // Grab the donor font BEFORE anything new is parented under the canvas, or the
+            // search below can find the object it is about to fill in.
+            var donor = subtitleText != null ? subtitleText
+                      : startLabel != null ? startLabel
+                      : canvas.GetComponentInChildren<TMP_Text>(true);
 
-            // Parent to the canvas, not to the subtitle's own parent: the lockup it may sit in
-            // is a band of its own, and fractional anchors inside it would land nowhere useful.
-            var clone = Instantiate(subtitleText.gameObject, canvas.transform, false);
-            clone.name = "ActiveLearner";
-            clone.SetActive(true);
+            TMP_Text text = null;
+            if (subtitleText != null)
+            {
+                // Parent to the canvas, not to the subtitle's own parent: the lockup it may sit
+                // in is a band of its own, and fractional anchors inside it would land nowhere
+                // useful. Cloned rather than built fresh so it carries the screen's own TMP font
+                // asset and material (same reason the teacher menu clones its buttons).
+                var clone = Instantiate(subtitleText.gameObject, canvas, false);
+                clone.name = "ActiveLearner";
+                clone.SetActive(true);
 
-            var text = clone.GetComponent<TMP_Text>();
-            if (text == null) { Destroy(clone); return null; }
+                text = clone.GetComponent<TMP_Text>();
+                if (text == null) Destroy(clone);   // fall through to the fresh build below
+            }
+
+            if (text == null)
+            {
+                // THE FALLBACK, AND WHY IT HAS TO EXIST: `activeLearnerText` is NOT serialized
+                // in MainMenu.unity, so this method is the ONLY thing that ever produces the
+                // line — and it used to return null on three separate silent paths, the first
+                // of them "the subtitle is null". On a tablet shared by two children the line
+                // is the only warning that a run is being recorded against the wrong learner,
+                // and a wrong-learner run cannot be undone once exported. A fresh TMP object
+                // needs no scene wiring at all; it only lacks the subtitle's font, borrowed above.
+                var go = new GameObject("ActiveLearner", typeof(RectTransform));
+                go.transform.SetParent(canvas, false);
+                var fresh = go.AddComponent<TextMeshProUGUI>();
+                if (donor != null && donor.font != null) fresh.font = donor.font;
+                text = fresh;
+            }
 
             // This line was deep navy with no backing, on the assumption that y 0.15-0.215 is the
             // "bright sky backdrop". It is not: bg_playground puts its DARK DIRT band exactly
@@ -132,7 +318,7 @@ namespace SummaRace.Features.MainMenu
             // StorySelect's locked cards, and the navy chip is already this project's language
             // for a small persistent label (Resources/UI/bar_bg, used by the race HUD).
             var pillGo = new GameObject("ActiveLearnerPill", typeof(RectTransform));
-            pillGo.transform.SetParent(canvas.transform, false);
+            pillGo.transform.SetParent(canvas, false);
             var pill = pillGo.AddComponent<UnityEngine.UI.Image>();
             pill.sprite = Resources.Load<Sprite>("UI/bar_bg");
             if (pill.sprite != null) pill.type = UnityEngine.UI.Image.Type.Sliced;
@@ -166,6 +352,28 @@ namespace SummaRace.Features.MainMenu
             pillGo.SetActive(true);
             _activeLearnerPill = pillGo;
             return text;
+        }
+
+        /// <summary>
+        /// This scene's own canvas. Scoped to <c>gameObject.scene</c> in the search fallback for
+        /// the same reason NameEntryController.ResolveSceneCanvas is: a blind
+        /// FindAnyObjectByType would happily return SceneLoader's persistent FadeCanvas
+        /// ([Core], DontDestroyOnLoad, alpha 0) and the learner line would be built invisible
+        /// on the loading overlay.
+        /// </summary>
+        private Transform ResolveSceneCanvas()
+        {
+            var canvas = subtitleText != null ? subtitleText.GetComponentInParent<Canvas>() : null;
+            if (canvas == null && startButton != null) canvas = startButton.GetComponentInParent<Canvas>();
+            if (canvas == null && teacherButton != null) canvas = teacherButton.GetComponentInParent<Canvas>();
+            if (canvas == null && startLabel != null) canvas = startLabel.GetComponentInParent<Canvas>();
+            if (canvas != null) return canvas.rootCanvas.transform;
+
+            foreach (var candidate in FindObjectsByType<Canvas>(FindObjectsSortMode.None))
+                if (candidate.gameObject.scene == gameObject.scene)
+                    return candidate.rootCanvas.transform;
+
+            return null;
         }
 
         private void OnStartTapped()

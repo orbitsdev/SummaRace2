@@ -1,3 +1,4 @@
+using PrimeTween;
 using SummaRace.Constants;
 using SummaRace.Core;
 using TMPro;
@@ -36,10 +37,28 @@ namespace SummaRace.Features.NameEntry
         private static readonly Color AvatarOn = Color.white;
         private static readonly Color ChipText = Theme.Paper;
         private static readonly Color ChipFallback = Theme.Alpha(Theme.Navy, 0.95f);
+        private static readonly Color RingFallback = Theme.Alpha(Theme.GoldDeep, 0.85f);
+
+        /// <summary>
+        /// How much bigger the chosen badge sits than the other three.
+        ///
+        /// SELECTION USED TO BE BRIGHTNESS AND NOTHING ELSE: AvatarOn (white) against AvatarOff
+        /// (0.72/0.76/0.80 grey) is a ~1.35:1 relative-luminance step, on the one control this
+        /// screen exists for, applied to four icons that are otherwise identical panels. That is
+        /// the exact failure class F49 removed everywhere else in the game — colour or lightness
+        /// as the SOLE carrier of meaning. Size is perceivable regardless of vision or of a
+        /// tablet's brightness being turned down in a bright classroom, and the gold halo below
+        /// adds a second, independent shape cue.
+        /// </summary>
+        private const float SelectedIconScale = 1.16f;
 
         private int _avatarIndex;
         private bool _typing;      // input field focused = keyboard up on Android
         private bool _confirmed;   // the scene is on its way out; stop showing the chip
+
+        /// <summary>One gold halo per avatar button, built in Start, only one shown at a time.
+        /// Indexes match <see cref="avatarButtons"/>; entries stay null for unwired buttons.</summary>
+        private Image[] _selectionRings;
 
         private void Start()
         {
@@ -96,6 +115,7 @@ namespace SummaRace.Features.NameEntry
                 int index = i;                       // capture per button, not per loop
                 avatarButtons[i].onClick.AddListener(() => SelectAvatar(index));
             }
+            EnsureSelectionRings();   // must exist before the first refresh paints the choice
             RefreshAvatars();
 
             if (confirmButton != null) confirmButton.onClick.AddListener(Confirm);
@@ -108,12 +128,20 @@ namespace SummaRace.Features.NameEntry
                 doneTypingButton.onClick.AddListener(OnDoneTyping);
                 doneTypingButton.gameObject.SetActive(false);
             }
+
+            // Last, so everything above already exists and can be classified correctly.
+            EnsureKeyboardDismissCatcher();
+            SilenceBackgroundRaycasts();
         }
 
         private void SelectAvatar(int index)
         {
             _avatarIndex = index;
             RefreshAvatars();
+            // Motion on the badge itself, so the choice is answered on a muted tablet. On the
+            // Icon child for the ButtonSquash reason in AvatarIcon().
+            var icon = AvatarIcon(index);
+            if (icon != null) Tween.PunchScale(icon, Vector3.one * 0.18f, 0.3f);
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxClick);
         }
 
@@ -122,8 +150,82 @@ namespace SummaRace.Features.NameEntry
             for (int i = 0; i < avatarButtons.Length; i++)
             {
                 if (avatarButtons[i] == null) continue;
+                bool selected = i == _avatarIndex;
+
+                // Kept: the brightness step is still useful, it just cannot be the only channel.
                 var image = avatarButtons[i].GetComponent<Image>();
-                if (image != null) image.color = i == _avatarIndex ? AvatarOn : AvatarOff;
+                if (image != null) image.color = selected ? AvatarOn : AvatarOff;
+
+                // Cue two: a gold halo around the chosen badge — a shape that is either there
+                // or not, readable with no colour discrimination at all.
+                if (_selectionRings != null && i < _selectionRings.Length && _selectionRings[i] != null)
+                    _selectionRings[i].gameObject.SetActive(selected);
+
+                // Cue three: size.
+                var icon = AvatarIcon(i);
+                if (icon != null)
+                    icon.localScale = selected ? Vector3.one * SelectedIconScale : Vector3.one;
+            }
+        }
+
+        /// <summary>
+        /// The badge artwork inside an avatar button.
+        ///
+        /// Always the CHILD, never the button root: every Avatar_N root carries a ButtonSquash,
+        /// which caches its base scale in Awake and writes localScale on every press — a second
+        /// writer on that same transform would leave the badge wherever the last one wrote
+        /// (the standing rule in this project: two tweens, one localScale, never).
+        /// </summary>
+        private Transform AvatarIcon(int index)
+        {
+            if (avatarButtons == null || index < 0 || index >= avatarButtons.Length) return null;
+            var button = avatarButtons[index];
+            if (button == null) return null;
+
+            var icon = button.transform.Find("Icon");
+            // Fallback for a differently named badge child; the halo we insert is at index 0,
+            // so the LAST child is the authored artwork either way.
+            if (icon == null && button.transform.childCount > 0)
+                icon = button.transform.GetChild(button.transform.childCount - 1);
+            return icon;
+        }
+
+        /// <summary>
+        /// Builds one gold halo behind each avatar button, hidden until that badge is chosen.
+        ///
+        /// Inset NEGATIVE so the glow spills outside the badge panel — parented first-sibling it
+        /// renders behind an opaque panel, so a halo confined to the rect would be invisible.
+        /// The sprite is optional in the usual way: no `UI/glow_gold` falls back to a flat gold
+        /// plate, which is a weaker look but the same unambiguous shape cue.
+        /// </summary>
+        private void EnsureSelectionRings()
+        {
+            if (avatarButtons == null) return;
+            _selectionRings = new Image[avatarButtons.Length];
+
+            var glow = Resources.Load<Sprite>("UI/glow_gold");
+
+            for (int i = 0; i < avatarButtons.Length; i++)
+            {
+                if (avatarButtons[i] == null) continue;
+
+                var ringGo = new GameObject("SelectedHalo", typeof(RectTransform));
+                ringGo.transform.SetParent(avatarButtons[i].transform, false);
+
+                var ring = ringGo.AddComponent<Image>();
+                if (glow != null) { ring.sprite = glow; ring.color = Color.white; }
+                else ring.color = RingFallback;
+                ring.raycastTarget = false;   // the badge underneath must keep the tap
+
+                var r = ring.rectTransform;
+                r.anchorMin = Vector2.zero;
+                r.anchorMax = Vector2.one;
+                r.offsetMin = new Vector2(-26f, -26f);
+                r.offsetMax = new Vector2(26f, 26f);
+                r.SetAsFirstSibling();        // behind the panel and its badge
+
+                ringGo.SetActive(false);
+                _selectionRings[i] = ring;
             }
         }
 
@@ -151,6 +253,16 @@ namespace SummaRace.Features.NameEntry
                 learner.named = true;
                 Core.GameManager.Instance.PersistProfiles();
             }
+
+            // ACKNOWLEDGE THE BADGE AT THE MOMENT IT IS SAVED. `avatarIndex` is written here and
+            // read by NOTHING else in the game (see the report) — a child spends a deliberate
+            // choice on it and then never sees it again across ten sessions, which makes the
+            // choice feel ignored. Until it surfaces somewhere persistent this is the honest
+            // minimum: the chosen badge visibly reacts as the profile is written. No delay
+            // before leaving — a coroutine between here and the scene change would be one more
+            // way for this screen to become the dead end Boot routed the learner into.
+            var chosen = AvatarIcon(_avatarIndex);
+            if (chosen != null) Tween.PunchScale(chosen, Vector3.one * 0.28f, 0.4f);
 
             SceneLoader.Go(SceneNames.MainMenu);
         }
@@ -198,6 +310,95 @@ namespace SummaRace.Features.NameEntry
             if (nameInput != null) nameInput.DeactivateInputField();
             if (UnityEngine.EventSystems.EventSystem.current != null)
                 UnityEngine.EventSystems.EventSystem.current.SetSelectedGameObject(null);
+        }
+
+        /// <summary>
+        /// A full-screen, invisible tap catcher that closes the keyboard.
+        ///
+        /// Tapping away from a text field is how every other app on the tablet dismisses a
+        /// keyboard, and here there was nothing to tap: `Canvas/Sky` ships with
+        /// `raycastTarget: 0` and no other full-screen graphic exists, so a tap on the
+        /// background hit nothing at all. On a portrait Android tablet the keyboard covers the
+        /// four badges (y 0.373-0.467) and LET'S GO! (y 0.181-0.259) — i.e. everything the
+        /// learner still has to do — on the FIRST screen the app ever shows them.
+        ///
+        /// FIRST SIBLING, which is what keeps it from swallowing real taps: uGUI hit-tests
+        /// front-to-back, so every control drawn after it (the badges, LET'S GO!, the name box,
+        /// the DONE TYPING chip) wins the raycast and this only ever receives taps on bare
+        /// background. Complements the chip rather than replacing it — the chip is the
+        /// discoverable, labelled way out; this is the one a child will try by reflex.
+        /// </summary>
+        private void EnsureKeyboardDismissCatcher()
+        {
+            var root = ResolveSceneCanvas();
+            if (root == null) return;   // no canvas: the chip path already warned about it
+
+            var go = new GameObject("KeyboardDismissCatcher", typeof(RectTransform));
+            go.transform.SetParent(root, false);
+            var rect = (RectTransform)go.transform;
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+            rect.SetAsFirstSibling();
+
+            var image = go.AddComponent<Image>();
+            // Fully transparent but still hit-tested: uGUI raycasts the RECT, not the pixels,
+            // unless alphaHitTestMinimumThreshold is raised — which it deliberately is not.
+            image.color = new Color(0f, 0f, 0f, 0f);
+            image.raycastTarget = true;
+
+            var button = go.AddComponent<Button>();
+            button.targetGraphic = image;
+            // No transition and no navigation: an invisible control must never tint, and must
+            // never become a keyboard/gamepad focus stop that a learner could land on.
+            button.transition = Selectable.Transition.None;
+            button.navigation = new Navigation { mode = Navigation.Mode.None };
+            button.onClick.AddListener(OnBackgroundTapped);
+        }
+
+        /// <summary>Tap on bare background: close the keyboard if one is up, otherwise do
+        /// nothing at all — silently. Background is not a control and must not pretend to be
+        /// one by answering a stray tap with a click sound.</summary>
+        private void OnBackgroundTapped()
+        {
+            // Reads the field as well as the cached flag. The EventSystem deselects on
+            // pointer-DOWN while this fires on pointer-UP, so `_typing` can already be stale by
+            // the time we get here; treating either as "was typing" cannot produce a false
+            // dismissal (StopTyping is a no-op when nothing is focused) but does stop us
+            // dropping the very tap this exists to catch.
+            bool wasTyping = _typing || (nameInput != null && nameInput.isFocused);
+            StopTyping();
+            if (!wasTyping) return;
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxClick);
+        }
+
+        /// <summary>
+        /// Turns off raycasts on everything that is not a control, so the tap catcher above
+        /// actually receives background taps.
+        ///
+        /// Without this, the title banner, the "Pick your badge" line and any decorative panel
+        /// are raycast targets by TMP/Image default: they sit ABOVE the catcher, so a tap on
+        /// them is swallowed and dismisses nothing — the dead-tap failure class MainMenu's
+        /// decor has. Anything under a Selectable is left alone, because the input field routes
+        /// its own child text and placeholder through the field itself.
+        /// </summary>
+        private void SilenceBackgroundRaycasts()
+        {
+            var root = ResolveSceneCanvas();
+            if (root == null) return;
+
+            foreach (var graphic in root.GetComponentsInChildren<Graphic>(true))
+            {
+                if (graphic == null) continue;
+                // A Selectable on this object or any ancestor means it is (part of) a control.
+                // includeInactive MATTERS: the DONE TYPING chip is switched off the moment it is
+                // built, and the parameterless overload skips inactive objects — so without the
+                // flag we would strip the raycast from the chip's own Image and make the labelled
+                // escape hatch untappable the first time it appears.
+                if (graphic.GetComponentInParent<Selectable>(true) != null) continue;
+                graphic.raycastTarget = false;
+            }
         }
 
         /// <summary>
@@ -281,7 +482,9 @@ namespace SummaRace.Features.NameEntry
                 if (candidate.gameObject.scene == gameObject.scene)
                     return candidate.rootCanvas.transform;
 
-            Debug.LogWarning("NameEntry: no scene canvas found — DONE TYPING chip not built.");
+            // Wording is generic because three callers now share this: the DONE TYPING chip,
+            // the keyboard tap catcher and the background raycast sweep.
+            Debug.LogWarning("NameEntry: no scene canvas found — runtime chrome not built.");
             return null;
         }
     }

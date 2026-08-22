@@ -89,6 +89,29 @@ namespace SummaRace.Features.TeacherMenu
         private bool _deleteArmed;
         private bool _recoveryArmed;
 
+        /// <summary>
+        /// True only when THIS visit got in by typing a PIN that already existed. First-run setup
+        /// also reaches the action list, and on an un-PINned tablet that list was handed to
+        /// whoever opened the screen first — a child who taps the teacher corner before the
+        /// researcher does can choose their own PIN and is then standing in front of
+        /// "Delete all data". Setting a PIN proves nothing about who is holding the tablet, so
+        /// the irreversible action is withheld until a visit that had to know the existing one.
+        /// </summary>
+        private bool _pinVerified;
+
+        /// <summary>
+        /// The export path, kept so it survives the transitions that clear the status line.
+        /// It is the longest string this app ever shows, it cannot be copied off the screen, and
+        /// the researcher has to carry it to a file browser over USB — so touching any other
+        /// control must not be what makes it disappear.
+        /// </summary>
+        private string _pinnedStatus;
+
+        // ---- TEMPORARY teacher-facing copy ----
+        // These belong in Constants/GameText.cs beside the rest of this screen's strings; that
+        // file is owned by another pass, so they sit here behind named members and move across
+        // unchanged. Nothing else in this file hard-codes teacher-facing text.
+
         /// <summary>The participant code is being asked as part of CREATING a learner, so
         /// saving it continues to Name Entry rather than back to the action list. Creation is
         /// the one moment the code is guaranteed to be asked for, which is what stops a tablet
@@ -303,6 +326,10 @@ namespace SummaRace.Features.TeacherMenu
                 return;
             }
 
+            // Setting a PIN is not proof of being the teacher — see _pinVerified. Cleared rather
+            // than assumed, because a reset-then-setup can arrive here from a visit that DID
+            // verify, and that visit's trust must not carry over the wipe.
+            _pinVerified = false;
             OpenActions();
             Status(GameText.TeacherPinSaved);
         }
@@ -336,6 +363,9 @@ namespace SummaRace.Features.TeacherMenu
             }
 
             _wrongAttempts = 0;
+            // The only route that proves the person holding the tablet already knew the PIN,
+            // so it is the only one that unlocks the destructive action.
+            _pinVerified = true;
             OpenActions();
         }
 
@@ -447,6 +477,13 @@ namespace SummaRace.Features.TeacherMenu
             if (deleteLabel != null) deleteLabel.text = GameText.TeacherDelete;
             RefreshParticipantLabel();
 
+            // Withheld, not merely disabled: a visible-but-dead button on the one irreversible
+            // action reads as a bug and invites tapping. Re-laid out so the column stays centred
+            // with one fewer button (the scene authors no layout group — see ActionSpacing).
+            if (deleteButton != null) deleteButton.gameObject.SetActive(_pinVerified);
+            LayOutActions(participantButton, switchLearnerButton, musicButton, unlockButton,
+                          exportButton, _pinVerified ? deleteButton : null);
+
             // A learner with no participant code has no route back to their paper pretest, and
             // that is only discoverable during analysis — long after the tablets are collected.
             // So the code is asked for HERE, the first time an adult gets through the PIN,
@@ -464,7 +501,10 @@ namespace SummaRace.Features.TeacherMenu
             if (gatePanel != null) gatePanel.SetActive(false);
             if (_learnerPanel != null) _learnerPanel.SetActive(false);
             if (actionsPanel != null) actionsPanel.SetActive(true);
-            Status(ParticipantWarning() ?? string.Empty);
+            // The storage warning is raised HERE as well as at export, because a tablet whose
+            // writes are failing has no other symptom at all — the learner plays normally and
+            // the loss is only visible as an export that looks like an empty tablet.
+            Status(Lines(ParticipantWarning(), StorageWarning()));
         }
 
         // ---------- The participant code: the join to the paper pretest/posttest ----------
@@ -636,9 +676,16 @@ namespace SummaRace.Features.TeacherMenu
                 // the same message, so a disk-full or permission failure read as "this device
                 // has no data" — on the single action that retrieves the dataset, with no second
                 // chance to collect it once the study ends.
-                Reject(status == SaveManager.ExportStatus.NoLogs
-                    ? GameText.TeacherNothingToExport
-                    : GameText.TeacherExportFailed);
+                //
+                // And "no logs" is the exact shape a tablet takes when AppendLog has been
+                // throwing all study — there IS nothing to export, and the reason is a storage
+                // fault, not an unused device. Saying so here is the difference between a
+                // researcher investigating and a researcher shrugging.
+                Reject(Lines(
+                    status == SaveManager.ExportStatus.NoLogs
+                        ? GameText.TeacherNothingToExport
+                        : GameText.TeacherExportFailed,
+                    StorageWarning()));
                 return;
             }
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxStar);
@@ -647,17 +694,19 @@ namespace SummaRace.Features.TeacherMenu
             // the last moment anyone looks at it while the tablet is still in hand. A missing or
             // shared code is not a formatting problem — it is rows that cannot be joined to a
             // pretest score — so say it here rather than let it be found during analysis.
-            string warning = ParticipantWarning();
-            Status(warning == null
-                ? GameText.TeacherExported(path)
-                : GameText.TeacherExported(path) + "\n" + warning);
+            // Pinned: this is the one line on this screen that has to survive the next tap.
+            Status(Lines(GameText.TeacherExported(path), ParticipantWarning(), StorageWarning()),
+                   true);
         }
 
         /// <summary>Two taps, because this is unrecoverable. Keeps the PIN — a post-study wipe
         /// hands the tablet on clean, it is not a way out of the gate.</summary>
         private void DeleteData()
         {
-            Click();
+            // No click up front. Every other action on this screen follows F50's rule — no sound
+            // until the outcome is known — and this was the one that did not, on the only tap in
+            // the app that cannot be undone: it answered "yes, done" before it had wiped
+            // anything, and a half-failed wipe still sounded exactly like a clean one.
             if (!_deleteArmed)
             {
                 _deleteArmed = true;
@@ -675,8 +724,14 @@ namespace SummaRace.Features.TeacherMenu
 
             _deleteArmed = false;
             if (deleteLabel != null) deleteLabel.text = GameText.TeacherDelete;
-            if (wiped) Status(GameText.TeacherDeleted);
-            else Reject(GameText.TeacherDeleteFailed);
+            if (wiped)
+            {
+                // A plain click, not the rising star used for "opened" or "exported": the wipe
+                // worked, but nothing good happened.
+                if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxClick);
+                Status(GameText.TeacherDeleted);
+            }
+            else Reject(GameText.TeacherDeleteFailed);   // Reject carries its own nudge sound
         }
 
         // ---------- Who is holding the tablet ----------
@@ -721,6 +776,20 @@ namespace SummaRace.Features.TeacherMenu
             if (manager == null || learner == null) return;
 
             manager.SetActiveLearner(learner);
+
+            // Checked, not announced. SetActiveLearner is void and the id it pins goes through
+            // SaveManager.SaveSettings, which is also void and swallows a failed write — so a
+            // tablet that could not persist the switch still answered "Now playing: X". It plays
+            // as X for this session, reverts to the previous child on the next launch, and that
+            // session's log rows are then filed against the WRONG CHILD, discoverable only during
+            // analysis. Re-read the two facts that have to be true instead of trusting the call.
+            if (!SwitchTookHold(manager, learner))
+            {
+                RefreshParticipantLabel();
+                Reject(GameText.TeacherLearnerSwitchFailed);
+                return;
+            }
+
             RefreshParticipantLabel();
 
             // A learner brought in from an older tablet (or an install that was interrupted)
@@ -736,6 +805,28 @@ namespace SummaRace.Features.TeacherMenu
             CloseLearnerPicker();
             // Name them back: on a shared tablet the confirmation IS the safeguard.
             Status(GameText.TeacherActiveLearner(learner.displayName));
+        }
+
+        /// <summary>
+        /// Did the handover actually happen — in memory AND on disk? Two separate facts, because
+        /// they fail separately: SetActiveLearner refuses a profile it does not own (memory), and
+        /// the id it pins is written by a void SaveManager call that can fail silently (disk).
+        /// Only the second one costs the study a session of misattributed rows.
+        /// </summary>
+        private static bool SwitchTookHold(Core.GameManager manager, Data.LearnerProfile learner)
+        {
+            if (manager == null || learner == null) return false;
+            if (manager.CurrentLearner != learner) return false;
+
+            var save = Core.SaveManager.Instance;
+            // Editor-direct: no [Core], so nothing was meant to be written and there is nothing
+            // to verify. Same rule MusicIsOn() uses — do not raise an alarm about a device state
+            // that only exists when the scene is played on its own.
+            if (save == null) return true;
+
+            var settings = save.LoadSettings();
+            return settings != null &&
+                   string.Equals(settings.activeLearnerId, learner.id, System.StringComparison.Ordinal);
         }
 
         /// <summary>
@@ -876,11 +967,15 @@ namespace SummaRace.Features.TeacherMenu
         /// </summary>
         private void ToggleMusic()
         {
+            // Both refusals used to report themselves with TeacherMusicStatus(true) — the SUCCESS
+            // line. The words said "Music is on for this tablet" at the exact moment nothing had
+            // happened and the setting had not been written, so the teacher would hear the music
+            // still playing and read a screen telling them it was on.
             var save = Core.SaveManager.Instance;
-            if (save == null) { Reject(GameText.TeacherMusicStatus(true)); return; }
+            if (save == null) { Reject(GameText.TeacherMusicSaveFailed); return; }
 
             var settings = save.LoadSettings();
-            if (settings == null) { Reject(GameText.TeacherMusicStatus(true)); return; }
+            if (settings == null) { Reject(GameText.TeacherMusicSaveFailed); return; }
 
             bool turningOn = settings.musicVolume <= 0.001f;
             settings.musicVolume = turningOn ? GameRules.MusicOnVolume : 0f;
@@ -1109,9 +1204,54 @@ namespace SummaRace.Features.TeacherMenu
             if (submitLabel != null) submitLabel.text = message;
         }
 
-        private void Status(string message)
+        /// <summary>
+        /// "This tablet has a storage problem", or null when it has not had one this launch.
+        ///
+        /// SaveManager has counted these since it was written and NOTHING has ever read the
+        /// count — its own docstring says the two fields exist so that this screen can say it.
+        /// It matters most for AppendLog, which is fire-and-forget from gameplay and returns
+        /// void: a tablet that fills up, or loses write permission after an OS update, throws on
+        /// every row while the learner plays normally, and the only symptom anyone ever sees is
+        /// an export that looks like an empty tablet. Said here, it is still fixable; found at
+        /// analysis, the sessions are gone.
+        /// </summary>
+        private static string StorageWarning()
         {
-            if (statusText != null) statusText.text = message;
+            int count = SaveManager.StorageIssueCount;
+            return count > 0 ? GameText.TeacherStorageWarning(count, SaveManager.LastStorageIssue) : null;
+        }
+
+        /// <summary>Stacks the status line's parts and drops the empty ones, so a warning can be
+        /// added to a result without either half having to know whether the other is there.</summary>
+        private static string Lines(params string[] parts)
+        {
+            if (parts == null) return string.Empty;
+            var built = new System.Text.StringBuilder();
+            for (int i = 0; i < parts.Length; i++)
+            {
+                if (string.IsNullOrEmpty(parts[i])) continue;
+                if (built.Length > 0) built.Append('\n');
+                built.Append(parts[i]);
+            }
+            return built.ToString();
+        }
+
+        private void Status(string message) => Status(message, false);
+
+        /// <summary>
+        /// Sets the status line. <paramref name="pinned"/> marks a message that must survive the
+        /// transitions which clear it (opening the picker, editing a code) — in practice the
+        /// export path, which the researcher has to read off the screen and cannot copy, and
+        /// which used to vanish the instant they touched anything. Only a message with actual
+        /// content displaces a pinned one; a clear-to-empty restores it instead.
+        /// </summary>
+        private void Status(string message, bool pinned)
+        {
+            if (pinned) _pinnedStatus = message;
+            else if (!string.IsNullOrEmpty(message)) _pinnedStatus = null;
+            else if (!string.IsNullOrEmpty(_pinnedStatus)) message = _pinnedStatus;
+
+            if (statusText != null) statusText.text = message ?? string.Empty;
         }
 
         /// <summary>
