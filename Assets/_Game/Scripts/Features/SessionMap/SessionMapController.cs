@@ -72,7 +72,11 @@ namespace SummaRace.Features.SessionMap
         // rather than read as empty - and "how many of the three you finished" is the only
         // progress this screen shows. Lifted to a muted steel that is visibly a star and
         // visibly not a gold one.
-        private static readonly Color StarOff = new Color(0.45f, 0.50f, 0.55f);
+        // Empty stars on a LOCKED (dark) stop. Was a steel blue-grey that rendered olive-on-
+        // black in the first real learner-state capture (2026-08-23) — muddy, and easy to
+        // misread as "earned but dull". A soft warm grey sits clearly above the dark plate
+        // while staying obviously not-gold.
+        private static readonly Color StarOff = new Color(0.62f, 0.60f, 0.58f);
         private static readonly Color StarOn = Color.white;
 
         // --- "you can tap this" ring (see MarkPlayableStop) ---------------------------------
