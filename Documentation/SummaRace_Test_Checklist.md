@@ -124,10 +124,21 @@ Unity recompiles (~1 min). Then **I** run, in order:
 ## 3. Answers you asked for (no testing needed)
 
 - [x] **10 missions × 3 stories = 30**, and they are three *different* stories per mission
-- [x] **The prototype's timer is a survival time-bank, not a reading deadline** — proven from two
+- [x] ~~**The prototype's timer is a survival time-bank, not a reading deadline** — proven from two
       of your own screenshots 11s apart where it went **65s → 84s**. Correct picks *add* time,
       scaled by the multiplier. It stays out because the currency is time, so a slow reader bleeds
-      out for reading slowly
+      out for reading slowly~~
+      ⚠️ **WRONG, corrected 2026-08-22 — do not quote this.** The two frames are `080113` (65s)
+      and `080124` (84s), and **`080116` sits between them: a second race briefing screen.** That
+      is a restart, not time being added. Re-derived across all 29 screenshots using the real
+      timestamps in their filenames: within a run the clock only ever **falls**, and it falls
+      *through* collections — `c.png → 080056` is 5.4 real seconds against 89s → 83s while the
+      question changes and the multiplier goes x1 → x2. It is a plain global race clock. The
+      multiplier is separately `1 + parts collected`, with no score anywhere to multiply.
+      The conclusion "it stays out" is unchanged and still right, but the reason above is not one
+      of the reasons: the real ones are that a clock **punishes** (D7 is locked), that it
+      **scores reading speed** rather than comprehension, and that the retry it implies would let
+      a child answer the same five gates twice and destroy `raceFirstPickCorrect`.
 - [x] **Why the patrol floated** — two causes: motion/animation disagreed by ~2× (30m sweep in 2s
       = 15 m/s on top of your speed), and his height came from the *kid's pivot* rather than the
       ground, on a rig whose rendered mass swings 0.79m off its own transform. Fixed by holding a
