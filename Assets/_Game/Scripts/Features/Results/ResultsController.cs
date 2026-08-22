@@ -156,6 +156,15 @@ namespace SummaRace.Features.Results
 
             if (SummaRace.Core.GameManager.Instance != null) SummaRace.Core.GameManager.Instance.CompleteStory(stars);
 
+            // Android BACK mirrors the NEXT button: same destination, same session test. Registered
+            // AFTER CompleteStory so a BACK press can never lose the run — the row and progress are
+            // already written by the time the guard will accept a leave. Before this registration
+            // Results was the one screen with no rule of its own, so BACK showed the generic
+            // "Let's finish this part first!" card on a screen that is already finished.
+            SummaRace.Core.BackButtonGuard.RegisterExit(
+                IsSessionDone() ? GameText.BackLeaveToMap : GameText.BackLeaveToStories,
+                () => SceneLoader.Go(IsSessionDone() ? SceneNames.SessionMap : SceneNames.StorySelect));
+
             // Label AFTER CompleteStory, and from the same test the button routes on: this run
             // only counts toward the session once it is recorded, so before that call the third
             // story of a session still reads as unfinished. Mid-session the button goes back to
