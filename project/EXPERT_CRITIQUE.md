@@ -38,3 +38,15 @@ No timers, no fail state, no score/multiplier, no hint button, no settings scree
 only Arrange/Summary — each traces to the thesis text, a locked decision (D7/D8), or a
 measured validity threat. The prototypes are direction, not a quality bar: both contain
 mechanics the study never asked for and contrast failures the build already avoids.
+
+## Post-study art direction (owner references, 2026-08-23)
+
+The owner supplied two reference kits that name the target look precisely: "Jungle forest
+lianas game interface" and "Bamboo game interface wooden sign boards" (both Pro Vector,
+PAID — the previews are watermarked and must never be used directly; buy a license first).
+What they codify: wood-plank buttons and title boards, leaf/vine framing around panels,
+gold stars on wood, lighter cards held inside darker wood frames. Tonight's wood pass
+(wood-plaque banners, parchment cards, bronze trim) is the same family built from owned
+assets — the study build ships that. The kit purchase + full re-skin is the store-version
+art pass: every button to wood planks, leafy corners on the mission board and story cards,
+bamboo-frame variants for the teacher screen.
