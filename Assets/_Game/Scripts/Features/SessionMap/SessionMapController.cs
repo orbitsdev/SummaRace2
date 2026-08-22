@@ -138,6 +138,8 @@ namespace SummaRace.Features.SessionMap
             int unlocked = UnlockedSession();
             int current = CurrentSession(unlocked);
 
+            BuildDriftingClouds();
+
             // The board the ten tiles sit on, styled BEFORE them (owner references, 2026-08-23:
             // "gold border and wood back, then dark card"). Every level-select he sent is one
             // panel — gold rim, wood body, tiles floating on a darker inner face — and ours was
@@ -197,21 +199,123 @@ namespace SummaRace.Features.SessionMap
             var board = first != null ? first.transform.parent as RectTransform : null;
             if (board == null) return;
 
-            // NO CONTAINER AT ALL (owner, 2026-08-23: "the parent wrapper that contains the
-            // cards — remove it"). The scene's board was a pale card behind the ten tiles, and
-            // every attempt to dress it — parchment, wood, dark face, gold rim — only made the
-            // frame louder than the buttons it held. The tiles are strong enough on their own:
-            // light pages with gold edges over the playground art, which is the same treatment
-            // Story Select uses one tap away.
+            // ---- A QUIET WRAPPER, NOT A LOUD ONE ------------------------------------------
+            // The ten tiles do need containing (they floated on open grass), but the earlier
+            // attempts failed by making the frame the loudest thing on screen: wood body, dark
+            // face, gold rim — a picture frame competing with its own picture. This is the
+            // opposite: a soft translucent ink panel that darkens the art just enough for the
+            // light tiles to lift off it, with a thin gold edge to say "this is a board". The
+            // hierarchy stays tiles-first, which is what a level select is for.
+            // ⚠️ AND IT MUST BE A CARD, NOT A GLASS SLAB. Tinting panel_gold to a translucent
+            // grey produced exactly that (owner, 2026-08-23: "you wrap parent in square glass
+            // granite") — a 9-slice at full alpha keeps its rounded corners, but drop the alpha
+            // and the corner pixels go translucent-grey instead of away, so the panel reads as
+            // a rectangle of frosted glass. It uses the WOOD PLAQUE at full alpha instead: real
+            // rounded corners, its own grain, tinted to a soft parchment shadow that still lets
+            // the playground art read through as tone rather than as picture.
             var boardImg = board.GetComponent<Image>();
-            if (boardImg != null) boardImg.enabled = false;
+            if (boardImg != null)
+            {
+                boardImg.enabled = true;
+                boardImg.sprite = Resources.Load<Sprite>("UI/wood_plaque");
+                if (boardImg.sprite != null) boardImg.type = Image.Type.Sliced;
+                boardImg.color = new Color(0.94f, 0.88f, 0.78f, 0.92f);
+            }
 
-            // Any panel parts an earlier build added are removed, so a rebuilt scene cannot
-            // keep a stale frame around.
+            // Panel parts an earlier build added are removed, so a rebuilt scene cannot keep a
+            // stale wood frame around.
             var oldFace = board.Find("BoardFace");
             if (oldFace != null) Destroy(oldFace.gameObject);
             var oldRim = board.Find("BoardRim");
             if (oldRim != null) Destroy(oldRim.gameObject);
+        }
+
+        /// <summary>
+        /// Clouds drifting across the sky behind the board (owner, 2026-08-23: "can you add
+        /// something moving in the choose-mission scene background?"). Built from the game's own
+        /// soft cloud sprite, three of them on slow independent loops, inserted as the canvas's
+        /// FIRST children so they pass behind the board and every tile. Never raycast targets,
+        /// and silently absent if the sprite or canvas is missing.
+        /// </summary>
+        private void BuildDriftingClouds()
+        {
+            var first = stops != null && stops.Length > 0 && stops[0] != null ? stops[0].button : null;
+            var canvas = first != null ? first.GetComponentInParent<Canvas>() : null;
+            if (canvas == null) return;
+            // The scene's own cloud art is not in Resources (it is authored into the canvas), so
+            // the drifting layer uses the soft gold glow instead, tinted white and stretched
+            // wide — at 40% alpha it reads as a light cloud passing, which is all this needs.
+            var cloud = Resources.Load<Sprite>("UI/glow_gold");
+            if (cloud == null) return;
+
+            var root = new GameObject("DriftClouds", typeof(RectTransform));
+            var rrt = (RectTransform)root.transform;
+            rrt.SetParent(canvas.transform, false);
+            rrt.SetAsFirstSibling();
+            rrt.anchorMin = Vector2.zero; rrt.anchorMax = Vector2.one;
+            rrt.offsetMin = Vector2.zero; rrt.offsetMax = Vector2.zero;
+
+            for (int i = 0; i < 3; i++)
+            {
+                var go = new GameObject("Cloud_" + i, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+                var rt = (RectTransform)go.transform;
+                rt.SetParent(root.transform, false);
+                rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0f, 0.80f + i * 0.06f);
+                rt.sizeDelta = new Vector2(260f + i * 60f, 120f + i * 20f);
+                rt.anchoredPosition = new Vector2(-260f - i * 220f, 0f);
+                var img = go.GetComponent<Image>();
+                img.sprite = cloud;
+                img.color = new Color(1f, 1f, 1f, 0.55f - i * 0.08f);
+                img.raycastTarget = false;
+
+                // Slow drift right across the screen and around again — different speeds so the
+                // three never travel as a block.
+                PrimeTween.Tween.UIAnchoredPositionX(rt, 1400f, 26f + i * 9f, PrimeTween.Ease.Linear,
+                    cycles: -1, cycleMode: PrimeTween.CycleMode.Restart, startDelay: i * 5f);
+            }
+        }
+
+        /// <summary>
+        /// The "2/3 stories" badge on a tile, built into the old star row's transform so the
+        /// scene's own placement is reused. Sits in the tile's lower-right on a small ink pill:
+        /// dark enough to read on the page at any brightness, small enough that the mission
+        /// number still owns the tile. Built once, then only its text changes.
+        /// </summary>
+        private static void SetStopCounter(RectTransform row, int done, bool playable)
+        {
+            row.anchorMin = row.anchorMax = row.pivot = new Vector2(1f, 0f);
+            row.anchoredPosition = new Vector2(-16f, 14f);
+            row.sizeDelta = new Vector2(84f, 40f);
+            row.SetAsLastSibling();
+
+            var pill = row.GetComponent<Image>();
+            if (pill == null)
+            {
+                pill = row.gameObject.AddComponent<Image>();
+                pill.sprite = Resources.Load<Sprite>("UI/bar_bg");
+                if (pill.sprite != null) pill.type = Image.Type.Sliced;
+                pill.raycastTarget = false;
+            }
+            pill.color = playable ? Color.white : new Color(1f, 1f, 1f, 0.55f);
+
+            var label = row.GetComponentInChildren<TMP_Text>(true);
+            if (label == null)
+            {
+                var go = new GameObject("Count", typeof(RectTransform));
+                go.transform.SetParent(row, false);
+                var tmp = go.AddComponent<TextMeshProUGUI>();
+                tmp.alignment = TextAlignmentOptions.Center;
+                tmp.fontStyle = FontStyles.Bold;
+                tmp.fontSize = 26f;
+                tmp.raycastTarget = false;
+                var lrt = tmp.rectTransform;
+                lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one;
+                lrt.offsetMin = Vector2.zero; lrt.offsetMax = Vector2.zero;
+                label = tmp;
+            }
+            label.text = done + "/" + StoryIds.Difficulties.Length;
+            label.color = new Color(1f, 0.96f, 0.88f, playable ? 1f : 0.75f);
+            label.gameObject.SetActive(true);
         }
 
         /// <summary>The thin wood picture-frame behind an OPEN stop — the owner's storybook
@@ -414,34 +518,17 @@ namespace SummaRace.Features.SessionMap
                 stop.lockIcon.color = Color.white;   // the padlock art on the dimmed page
             }
 
-            // Stars UNDER the tile: gold when earned, a faint outline of the same when not, so
-            // the row reads as "3 to fill" instead of as scattered dots.
-            if (stop.stars != null)
-                for (int i = 0; i < stop.stars.Length; i++)
-                    if (stop.stars[i] != null)
-                    {
-                        stop.stars[i].color = i < done ? Theme.GoldDeep
-                                                       : Theme.Alpha(Theme.Wood, 0.45f);
-                        stop.stars[i].transform.localScale = Vector3.one * (i < done ? 1.1f : 1.0f);
-
-                        // TOP-LEFT OF THE CARD (owner, 2026-08-23). The stars sit inside a
-                        // StarRow container the scene positions, so moving each star did
-                        // nothing visible — the ROW is what has to move. Done once, from the
-                        // first star's parent, and idempotent (absolute anchors).
-                        if (i == 0)
-                        {
-                            var row = stop.stars[0].transform.parent as RectTransform;
-                            if (row != null)
-                            {
-                                // UPPER-RIGHT corner badge (owner, 2026-08-23), not a stack in
-                                // the middle: the number owns the centre of the tile and the
-                                // progress sits out of its way.
-                                row.anchorMin = row.anchorMax = row.pivot = new Vector2(1f, 1f);
-                                row.anchoredPosition = new Vector2(-14f, -16f);
-                                row.SetAsLastSibling();
-                            }
-                        }
-                    }
+            // ---- A COUNTER, NOT STARS (owner, 2026-08-23: "why not put a number instead?") --
+            // Three stars here meant "stories finished", while three stars on the Story Select
+            // card one tap away mean "your race score" — the same icon carrying two meanings a
+            // single tap apart, which is why this screen needed a subtitle to explain itself.
+            // "2/3" cannot be misread, and it frees the tile's corner.
+            if (stop.stars != null && stop.stars.Length > 0 && stop.stars[0] != null)
+            {
+                var row = stop.stars[0].transform.parent as RectTransform;
+                foreach (var s in stop.stars) if (s != null) s.gameObject.SetActive(false);
+                if (row != null) SetStopCounter(row, done, playable);
+            }
 
             // The plates were sized for a board with far more breathing room than ten stops
             // need; on the device they read as small chips lost in cream. Scaled here rather

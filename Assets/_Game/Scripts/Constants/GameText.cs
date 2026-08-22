@@ -285,14 +285,15 @@ namespace SummaRace.Constants
         public const string SessionLockedHint = "Your teacher opens the next mission!";
                 public const string SessionCompleteCheer = "Mission complete! All three stories done!";
         /// <summary>
-        /// What a "mission" IS, and what its three stars count. Both were unexplained anywhere
-        /// on screen, and the stars are the sharper problem: this screen's three stars mean
-        /// "stories finished" while Story Select's three stars — same sprite, same row, one tap
-        /// away — mean "how well you did". A teacher reading two stars here as "did okay" would
-        /// be wrong. Say which one this is, on the screen it is on.
+        /// What a "mission" IS. It used to also explain the tiles' three STARS, because this
+        /// screen's stars meant "stories finished" while Story Select's stars — same sprite,
+        /// one tap away — mean "how well you did", and a teacher reading two stars here as
+        /// "did okay" would be wrong. The tiles now carry a plain "2/3" counter instead
+        /// (owner, 2026-08-23: "why not put a number instead?"), so the ambiguity is gone at
+        /// the source and this line no longer has to apologise for it.
         /// </summary>
         public const string SessionMapSubtitle =
-            "Each mission has 3 stories. Stars show how many you finished.";
+            "Each mission has 3 stories to finish.";
 
         // Story select
         public const string StorySelectTitle = "Pick a Story";
