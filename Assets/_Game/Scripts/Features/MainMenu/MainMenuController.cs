@@ -240,15 +240,17 @@ namespace SummaRace.Features.MainMenu
         // ---------- the learner's badge, resurfaced ----------
 
         /// <summary>
-        /// The four Name Entry badges, by <c>avatarIndex</c>: 0 heart (red), 1 star (gold),
-        /// 2 gem (purple), 3 lightning (blue). The actual icons are Layer Lab pack sprites
-        /// under <c>Assets/Plugins/</c> — reachable only by scene reference, never by
-        /// Resources.Load — so the badge resurfaces as the icon's COLOUR (plus a 45° turn on
-        /// the odd indexes, so colour is never the only channel — the F49 rule). Red and
-        /// purple reuse BootTagline's exact values; gold is the brand token. Not Theme tokens:
-        /// like SwbstPalette, these are per-badge identity colours whose job is to differ, and
-        /// Theme's own exclusions bar exactly that class. TeacherMenu carries the same table —
-        /// features never call each other, so the four values live in both files by design.
+        /// FALLBACK colours for the four Name Entry badges, by <c>avatarIndex</c>: 0 heart
+        /// (red), 1 star (gold), 2 gem (purple), 3 lightning (blue). The real icons now ship
+        /// as Resources sprites (<c>Resources/UI/Badges/badge_0..3</c>) and are what normally
+        /// renders; this table only paints the stand-in quad (plus a 45° turn on the odd
+        /// indexes, so colour is never the only channel — the F49 rule) when that load returns
+        /// null, so a player build with a broken Resources folder degrades to the old coloured
+        /// badge, never to nothing. Red and purple reuse BootTagline's exact values; gold is
+        /// the brand token. Not Theme tokens: like SwbstPalette, these are per-badge identity
+        /// colours whose job is to differ, and Theme's own exclusions bar exactly that class.
+        /// TeacherMenu carries the same table — features never call each other, so the four
+        /// values live in both files by design.
         /// </summary>
         private static readonly Color[] BadgeColors =
         {
@@ -278,7 +280,22 @@ namespace SummaRace.Features.MainMenu
             badgeGo.transform.SetParent(_activeLearnerPill.transform, false);
 
             var badge = badgeGo.AddComponent<Image>();
-            badge.color = BadgeColors[learner.avatarIndex];
+            // The real icon first — the heart/star/gem/lightning the child actually picked.
+            // White, not the table colour: the artwork carries its own colour, and a tint
+            // would repaint it.
+            var icon = Resources.Load<Sprite>("UI/Badges/badge_" + learner.avatarIndex);
+            if (icon != null)
+            {
+                badge.sprite = icon;
+                badge.color = Color.white;
+                badge.preserveAspect = true;
+            }
+            else
+            {
+                // Fallback: the tinted quad the badge shipped as — a build with a broken
+                // Resources folder degrades to the old look, never to nothing.
+                badge.color = BadgeColors[learner.avatarIndex];
+            }
             badge.raycastTarget = false;   // decor: never steal a tap (same rule as the decor sweep)
 
             var rect = badge.rectTransform;
@@ -287,9 +304,10 @@ namespace SummaRace.Features.MainMenu
             rect.pivot = new Vector2(0.5f, 0.5f);
             rect.sizeDelta = new Vector2(BadgeSize, BadgeSize);
             rect.anchoredPosition = new Vector2(18f + BadgeSize * 0.5f, 0f);
-            // Shape channel: odd indexes turn into a diamond, so star/lightning never differ
-            // from heart/gem by colour alone.
-            if ((learner.avatarIndex & 1) == 1) rect.localRotation = Quaternion.Euler(0f, 0f, 45f);
+            // Shape channel, fallback only (the sprite already IS the shape): odd indexes turn
+            // the quad into a diamond, so star/lightning never differ from heart/gem by colour
+            // alone.
+            if (icon == null && (learner.avatarIndex & 1) == 1) rect.localRotation = Quaternion.Euler(0f, 0f, 45f);
 
             // Keep the name clear of the badge — only when the badge exists, so an unbadged
             // pill stays byte-identical to today's layout.

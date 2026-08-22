@@ -1150,14 +1150,16 @@ namespace SummaRace.Features.TeacherMenu
         }
 
         /// <summary>
-        /// The four Name Entry badges, by <c>avatarIndex</c>: 0 heart (red), 1 star (gold),
-        /// 2 gem (purple), 3 lightning (blue). The actual icons are Layer Lab pack sprites
-        /// under <c>Assets/Plugins/</c> — reachable only by scene reference, never by
-        /// Resources.Load — so the badge appears as the icon's COLOUR (plus a 45° turn on the
-        /// odd indexes, so colour is never the only channel — the F49 rule). An Image rather
-        /// than a glyph in the label for the reason TeacherLearnerRowActive already records: a
-        /// glyph outside the TMP atlas renders as an empty box. MainMenu carries the same
-        /// table — features never call each other, so the four values live in both by design.
+        /// FALLBACK colours for the four Name Entry badges, by <c>avatarIndex</c>: 0 heart
+        /// (red), 1 star (gold), 2 gem (purple), 3 lightning (blue). The real icons now ship
+        /// as Resources sprites (<c>Resources/UI/Badges/badge_0..3</c>) and are what normally
+        /// renders; this table only paints the stand-in quad (plus a 45° turn on the odd
+        /// indexes, so colour is never the only channel — the F49 rule) when that load returns
+        /// null, so a build with a broken Resources folder degrades to the old coloured badge,
+        /// never to nothing. An Image rather than a glyph in the label for the reason
+        /// TeacherLearnerRowActive already records: a glyph outside the TMP atlas renders as an
+        /// empty box. MainMenu carries the same table — features never call each other, so the
+        /// four values live in both by design.
         /// </summary>
         private static readonly Color[] BadgeColors =
         {
@@ -1186,7 +1188,22 @@ namespace SummaRace.Features.TeacherMenu
             badgeGo.transform.SetParent(row.transform, false);
 
             var badge = badgeGo.AddComponent<Image>();
-            badge.color = BadgeColors[avatarIndex];
+            // The real icon first — the heart/star/gem/lightning the child actually picked.
+            // White, not the table colour: the artwork carries its own colour, and a tint
+            // would repaint it.
+            var icon = Resources.Load<Sprite>("UI/Badges/badge_" + avatarIndex);
+            if (icon != null)
+            {
+                badge.sprite = icon;
+                badge.color = Color.white;
+                badge.preserveAspect = true;
+            }
+            else
+            {
+                // Fallback: the tinted quad the badge shipped as — a build with a broken
+                // Resources folder degrades to the old look, never to nothing.
+                badge.color = BadgeColors[avatarIndex];
+            }
             badge.raycastTarget = false;   // the row keeps the tap
 
             var rect = badge.rectTransform;
@@ -1195,9 +1212,10 @@ namespace SummaRace.Features.TeacherMenu
             rect.pivot = new Vector2(0.5f, 0.5f);
             rect.sizeDelta = new Vector2(BadgeSize, BadgeSize);
             rect.anchoredPosition = new Vector2(24f + BadgeSize * 0.5f, 0f);
-            // Shape channel: odd indexes turn into a diamond, so star/lightning never differ
-            // from heart/gem by colour alone.
-            if ((avatarIndex & 1) == 1) rect.localRotation = Quaternion.Euler(0f, 0f, 45f);
+            // Shape channel, fallback only (the sprite already IS the shape): odd indexes turn
+            // the quad into a diamond, so star/lightning never differ from heart/gem by colour
+            // alone.
+            if (icon == null && (avatarIndex & 1) == 1) rect.localRotation = Quaternion.Euler(0f, 0f, 45f);
         }
 
         /// <summary>Rows are laid out by the column, so their height has to be stated as a

@@ -2461,6 +2461,10 @@ namespace SummaRace.Features.Race.Endless
             if (_previewColumn[lane] == null || !_previewColumn[lane].gameObject.activeInHierarchy) return;
             if (_tapInput == null) return;   // grey-box / editor-direct: nothing to steer
             _tapInput.SelectLane(lane);
+            // A deliberate steer, for the log's engagement counter (raceSteerCount). Counted
+            // here rather than inside SelectLane, so the road tap (which notes its own) and
+            // this column tap can never double-count one gesture. NOT a pick — see above.
+            SummaRace.Core.SessionLogService.NoteRaceSteer();
         }
 
         /// <summary>
@@ -3959,10 +3963,23 @@ namespace SummaRace.Features.Race.Endless
                 }
             }
 
+            // ---- THE BODY HOLDS THE GAP, NOT THE PIVOT ----
+            // The run clip translates this 19-part rigid rig up to ~1m ahead of its own pivot
+            // and back again every stride (measured in F47b). With only the PIVOT pinned, the
+            // rendered cop ran forward and snapped back on every animation loop — the owner's
+            // "the patrol runs back and forth" (device playtest, 2026-08-22). So the pivot is
+            // placed, the pose's own along-road drift is measured from the live renderer
+            // bounds, and the pivot is corrected by that drift — pinning the RENDERED MASS at
+            // the chase gap. Per frame, because the drift is per frame; cheap, because the rig
+            // is plain MeshRenderers whose bounds are already current in LateUpdate.
+            float desiredZ = playerPos.z - chaseGap;
             _patrol.position = new Vector3(
                 bodyT.position.x,
                 (_patrolGrounded ? _patrolGroundY : playerPos.y) + _patrolFootFix,
-                playerPos.z - chaseGap);
+                desiredZ);
+            Bounds poseB;
+            if (BodyBounds(_patrol, ref _patrolRenderers, out poseB))
+                _patrol.position += new Vector3(0f, 0f, desiredZ - poseB.center.z);
             // Straight down the road, exactly as the runner faces. Never yawed: on this rigid rig
             // a yaw swings the mesh 0.65m off its pivot (measured during the chase work), which is
             // how a safe offset stops being safe.
@@ -4178,13 +4195,25 @@ namespace SummaRace.Features.Race.Endless
             title.fontStyle = FontStyles.Bold;
 
             var body = MakeHudText(card.transform, new Vector2(0.5f, 0.63f), Vector2.zero, 54f);
-            body.text = SummaRace.Constants.GameText.RaceBriefingBody(_story.title);
+            // PRESENTATION-ONLY HIERARCHY (owner device screenshot, 2026-08-22): the card read
+            // as four same-weight paragraphs — a wall a Grade-4 reader meets thirty times. The
+            // WORDS cannot change (they are matched to the recorded VoRaceBriefing clip), so the
+            // hierarchy is injected here as rich text at assembly: the mission sentence leads in
+            // bold at full size, the how-to and patrol lines step down to 82%. Autosizing still
+            // owns the absolute size; the percentages ride whatever it picks.
+            string missionLead = SummaRace.Constants.GameText.RaceBriefingBody(_story.title);
+            int firstBreak = missionLead.IndexOf("\n\n", System.StringComparison.Ordinal);
+            if (firstBreak > 0)
+                missionLead = "<b>" + missionLead.Substring(0, firstBreak) + "</b>"
+                            + "<size=82%>" + missionLead.Substring(firstBreak) + "</size>";
+            body.text = missionLead;
             // Only when the cameo is actually on, so the briefing can never promise a character
             // the kill-switch has removed.
             if (SummaRace.Constants.GameRules.RacePatrolCameoEnabled)
-                body.text += System.Environment.NewLine + System.Environment.NewLine
-                           + SummaRace.Constants.GameText.RaceBriefingPatrol;
+                body.text += "<size=82%>" + System.Environment.NewLine + System.Environment.NewLine
+                           + SummaRace.Constants.GameText.RaceBriefingPatrol + "</size>";
             body.color = Theme.TextBrown;
+            body.richText = true;
 
             // ---- SIZED AS A FRACTION OF THE CARD, NOT AS A FIXED 760x380 BOX ----------------
             //
@@ -4287,6 +4316,23 @@ namespace SummaRace.Features.Race.Endless
                 bRt.anchorMin = new Vector2(0.020f, 0.192f);
                 bRt.anchorMax = new Vector2(0.235f, 0.300f);
                 bRt.offsetMin = Vector2.zero; bRt.offsetMax = Vector2.zero;
+                // The tail is what makes it read as HER speech and not a stray card (owner
+                // device screenshot, 2026-08-22: the tail-less box floated, looking misaligned).
+                // Same technique as Summary's hint bubble: a small rotated square in the
+                // bubble's own colour, hung under the bubble's lower-left so it points at her
+                // head (visible girl x 0.031-0.253, head y ~0.183). First sibling, so the
+                // bubble's own face draws over the seam.
+                var tail = new GameObject("BubbleTail");
+                tail.transform.SetParent(bubble.transform, false);
+                tail.transform.SetAsFirstSibling();
+                var tailImg = tail.AddComponent<UnityEngine.UI.Image>();
+                tailImg.color = bImg.color;
+                tailImg.raycastTarget = false;
+                var tailRt = tailImg.rectTransform;
+                tailRt.anchorMin = tailRt.anchorMax = new Vector2(0.38f, 0f);
+                tailRt.sizeDelta = new Vector2(34f, 34f);
+                tailRt.anchoredPosition = new Vector2(0f, 2f);
+                tail.transform.localRotation = Quaternion.Euler(0f, 0f, 45f);
                 var bubbleText = MakeHudText(bubble.transform, new Vector2(0.5f, 0.5f), Vector2.zero, 38f);
                 bubbleText.text = SummaRace.Constants.GameText.RaceBriefingLumi;
                 bubbleText.color = Theme.TextBrown;

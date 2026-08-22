@@ -4,9 +4,10 @@
 No programming knowledge assumed. Everything below describes the files a tablet produces,
 what each variable means, and the traps to avoid when you load them.
 
-- **Schema 6 — regenerated 2026-08-22 from `SessionLogService.cs`/`SaveModels.cs` (code is
-  authoritative).** Every field below was re-read from what the code writes, not from the
-  previous version of this document. All 47 keys `SessionLog` emits are documented below;
+- **Schema 7 — schema 6 was regenerated 2026-08-22 from `SessionLogService.cs`/`SaveModels.cs`
+  (code is authoritative); schema 7, the same day, adds one field: `raceSteerCount` (§3.3).**
+  Every field below was re-read from what the code writes, not from the
+  previous version of this document. All 48 keys `SessionLog` emits are documented below;
   none is undocumented and none is documented that the code does not write.
 - Source of truth in code: `Assets/_Game/Scripts/Data/SaveModels.cs` (`SessionLog`, `RacePick`) and
   `Assets/_Game/Scripts/Core/SessionLogService.cs` (what writes it, and when — `SchemaVersion`
@@ -19,7 +20,9 @@ what each variable means, and the traps to avoid when you load them.
   fields · **2** run context, the four phase clocks, per-element race detail (§3.3) · **3** the
   per-card race record and pause accounting (§3.3) · **4** `participantCode` on every row (§3.1)
   · **5** `arrangeOrders`, the order the learner actually built (§3.4) · **6** the **backgrounded
-  clocks** — how much of each phase duration the app was not on screen for (§3.6).
+  clocks** — how much of each phase duration the app was not on screen for (§3.6) · **7**
+  `raceSteerCount` — how many deliberate steering inputs the race saw, so a **passive run**
+  (zero steering on a finished row) is visible in the data (§3.3).
 - **One behaviour change without a schema bump (2026-08-22):** the race's *re-present* mechanic —
   the single gold correct card handed back after a wrong pick or a missed gate — was **removed
   from the game**. The row shape did not change, so the version stays 6, but on every row from
@@ -119,7 +122,7 @@ One export covers **one tablet**. With 40 learners on 40 tablets you will concat
 
 ## 3. The row: one play-through of one story
 
-Every key below is present on every schema-6 row, even when empty (`""`, `0`, `false`, `[]`).
+Every key below is present on every schema-7 row, even when empty (`""`, `0`, `false`, `[]`).
 A row from an older build simply lacks the keys added after its version; the §3 tables say
 which version brought each one in.
 
@@ -127,7 +130,7 @@ which version brought each one in.
 
 | Field | Type | Written | Meaning |
 |---|---|---|---|
-| `schemaVersion` | integer | story start | Shape of this row. `6` = as documented here. A row with `0` came from an older build (schema 1) and lacks everything in §3.4–3.6. Lower numbers lack whatever their version had not yet added — see the version list at the top. |
+| `schemaVersion` | integer | story start | Shape of this row. `7` = as documented here. A row with `0` came from an older build (schema 1) and lacks everything in §3.4–3.6. Lower numbers lack whatever their version had not yet added — see the version list at the top (a `6` row lacks only `raceSteerCount`). |
 | `runId` | string (32 hex) | story start | Unique id for this play-through. **Several rows can share one `runId`** — see §5, deduplication. |
 | `isPartial` | boolean | on write | `true` = a mid-run safety snapshot. `false` = the row written when the run ended. |
 | `learnerId` | string (guid) | story start | The child. Join key to the roster. Never blank in exported data. Minted on the tablet, so it appears nowhere on paper — use `participantCode` to reach the booklets. |
@@ -185,6 +188,7 @@ line is crossed**. That ordering is why a partial row can carry picks while
 | `racePicks` | list of objects | **Schema 3. Every card touched in the race, in the order it happened** — the item-level record. See below. |
 | `racePauseCount` | integer | **Schema 3.** How many times the race was paused. Pausing is not a fail state and costs the learner nothing, but an interrupted run is not comparable to an uninterrupted one, and a teacher stepping in is exactly the classroom event that should be visible rather than inferred from an odd duration. |
 | `racePausedSeconds` | float, seconds | **Schema 3.** Total real seconds spent paused. `raceSeconds` and `totalSeconds` are real elapsed time and therefore **include** this — subtract it for time actually on task. |
+| `raceSteerCount` | integer | **Schema 7. How many deliberate steering inputs the learner made during the race** — screen taps that moved the runner, taps on the three reading-panel answer columns, and lane keys on a keyboard (desktop testing only). **`0` on a completed run means the learner never steered: a passive run.** The runner moves forward on its own and every gate puts a card in every lane, so a child who never touches the screen still "picks" a card at every gate and scores near chance — and nothing in `racePicks` or `raceFirstOutcome` can tell that child apart from one who engaged and chose wrongly. This field can: treat `0` on a finished row as "the picks are whatever lane happened to hold a card", not as five considered answers. One caveat: the **swipe** gesture is handled by third-party code this counter cannot see, so strictly `0` means "no tap or keyboard steering was seen". On the tablets the tap is the taught, primary input (the mission briefing names it first), so `0` remains a meaningful passivity signal rather than a measurement gap. Rows from builds before schema 7 lack the key entirely — that is *not recorded*, not zero. |
 
 > **An empty `raceFirstOutcome` slot means the row is a partial or abandoned one — nothing else.**
 > The `correct` / `missed` verdicts are only resolved when the race reaches the finish line; up to
@@ -390,7 +394,7 @@ One completed run. In the real file this is a **single line**; it is wrapped her
   "summaryText": "Ana wanted to join the parade but she lost her slippers so her lola made new ones and she danced.",
   "starsEarned": 2,
   "isReplay": false,
-  "schemaVersion": 6,
+  "schemaVersion": 7,
   "appVersion": "1.0.0",
   "deviceId": "4a7c19e0b3d2",
   "deviceModel": "samsung SM-T295",
@@ -416,6 +420,7 @@ One completed run. In the real file this is a **single line**; it is wrapped her
   ],
   "racePauseCount": 0,
   "racePausedSeconds": 0.0,
+  "raceSteerCount": 9,
   "abandonReason": "",
   "arrangeOrders": ["01324", "01234"],
   "backgroundedSeconds": 61.3,
@@ -531,7 +536,7 @@ any first-attempt/learning analysis (GDD §8.3). Within a learner and story, ord
 ### 5.4 Check the constants
 
 Before analysing, confirm across the whole file: `timesCaught` is always `0`, `schemaVersion`
-is always `6`, and `appVersion` has exactly one distinct value. Any surprise there is a data
+is always `7`, and `appVersion` has exactly one distinct value. Any surprise there is a data
 provenance problem, not a finding.
 
 **More than one `schemaVersion` means a tablet was never re-flashed.** Its rows are perfectly

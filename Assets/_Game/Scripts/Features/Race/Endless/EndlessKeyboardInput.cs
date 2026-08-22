@@ -34,8 +34,19 @@ namespace SummaRace.Features.Race.Endless
             if (_runner == null) _runner = track.characterController;
             if (_runner == null) return;
 
-            if (keyboard.aKey.wasPressedThisFrame) _runner.ChangeLane(-1);
-            else if (keyboard.dKey.wasPressedThisFrame) _runner.ChangeLane(1);
+            // Each accepted press is a deliberate steer, for the log's engagement counter
+            // (raceSteerCount). Arrow keys stay with their script and are not counted — same
+            // caveat as their swipe path, and desktop-only either way.
+            if (keyboard.aKey.wasPressedThisFrame)
+            {
+                _runner.ChangeLane(-1);
+                SummaRace.Core.SessionLogService.NoteRaceSteer();
+            }
+            else if (keyboard.dKey.wasPressedThisFrame)
+            {
+                _runner.ChangeLane(1);
+                SummaRace.Core.SessionLogService.NoteRaceSteer();
+            }
         }
     }
 }

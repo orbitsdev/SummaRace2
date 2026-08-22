@@ -123,6 +123,11 @@ namespace SummaRace.Features.Race.Endless
                 ? Mathf.Clamp(Mathf.FloorToInt(pos.x / (Screen.width / 3f)), 0, 2)
                 : 1;
             MoveToLane(targetLane, track);
+            // An accepted, deliberate steer — for the log's engagement counter (raceSteerCount:
+            // 0 on a finished run = the learner never steered at all). Counted at the input
+            // SURFACES (here, the panel columns, the keyboard), never inside the shared
+            // SelectLane/MoveToLane path, so one gesture can never count twice.
+            SummaRace.Core.SessionLogService.NoteRaceSteer();
         }
 
         /// <summary>Touch first, mouse second — the mouse path is what makes this testable in

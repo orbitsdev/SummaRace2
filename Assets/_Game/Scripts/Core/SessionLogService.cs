@@ -31,14 +31,18 @@ namespace SummaRace.Core
         // 6: adds the backgrounded clocks — how much of each phase duration was spent with the
         // app not on screen at all, so "a struggling reader" and "a lunch break" stop being the
         // same number. Counted, never subtracted: the existing durations keep their meaning.
-        private const int SchemaVersion = 6;
+        // 7: +raceSteerCount — deliberate lane-change inputs (road tap / panel-column tap /
+        // keyboard) during the race, so a passive run (0 on a finished row: the learner never
+        // steered and collected whatever lane held a card) can be told apart from an
+        // engaged-but-wrong one, which score identically at chance.
+        private const int SchemaVersion = 7;
 
-        /// <summary>Hard ceiling on <see cref="SessionLog.racePicks"/>. A well-behaved run
-        /// produces at most 5 gates x (1 first pick + MaxRepresentMisses re-presents) = 35
-        /// entries, so this cannot be reached in play — it exists so that no future change to
-        /// the re-present ladder, and no stuck gate, can grow one JSON line without bound on a
-        /// 2GB device. Overflow drops the newest picks and keeps the earliest, because the
-        /// early ones are the first encounters and those are the measure.</summary>
+        /// <summary>Hard ceiling on <see cref="SessionLog.racePicks"/>. Since the re-present
+        /// mechanic was removed (F55) a well-behaved run produces at most 5 entries — one per
+        /// gate — so this cannot be reached in play; it exists so that no future mechanic, and
+        /// no stuck gate, can grow one JSON line without bound on a 2GB device. Overflow drops
+        /// the newest picks and keeps the earliest, because the early ones are the first
+        /// encounters and those are the measure.</summary>
         private const int MaxRacePicks = 64;
 
         /// <summary>Hard ceiling on <see cref="SessionLog.arrangeOrders"/>, on the same reasoning
@@ -74,6 +78,11 @@ namespace SummaRace.Core
         private const string OutcomeWrong = "wrong";
         private const string OutcomeMissed = "missed";
 
+        /// <summary>The live instance, for <see cref="NoteRaceSteer"/> alone — every other fact
+        /// reaches this class through EventBus events. See that method for why steering is the
+        /// one exception.</summary>
+        private static SessionLogService _instance;
+
         private SessionLog _log;
         private readonly HashSet<int> _pagesRecorded = new();
         private float _startedRealtime;
@@ -92,6 +101,7 @@ namespace SummaRace.Core
 
         private void OnEnable()
         {
+            _instance = this;
             EventBus.Subscribe<StoryStarted>(OnStoryStarted);
             EventBus.Subscribe<PageAnswered>(OnPageAnswered);
             EventBus.Subscribe<ReadingCompleted>(OnReadingCompleted);
@@ -108,6 +118,7 @@ namespace SummaRace.Core
 
         private void OnDisable()
         {
+            if (_instance == this) _instance = null;
             EventBus.Unsubscribe<StoryStarted>(OnStoryStarted);
             EventBus.Unsubscribe<PageAnswered>(OnPageAnswered);
             EventBus.Unsubscribe<ReadingCompleted>(OnReadingCompleted);
@@ -307,6 +318,33 @@ namespace SummaRace.Core
                 _pauseStartedRealtime = -1f;
             }
             _dirtySinceWrite = true;
+        }
+
+        /// <summary>
+        /// One deliberate lane-change input during the race — a road tap, a reading-panel
+        /// column tap or a keyboard lane key. Called DIRECTLY by the input scripts, which is a
+        /// documented deviation from this class's events-only rule: a per-input EventBus event
+        /// would allocate a payload on every tap of every race for a single int, and a counter
+        /// poke is the lighter tool — it writes only a field this service already owns, and no
+        /// other feature could ever want to subscribe to it. Nothing else may copy this
+        /// shortcut. Null-safe and phase-gated like every handler: with no row open, or outside
+        /// the race phase, it counts nothing — so an editor-direct scene, a briefing tap or a
+        /// stray call can never invent engagement.
+        /// </summary>
+        public static void NoteRaceSteer()
+        {
+            try
+            {
+                var svc = _instance;
+                var log = svc != null ? svc._log : null;
+                if (log == null || log.lastPhase != PhaseRace) return;
+                log.raceSteerCount++;
+                svc._dirtySinceWrite = true;
+            }
+            catch (Exception)
+            {
+                // A logging fault must never surface as a stall in front of a class.
+            }
         }
 
         /// <summary>

@@ -247,6 +247,8 @@ namespace SummaRace.Data
         /// <item>6 — adds the backgrounded clocks (<see cref="backgroundedSeconds"/>,
         /// <see cref="backgroundedCount"/> and one per phase), so time the app spent off screen
         /// can be told apart from time the learner spent working.</item>
+        /// <item>7 — adds <see cref="raceSteerCount"/>, so a passive run (no steering at all)
+        /// can be told apart from an engaged run that scored the same.</item>
         /// </list>
         /// This list was stale at "1 and 2" for three versions. It is the comment a reader opens
         /// first, so keep it current — but the AUTHORITY is
@@ -434,5 +436,21 @@ namespace SummaRace.Data
 
         /// <summary>The part of <see cref="summarySeconds"/> the app was off screen for.</summary>
         public float summaryBackgroundedSeconds;
+
+        // ---------------- schema 7 ----------------
+
+        /// <summary>
+        /// NUMBER OF DELIBERATE LANE-CHANGE INPUTS during the race — road taps, reading-panel
+        /// column taps and keyboard A/D. The runner moves on its own and every gate puts a card
+        /// in every lane, so a learner who never touches the screen still collects the
+        /// centre-lane card at each gate: they score at chance, which is statistically sound,
+        /// but nothing in <see cref="racePicks"/> or <see cref="raceFirstOutcome"/> can tell
+        /// "engaged but wrong" from "never engaged". This can. 0 on a FINISHED run = the
+        /// learner never steered (a passive run — the picks are whatever lane happened to hold
+        /// a card). Trash Dash's own swipe gesture is handled by their untouched script and is
+        /// NOT counted, so 0 strictly means "no tap/keyboard steering was seen"; on the tablets
+        /// the tap is the taught, primary input, so 0 stays meaningful.
+        /// </summary>
+        public int raceSteerCount;
     }
 }
