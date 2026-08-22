@@ -115,17 +115,25 @@ namespace SummaRace.UI
             // parchment; the briefing card has carried it since F34). One family, every banner.
             // If the sprite is missing from a build, the old wood-tint fallback still runs —
             // dark, but readable cream-on-dark, never text lost on its own colour.
-            var parchment = Resources.Load<Sprite>("UI/panel_gold");
-            if (parchment != null)
+            // Owner, 2026-08-23: "what we miss is texture." The flat tinted plate is now a
+            // GENERATED wood plaque — real plank grain, carved rim, rounded corners — built
+            // procedurally in-editor (owned outright, no licensing) and shown untinted.
+            // Fallbacks keep every earlier behaviour: parchment tinted toward wood (light
+            // sprite, so the multiply renders true wood), then the plain wood tint. Cream type
+            // on the plaque is the race tracker's own measured pairing (~6.6:1).
+            var plaque = Resources.Load<Sprite>("UI/wood_plaque");
+            var parchment = plaque == null ? Resources.Load<Sprite>("UI/panel_gold") : null;
+            if (plaque != null)
+            {
+                fill.sprite = plaque;
+                fill.type = Image.Type.Sliced;
+                fill.color = Color.white;
+                title.color = Label;
+            }
+            else if (parchment != null)
             {
                 fill.sprite = parchment;
                 fill.type = parchment.border != Vector4.zero ? Image.Type.Sliced : Image.Type.Simple;
-                // Owner, 2026-08-23, on seeing the untinted parchment: the banner should be the
-                // WOOD PLAQUE the race tracker taught — brown plate, cream type — not a pale
-                // card with a yellow rim. And on THIS sprite the wood tint finally works: the
-                // multiply trap above only bites dark sprites, while parchment (~0.93) tinted by
-                // Theme.Wood renders as true wood, its gold border settling into bronze trim.
-                // Cream on that plate is the tracker's own measured pairing (~6.6:1).
                 fill.color = Theme.Wood;
                 title.color = Label;
             }
