@@ -197,47 +197,21 @@ namespace SummaRace.Features.SessionMap
             var board = first != null ? first.transform.parent as RectTransform : null;
             if (board == null) return;
 
+            // NO CONTAINER AT ALL (owner, 2026-08-23: "the parent wrapper that contains the
+            // cards — remove it"). The scene's board was a pale card behind the ten tiles, and
+            // every attempt to dress it — parchment, wood, dark face, gold rim — only made the
+            // frame louder than the buttons it held. The tiles are strong enough on their own:
+            // light pages with gold edges over the playground art, which is the same treatment
+            // Story Select uses one tap away.
             var boardImg = board.GetComponent<Image>();
-            var plank = Resources.Load<Sprite>("UI/wood_plaque");
-            if (boardImg != null && plank != null)
-            {
-                boardImg.sprite = plank;
-                boardImg.type = Image.Type.Sliced;
-                boardImg.color = Color.white;          // the wood body
-            }
+            if (boardImg != null) boardImg.enabled = false;
 
-            if (board.Find("BoardFace") != null) return;
-
-            // Dark inner face, inset so the wood shows as a frame around it.
-            var face = new GameObject("BoardFace", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-            var frt = (RectTransform)face.transform;
-            frt.SetParent(board, false);
-            frt.SetAsFirstSibling();
-            frt.anchorMin = Vector2.zero; frt.anchorMax = Vector2.one;
-            // Inset further at the TOP so the board's wood body shows as a real frame there and
-            // the subtitle above it is not swallowed by the new edge (first capture, 2026-08-23).
-            frt.offsetMin = new Vector2(30f, 30f); frt.offsetMax = new Vector2(-30f, -46f);
-            var faceImg = face.GetComponent<Image>();
-            faceImg.sprite = plank;
-            if (plank != null) faceImg.type = Image.Type.Sliced;
-            // Dark enough that a wood tile reads as a button on it, light enough that the board
-            // still looks like wood in shadow rather than a black hole — the references keep
-            // their inner face visibly brown, not near-black.
-            faceImg.color = new Color(0.34f, 0.24f, 0.16f, 0.90f);
-            faceImg.raycastTarget = false;
-
-            // Gold rim around the whole board — border only, so the wood body stays visible.
-            var rim = new GameObject("BoardRim", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-            var rrt = (RectTransform)rim.transform;
-            rrt.SetParent(board, false);
-            rrt.SetAsLastSibling();                     // over the tiles' plates, but it is border-only
-            rrt.anchorMin = Vector2.zero; rrt.anchorMax = Vector2.one;
-            rrt.offsetMin = new Vector2(-6f, -6f); rrt.offsetMax = new Vector2(6f, 6f);
-            var rimImg = rim.GetComponent<Image>();
-            rimImg.sprite = Resources.Load<Sprite>("UI/panel_gold");
-            if (rimImg.sprite != null) rimImg.type = Image.Type.Sliced;
-            rimImg.fillCenter = false;                  // the gold edge only
-            rimImg.raycastTarget = false;
+            // Any panel parts an earlier build added are removed, so a rebuilt scene cannot
+            // keep a stale frame around.
+            var oldFace = board.Find("BoardFace");
+            if (oldFace != null) Destroy(oldFace.gameObject);
+            var oldRim = board.Find("BoardRim");
+            if (oldRim != null) Destroy(oldRim.gameObject);
         }
 
         /// <summary>The thin wood picture-frame behind an OPEN stop — the owner's storybook
@@ -411,7 +385,11 @@ namespace SummaRace.Features.SessionMap
                 {
                     background.sprite = page;
                     background.type = Image.Type.Sliced;
-                    background.color = playable ? Color.white : new Color(0.62f, 0.58f, 0.54f);
+                    // Locked pages are dimmed but still clearly PAGES: at 0.62 grey on the dark
+                    // board they lost their gold edge and read as flat slabs (device shot,
+                    // 2026-08-23). Warmer and lighter keeps the set coherent — the padlock and
+                    // the missing number carry "not yet", not a colour change this heavy.
+                    background.color = playable ? Color.white : new Color(0.78f, 0.73f, 0.66f);
                 }
                 else background.color = playable ? StopPlayable : StopLocked;
             }
@@ -444,14 +422,25 @@ namespace SummaRace.Features.SessionMap
                     {
                         stop.stars[i].color = i < done ? Theme.GoldDeep
                                                        : Theme.Alpha(Theme.Wood, 0.45f);
-                        stop.stars[i].transform.localScale = Vector3.one * (i < done ? 1.25f : 1.1f);
-                        var srt = stop.stars[i].rectTransform;
-                        srt.anchorMin = srt.anchorMax = srt.pivot = new Vector2(0.5f, 0f);
-                        // Clear of the plank's own bottom edge: at -26 they were half-swallowed
-                        // by it (first capture of this design). The row sits fully below the
-                        // tile, like the references, and draws last so nothing overlaps it.
-                        srt.anchoredPosition = new Vector2((i - 1) * 42f, -44f);
-                        stop.stars[i].transform.SetAsLastSibling();
+                        stop.stars[i].transform.localScale = Vector3.one * (i < done ? 1.1f : 1.0f);
+
+                        // TOP-LEFT OF THE CARD (owner, 2026-08-23). The stars sit inside a
+                        // StarRow container the scene positions, so moving each star did
+                        // nothing visible — the ROW is what has to move. Done once, from the
+                        // first star's parent, and idempotent (absolute anchors).
+                        if (i == 0)
+                        {
+                            var row = stop.stars[0].transform.parent as RectTransform;
+                            if (row != null)
+                            {
+                                // UPPER-RIGHT corner badge (owner, 2026-08-23), not a stack in
+                                // the middle: the number owns the centre of the tile and the
+                                // progress sits out of its way.
+                                row.anchorMin = row.anchorMax = row.pivot = new Vector2(1f, 1f);
+                                row.anchoredPosition = new Vector2(-14f, -16f);
+                                row.SetAsLastSibling();
+                            }
+                        }
                     }
 
             // The plates were sized for a board with far more breathing room than ten stops

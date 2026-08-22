@@ -152,9 +152,23 @@ namespace SummaRace.Features.NameEntry
                 if (avatarButtons[i] == null) continue;
                 bool selected = i == _avatarIndex;
 
-                // Kept: the brightness step is still useful, it just cannot be the only channel.
+                // THE TILES WERE PLAIN GREY SQUARES (owner device shot, 2026-08-23: "basic,
+                // nothing to do with a game"). They are cards now, like every other card in the
+                // app — the light parchment page the mission tiles and title banners use — so
+                // the badge row belongs to the same world as the rest of the screen. Selection
+                // still carries on three channels: brightness, the gold halo, and size.
                 var image = avatarButtons[i].GetComponent<Image>();
-                if (image != null) image.color = selected ? AvatarOn : AvatarOff;
+                if (image != null)
+                {
+                    var page = Resources.Load<Sprite>("UI/panel_gold");
+                    if (page != null)
+                    {
+                        image.sprite = page;
+                        image.type = Image.Type.Sliced;
+                        image.color = selected ? Color.white : new Color(0.86f, 0.83f, 0.78f);
+                    }
+                    else image.color = selected ? AvatarOn : AvatarOff;
+                }
 
                 // Cue two: a gold halo around the chosen badge — a shape that is either there
                 // or not, readable with no colour discrimination at all.

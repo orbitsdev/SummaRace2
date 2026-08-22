@@ -184,6 +184,7 @@ namespace SummaRace.Features.MainMenu
             }
 
             SilenceDecorRaycasts();
+            BuildDriftingSparkles();
 
             // Now that the screen works on its own, take the naming detour — and watch it, so a
             // dispatch that does not land is noticed rather than assumed.
@@ -343,6 +344,62 @@ namespace SummaRace.Features.MainMenu
                 // Prefix match on Sparkle so all three (and any future one) are covered.
                 if (n == "DecorCoins" || n == "DecorGems" || n.StartsWith("Sparkle"))
                     graphic.raycastTarget = false;
+
+                // THE COINS AND GEMS PROMISE AN ECONOMY THAT DOES NOT EXIST (owner, 2026-08-23:
+                // "what is the purpose of coins and gems? looks weird"). There is no currency,
+                // no shop and nothing to spend them on, so a pile of treasure on the menu tells
+                // a nine-year-old to go looking for something the game will never show them.
+                // Hidden rather than deleted: they are scene objects, and a later build may want
+                // them if a reward loop is ever added. The CHEST stays — it carries the "stories
+                // are treasure" metaphor that Results pays off with the SWBST gems.
+                if (n == "DecorCoins" || n == "DecorGems")
+                    graphic.gameObject.SetActive(false);
+            }
+        }
+
+        /// <summary>
+        /// A few sparkles drifting up through the menu (owner, 2026-08-23: "how about particles
+        /// or some movement in this scene?"). Code-built from the game's own gold glow sprite,
+        /// six of them on staggered loops so the screen breathes without anything to load, and
+        /// never raycast targets so TAP TO START keeps the whole screen. Falls back to nothing
+        /// if the sprite or canvas is missing.
+        /// </summary>
+        private void BuildDriftingSparkles()
+        {
+            var canvas = ResolveSceneCanvas();
+            if (canvas == null) return;
+            var glow = Resources.Load<Sprite>("UI/glow_gold");
+            if (glow == null) return;
+
+            var root = new GameObject("MenuSparkles", typeof(RectTransform));
+            var rrt = (RectTransform)root.transform;
+            rrt.SetParent(canvas.transform, false);
+            rrt.SetAsFirstSibling();               // behind the lockup and the button
+            rrt.anchorMin = Vector2.zero; rrt.anchorMax = Vector2.one;
+            rrt.offsetMin = Vector2.zero; rrt.offsetMax = Vector2.zero;
+
+            for (int i = 0; i < 6; i++)
+            {
+                var go = new GameObject("Sparkle_" + i, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+                var rt = (RectTransform)go.transform;
+                rt.SetParent(root.transform, false);
+                float x = 0.12f + i * 0.15f;
+                float y = 0.30f + (i % 3) * 0.16f;
+                rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(x, y);
+                rt.sizeDelta = Vector2.one * (26f + (i % 3) * 10f);
+                var img = go.GetComponent<Image>();
+                img.sprite = glow;
+                img.color = new Color(1f, 0.94f, 0.72f, 0.55f);
+                img.raycastTarget = false;
+
+                // Drift up and fade, on staggered loops so they never pulse in unison.
+                float rise = 70f + (i % 3) * 25f;
+                float time = 3.2f + i * 0.4f;
+                PrimeTween.Tween.UIAnchoredPositionY(rt, rt.anchoredPosition.y + rise, time,
+                    PrimeTween.Ease.InOutSine, cycles: -1, cycleMode: PrimeTween.CycleMode.Yoyo,
+                    startDelay: i * 0.35f);
+                PrimeTween.Tween.Alpha(img, 0.18f, time * 0.5f, PrimeTween.Ease.InOutSine,
+                    cycles: -1, cycleMode: PrimeTween.CycleMode.Yoyo, startDelay: i * 0.5f);
             }
         }
 
