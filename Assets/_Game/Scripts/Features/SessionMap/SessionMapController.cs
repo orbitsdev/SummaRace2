@@ -107,9 +107,17 @@ namespace SummaRace.Features.SessionMap
             // Only explain the locks when some are actually locked.
             if (lockedHintText != null)
             {
+                bool anyLocked = unlocked < GameRules.SessionCount;
                 lockedHintText.text = GameText.SessionLockedHint;
-                lockedHintText.gameObject.SetActive(unlocked < GameRules.SessionCount);
-                AddHintBacking(lockedHintText);
+                lockedHintText.gameObject.SetActive(anyLocked);
+
+                // AND HIDE ITS BACKING WITH IT. The pill is a SIBLING of the hint (it has to be
+                // - a child would draw in front of the words), and its active state was never
+                // linked to the hint's. So once a teacher had unlocked all ten sessions, the text
+                // went away and a near-black bar stayed on screen with nothing in it, for the
+                // last week of the study, on every tablet.
+                var backing = AddHintBacking(lockedHintText);
+                if (backing != null) backing.SetActive(anyLocked);
             }
 
             if (backButton != null)
@@ -292,17 +300,21 @@ namespace SummaRace.Features.SessionMap
         /// and inserted at the hint's own sibling index so it draws BEHIND the text while every
         /// other element keeps its relative order. Null-safe: no hint, no backing, no harm.
         /// </summary>
-        private static void AddHintBacking(TMP_Text hint)
+        private static GameObject AddHintBacking(TMP_Text hint)
         {
-            if (hint == null || hint.transform.parent == null) return;
-            if (hint.transform.parent.Find("HintBacking") != null) return;   // idempotent
+            if (hint == null || hint.transform.parent == null) return null;
+            var existing = hint.transform.parent.Find("HintBacking");
+            if (existing != null) return existing.gameObject;   // idempotent
 
             var go = new GameObject("HintBacking", typeof(RectTransform));
             go.transform.SetParent(hint.transform.parent, false);
             go.transform.SetSiblingIndex(hint.transform.GetSiblingIndex());
 
             var img = go.AddComponent<Image>();
-            img.color = Theme.Alpha(Theme.Ink, 0.55f);
+            // 0.55 alpha left white text at 3.79:1 against the map's brightest pixels (the grass
+            // has white daisies in it), and this label autosizes down to 22pt where the large-text
+            // exemption stops applying. 0.75 puts the worst case near 6.4:1 and costs nothing.
+            img.color = Theme.Alpha(Theme.Ink, 0.75f);
             img.raycastTarget = false;
 
             var src = hint.rectTransform;
@@ -313,6 +325,7 @@ namespace SummaRace.Features.SessionMap
             rt.anchoredPosition = src.anchoredPosition;
             // a little wider than the words so the pill reads as deliberate, not as a clipped box
             rt.sizeDelta = src.sizeDelta + new Vector2(36f, 14f);
+            return go;
         }
 
     }

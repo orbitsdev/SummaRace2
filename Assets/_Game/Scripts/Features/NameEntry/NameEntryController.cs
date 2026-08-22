@@ -62,7 +62,17 @@ namespace SummaRace.Features.NameEntry
             // and there is no screen behind it.
             Core.BackButtonGuard.RegisterBlocked(GameText.BackBlockedNameEntry);
 
-            if (avatarPromptText != null) avatarPromptText.text = GameText.NameEntryPickAvatar;
+            if (avatarPromptText != null)
+            {
+                avatarPromptText.text = GameText.NameEntryPickAvatar;
+                // WHITE ON LIME MEASURED 1.40:1 - the worst contrast anywhere in the app, on the
+                // only instruction telling a child the four badges are choosable, on the first
+                // screen the game ever shows them. The backdrop here is bg_storyselect, whose
+                // band behind this label samples (190, 235, 21); the font material carries no
+                // outline, so nothing was holding the edge. Dark brown on that lime clears AA
+                // comfortably and needs no plaque, which is what keeps this a one-line fix.
+                avatarPromptText.color = SummaRace.Constants.Theme.TextBrownDeep;
+            }
             if (confirmLabel != null) confirmLabel.text = GameText.NameEntryConfirm;
 
             var learner = Core.GameManager.Instance != null

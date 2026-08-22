@@ -159,6 +159,12 @@ namespace SummaRace.Features.Reader
 
             if (nextButton != null) nextButton.onClick.AddListener(OnNext);
             if (voiceButton != null) voiceButton.onClick.AddListener(ToggleNarration);
+            // Navy, not the authored white. Measured on the kit's cyan pill this label ran at
+            // 1.78-2.09:1 in its ON state - the least readable text on the screen, on the control
+            // that owns the study's reading support, and the one PulseVoiceButtonOnce exists to
+            // draw the eye to. Navy on that cyan measures about 7:1. Set here rather than in the
+            // scene so it cannot drift back with a prefab or kit-sprite change.
+            if (voiceButtonLabel != null) voiceButtonLabel.color = Theme.Navy;
             RefreshVoiceButton();
             PulseVoiceButtonOnce();
 
@@ -340,6 +346,18 @@ namespace SummaRace.Features.Reader
         {
             _questionShown = true;
             if (readingCard != null) readingCard.SetActive(false); // story gives way to its own question page
+
+            // AND STOP READING IT ALOUD. The card is hidden here precisely so the question is
+            // its own page - but narration kept playing the passage, so how much of the answer
+            // a learner still had in their ear was a function of HOW FAST THEY TAPPED. Tap three
+            // seconds into a twelve-second clip and nine seconds of the passage plays during the
+            // item; wait, and none does. That is an uncontrolled per-item variance sitting
+            // directly on readingFirstCorrect, and nothing logs it.
+            //
+            // It also could not be stopped by the learner: HEAR AGAIN is hidden during the
+            // question, and the VOICE control is a persisted preference, not a stop button.
+            if (SummaRace.Core.AudioManager.Instance != null)
+                SummaRace.Core.AudioManager.Instance.StopNarration();
             if (progressText != null)
                 progressText.text = GameText.QuestionProgress(_pageIndex + 1, _story.pages.Length);
             if (questionPanel != null) questionPanel.SetActive(true);

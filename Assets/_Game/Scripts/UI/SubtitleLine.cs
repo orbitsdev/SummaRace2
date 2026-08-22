@@ -43,7 +43,12 @@ namespace SummaRace.UI
             // lands correctly whatever anchoring that screen's title happens to use — the two
             // callers do not agree, and a fractional guess would put it off-screen on one.
             var pillGo = new GameObject(ObjectName, typeof(RectTransform));
-            pillGo.transform.SetParent(host, false);
+            // NOT parented yet, and the order matters. The label below is cloned FROM the title,
+            // and the pill is a child of the title - so parenting first meant every clone
+            // included the pill that was about to hold it, giving
+            // Title/Subtitle/Label/Subtitle: a second empty navy bar hanging 8px under every
+            // subtitle on Results, Story Select and the Session Map. The MonoBehaviour strip
+            // below only walks the clone root, so it never caught it. Parent after the clone.
 
             var pill = pillGo.AddComponent<Image>();
             pill.sprite = Resources.Load<Sprite>("UI/bar_bg");
@@ -63,6 +68,9 @@ namespace SummaRace.UI
             var labelGo = Object.Instantiate(title.gameObject, pillGo.transform, false);
             labelGo.name = "Label";
             labelGo.SetActive(true);
+
+            // Safe now: the clone was taken while the title had no Subtitle child.
+            pillGo.transform.SetParent(host, false);
 
             var label = labelGo.GetComponent<TMP_Text>();
             if (label == null) { Object.Destroy(labelGo); return null; }
