@@ -101,8 +101,33 @@ namespace SummaRace.UI
             if (fill == null) fill = FindSiblingBanner(title.transform, parent);
             if (fill == null) return;   // structure differs — change nothing, including the text
 
-            fill.color = Theme.Wood;
-            title.color = Label;
+            // ---- THE WOOD NEVER RENDERED (owner device report, 2026-08-23: "too dark") ------
+            //
+            // A uGUI tint MULTIPLIES the sprite. The banner sprite in these scenes is the kit's
+            // GREY.png (~0.37 grey), so Theme.Wood (0.46, 0.31, 0.17) rendered as
+            // 0.46*0.37, 0.31*0.37, 0.17*0.37 = (0.17, 0.12, 0.06) — near-black chocolate. The
+            // 6.6:1 wood-on-cream figure in the class remarks described a colour the screen
+            // never showed; a tint can only darken, so NO tint can make GREY.png read as wood.
+            //
+            // So the banner is re-sprited instead: UI/panel_gold — the parchment card the race
+            // briefing and the loading tips already sit on — shown untinted, with the type in
+            // TextBrownDeep, which is that card family's own measured pairing (~11:1 on
+            // parchment; the briefing card has carried it since F34). One family, every banner.
+            // If the sprite is missing from a build, the old wood-tint fallback still runs —
+            // dark, but readable cream-on-dark, never text lost on its own colour.
+            var parchment = Resources.Load<Sprite>("UI/panel_gold");
+            if (parchment != null)
+            {
+                fill.sprite = parchment;
+                fill.type = parchment.border != Vector4.zero ? Image.Type.Sliced : Image.Type.Simple;
+                fill.color = Color.white;
+                title.color = Theme.TextBrownDeep;
+            }
+            else
+            {
+                fill.color = Theme.Wood;
+                title.color = Label;
+            }
         }
 
         /// <summary>

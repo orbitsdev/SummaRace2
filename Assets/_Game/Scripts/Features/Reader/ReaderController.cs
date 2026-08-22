@@ -208,6 +208,32 @@ namespace SummaRace.Features.Reader
             EnsureSecondaryControls();
             if (replayButton != null) replayButton.onClick.AddListener(ReplayNarration);
             if (backButton != null) backButton.onClick.AddListener(OnBackTapped);
+
+            // ---- QUESTION FOCUS SCRIM (owner, 2026-08-23: "background a little dark so the
+            // question screen is focused") ---------------------------------------------------
+            // A translucent ink layer as the panel's FIRST CHILD: it draws before the question
+            // card (which stays bright on top) and only exists while the panel is active, so
+            // reading pages keep their sunny room. The VOICE chip must survive the dim — it is
+            // the study's narration control and sits BELOW the panel in the hierarchy — so it
+            // is raised above the panel once here; on reading pages the panel is inactive and
+            // the order change shows nothing.
+            if (questionPanel != null)
+            {
+                var scrim = new GameObject("QuestionScrim", typeof(RectTransform));
+                scrim.transform.SetParent(questionPanel.transform, false);
+                scrim.transform.SetAsFirstSibling();
+                var scrimImg = scrim.AddComponent<UnityEngine.UI.Image>();
+                scrimImg.color = Theme.Alpha(Theme.Ink, 0.38f);
+                scrimImg.raycastTarget = false;
+                var scrimRt = scrimImg.rectTransform;
+                scrimRt.anchorMin = Vector2.zero; scrimRt.anchorMax = Vector2.one;
+                scrimRt.offsetMin = Vector2.zero; scrimRt.offsetMax = Vector2.zero;
+
+                if (voiceButton != null &&
+                    voiceButton.transform.parent == questionPanel.transform.parent)
+                    voiceButton.transform.SetSiblingIndex(
+                        questionPanel.transform.GetSiblingIndex() + 1);
+            }
             for (int i = 0; i < optionButtons.Length; i++)
             {
                 int index = i; // capture

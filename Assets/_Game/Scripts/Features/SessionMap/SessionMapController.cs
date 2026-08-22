@@ -133,6 +133,12 @@ namespace SummaRace.Features.SessionMap
             for (int i = 0; i < stops.Length; i++)
                 SetupStop(stops[i], i + 1, unlocked, current);
 
+            // The ten stops were designed as a snaking journey but rendered as two columns of
+            // unconnected chips (owner device report, 2026-08-23: "is grid... the space of grid
+            // is small") — nothing said the stops are one road. A dotted trail drawn stop to
+            // stop makes the path readable without moving a single anchor.
+            BuildPathDots();
+
             // Only explain the locks when some are actually locked.
             if (lockedHintText != null)
             {
@@ -161,6 +167,53 @@ namespace SummaRace.Features.SessionMap
                 ? Core.GameManager.Instance.ConsumeJustCompletedSession()
                 : 0;
             if (justFinished > 0) StartCoroutine(CelebrateSession(justFinished));
+        }
+
+        /// <summary>
+        /// A dotted trail from stop 1 to stop 10, three dots per leg, drawn behind the plates
+        /// (inserted at the first stop's own sibling index, so every plate still draws over
+        /// it). Small wood-toned diamonds rather than a line: they read as a footpath on the
+        /// cream board, they need no sprite, and rotation carries the shape so colour is never
+        /// the only channel (F49). Entirely code-built and null-safe — a stop without a button
+        /// simply breaks the trail rather than throwing.
+        /// </summary>
+        private void BuildPathDots()
+        {
+            if (stops == null || stops.Length < 2) return;
+            var first = stops[0] != null ? stops[0].button : null;
+            if (first == null) return;
+
+            var board = first.transform.parent as RectTransform;
+            if (board == null) return;
+
+            var root = new GameObject("PathDots", typeof(RectTransform));
+            root.transform.SetParent(board, false);
+            root.transform.SetSiblingIndex(first.transform.GetSiblingIndex());
+            var rootRt = (RectTransform)root.transform;
+            rootRt.anchorMin = Vector2.zero; rootRt.anchorMax = Vector2.one;
+            rootRt.offsetMin = Vector2.zero; rootRt.offsetMax = Vector2.zero;
+
+            for (int i = 0; i < stops.Length - 1; i++)
+            {
+                var a = stops[i] != null ? stops[i].button : null;
+                var b = stops[i + 1] != null ? stops[i + 1].button : null;
+                if (a == null || b == null) continue;
+
+                Vector3 from = a.transform.position;
+                Vector3 to = b.transform.position;
+                for (int d = 1; d <= 3; d++)
+                {
+                    var dot = new GameObject("Dot", typeof(RectTransform));
+                    dot.transform.SetParent(root.transform, false);
+                    var img = dot.AddComponent<Image>();
+                    img.color = Theme.Alpha(Theme.Wood, 0.45f);
+                    img.raycastTarget = false;
+                    var rt = img.rectTransform;
+                    rt.sizeDelta = new Vector2(16f, 16f);
+                    dot.transform.position = Vector3.Lerp(from, to, d / 4f);
+                    dot.transform.localRotation = Quaternion.Euler(0f, 0f, 45f);
+                }
+            }
         }
 
         /// <summary>
@@ -219,14 +272,47 @@ namespace SummaRace.Features.SessionMap
             MarkPlayableStop(stop, playable);
 
             int done = CompletedInSession(session);
-            if (stop.stars != null)
-                for (int i = 0; i < stop.stars.Length; i++)
-                    if (stop.stars[i] != null) stop.stars[i].color = i < done ? StarOn : StarOff;
 
             if (stop.button == null) return;
 
+            // ---- THE WARM WOOD NEVER RENDERED (owner device report, 2026-08-23) --------------
+            // A tint MULTIPLIES the sprite, and these plates sit on the kit's GREY.png (~0.37),
+            // so StopPlayable (0.56, 0.40, 0.22) rendered as (0.21, 0.15, 0.08) — the dark
+            // chocolate the owner photographed, with every value in this file's history debated
+            // against a colour the screen never actually showed. A tint can only darken; no
+            // number here could fix it. So an OPEN stop is re-sprited onto UI/panel_gold — the
+            // parchment family the title banners and briefing card now share — untinted, with
+            // its number flipped to TextBrownDeep (that card's measured pairing) and its stars
+            // to gold-on-parchment. A LOCKED stop keeps the grey sprite and dark tint: "not
+            // yet" reading as a dimmed object is exactly right, and the value gap between the
+            // two states is finally real instead of 1.03:1.
             var background = stop.button.GetComponent<Image>();
-            if (background != null) background.color = playable ? StopPlayable : StopLocked;
+            var parchment = Resources.Load<Sprite>("UI/panel_gold");
+            if (playable && parchment != null && background != null)
+            {
+                background.sprite = parchment;
+                background.type = parchment.border != Vector4.zero ? Image.Type.Sliced : Image.Type.Simple;
+                background.color = Color.white;
+                if (stop.numberText != null) stop.numberText.color = Theme.TextBrownDeep;
+            }
+            else if (background != null)
+            {
+                background.color = playable ? StopPlayable : StopLocked;
+                if (stop.numberText != null) stop.numberText.color = Color.white;
+            }
+
+            if (stop.stars != null)
+                for (int i = 0; i < stop.stars.Length; i++)
+                    if (stop.stars[i] != null)
+                        stop.stars[i].color = i < done
+                            ? (playable && parchment != null ? Theme.GoldDeep : StarOn)
+                            : StarOff;
+
+            // The plates were sized for a board with far more breathing room than ten stops
+            // need; on the device they read as small chips lost in cream. Scaled here rather
+            // than in the scene so the fractional anchors (and every aspect ratio they protect)
+            // stay untouched; the session-complete punch tweens around whatever scale it finds.
+            stop.button.transform.localScale = Vector3.one * 1.22f;
 
             stop.button.onClick.RemoveAllListeners();
             if (playable)
