@@ -519,8 +519,19 @@ namespace SummaRace.Constants
         public const string ResultsNextStoryLabel = "NEXT STORY";
 
         // Reader narration toggle
-        public const string VoiceOn = "VOICE ON";
-        public const string VoiceOff = "VOICE OFF";
+        /// <summary>
+        /// The narration toggle's two states. The colon matters: "VOICE ON" can be read either
+        /// as a readout ("the voice is on") or as an instruction ("tap to turn the voice on"),
+        /// and those are opposites. "VOICE: ON" can only be the readout.
+        ///
+        /// Both prototypes use a speaker glyph with a slashed variant instead, which is
+        /// unambiguous and language-free; that remains the better answer and needs a sprite plus
+        /// a larger tap target (the accessibility audit measures this button at 36dp against a
+        /// 48dp floor, on the control that carries the study's reading support). The colon is
+        /// the part that costs nothing and can be verified without a portrait render.
+        /// </summary>
+        public const string VoiceOn = "VOICE: ON";
+        public const string VoiceOff = "VOICE: OFF";
 
         // Reader page flow
         /// <summary>The button under a story PAGE. It used to say "NEXT", which promises the

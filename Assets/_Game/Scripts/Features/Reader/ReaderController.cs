@@ -62,7 +62,26 @@ namespace SummaRace.Features.Reader
         /// the story with one later stray tap.</summary>
         private const float BackConfirmSeconds = 4f;
 
-        private static readonly Color OptionNormal = Theme.Paper; // light pill (high contrast on the gold card)
+        /// <summary>
+        /// The three answer pills, against the question card's CREAM interior
+        /// (0.971, 0.923, 0.829 - the same value the feedback colours below are measured on).
+        ///
+        /// This was Theme.Paper (0.969, 0.969, 1.0), which measures <b>1.10:1</b> against that
+        /// cream. A ratio that close is not a luminance edge at all - the only thing separating
+        /// a tappable answer from the card it sits on was a HUE shift, cool lilac-white against
+        /// warm cream, plus one faint sprite border. Hue-only separation is exactly the failure
+        /// class F49 removed from this game's wording, and it fails the same learners: a
+        /// red-green colour-blind child, and anyone reading at low classroom brightness where
+        /// small hue differences wash out first. The prototype's rose pill measures ~1.7:1.
+        ///
+        /// Warm neutral at <b>1.25:1</b>, with the dark label still at 10.2:1 on it. It does not
+        /// go further on purpose: <see cref="OptionCorrect"/> - the green the card turns when
+        /// the right answer is revealed - is itself only <b>1.46:1</b> against the same cream, so
+        /// the headroom above the resting pill is thin, and a resting state that crowds the
+        /// correct state would blunt the one moment on this screen that has to be unmistakable.
+        /// If a future pass wants a bolder pill, raise the green first and re-measure both.
+        /// </summary>
+        private static readonly Color OptionNormal = new Color(0.87f, 0.83f, 0.78f);
         private static readonly Color OptionCorrect = new Color(0.55f, 0.85f, 0.45f); // friendly green
 
         // Both feedback colours are read against the question card, which is the kit's
@@ -165,6 +184,23 @@ namespace SummaRace.Features.Reader
             var page = _story.pages[index];
             if (readingCard != null) readingCard.SetActive(true);
             if (pageText != null) pageText.text = page.text;
+
+            // The text used to be swapped in place with nothing moving - on a screen where the
+            // options fan in, the correct answer punches, the feedback pops and the progress bar
+            // sweeps, the page turn itself was the one silent beat. A small punch on the CARD
+            // (never on pageText, which autosizes) says "new page" without asking the reader to
+            // wait for an animation before they can start reading.
+            //
+            // Skipped on page 1, where PanelIntro is already playing its own pop-in on this same
+            // transform - two tweens driving one localScale leave it wherever the last one wrote.
+            // StopAll targets the transform only, so PanelIntro's alpha work is untouched.
+            if (readingCard != null && index > 0)
+            {
+                var cardT = readingCard.transform;
+                Tween.StopAll(onTarget: cardT);
+                cardT.localScale = Vector3.one;
+                Tween.PunchScale(cardT, Vector3.one * 0.02f, 0.25f);
+            }
             if (progressText != null)
                 progressText.text = GameText.PageProgress(index + 1, _story.pages.Length);
             if (progressFill != null)

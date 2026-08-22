@@ -601,7 +601,25 @@ namespace SummaRace.Features.Arrange
                 bool filled = _slotContent[i] >= 0;
                 if (slotLabels[i] != null)
                 {
-                    slotLabels[i].text = filled ? _pieceTexts[_slotContent[i]] : _story.elements[i].type;
+                    // THE SWBST WORD USED TO BE REPLACED BY THE ANSWER. An empty board taught
+                    // the framework - SOMEBODY / WANTED / BUT / SO / THEN down the left - and
+                    // then erased it one slot at a time, so by the moment the learner reviews
+                    // the order and taps CHECK ORDER, the five words this whole game exists to
+                    // teach are nowhere on screen. The board read "1 Molly / 2 To have her turn
+                    // on the swing", which is a list, not a structure.
+                    //
+                    // The word stays as a prefix. This is the screen where the framework IS the
+                    // task - the learner is being asked which part goes where - so the label has
+                    // to keep saying which part each row is.
+                    //
+                    // Same colour as the answer rather than the slot's ink: a filled row sits on
+                    // SlotFilled, not on the pastel that the ink variant was measured against,
+                    // and inventing an unmeasured pairing here is how F59 happened. Smaller and
+                    // bold carries the distinction without a second colour.
+                    slotLabels[i].text = filled
+                        ? "<size=65%><b>" + _story.elements[i].type + ":</b></size>  "
+                          + _pieceTexts[_slotContent[i]]
+                        : _story.elements[i].type;
                     slotLabels[i].fontStyle = filled ? FontStyles.Normal : FontStyles.Bold;
                     // Empty slot wears its SWBST colour; a placed piece reads as normal text.
                     // Ink, not Deep: these five labels sit on their own pastel slot, and a
