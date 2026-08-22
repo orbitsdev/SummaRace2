@@ -59,6 +59,8 @@ namespace SummaRace.Features.Arrange
         /// <summary>Built once per scene load; the two dash sprites are shared and cached
         /// across loads so replaying a story does not allocate a new texture each time.</summary>
         private bool _slotBoardBuilt;
+        private bool _statusBandBuilt;
+        private GameObject _statusBand;
         private static Sprite _dashH;
         private static Sprite _dashV;
 
@@ -121,6 +123,7 @@ namespace SummaRace.Features.Arrange
             SummaRace.UI.MsLumiReactor.AttachBadge();
 
             EnsureSlotBoard();
+            EnsureStatusBand();
 
             // Pieces come from the race result when available (same texts either way).
             var result = SummaRace.Core.GameManager.Instance != null ? SummaRace.Core.GameManager.Instance.LastRaceResult : null;
@@ -216,6 +219,67 @@ namespace SummaRace.Features.Arrange
         /// Slot_4 spans 0.520-0.585, so 0.505-0.900 clears both with a little air, and
         /// x 0.03-0.97 sits just outside the slots' own 0.06-0.94.
         /// </summary>
+        /// <summary>
+        /// Moves the status line down to the buttons that produce it.
+        ///
+        /// It was authored inside the speech bubble at the top of the screen - canvas y
+        /// 0.906-0.948 - while CHECK ORDER, the button that triggers almost everything it says,
+        /// sits at y 0.02-0.095. That is about 1600px apart on a 1920 reference: the learner taps
+        /// at the bottom of the screen and the answer appears at the top, off the line of sight
+        /// they are already using. The text most affected is the automatic hint after repeated
+        /// misses - so the anti-frustration message was the one a frustrated child was least
+        /// likely to see.
+        ///
+        /// PLACEMENT IS MEASURED, NOT GUESSED, because the offscreen portrait render that would
+        /// normally confirm it is unavailable while the Adjoint/MCP package collision keeps
+        /// Assembly-CSharp-Editor from building. Read off the scene: UNDO and CHECK ORDER occupy
+        /// y 0.020-0.095, and Piece_4 - the lowest row of the piece pool - starts at y 0.200.
+        /// The band between them is empty and 0.105 of the canvas, 201px. This takes
+        /// 0.105-0.185, leaving 19px of clearance above the buttons and 29px below the pool.
+        ///
+        /// It brings its own cream backing for the same reason SubtitleLine does: inside the
+        /// bubble the slate text sat on cream at 7.4:1, and dropping it onto whatever art happens
+        /// to be behind it would have thrown that away. On Theme.Cream it measures 7.4:1 - the
+        /// pairing it already had, deliberately unchanged.
+        ///
+        /// Built in code rather than moved in the scene so the change is compile-verifiable, and
+        /// null-safe at every step: no status label or no slots leaves the screen exactly as it
+        /// was.
+        /// </summary>
+        private void EnsureStatusBand()
+        {
+            if (_statusBandBuilt || statusText == null) return;
+            var anchorSlot = slotButtons != null && slotButtons.Length > 0 ? slotButtons[0] : null;
+            if (anchorSlot == null || anchorSlot.transform.parent == null) return;
+            _statusBandBuilt = true;
+
+            var bandGo = new GameObject("StatusBand", typeof(RectTransform));
+            bandGo.transform.SetParent(anchorSlot.transform.parent, false);
+            var rect = (RectTransform)bandGo.transform;
+            rect.anchorMin = new Vector2(0.05f, 0.105f);
+            rect.anchorMax = new Vector2(0.95f, 0.185f);
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+
+            var img = bandGo.AddComponent<Image>();
+            img.sprite = Resources.Load<Sprite>("UI/bar_bg");
+            if (img.sprite != null) img.type = Image.Type.Sliced;
+            img.color = Theme.Alpha(Theme.Cream, 0.95f);
+            img.raycastTarget = false;   // UNDO and CHECK ORDER are directly beneath it
+
+            statusText.rectTransform.SetParent(rect, false);
+            var trt = statusText.rectTransform;
+            trt.anchorMin = Vector2.zero;
+            trt.anchorMax = Vector2.one;
+            trt.offsetMin = new Vector2(18f, 8f);
+            trt.offsetMax = new Vector2(-18f, -8f);
+            statusText.raycastTarget = false;
+            SummaRace.UI.LabelFit.Harden(statusText);
+
+            _statusBand = bandGo;
+            _statusBand.SetActive(!string.IsNullOrEmpty(statusText.text));
+        }
+
         private void EnsureSlotBoard()
         {
             if (_slotBoardBuilt) return;
@@ -693,6 +757,10 @@ namespace SummaRace.Features.Arrange
         private void SetStatus(string message)
         {
             if (statusText != null) statusText.text = message;
+            // The band is only there when it has something to say - a cream strip sitting empty
+            // above the buttons for the whole screen would read as a control the learner has
+            // failed to fill in.
+            if (_statusBand != null) _statusBand.SetActive(!string.IsNullOrEmpty(message));
         }
 
         private static void PlayClick()
