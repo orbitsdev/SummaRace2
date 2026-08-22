@@ -42,6 +42,8 @@ namespace SummaRace.Features.TeacherMenu
         [SerializeField] private Button unlockButton;
         [SerializeField] private Button exportButton;
         [SerializeField] private Button deleteButton;
+        /// <summary>Built in code by cloning Unlock — see EnsureExtraActions.</summary>
+        private Button musicButton;
         [SerializeField] private TMP_Text deleteLabel;
         [SerializeField] private Button backButton;
 
@@ -104,7 +106,24 @@ namespace SummaRace.Features.TeacherMenu
 
         private void Start()
         {
-            if (titleText != null) titleText.text = GameText.TeacherTitle;
+            if (titleText != null)
+            {
+                titleText.text = GameText.TeacherTitle;
+                SummaRace.UI.TitleBannerSkin.Apply(titleText);
+            }
+
+            // The status line prints the EXPORT FILE PATH - the longest string this app ever
+            // shows, and the one a researcher has to read off the screen and then find over USB.
+            // Authored with autosize off and overflow mode Overflow, so a long persistentDataPath
+            // drew straight out of its box. On the single action that retrieves the entire study
+            // dataset, an unreadable path is a data-loss bug wearing a layout bug's clothes.
+            SummaRace.UI.LabelFit.Harden(statusText, 18f);
+
+            // Android BACK now answers instead of being swallowed (owner, 2026-08-22).
+            // Registered rather than handled here, so one overlay serves every scene and
+            // each screen only supplies its own rule - see Core/BackButtonGuard.
+            Core.BackButtonGuard.RegisterExit(GameText.BackLeaveToMenu,
+                () => SceneLoader.Go(SceneNames.MainMenu));
             if (unlockLabel != null) unlockLabel.text = GameText.TeacherUnlockNext;
             if (exportLabel != null) exportLabel.text = GameText.TeacherExport;
             if (deleteLabel != null) deleteLabel.text = GameText.TeacherDelete;
@@ -127,7 +146,7 @@ namespace SummaRace.Features.TeacherMenu
             }
 
             EnsureExtraActions();
-            LayOutActions(participantButton, switchLearnerButton, unlockButton, exportButton, deleteButton);
+            LayOutActions(participantButton, switchLearnerButton, musicButton, unlockButton, exportButton, deleteButton);
 
             ShowGate();
 
@@ -137,6 +156,7 @@ namespace SummaRace.Features.TeacherMenu
             if (unlockButton != null) unlockButton.onClick.AddListener(UnlockNext);
             if (exportButton != null) exportButton.onClick.AddListener(Export);
             if (deleteButton != null) deleteButton.onClick.AddListener(DeleteData);
+            if (musicButton != null) musicButton.onClick.AddListener(ToggleMusic);
             // Back sits on the canvas, not inside either panel, so every state of this screen —
             // gate, setup, reset warning, actions — keeps one working way out (TDD §13).
             if (backButton != null)
@@ -800,6 +820,68 @@ namespace SummaRace.Features.TeacherMenu
                 participantButton = CloneButton(
                     unlockButton, unlockButton.transform.parent, "Participant code",
                     GameText.TeacherParticipantActionLabel(string.Empty));
+
+            if (musicButton == null)
+                musicButton = CloneButton(
+                    unlockButton, unlockButton.transform.parent, "Music",
+                    GameText.TeacherMusicAction(MusicIsOn()));
+        }
+
+        /// <summary>
+        /// Is music on for this tablet? Read from disk rather than cached, because the teacher
+        /// screen is entered rarely and a stale answer here would mislabel the button.
+        /// </summary>
+        private static bool MusicIsOn()
+        {
+            var save = Core.SaveManager.Instance;
+            if (save == null) return true;                 // editor-direct: assume the default
+            var settings = save.LoadSettings();
+            return settings != null && settings.musicVolume > 0.001f;
+        }
+
+        /// <summary>
+        /// Flips the tablet's music on or off.
+        ///
+        /// THREE THINGS HAVE TO HAPPEN TOGETHER, and only the first was ever wired:
+        ///   1. persist it  - AppSettings.musicVolume, written through SaveManager;
+        ///   2. APPLY IT NOW - AudioManager.SetVolumes was called only by Bootstrapper at
+        ///      launch, so writing the setting alone would have done nothing audible until the
+        ///      app was restarted. That is exactly the "declared, persisted and ignored" shape
+        ///      that narrationVolume had until F50, and it is why this calls SetVolumes directly;
+        ///   3. stop the loop that is already playing - SetVolumes changes the AudioSource's
+        ///      volume, which silences it, but a source left running at volume 0 is still a
+        ///      source; stopping it is what makes "off" mean off.
+        ///
+        /// Narration is deliberately untouched. It is the accessibility support the study
+        /// depends on, it has its own control (the Reader's VOICE toggle), and a teacher
+        /// silencing background music must never silence the reading voice by accident.
+        /// </summary>
+        private void ToggleMusic()
+        {
+            var save = Core.SaveManager.Instance;
+            if (save == null) { Reject(GameText.TeacherMusicStatus(true)); return; }
+
+            var settings = save.LoadSettings();
+            if (settings == null) { Reject(GameText.TeacherMusicStatus(true)); return; }
+
+            bool turningOn = settings.musicVolume <= 0.001f;
+            settings.musicVolume = turningOn ? GameRules.MusicOnVolume : 0f;
+            save.SaveSettings(settings);
+
+            var audio = AudioManager.Instance;
+            if (audio != null)
+            {
+                audio.SetVolumes(settings);
+                if (turningOn) audio.PlayMusic(AudioKeys.MusicMenu);
+                else audio.StopMusic();
+            }
+
+            SetButtonLabel(musicButton, GameText.TeacherMusicAction(turningOn));
+            Status(GameText.TeacherMusicStatus(turningOn));
+            // The click is played AFTER the switch, and only on success - F50's rule: a sound
+            // that fires before the outcome is known tells the teacher something worked when it
+            // may not have.
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxClick);
         }
 
         /// <summary>Retitles a cloned action. Leaves the label object's own activation alone for

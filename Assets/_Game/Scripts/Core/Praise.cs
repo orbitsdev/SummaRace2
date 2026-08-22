@@ -38,9 +38,12 @@ namespace SummaRace.Core
                                   && elementIndex >= 0
                                   && elementIndex < GameText.PraiseByElement.Length;
 
+            // The non-naming picks draw from the RACE pool, not the shared generic one: in the
+            // race the useful thing to say is where the part is going ("that belongs in the
+            // summary"), which is true here and nowhere else. See GameText.PraiseRaceCollect.
             return nameTheElement
                 ? Draw("elem" + elementIndex, GameText.PraiseByElement[elementIndex])
-                : Generic();
+                : Draw("racecollect", GameText.PraiseRaceCollect);
         }
 
         /// <summary>The warm framing line shown for a beat after a WRONG race pick,

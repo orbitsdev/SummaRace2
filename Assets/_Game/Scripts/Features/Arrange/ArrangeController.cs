@@ -134,6 +134,9 @@ namespace SummaRace.Features.Arrange
             for (int i = 0; i < 5; i++)
             {
                 _slotContent[i] = -1;
+                SummaRace.UI.LabelFit.Harden(pieceLabels != null && i < pieceLabels.Length ? pieceLabels[i] : null);
+                SummaRace.UI.LabelFit.Harden(slotLabels != null && i < slotLabels.Length ? slotLabels[i] : null);
+
                 int slotIndex = i, poolIndex = i; // capture
                 if (slotButtons[i] != null)
                     slotButtons[i].onClick.AddListener(() => OnSlotTapped(slotIndex));
@@ -160,6 +163,11 @@ namespace SummaRace.Features.Arrange
             }
             if (undoLabel != null) undoLabel.text = GameText.UndoLabel;
             if (verifyLabel != null) verifyLabel.text = GameText.VerifyLabel;
+
+            // Mid-run, so there is no legal exit: the race is already logged and the
+            // ladder is not finished. Android BACK says so warmly instead of doing
+            // nothing (owner, 2026-08-22) - see Core/BackButtonGuard.
+            Core.BackButtonGuard.RegisterBlocked(GameText.BackBlockedArrange);
 
             RefreshUI();
             SetStatus(GameText.ArrangeIntroStatus);
@@ -611,6 +619,14 @@ namespace SummaRace.Features.Arrange
                 if (pieceLabels[i] != null) pieceLabels[i].text = _pieceTexts[element];
             }
         }
+
+        // The pool pills are a 2-column grid matching the web prototype exactly (x 0.06-0.485
+        // and 0.515-0.94, three rows), so a pill is ~459 units wide on a 1080 reference - and
+        // its label was authored with autosize OFF and overflow mode Overflow. The content
+        // pipeline allows 53-character parts, which is three lines in that pill, and the third
+        // line would have been DRAWN OUTSIDE it, over the neighbouring piece. Hardened above
+        // through the shared helper; see SummaRace.UI.LabelFit for the count of how many other
+        // labels in this app are one content change away from the same bug.
 
         /// <summary>
         /// Answers a tap on an already-solved slot with "that one is done" rather than silence.

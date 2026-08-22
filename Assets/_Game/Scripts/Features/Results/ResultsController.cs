@@ -95,7 +95,11 @@ namespace SummaRace.Features.Results
 
             int stars = SummaRace.Core.GameManager.Instance != null ? SummaRace.Core.GameManager.Instance.CalculateStars() : 1;
 
-            if (titleText != null) titleText.text = _story.title;
+            if (titleText != null)
+            {
+                titleText.text = _story.title;
+                SummaRace.UI.TitleBannerSkin.Apply(titleText);
+            }
             if (mainIdeaHeader != null) mainIdeaHeader.text = GameText.MainIdeaHeader;
             if (praiseText != null) praiseText.text = "";
             EnsureLumiBadge();

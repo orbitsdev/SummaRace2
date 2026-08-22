@@ -76,6 +76,11 @@ namespace SummaRace.Features.Summary
 
             // See ArrangeController: this screen had no music either. No-ops when the loop is
             // already running, so arriving from Arrange is free.
+            // Mid-run, so there is no legal exit: the race is already logged and the
+            // ladder is not finished. Android BACK says so warmly instead of doing
+            // nothing (owner, 2026-08-22) - see Core/BackButtonGuard.
+            SummaRace.Core.BackButtonGuard.RegisterBlocked(GameText.BackBlockedSummary);
+
             if (AudioManager.Instance != null) AudioManager.Instance.PlayMusic(AudioKeys.MusicMenu);
 
             // Ms. Lumi reacts here now (see MsLumiReactor.AttachBadge). Null-safe and pool-safe:

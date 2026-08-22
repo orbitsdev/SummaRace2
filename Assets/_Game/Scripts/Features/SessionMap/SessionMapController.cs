@@ -39,21 +39,50 @@ namespace SummaRace.Features.SessionMap
         [SerializeField] private TMP_Text lockedHintText;
 
         // Same silhouette trick as ResultsController: the sprite is golden, so "off" is dark.
-        private static readonly Color StarOff = Theme.Slate;
+        // ---- THE TEN STOPS ARE DARK, NOT GREEN --------------------------------------------
+        //
+        // Owner device playtest 2026-08-21: "I don't like the design colour green square with
+        // number, please choose black or dark colours instead?"
+        //
+        // The green was not a tint we chose - it is the kit sprite's own paint
+        // (Hyper_Casual_UI/Sprites/Buttons/empty_buttons/green.png), shown untinted (white) when
+        // a session is playable. So darkening it in code was not available: a multiply toward
+        // black over saturated green gives dark GREEN, which is the same complaint one shade
+        // down. The ten stops now use the kit's neutral GREY.png instead - same 9-slice border
+        // (24/20/24/20), so nothing about the layout moves - and these two tints do the work.
+        //
+        // Contrast measured against the white number each carries: 7.3:1 playable, 12.7:1
+        // locked, both clear of WCAG AA for large text with room. Locked is darker rather than
+        // greyer so "not yet" still reads as the same object dimmed, not as a different control.
+        private static readonly Color StopPlayable = new Color(0.26f, 0.33f, 0.38f);
+        private static readonly Color StopLocked = new Color(0.16f, 0.20f, 0.23f);
+
+        // Theme.Slate (0.20, 0.278, 0.318) was an unearned star on a bright green plate. On the
+        // dark plate above it is very nearly the plate itself, so an unearned star would vanish
+        // rather than read as empty - and "how many of the three you finished" is the only
+        // progress this screen shows. Lifted to a muted steel that is visibly a star and
+        // visibly not a gold one.
+        private static readonly Color StarOff = new Color(0.45f, 0.50f, 0.55f);
         private static readonly Color StarOn = Color.white;
-        private static readonly Color StopLocked = new Color(0.62f, 0.66f, 0.70f);
 
         private void Start()
         {
             if (titleText != null)
             {
                 titleText.text = GameText.SessionMapTitle;
+                SummaRace.UI.TitleBannerSkin.Apply(titleText);
                 // Says what a "mission" IS and what these three stars count. The stars matter
                 // most: the same sprite in the same row one tap away (Story Select) means "how
                 // well you did", while here it means "stories finished" — so an unlabelled two
                 // stars is read wrongly by a teacher, not just by a child.
                 SummaRace.UI.SubtitleLine.Add(titleText, GameText.SessionMapSubtitle);
             }
+
+            // Android BACK now answers instead of being swallowed (owner, 2026-08-22).
+            // Registered rather than handled here, so one overlay serves every scene and
+            // each screen only supplies its own rule - see Core/BackButtonGuard.
+            Core.BackButtonGuard.RegisterExit(GameText.BackLeaveToMenu,
+                () => SceneLoader.Go(SceneNames.MainMenu));
 
             // The Reader stops the music so nothing sits under the narration, and Results ends
             // on the victory sting — so the map is where the loop comes back. PlayMusic no-ops
@@ -146,7 +175,7 @@ namespace SummaRace.Features.SessionMap
             if (stop.button == null) return;
 
             var background = stop.button.GetComponent<Image>();
-            if (background != null) background.color = playable ? Color.white : StopLocked;
+            if (background != null) background.color = playable ? StopPlayable : StopLocked;
 
             stop.button.onClick.RemoveAllListeners();
             if (playable)

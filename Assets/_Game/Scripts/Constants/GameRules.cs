@@ -37,49 +37,85 @@ namespace SummaRace.Constants
         /// kid or under the frame; level on the shoulder = a jogging companion, half off a
         /// portrait screen; bounds-following = chasing his own stride.
         ///
-        /// The cameo does not hold an offset at all. It is an OVERTAKE (owner playtest call,
-        /// 2026-08-21 — the earlier pop-in-ahead sweep read as "the police is in front of the
-        /// player"): he enters from BEHIND the frame edge — invisible by construction, the
-        /// camera is 6m back — and sprints forward past the kid on the shoulder, one direction
-        /// of travel the whole beat, so his run animation and his motion agree and the
-        /// briefing's "the patrol races past" is literally what the learner sees.
+        /// The cameo is a TAIL, not an overtake and not a side-by-side: he runs in the
+        /// runner's own lane, a constant PatrolChaseGap behind him, for PatrolMenaceSeconds
+        /// after a wrong pick, and the chase camera dollies back to make room for him.
         ///
-        /// Overlap is impossible laterally: the pass happens at x = PatrolCameoLateralX, which
-        /// clears the runner's widest possible reach by 0.4m with the cop never yawed (a yaw
-        /// swings the rigid rig 0.65m off its pivot — the measured failure of the old chase).
-        /// He is also outside the outermost answer card (|x| 2.2) and inside the corridor F54
-        /// verified clear of scenery (|x| &lt; 3), so he can neither be mistaken for something to
-        /// dodge nor spawn inside a wall. Locked by PatrolCameoGeometryTests.
+        /// WHY THIS SHAPE (owner device playtest, 2026-08-21: "look buggy floating and flying
+        /// to player... subway usually if obstacle was hit it appear running at the back of
+        /// player... same movement and animation of player but put it the back of player same
+        /// x-y-z of where the player position, and then move the player camera focus a little
+        /// back so that the patrol has space to see").
         ///
-        /// He still never catches anybody: timesCaught stays 0 (D7/L3), he carries no rule, and
-        /// he only ever pulls AWAY from the runner. This is the kill-switch the blueprint's L4
-        /// asks to keep — turn it off and the wrong-answer beat falls back to the amber
-        /// vignette and the feedback line exactly as it does today.
+        /// The overtake this replaced swept him from 4m behind to 26m ahead in 2s = 15 m/s
+        /// ON TOP of the runner's own 10-30 m/s, against a run clip played at 1.35x. Motion
+        /// and animation disagreed by roughly a factor of two, which is exactly what
+        /// "floating" and "flying" describe: the feet were not driving him, and most of that
+        /// 30m was spent as a dot far up the road. No value of the sweep constants fixes that,
+        /// because the mismatch IS the sweep.
+        ///
+        /// Holding a CONSTANT gap makes his ground speed identical to the runner's, so the run
+        /// clip at 1.0x drives the motion exactly and there is nothing to skate. Every earlier
+        /// attempt at behind-the-runner failed on the same objection — the camera sits ~5m back,
+        /// so a ground-level figure behind the kid is under the frame — and that objection was
+        /// only ever true because the camera was off-limits. THE OWNER HAS NOW ASKED FOR THE
+        /// CAMERA MOVE, so it is taken: PatrolCameraPullback slides the chase pose back and up
+        /// for the length of the beat and returns it afterwards, which is the "space to see".
+        /// Surge-only, so the other ~98% of every race keeps the framing four passes tuned.
+        ///
+        /// He still never catches anybody: he holds a fixed gap, so he cannot close it.
+        /// timesCaught stays 0 for every run ever logged (D7/L3), he carries no rule, and this
+        /// is still the kill-switch the blueprint's L4 asks to keep — turn it off and the
+        /// wrong-answer beat falls back to the amber vignette and the feedback line.
         /// </summary>
         public static readonly bool RacePatrolCameoEnabled = true;
 
-        /// <summary>How far out on the shoulder the cameo runs. Outside the outermost answer
-        /// card (2.2) and inside the scenery-free corridor (3.0).</summary>
-        public const float PatrolCameoLateralX = 2.5f;
+        /// <summary>
+        /// Metres the cameo holds behind the runner, measured pivot to pivot. Constant for the
+        /// whole beat — that is the point, see above.
+        ///
+        /// 2.5 IS SOLVED, NOT GUESSED, AND IT IS SMALLER THAN INTUITION SAYS. The chase camera
+        /// already sits ~6m BEHIND the runner, so "5m behind the kid" is 1m in front of the
+        /// LENS: projecting the cop's eight bounding corners at gap 4.5 puts his worst corner at
+        /// 2.88 of the frame half-extent (1.0 is the edge), i.e. mostly off screen and partly
+        /// through the near plane. He has to run BETWEEN the camera and the kid, which means a
+        /// SHORT gap, and the bound below is the overlap limit rather than the framing one.
+        ///
+        /// Bounded on both sides, both measured:
+        ///   * below ~1.4 the two models meet — the cop's rendered mass swings up to 0.79m off
+        ///     his pivot as the 19-part rigid rig animates, plus 0.30 + 0.30 of half-depth;
+        ///   * above ~3.0 his worst corner leaves the frame even with the pullback applied.
+        /// At 2.5 he clears the runner by 1.11m and his worst corner sits at 0.858 in the outer
+        /// lanes. Locked by PatrolChaseGeometryTests.
+        /// </summary>
+        public const float PatrolChaseGap = 2.5f;
 
-        /// <summary>Where the overtake STARTS, in metres BEHIND the runner (owner call
-        /// 2026-08-21: the old pop-in-ahead sweep read as the cop being "in front of the
-        /// player"). He enters below/behind the frame edge — the camera sits 6m behind the
-        /// runner, so this is off-screen by construction — and sprints forward past the kid.</summary>
-        public const float PatrolCameoEnterBehind = 4f;
+        /// <summary>Chase-camera offset applied WHILE the cameo is on screen, in the camera's
+        /// own parent space (it is parented to the runner). Back and slightly up, so the road
+        /// behind the kid comes into frame without changing his own framing much. Returns to
+        /// the authored chase pose when the beat ends.</summary>
+        /// Solved with the cop's corners projected through the scene's own camera (fov 58.7,
+        /// local (0,4,-3), pitch 14.947deg): WITHOUT this offset his worst corner is at 1.30 in
+        /// the centre lane and 1.56 in the outer lanes — off frame, which is precisely why three
+        /// earlier attempts at a behind-the-runner chaser were abandoned as impossible. WITH it
+        /// he is whole at 0.858 worst, and the runner is still comfortably framed at 0.640.
+        /// So the owner's "move the camera a little back" is not a preference here; it is the
+        /// enabling condition, and the numbers are in PatrolChaseGeometryTests.
+        public static readonly UnityEngine.Vector3 PatrolCameraPullback =
+            new UnityEngine.Vector3(0f, 0.65f, -2.9f);
 
-        /// <summary>Where the overtake ENDS, in metres ahead of the runner. Monotonic
-        /// behind-to-ahead: one direction of travel the whole beat, so his run animation and
-        /// his motion agree, and the briefing's "the patrol races past" is literally what
-        /// happens. Bodies can never meet: the pass happens at PatrolCameoLateralX (2.5),
-        /// 0.4m clear of the runner's widest reach (1.8 + half-width).</summary>
-        public const float PatrolCameoExitAhead = 26f;
+        /// <summary>Seconds the camera takes to reach the pulled-back pose and to come home.
+        /// Long enough not to snap, short enough that the cop is visible for most of his beat.</summary>
+        public const float PatrolCameraBlendSeconds = 0.45f;
 
         // Patrol chaser (visual pressure only — it never catches, GDD D7).
         // "Appear only on a bump": out of frame through a clean run, closes in for
         // PatrolMenaceSeconds after a wrong pick, then drops back out. Placed relative to the
         // LIVE player every frame (see EndlessRaceDirector.UpdatePatrol) — recenter-proof.
-        public const float PatrolMenaceSeconds = 2f;    // after a wrong pick the cop is on-screen this long
+        public const float PatrolMenaceSeconds = 3f;    // after a wrong pick the cop is on-screen this long
+        // 2 -> 3: the overtake this replaced crossed the frame, so 2s was plenty. A tail HOLDS
+        // station, so the whole beat is one static composition and 2s (of which ~0.9 is the
+        // camera easing out and back) left barely a second of him actually visible.
         //
         // WHY HE COMES IN FROM THE SIDE AND NEVER FROM DIRECTLY BEHIND. All measured in play
         // mode, because the obvious placement cannot be made to work in this frame:
@@ -173,6 +209,11 @@ namespace SummaRace.Constants
         // startingDanger are not read on the endless race path, and its checkpointSpacing (45)
         // is always beaten by RaceMinGateGap. The results stay inside the clamped
         // [RaceMinGateGap, RaceMaxGateGap] band, so no setting can make a card unreadable.
+        // ⚠️ SUPERSEDED 2026-08-22 AND NO LONGER READ BY ANYTHING. These scaled the whole gate
+        // GAP; measured, that gave easy 47 seconds of empty running in a 107-second race while its
+        // reading window stayed at a flat 12s. Difficulty now scales the READING WINDOW instead -
+        // see ReadWindowEasy. Kept so the old numbers and the reason they went are in one place;
+        // do not wire them back up without re-reading that comment.
         public const float GateTimeEasy = 1.25f;
         public const float GateTimeAverage = 1f;
         public const float GateTimeHard = 0.8f;
@@ -223,6 +264,40 @@ namespace SummaRace.Constants
         // 70wpm reader needs — that remains the owner's open call, but it is now a ONE-CONSTANT
         // change: raise this and the gap floor below follows automatically.
         public const float RacePreviewLeadSeconds = 12f;
+
+        /// <summary>
+        /// DIFFICULTY NOW BUYS READING TIME, NOT EMPTY ROAD. This multiplies the reading window
+        /// (RacePreviewLeadSeconds), where GateTimeEasy/Average/Hard used to multiply the whole
+        /// gate gap.
+        ///
+        /// WHY (owner device playtest 2026-08-22: "seems waiting next too long, or was it
+        /// intentional?"). It was not intentional, and easy - the story every learner plays
+        /// first, and the one being tested - was by far the worst. Simulated against the real
+        /// track (minSpeed 10, maxSpeed 30, k_Acceleration 0.2):
+        ///
+        ///     easy     gates 17-23s, reading window 12s each  =>  47s of DEAD RUNNING in a 107s race
+        ///     average  gates 17-19s, reading window 12s each  =>  30s dead in 90s
+        ///     hard     gates 17-18s, reading window 12s each  =>  29s dead in 89s
+        ///
+        /// Nearly half of the easy race was empty corridor, and it was backwards: the gentlest
+        /// difficulty produced the longest, most boring gaps. The cause was that GateTime scaled
+        /// the GAP while the reading window stayed at a flat 12s, so every extra second easy
+        /// bought was spent running past nothing.
+        ///
+        /// Scaling the WINDOW instead spends it on the thing that helps: easy now reads for
+        /// 16.2s per gate - which is the ~16.5s a 70wpm struggling Grade-4 reader needs, the
+        /// budget D2 was opened for - and its dead time drops 47s -> 25s. Same race length,
+        /// same number of gates, strictly more reading. Average and hard are unchanged
+        /// (their gaps were already pinned to the floor).
+        ///
+        /// 1.0 for average and hard is deliberate, not laziness: measured, hard's gap was
+        /// already 18.0s against average's 18.4s, so the old multiplier was inert exactly where
+        /// it was supposed to bite. Difficulty between those two is carried by the researcher's
+        /// content, which is where it belongs.
+        /// </summary>
+        public const float ReadWindowEasy = 1.35f;
+        public const float ReadWindowAverage = 1f;
+        public const float ReadWindowHard = 1f;
         // Seconds of running with NOTHING to read, guaranteed between one gate resolving and the
         // next preview arriving. Enforced as a floor on the gate gap (lead + quiet), so no
         // difficulty setting and no speed can take the breather away — at hard the multiplier
@@ -246,6 +321,29 @@ namespace SummaRace.Constants
         /// five seconds only, 0 to remove the chip entirely — no other code changes.
         /// </summary>
         public const float RaceGateTimerVisibleSeconds = 999f;
+
+        /// <summary>
+        /// Inside this many seconds of the gate the chip shows a NUMBER; outside it, it shows
+        /// the same chip with no number at all ("Next part coming up").
+        ///
+        /// This is the fix for the second half of the owner's timer note (device playtest
+        /// 2026-08-21: "Timer is about the next options appear? ... our current is good but
+        /// seems illogical"). Both of his observations were right and they pull opposite ways:
+        /// the day before, at a 12s window, the chip hid for most of every gap and read as "no
+        /// timer at all", so it was made always-on; always-on then meant a number counting down
+        /// from 29, and a two-digit number ticking down is a RACE CLOCK - which this game does
+        /// not have and must not appear to have (L1: a clock scores reading speed and implies a
+        /// time-out fail state).
+        ///
+        /// Splitting the chip resolves both: it is on the whole time (so it is never missing),
+        /// and it only counts when counting means something (so it is never a deadline). At
+        /// zero the part simply arrives and the normal pick/miss rules apply, unchanged.
+        ///
+        /// 10s is the last stretch, not the reading window - the panel's own window is
+        /// RacePreviewLeadSeconds (12) and opens earlier, so the number appears while the
+        /// learner is already reading, as an "it is nearly here" rather than an "start now".
+        /// </summary>
+        public const float RaceGateTimerCountdownSeconds = 10f;
 
         // The option panel's arrival cue is NOT tunable from here. EndlessRaceDirector's
         // PulseArrivalGlow writes its four legs out longhand so the pulse frequency stays
@@ -304,7 +402,18 @@ namespace SummaRace.Constants
         // shape as the Reader's back button and the teacher screen's destructive actions: one
         // tap can never leave a run. Long enough for a teacher to read the confirm, short
         // enough that it cannot sit armed under a child's next stray tap.
+        // ⚠️ NO LONGER READ BY ANYTHING (2026-08-21). The leave confirmation became a modal
+        // panel with its own named GO BACK button, so there is nothing to time out; see the
+        // note in EndlessRaceDirector.Update. Kept as a const rather than deleted so a future
+        // pass that wants a timeout again finds the number and the reason together, but do not
+        // assume it is live - it is not.
         public const float RaceLeaveConfirmSeconds = 4f;
+
+        /// <summary>How long the finish beat holds before Arrange loads. 2.2 was tuned for a
+        /// character standing still; the runner now dances (owner, 2026-08-21) and a celebration
+        /// that is cut off mid-move reads as a bug rather than as a reward. Long enough for a
+        /// couple of bars, short enough that a nine-year-old is not waiting.</summary>
+        public const float RaceFinishBeatSeconds = 3.2f;
 
         // Tap-to-move (EndlessTouchInput). A tap is only a tap if the finger stayed inside this
         // fraction of the screen WIDTH and lifted within this long; anything larger belongs to
@@ -339,7 +448,47 @@ namespace SummaRace.Constants
         // go — lanes are 1.5m apart and a card is 1.425 wide, leaving 0.0375m each side before
         // the marker would be hidden behind the neighbouring card. UpdateLaneSelector pads the
         // width by whatever that gap really allows and no more.
+        /// <summary>The music level the teacher's MUSIC switch restores when turned back on.
+        /// Matches AppSettings.musicVolume's own default, so a tablet that has never touched the
+        /// switch and one that has been toggled off and on again sound identical.</summary>
+        public const float MusicOnVolume = 0.8f;
+
         public const float RaceLaneSelectorHalo = 0.34f;
+
+        /// <summary>
+        /// The colour of that lane marker — and it MUST NOT come from the SWBST palette.
+        ///
+        /// THE BUG THIS FIXES (owner, 2026-08-22): <i>"when I swipe left and right there is
+        /// indicator colour on the item — the player will be confused; seeing colour in the
+        /// answer selection, the player might think it was the correct answer."</i>
+        ///
+        /// He is right, and it was worse than a readability nit. The marker was painted
+        /// <c>SwbstPalette.ForIndex(element)</c>, so a coloured glow appeared behind exactly ONE
+        /// of the three cards — in the very colour language this game uses everywhere else
+        /// (tracker plaques, briefing chips, Arrange slots, Summary list) to mean "this is a
+        /// story part". A nine-year-old reading that as "the game is telling me this one is
+        /// right" is not a stretch; it is the most natural reading available.
+        ///
+        /// And the signal it was accidentally sending is FALSE. The marker follows the RUNNER'S
+        /// lane, not the correct card — so a learner lined up on a wrong answer saw the game
+        /// appear to endorse it, and a learner on a right answer got the same glow either way.
+        /// It could never be exploited to score (it follows you, it does not point at truth), but
+        /// it could make a child doubt a correct choice or feel confirmed in a wrong one, which
+        /// is the opposite of what the race is for.
+        ///
+        /// Neutral warm white instead: it reads as a spotlight — "this is the one you are lined
+        /// up with" — and carries no meaning about the answer, because no other surface in the
+        /// game uses plain white to mean anything. Alpha 0.55 so it lifts the card off the road
+        /// without competing with the black text on it.
+        ///
+        /// ⚠️ Do not "improve" this by tinting it per element again. The three cards are
+        /// deliberately identical in size, colour and type (F44 — a surface cue that tracked the
+        /// correct option was worth 84.7% against 33% for guessing), and the lane marker is the
+        /// one thing on the road that singles a card out. It has to mean POSITION and nothing
+        /// else.
+        /// </summary>
+        public static readonly UnityEngine.Color RaceLaneSelectorColor =
+            new UnityEngine.Color(1f, 0.98f, 0.90f, 0.55f);
 
         // ------------------------------------------------------------------------------
         // RACE WORLD DRESSING (F48). A world used to be light only, so all thirty races ran

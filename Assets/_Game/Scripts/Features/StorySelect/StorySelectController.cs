@@ -117,10 +117,17 @@ namespace SummaRace.Features.StorySelect
             if (titleText != null)
             {
                 titleText.text = GameText.StorySelectTitle;
+                SummaRace.UI.TitleBannerSkin.Apply(titleText);
                 // Names the rule the three cards already follow but never stated. Without it a
                 // learner sees two padlocks and no reason for them.
                 SummaRace.UI.SubtitleLine.Add(titleText, GameText.StorySelectSubtitle);
             }
+
+            // Android BACK now answers instead of being swallowed (owner, 2026-08-22).
+            // Registered rather than handled here, so one overlay serves every scene and
+            // each screen only supplies its own rule - see Core/BackButtonGuard.
+            Core.BackButtonGuard.RegisterExit(GameText.BackLeaveToMap,
+                () => SceneLoader.Go(SceneNames.SessionMap));
 
             // The Reader stops the music so nothing sits under the narration; pick the loop
             // back up here, or the second and third story of a session are chosen in silence.

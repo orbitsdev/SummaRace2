@@ -514,6 +514,17 @@ namespace SummaRace.Features.Reader
             if (!mayLeave) DisarmBack();
             if (backButton != null) backButton.gameObject.SetActive(mayLeave);
 
+            // ANDROID BACK FOLLOWS THE SAME RULE, DECIDED ON THE SAME LINE.
+            //
+            // The Reader's exit is offered only before the learner's first answer, because after
+            // that the run is study data. Registering BACK anywhere else would re-open exactly
+            // the data-loss path `mayLeave` exists to close - and the two would drift apart the
+            // first time either was edited. Sharing this one decision means BACK is legal
+            // precisely when the chip is on screen, permanently.
+            Core.BackButtonGuard.RegisterExitOrBlock(
+                mayLeave, GameText.BackLeaveToStories, GameText.BackBlockedReader,
+                () => SceneLoader.Go(SceneNames.StorySelect));
+
             // A page with no narration path would give a chip that plays silence — worse than
             // no chip. AudioManager already treats a missing clip as a silent page, so this is
             // only about not offering a control that cannot do anything.

@@ -50,7 +50,18 @@ namespace SummaRace.Features.NameEntry
             // running, so arriving here from the teacher's "+ New learner" costs nothing.
             if (AudioManager.Instance != null) AudioManager.Instance.PlayMusic(AudioKeys.MusicMenu);
 
-            if (titleText != null) titleText.text = GameText.NameEntryTitle;
+            if (titleText != null)
+            {
+                titleText.text = GameText.NameEntryTitle;
+                SummaRace.UI.TitleBannerSkin.Apply(titleText);
+            }
+            // Android BACK now answers instead of being swallowed (owner, 2026-08-22).
+            // Registered rather than handled here, so one overlay serves every scene and
+            // each screen only supplies its own rule - see Core/BackButtonGuard.
+            // Nowhere legal to go: Bootstrapper routes here exactly once on a fresh device
+            // and there is no screen behind it.
+            Core.BackButtonGuard.RegisterBlocked(GameText.BackBlockedNameEntry);
+
             if (avatarPromptText != null) avatarPromptText.text = GameText.NameEntryPickAvatar;
             if (confirmLabel != null) confirmLabel.text = GameText.NameEntryConfirm;
 

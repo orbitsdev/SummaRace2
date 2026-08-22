@@ -129,6 +129,41 @@ re-derive this by hand — re-run the check if content changes.
 
 NameEntry, SessionMap and TeacherMenu are built and reachable (P2b, P3b). **Settings was cut** — it was never built, nothing routed to it, and the narration toggle learners actually need lives in the Reader (`AppSettings` still carries volumes/haptics in the model). SampleScene deleted (GDD D18 done). Build list is 12 scenes, Boot at index 0.
 
+### ✅ THE BLOCKERS BELOW ARE CLOSED — an APK exists (2026-08-21)
+
+**Everything in the "Build blockers" section that follows is superseded.** The owner's
+2026-08-21 playtest was done on an **Android phone**, not in the Editor: the race ran with road,
+scenery, runner and theme present, which is only possible if the Addressables content build
+resolved, and `Library/Bee/Android/Prj/IL2CPP/Il2CppBackup/` on disk confirms an IL2CPP player
+build ran. So Android Build Support is installed and `aa/Android` content has been produced.
+The two acceptance numbers (APK ≤ 300MB, 30fps in the race on the 2GB floor device) are still
+estimates — an APK existing is not the same as an APK measured.
+
+### ⚠️ NEW BLOCKER, and it stops all verification (2026-08-21)
+
+**The Editor cannot compile this project right now, and it is not our code.**
+`Library/PackageCache` has `com.unity.render-pipelines.universal@580a03820d50` but **no
+`com.unity.render-pipelines.core`** — that one resolved as `"source": "builtin"` in
+`packages-lock.json`, so URP's two halves come from two places, and Unity compiles
+`Unity.RenderPipeline.Universal.ShaderLibrary` with no reference to
+`Unity.RenderPipelines.Core.Runtime` (`Editor.log` from line 3511: a wall of
+`CS0246: GenerateHLSL could not be found`, invocation exits 1).
+
+It cascades: `Assembly-CSharp-Editor.dll` is never produced, so **neither predefined assembly is
+published to `Library/ScriptAssemblies`** and every one of our MonoBehaviours is an unloaded
+script in the running Editor. MCP cannot find `SessionMapController` in the scene that has one,
+`run_tests` finds 1 test instead of 45+, and `SummaRace ▸ Build Preflight` cannot be invoked.
+**Do not save a scene while this is true** — a scene saved with our scripts unloaded is one
+Unity version's behaviour change away from losing serialized fields.
+
+Behind it waits a second collision: `com.adjoint.editor` and `com.coplaydev.unity-mcp` both
+export `AssetPathUtility`, so `AdjointToolbarButton.cs` fails `CS0433` and the editor assembly
+(the whole EditMode suite **and** Build Preflight) stays broken until one of the two is removed.
+
+Remedy and full evidence: `Documentation/SummaRace_Owner_Playtest_2026-08-21.md` §0b. Both
+assemblies compile clean offline with Unity's own Roslyn against its own `.rsp` files, so the
+game code is fine — that is also the workaround for verifying C# while this lasts.
+
 ### ⚠️ Build blockers — both real, re-verified 2026-08-06
 
 **Preflight was run 2026-08-20 and scored FAIL 2 · ERROR 0 · WARN 2 · PASS 31.** The two FAILs are exactly the two blockers below (Android module, `aa/Android` content) — everything else the tool checks is green, including all 30 stories through the loader, 150 narration paths, 31 audio keys, portrait lock, OpenGLES3, IL2CPP/ARM64/API 26, predictive-back off, the Link.xml crypto preserve, fog shader stripping, and 0 unguarded `using UnityEditor` across 253 player scripts. The two WARNs: the 18 Android adaptive-icon slots were empty (layers now exist at `Art/UI/app_icon_adaptive_bg.png` + `_fg.png`, 432x432, logo inside the 62% safe zone — they still need assigning in Player Settings ▸ Android ▸ Icon ▸ Adaptive), and Google EDM is still in `Assets/` (editor-only, resolves nothing, self-resurrects — delete with the Editor closed if you want it gone). ⚠️ Operational note the preflight surfaced: the APK will be **debug-signed**, and Unity's debug keystore is per-machine — **build every study APK on the same machine**, or a mid-study update refuses to install over the deployed build and needs an uninstall, which erases learner progress and every unexported log on that tablet.

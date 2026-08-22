@@ -8,10 +8,10 @@ namespace SummaRace.Tests.EditMode
     using UnityEngine;
 
     /// <summary>
-    /// The patrol cameo's placement, checked against the camera that is actually in the race
+    /// The patrol tail's placement, checked against the camera that is actually in the race
     /// scene.
     ///
-    /// WHY THIS FIXTURE EXISTS. The 3D patrol has been built and abandoned three times, and every
+    /// WHY THIS FIXTURE EXISTS. The 3D patrol has been built and abandoned four times, and every
     /// failure was the same failure: the cop was positioned by eye, the chase camera moved
     /// underneath it, and nobody noticed until a playtest showed a character clipped through the
     /// runner or hanging half off a portrait screen. A comment claiming "solved from the camera"
@@ -19,9 +19,16 @@ namespace SummaRace.Tests.EditMode
     ///
     /// It reads the camera's position, pitch and field of view straight out of
     /// MainSummaRace.unity rather than restating them, so moving the camera without re-checking
-    /// the cameo fails here instead of on a tablet. If the scene is ever restructured such that
+    /// the patrol fails here instead of on a tablet. If the scene is ever restructured such that
     /// the camera cannot be found, this reports INCONCLUSIVE rather than failing: a parsing
     /// problem is not a geometry problem and must not be allowed to read like one.
+    ///
+    /// WHAT CHANGED ON 2026-08-21. The cameo was an overtake (enter behind, sprint past); the
+    /// owner's device playtest reported it as "floating and flying to player" and asked for the
+    /// Subway-style tail instead, explicitly authorising the camera pull-back that three earlier
+    /// attempts were refused. So these tests now assert the tail, and one of them asserts that
+    /// the pull-back is REQUIRED rather than cosmetic - if a future pass deletes it believing it
+    /// to be decoration, that test says exactly what it costs.
     /// </summary>
     public class PatrolCameoGeometryTests
     {
@@ -34,19 +41,25 @@ namespace SummaRace.Tests.EditMode
         /// <summary>The runner's fixed station on the track (F34).</summary>
         private const float KidZ = 3f;
 
-        // A standing human, generously sized — larger than the real cop, so passing here means
+        // A standing human, generously sized - larger than the real cop, so passing here means
         // passing for him.
         private const float CopHeight = 1.8f;
         private const float CopHalfWidth = 0.30f;
         private const float CopHalfDepth = 0.30f;
 
-        /// <summary>The outermost answer card (F47b), and the corridor F54 measured free of
-        /// scenery (0 of 1792 props inside |x| 3).</summary>
-        private const float OutermostCardX = 2.2f;
-        private const float SceneryFreeX = 3.0f;
+        // The runner, for the "is he still framed while the camera is back?" check.
+        private const float KidHeight = 1.6f;
+        private const float KidHalfWidth = 0.35f;
+        private const float KidHalfDepth = 0.25f;
 
-        /// <summary>Widest the runner's body ever reaches: outer lane centre plus a half-width.</summary>
-        private const float KidWidestX = 1.8f;
+        /// <summary>Lane centres. The tail runs in the kid's OWN lane, so these are the three
+        /// x positions the cop can ever take.</summary>
+        private static readonly float[] Lanes = { -1.5f, 0f, 1.5f };
+
+        /// <summary>How far the cop's rendered mass swings off his pivot as the 19-part rigid
+        /// rig animates. Measured live during the chase work; it is the reason a gap set on the
+        /// transform is not the gap that renders.</summary>
+        private const float CopMeshSwing = 0.79f;
 
         private Vector3 _camPos;
         private float _camPitch;
@@ -59,101 +72,137 @@ namespace SummaRace.Tests.EditMode
             _haveCamera = TryReadCamera(out _camPos, out _camPitch, out _camFov);
         }
 
-        /// <summary>The overtake's ENTRY (behind the kid) is off-frame BY DESIGN — the camera
-        /// sits 6m back, so behind-the-runner is invisible (F34); that is what makes the entry
-        /// read as "he came from behind". The framed part of the pass is everything from this
-        /// many metres ahead onward, and THAT stretch must stay whole on screen.</summary>
-        private const float FramedFromAhead = 5f;
+        /// <summary>1.0 is the edge of the frame. The margin is what keeps him whole on a device
+        /// whose aspect differs from the reference, or after a small camera nudge.</summary>
+        private const float FrameLimit = 0.95f;
 
         [Test]
-        public void CameoStaysInsideTheFrameForTheFramedPartOfTheOvertake()
+        public void TailIsWhollyInsideTheFrameInEveryLane()
         {
             if (!CameoIsOn()) return;
-            if (!_haveCamera)
-            {
-                Assert.Inconclusive("Could not read the race camera from " + ScenePath +
-                                    " — the scene layout changed; re-point this fixture.");
-                return;
-            }
+            if (!RequireCamera()) return;
 
+            var cam = PulledBackCamera();
             float worst = 0f;
             string worstAt = "";
 
-            // Both shoulders, across the framed stretch of the monotonic overtake
-            // (FramedFromAhead .. ExitAhead). The behind-frame entry is exempt by design.
-            for (int i = 0; i <= 40; i++)
+            foreach (float lane in Lanes)
             {
-                float ahead = Mathf.Lerp(FramedFromAhead, GameRules.PatrolCameoExitAhead, i / 40f);
-
-                for (int s = -1; s <= 1; s += 2)
-                {
-                    float w = WorstCorner(s * GameRules.PatrolCameoLateralX, KidZ + ahead);
-                    if (w > worst)
-                    {
-                        worst = w;
-                        worstAt = "side " + s + ", " + ahead.ToString("0.00") + "m ahead";
-                    }
-                }
+                float w = WorstCorner(cam, lane, KidZ - GameRules.PatrolChaseGap,
+                                      CopHeight, CopHalfWidth, CopHalfDepth);
+                if (w > worst) { worst = w; worstAt = "lane x=" + lane.ToString("0.0"); }
             }
 
-            // 1.0 is the edge of the frame. The margin is what keeps him whole on a device whose
-            // aspect differs from the reference, or after a small camera nudge.
-            Assert.Less(worst, 0.95f,
-                "The patrol cameo leaves the frame (worst corner " + worst.ToString("0.000") +
+            Assert.Less(worst, FrameLimit,
+                "The patrol tail leaves the frame (worst corner " + worst.ToString("0.000") +
                 " of the half-extent, at " + worstAt + "). Either the camera in " + ScenePath +
-                " moved or the PatrolCameo* constants changed. This is the exact failure that " +
-                "retired the chase three times — re-solve the placement, do not nudge numbers.");
+                " moved, or PatrolChaseGap / PatrolCameraPullback changed. This is the exact " +
+                "failure that retired the chaser three times - re-solve the placement against " +
+                "the projection, do not nudge numbers.");
+        }
+
+        /// <summary>
+        /// The pull-back is the enabling condition, not a flourish.
+        ///
+        /// This test exists to be READ, not just to pass: it records that at the shipped gap the
+        /// cop is off screen without the camera move, which is why every earlier behind-the-
+        /// runner attempt was abandoned as impossible. Delete PatrolCameraPullback believing it
+        /// to be decoration and this says what it costs.
+        /// </summary>
+        [Test]
+        public void WithoutTheCameraPullbackTheTailWouldBeOffScreen()
+        {
+            if (!CameoIsOn()) return;
+            if (!RequireCamera()) return;
+
+            float best = float.MaxValue;
+            foreach (float lane in Lanes)
+                best = Mathf.Min(best, WorstCorner(_camPos, lane, KidZ - GameRules.PatrolChaseGap,
+                                                  CopHeight, CopHalfWidth, CopHalfDepth));
+
+            Assert.Greater(best, 1f,
+                "The tail now fits on screen WITHOUT PatrolCameraPullback (best corner " +
+                best.ToString("0.000") + "). That is not a failure in itself - but the pull-back " +
+                "is documented as the enabling condition for placing the cop behind the runner, " +
+                "and if the camera has changed enough to make it unnecessary, that documentation " +
+                "and GameRules.PatrolCameraPullback both need re-deriving.");
         }
 
         [Test]
-        public void CameoCanNeverOverlapTheRunner()
+        public void TheRunnerIsStillFramedWhileTheCameraIsPulledBack()
         {
             if (!CameoIsOn()) return;
+            if (!RequireCamera()) return;
 
-            // The overtake passes BESIDE the kid (along-run separation crosses zero once, by
-            // design), so the safety argument is lateral: at the moment of the pass the cop's
-            // near edge must clear the runner's widest possible reach with real margin, and he
-            // is never yawed (a yaw swings this rigid rig 0.65m off its pivot — the measured
-            // failure of every earlier version).
-            Assert.GreaterOrEqual(GameRules.PatrolCameoLateralX - KidWidestX - CopHalfWidth, 0.3f,
-                "The overtake passes too close: at PatrolCameoLateralX the cop's near edge is " +
-                "within 0.3m of the runner's widest lane reach. Widen the lateral, do not trust " +
-                "the stride.");
+            var cam = PulledBackCamera();
+            float worst = 0f;
+            foreach (float lane in Lanes)
+                worst = Mathf.Max(worst, WorstCorner(cam, lane, KidZ,
+                                                     KidHeight, KidHalfWidth, KidHalfDepth));
 
-            // Monotonic geometry: a real entry behind, a real exit ahead. Zero or negative on
-            // either side degenerates the overtake back into the pop-in the owner rejected.
-            Assert.Greater(GameRules.PatrolCameoEnterBehind, 0f,
-                "The overtake must START behind the runner (off-frame) to read as a chase.");
-            Assert.Greater(GameRules.PatrolCameoExitAhead, FramedFromAhead,
-                "The overtake must END well ahead, past the framed stretch this fixture checks.");
+            Assert.Less(worst, FrameLimit,
+                "Pulling the camera back for the patrol pushes the RUNNER out of frame (worst " +
+                "corner " + worst.ToString("0.000") + "). The wrong-answer beat may never cost " +
+                "the learner sight of their own character.");
         }
 
         [Test]
-        public void CameoRunsClearOfTheLanesAndOfTheScenery()
+        public void TailCanNeverOverlapTheRunner()
         {
             if (!CameoIsOn()) return;
 
-            float x = GameRules.PatrolCameoLateralX;
+            // He holds a constant gap directly behind the kid, in the kid's own lane, so the
+            // separation is entirely along the run and there is no lateral argument to make.
+            // What has to clear is both half-depths PLUS the swing of the cop's rendered mass
+            // off his pivot as the rig animates - the measured failure of every earlier version.
+            float needed = CopHalfDepth + KidHalfDepth + CopMeshSwing;
 
-            Assert.Greater(x, OutermostCardX,
-                "The cameo runs inside the answer cards, where it can be mistaken for one.");
-            Assert.Less(x, SceneryFreeX,
-                "The cameo runs outside the corridor F54 measured free of props, so it can spawn " +
-                "inside a wall.");
-            Assert.Greater(x - KidWidestX, 0.5f,
-                "The cameo runs too close to the runner's widest lane position.");
+            Assert.Greater(GameRules.PatrolChaseGap, needed,
+                "PatrolChaseGap (" + GameRules.PatrolChaseGap.ToString("0.00") + "m) is inside " +
+                "the runner's body once the cop's rig swing is counted (" +
+                needed.ToString("0.00") + "m needed). Widen the gap; do not trust the stride.");
+        }
+
+        [Test]
+        public void TheTailHoldsItsGapAndSoCanNeverCatchAnyone()
+        {
+            if (!CameoIsOn()) return;
+
+            // D7/L3: the patrol is pressure, never a threat. A held gap makes that structural
+            // rather than a promise - there is no closing rate to get wrong. A negative or zero
+            // gap would put him level with or ahead of the runner, which is the pop-in-ahead the
+            // owner rejected on 2026-08-21.
+            Assert.Greater(GameRules.PatrolChaseGap, 0f,
+                "The patrol must run BEHIND the runner. At or past zero he is level with him or " +
+                "ahead of him, which is the framing the owner rejected.");
+
+            Assert.Greater(GameRules.PatrolMenaceSeconds, 0f,
+                "The wrong-answer beat has no duration, so the patrol can never appear.");
         }
 
         [Test]
         public void TheRetiredChaseStaysRetired()
         {
-            // The cameo is a different mechanism, not a re-enabling of the chase. With both on
-            // they fight over the same patrol transform every frame.
+            // The tail is a different mechanism, not a re-enabling of the old chase. With both
+            // on they fight over the same patrol transform every frame.
             Assert.IsFalse(GameRules.RacePatrolEnabled && GameRules.RacePatrolCameoEnabled,
                 "The chase and the cameo are both enabled; they drive the same patrol transform.");
         }
 
         // ---------------------------------------------------------------------------------
+
+        private Vector3 PulledBackCamera()
+        {
+            return _camPos + GameRules.PatrolCameraPullback;
+        }
+
+        private bool RequireCamera()
+        {
+            if (_haveCamera) return true;
+            Assert.Inconclusive("Could not read the race camera from " + ScenePath +
+                                " - the scene layout changed; re-point this fixture.");
+            return false;
+        }
 
         private static bool CameoIsOn()
         {
@@ -162,9 +211,9 @@ namespace SummaRace.Tests.EditMode
             return false;
         }
 
-        /// <summary>Worst normalised viewport coordinate over the cop's eight bounding corners.
+        /// <summary>Worst normalised viewport coordinate over a body's eight bounding corners.
         /// 1.0 is the edge of the frame in either axis.</summary>
-        private float WorstCorner(float x, float z)
+        private float WorstCorner(Vector3 camPos, float x, float z, float h, float hw, float hd)
         {
             float tanHalf = Mathf.Tan(_camFov * 0.5f * Mathf.Deg2Rad);
             float p = _camPitch * Mathf.Deg2Rad;
@@ -177,11 +226,11 @@ namespace SummaRace.Tests.EditMode
                     for (int iz = 0; iz < 2; iz++)
                     {
                         var corner = new Vector3(
-                            x + (ix == 0 ? -CopHalfWidth : CopHalfWidth),
-                            iy == 0 ? 0.02f : CopHeight,
-                            z + (iz == 0 ? -CopHalfDepth : CopHalfDepth));
+                            x + (ix == 0 ? -hw : hw),
+                            iy == 0 ? 0.02f : h,
+                            z + (iz == 0 ? -hd : hd));
 
-                        var d = corner - _camPos;
+                        var d = corner - camPos;
                         float df = Vector3.Dot(d, forward);
                         if (df <= 0.05f) return 999f;   // behind the lens is an instant failure
 

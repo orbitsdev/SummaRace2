@@ -10,13 +10,60 @@ namespace SummaRace.Constants
         public const string BootTagline =
             "<color=#E84855>Read!</color> <color=#1F8A3B>Race!</color> <color=#7B4FD8>Summarize!</color>";
 
+        // ---- Android BACK -------------------------------------------------------------
+        //
+        // BACK used to be swallowed silently (it must never quit the app), which is safe but
+        // reads as a broken button to a child pressing a real control on their own device.
+        // It now always answers; see Core/BackButtonGuard for which form each screen gets.
+        //
+        // Every line is a choice or a nudge, never a refusal: "you can't do that" is the one
+        // thing this game does not say (D7).
+
+        /// <summary>Asked when the current screen HAS a legal exit.</summary>
+        public const string BackLeavePrompt = "Leave this screen?";
+        /// <summary>The big, safe answer. Named for what it does, not for what it declines.</summary>
+        public const string BackStayLabel = "STAY HERE";
+        /// <summary>The small, quiet one.</summary>
+        public const string BackLeaveLabel = "LEAVE";
+        /// <summary>The single button on the blocked form. A two-button dialog where one button
+        /// does nothing teaches a child that their answer did not matter.</summary>
+        public const string BackOkLabel = "OK!";
+
+        /// <summary>Fallback when a screen registered nothing - quiet but honest, never silent.</summary>
+        public const string BackBlockedDefault = "Let's finish this part first!";
+        public const string BackBlockedReader = "Keep reading - you're nearly there!";
+        public const string BackBlockedArrange = "Put the story parts in order first!";
+        public const string BackBlockedSummary = "Write your sentence first - you can do it!";
+        public const string BackBlockedNameEntry = "Let's get you set up first!";
+
+        // Where BACK may legally go, per screen. Worded as the destination, so the child knows
+        // what they are choosing rather than only what they are leaving.
+        public const string BackLeaveToMap = "Go back to the missions?";
+        public const string BackLeaveToStories = "Go back to the stories?";
+        public const string BackLeaveToMenu = "Go back to the main screen?";
+
         /// <summary>Name a profile starts with before Name Entry sets a real one.</summary>
         public const string DefaultLearnerName = "Runner";
 
         // Name entry
         public const string NameEntryTitle = "What's your name?";
         public const string NameEntryHint = "Type your name";
-        public const string NameEntryPickAvatar = "Pick your runner";
+        /// <summary>
+        /// ⚠️ STOPGAP, AND IT IS NAMED THAT ON PURPOSE (owner, 2026-08-22).
+        ///
+        /// This said <b>"Pick your runner"</b> above four tiles showing a heart, a star, a gem
+        /// and a lightning bolt. None of those is a runner, so the screen asked the child to
+        /// choose something it never actually offered - and worse, `LearnerProfile.avatarIndex`
+        /// is WRITTEN here and read by absolutely nothing else in the game, so whichever tile
+        /// they picked never appeared again. A promise made once and never kept, on the first
+        /// screen a child ever sees.
+        ///
+        /// Renaming it is not the fix, it is only the end of the lie: the tiles are badges, so
+        /// the line now says badge. The real fix is the 3D runner select specced in
+        /// Documentation/SummaRace_Character_Select_Spec.md - when that lands, this string goes
+        /// back to naming a runner and starts telling the truth.
+        /// </summary>
+        public const string NameEntryPickAvatar = "Pick your badge";
         public const string NameEntryConfirm = "LET'S GO!";
 
         /// <summary>Closes the on-screen keyboard on the FIRST screen a learner ever sees, where
@@ -103,6 +150,22 @@ namespace SummaRace.Constants
         /// <summary>The prompt over the entry box. Names the booklet, because copying the code
         /// off the child's own paper is the whole procedure — inventing one on the tablet
         /// recreates the problem one step later.</summary>
+        // ---- Music switch (teacher-side) ------------------------------------------------
+        //
+        // Owner, 2026-08-22, after noticing the loop on the Arrange screen: "do we have settings
+        // for that, turn on/off?" We did not. AppSettings has carried musicVolume, sfxVolume and
+        // narrationVolume since the beginning, AudioManager reads all three correctly - and
+        // NOTHING in the app ever changed them, because the Settings scene was cut as empty.
+        //
+        // This is a ROOM-LEVEL decision, not a child's: 40 tablets in one classroom, and the
+        // teacher is the person who knows whether music helps or is bedlam today. So it lives
+        // behind the PIN rather than on a learner screen, and it does not touch narration -
+        // that is the accessibility support the study depends on and it keeps its own control
+        // (the Reader's VOICE toggle).
+        public static string TeacherMusicAction(bool on) => on ? "MUSIC: ON" : "MUSIC: OFF";
+        public static string TeacherMusicStatus(bool on) =>
+            on ? "Music is on for this tablet." : "Music is off. Story narration still works.";
+
         public const string TeacherParticipantPrompt =
             "Participant code for this learner\nCopy it from their test booklet (e.g. P07)";
         public const string TeacherParticipantSubmit = "SAVE CODE";
@@ -361,6 +424,33 @@ namespace SummaRace.Constants
 
         /// <summary>Praise that names the SWBST part just collected, indexed
         /// S=0 W=1 B=2 S=3 T=4. Reinforces the framework while it encourages.</summary>
+        /// <summary>
+        /// Praise for a CORRECT race pick, replacing the shared generic pool for this one site.
+        ///
+        /// The web prototype's line was <i>"Great choice! That belongs in the summary."</i> and it
+        /// is the best single sentence in either prototype, because it is the only feedback
+        /// anywhere that tells the child WHY they are collecting: the part they just caught is
+        /// going into the sentence they will write in four minutes' time. Generic process praise
+        /// ("Nice work!") rewards the tap; this rewards the tap and names the destination, which
+        /// is the whole support-removal ladder in one clause.
+        ///
+        /// A separate pool rather than lines added to PraiseGeneric: that pool is also drawn by
+        /// the Reader, Arrange and Results, and "that belongs in the summary" is false on Arrange
+        /// (the parts are already collected) and meaningless on Results (the summary is written).
+        ///
+        /// Process, never ability (no "clever", no "smart"), and no exclamation stacking - these
+        /// are read five times per run, thirty runs per learner.
+        /// </summary>
+        public static readonly string[] PraiseRaceCollect =
+        {
+            "Great choice! That belongs in the summary.",
+            "Got it - that part goes in your summary.",
+            "Nice catch! That one belongs in the summary.",
+            "Yes! Keep that part for your summary.",
+            "That's a summary part - well spotted.",
+            "In it goes. Your summary is growing!",
+        };
+
         public static readonly string[][] PraiseByElement =
         {
             // Wording matches LoadingTips, which is where these five parts are TAUGHT: praise
@@ -596,8 +686,31 @@ namespace SummaRace.Constants
         /// which is the opposite of never-punish. So it names the beat and closes the door on
         /// the fear in the same breath.
         /// </summary>
+        /// ⚠️ The recorded clip (AudioKeys.VoRaceBriefingPatrol) still says "races past" - it
+        /// was cut against the overtake this line described until 2026-08-21, when the cameo
+        /// became a TAIL that holds station behind the runner. The written line is what the
+        /// learner reads and is now accurate; the spoken line is one phrase out of date. To
+        /// re-cut it, per the narration recipe in CLAUDE.md:
+        ///   python -m edge_tts --voice en-PH-RosaNeural --rate=-10% -f &lt;file&gt; --write-media vo_race_briefing_patrol.mp3
+        /// generating OUTSIDE Assets/ and importing as one batch.
         public const string RaceBriefingPatrol =
-            "If you miss a part, the patrol races past. It never catches you!";
+            "If you miss a part, the patrol runs up behind you. It never catches you!";
+
+        /// <summary>
+        /// The first-race steering coach, shown over the 3-2-1 while the world is still held.
+        ///
+        /// Owner, 2026-08-22: <i>"at least if a player at the very first game in race, at least
+        /// add tutorial like swiping left and right?"</i> The briefing already says the words,
+        /// but a nine-year-old reading a wall of instructions once does not learn a control from
+        /// it — a control is learned by seeing it done. So this is one short line under a hand
+        /// that actually moves across the three lanes.
+        ///
+        /// It names TAP rather than swipe, and that is deliberate: tap-a-third is one gesture to
+        /// ANY lane, where their swipe path is one lane per swipe (the far lane needs two inside
+        /// a sub-second window, and a hurried diagonal flick gets read as a jump). Swipe still
+        /// works and is never taken away; it is simply not the thing we teach first.
+        /// </summary>
+        public const string RaceCoachLine = "Tap a side of the screen to move there.";
 
         /// <summary>3-2-1-GO! steps. Last entry is treated as the "go" beat.</summary>
         public static readonly string[] RaceCountdown = { "3", "2", "1", "GO!" };
@@ -621,10 +734,25 @@ namespace SummaRace.Constants
         public const string RaceResumeLabel = "KEEP RUNNING";
         public const string RaceLeaveLabel = "LEAVE RACE";
         /// <summary>Second tap of the leave confirm — deliberately two taps so a 9-year-old
-        /// cannot lose a run to one stray press.</summary>
-        public const string RaceLeaveConfirm = "LEAVE?";
+        /// cannot lose a run to one stray press. It is now the button on a real confirmation
+        /// panel rather than the leave chip's own text changing under the thumb.</summary>
+        public const string RaceLeaveConfirm = "YES, LEAVE";
+
+        // The confirmation panel itself. Phrased as a question with a reassurance, never as a
+        // warning: nothing is lost by leaving (the run is filed as partial and the story is
+        // still there), so a red "are you sure?" would invent a stake the game does not have.
+        public const string RaceLeaveConfirmTitle = "Leave this race?";
+        public const string RaceLeaveConfirmBody = "Your story will still be here.";
+        /// <summary>The big, safe answer. Named for what it DOES ("go back"), not for what it
+        /// declines — a nine-year-old reading fast should not have to work out that the large
+        /// green button is the "no".</summary>
+        public const string RaceLeaveCancelLabel = "GO BACK";
 
         public const string RaceFinishBanner = "FINISH!";
+        /// <summary>Heads the finish card that reads the five collected parts back. Names what
+        /// they built, in the vocabulary Arrange and Summary use next ("story parts"), so the
+        /// three screens are visibly about one thing.</summary>
+        public const string RaceFinishCardTitle = "You collected the whole story!";
         public const string RaceFinishCard = "FINISH";
         public const string RaceRunToFinish = "Run to the FINISH!";
 
@@ -642,6 +770,17 @@ namespace SummaRace.Constants
         /// </summary>
         public static string RaceGateTimer(int seconds) =>
             $"Next part in {(seconds < 0 ? 0 : seconds)}s";
+
+        /// <summary>
+        /// The same chip while the next part is still far off - GameRules.RaceGateTimerCountdown-
+        /// Seconds away or more. No number, deliberately: a two-digit figure ticking down from
+        /// 29 is a race clock, and this game has none (L1). This says the same true thing the
+        /// numeric form says, minus the implication that something happens when it reaches zero.
+        ///
+        /// The chip stays on screen across both forms, so it is never missing (owner, 2026-08-21)
+        /// and never a deadline (owner, the same day).
+        /// </summary>
+        public const string RaceGateTimerFar = "Next part coming up";
 
 
         /// <summary>
