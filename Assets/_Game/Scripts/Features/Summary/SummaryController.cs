@@ -115,6 +115,23 @@ namespace SummaRace.Features.Summary
             // absent object or absent badge art simply leaves the screen as it was.
             SummaRace.UI.MsLumiReactor.AttachBadge();
 
+            // Focus scrim over the backdrop art — the same block ArrangeController carries, and
+            // the two screens must agree (owner device request, 2026-08-23). Inserted directly
+            // above the Sky image so every card and control stays bright over a quieted room.
+            var sky = GameObject.Find("Sky");
+            if (sky != null && sky.transform.parent != null)
+            {
+                var scrim = new GameObject("FocusScrim", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+                var srt = (RectTransform)scrim.transform;
+                srt.SetParent(sky.transform.parent, false);
+                srt.SetSiblingIndex(sky.transform.GetSiblingIndex() + 1);
+                srt.anchorMin = Vector2.zero; srt.anchorMax = Vector2.one;
+                srt.offsetMin = Vector2.zero; srt.offsetMax = Vector2.zero;
+                var simg = scrim.GetComponent<Image>();
+                simg.color = Theme.Alpha(Theme.Ink, 0.30f);
+                simg.raycastTarget = false;
+            }
+
             if (referenceText != null && _story.elements != null)
             {
                 // Ink, not the raw palette. This card is the kit's cream "Daily Reward

@@ -1019,13 +1019,33 @@ namespace SummaRace.Features.TeacherMenu
 
             float top = (count - 1) * 0.5f * ActionSpacing;
             int slot = 0;
+            RectTransform panel = null;
             for (int i = 0; i < actions.Length; i++)
             {
                 if (actions[i] == null) continue;
                 var rect = actions[i].transform as RectTransform;
                 if (rect != null)
+                {
                     rect.anchoredPosition = new Vector2(rect.anchoredPosition.x, top - slot * ActionSpacing);
+                    if (panel == null) panel = rect.parent as RectTransform;
+                }
                 slot++;
+            }
+
+            // The panel was authored for four actions; the column has since grown to six, and
+            // the first and last buttons overhung the card's edges (device sweep 2026-08-23).
+            // Grown in pixels top and bottom, which is anchor-style-agnostic, only when the
+            // stack actually needs it — a shorter column leaves the card exactly as authored.
+            if (panel != null)
+            {
+                float halfNeeded = top + ActionSpacing * 0.62f;   // half a slot of headroom past the last button
+                float halfHave = panel.rect.height * 0.5f;
+                if (halfNeeded > halfHave)
+                {
+                    float grow = halfNeeded - halfHave;
+                    panel.offsetMin += Vector2.down * grow;
+                    panel.offsetMax += Vector2.up * grow;
+                }
             }
         }
 
@@ -1325,6 +1345,40 @@ namespace SummaRace.Features.TeacherMenu
             else if (!string.IsNullOrEmpty(_pinnedStatus)) message = _pinnedStatus;
 
             if (statusText != null) statusText.text = message ?? string.Empty;
+
+            // The status line was bare white type on whatever the backdrop art put behind it
+            // (device sweep 2026-08-23: white on sunlit grass) — and it carries the export
+            // path, the one string the researcher must read perfectly. Backed like the
+            // SessionMap hint: an ink pill that exists only while there is a message.
+            EnsureStatusBacking();
+            if (_statusBacking != null)
+                _statusBacking.SetActive(statusText != null && !string.IsNullOrEmpty(statusText.text));
+        }
+
+        private GameObject _statusBacking;
+
+        /// <summary>A sibling drawn just before the status text (a child would draw over the
+        /// words), matched to its rect with a little padding. Built once, toggled by Status.</summary>
+        private void EnsureStatusBacking()
+        {
+            if (_statusBacking != null || statusText == null) return;
+
+            var backing = new GameObject("StatusBacking", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            var rt = (RectTransform)backing.transform;
+            rt.SetParent(statusText.transform.parent, false);
+            rt.SetSiblingIndex(statusText.transform.GetSiblingIndex());
+
+            var src = statusText.rectTransform;
+            rt.anchorMin = src.anchorMin; rt.anchorMax = src.anchorMax; rt.pivot = src.pivot;
+            rt.offsetMin = src.offsetMin - new Vector2(24f, 14f);
+            rt.offsetMax = src.offsetMax + new Vector2(24f, 14f);
+
+            var img = backing.GetComponent<Image>();
+            img.color = Theme.Alpha(Theme.Ink, 0.62f);
+            img.raycastTarget = false;
+
+            _statusBacking = backing;
+            backing.SetActive(false);
         }
 
         /// <summary>

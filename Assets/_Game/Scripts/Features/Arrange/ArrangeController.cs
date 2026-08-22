@@ -122,6 +122,25 @@ namespace SummaRace.Features.Arrange
             // absent object or absent badge art simply leaves the screen as it was.
             SummaRace.UI.MsLumiReactor.AttachBadge();
 
+            // Focus scrim over the backdrop art (owner device request, 2026-08-23: "make the
+            // background a little darker... so the player can focus"). Same treatment as the
+            // Reader's question screen — a translucent ink layer inserted directly above the
+            // Sky image, so every control and card stays bright on top of a quieted room.
+            // SummaryController carries the same block; the two screens must agree.
+            var sky = GameObject.Find("Sky");
+            if (sky != null && sky.transform.parent != null)
+            {
+                var scrim = new GameObject("FocusScrim", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+                var srt = (RectTransform)scrim.transform;
+                srt.SetParent(sky.transform.parent, false);
+                srt.SetSiblingIndex(sky.transform.GetSiblingIndex() + 1);
+                srt.anchorMin = Vector2.zero; srt.anchorMax = Vector2.one;
+                srt.offsetMin = Vector2.zero; srt.offsetMax = Vector2.zero;
+                var simg = scrim.GetComponent<Image>();
+                simg.color = Theme.Alpha(Theme.Ink, 0.30f);
+                simg.raycastTarget = false;
+            }
+
             EnsureSlotBoard();
             EnsureStatusBand();
 
