@@ -173,13 +173,14 @@ Build Failed
 So this is not "a tooling outage, not a repo risk" as previously written here. **No APK can be
 produced while it stands**, however healthy `Assembly-CSharp` is.
 
-**Status: the manifest line has been removed on disk (2026-08-22) but is UNCOMMITTED**, because the
-harness blocks commits that touch dependency manifests. Commit it or it will come back:
-
-```
-git add Packages/manifest.json Packages/packages-lock.json
-git commit -m "Remove duplicate com.coplaydev.unity-mcp (CS0433 blocked all player builds)"
-```
+**Status update (2026-08-22, verified live): the manifest fix IS COMMITTED** — HEAD's
+`Packages/manifest.json` carries only `com.adjoint.editor`; the `com.coplaydev.unity-mcp` line is
+gone (it landed inside the owner's `79f4cc2 "update game"`). The old "uncommitted" warning here
+misled two sessions — do not re-ask for the commit. **The Editor restart is the only remaining
+step**, and the need for it was re-proven the same day: after a domain reload, the *orphaned*
+`MCPForUnity.Editor.dll` still in memory tried to resume the MCP bridge, failed
+("Failed to resume HTTP MCP bridge after domain reload"), and took the session's Unity tools down
+until restart.
 
 ⚠️ **A RESTART IS REQUIRED AND A RECOMPILE IS NOT ENOUGH.** Measured after the removal: the package
 was already gone from `Library/PackageCache`, but `MCPForUnity.Editor.dll` was **still loaded in
