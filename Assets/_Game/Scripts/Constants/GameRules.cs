@@ -191,6 +191,23 @@ namespace SummaRace.Constants
         // bounds each frame; also the lateral floor (kid half-width + cop half-width + this), so
         // the two can never intersect at any lane, stride or lateral offset.
         public const float PatrolBodyMargin = 0.15f;
+
+        // ⚠️ ORPHANED 2026-08-22 — the SEVEN constants from here to PatrolMoveSmoothTime have NO
+        // RUNTIME READER. Their only consumer was EndlessRaceDirector.UpdatePatrol (the always-on
+        // chase with FramingGap/LateralTarget/SmoothDamp), which was unreachable behind
+        // RacePatrolEnabled = false and has now been deleted. The live chaser is
+        // UpdatePatrolCameo, which derives everything from PatrolFarGap / PatrolChaseGap /
+        // PatrolStep* and live renderer bounds.
+        //
+        // TUNING ANY OF THEM CHANGES NOTHING, SILENTLY. That is the same trap RaceSecondsPerGate
+        // set — it sat here looking load-bearing while two documents called it the pacing lever.
+        // They are kept rather than deleted only because PatrolCameoGeometryTests references this
+        // class and the editor assembly cannot currently be compiled to check; delete them in the
+        // pass that gets Assembly-CSharp-Editor building again.
+        //
+        // RacePatrolEnabled (line ~28) is in the same position: no runtime reader, test-only.
+        // Reviving the always-on chase is a rewrite now, not a flag flip.
+        //
         // Rest position, still a fraction of the view half-width at his depth (read off the LIVE
         // camera, so a camera retune carries him with it). 2.20 parked him 3.7m off the centre
         // line at the new depth, which is out among the roadside fences and bins; 1.35 is clear
