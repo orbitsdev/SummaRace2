@@ -237,10 +237,21 @@ namespace SummaRace.Features.Arrange
         /// The band between them is empty and 0.105 of the canvas, 201px. This takes
         /// 0.105-0.185, leaving 19px of clearance above the buttons and 29px below the pool.
         ///
-        /// It brings its own cream backing for the same reason SubtitleLine does: inside the
-        /// bubble the slate text sat on cream at 7.4:1, and dropping it onto whatever art happens
-        /// to be behind it would have thrown that away. On Theme.Cream it measures 7.4:1 - the
-        /// pairing it already had, deliberately unchanged.
+        /// It brings its own backing for the same reason SubtitleLine does: inside the bubble
+        /// the slate text sat on cream at 7.4:1, and dropping it onto whatever art happens to be
+        /// behind it would have thrown that away.
+        ///
+        /// ⚠️ THE FIRST VERSION OF THIS BAND WAS UNREADABLE, and the mistake is worth keeping on
+        /// the record because it is easy to repeat. `Resources/UI/bar_bg` is a NAVY pill - RGB
+        /// (27, 43, 84) - and uGUI's Image.color MULTIPLIES the sprite. Tinting it Theme.Cream
+        /// therefore produced near-black, not cream, and the slate label on top measured
+        /// <b>1.39:1</b>: the anti-frustration hint, invisible, on the screen it was moved down
+        /// here to be seen on.
+        ///
+        /// It now uses the pairing SummaryController.EnsureTipsBlock already proves on the same
+        /// sprite: leave the navy alone (white tint) and put CREAM text on it - measured 11:1.
+        /// If a cream band is ever wanted here instead, it needs a different sprite; this one
+        /// cannot be tinted lighter than it is.
         ///
         /// Built in code rather than moved in the scene so the change is compile-verifiable, and
         /// null-safe at every step: no status label or no slots leaves the screen exactly as it
@@ -262,9 +273,12 @@ namespace SummaRace.Features.Arrange
             rect.offsetMax = Vector2.zero;
 
             var img = bandGo.AddComponent<Image>();
-            img.sprite = Resources.Load<Sprite>("UI/bar_bg");
+            img.sprite = Resources.Load<Sprite>("UI/bar_bg");   // NAVY pill - do not tint it dark
             if (img.sprite != null) img.type = Image.Type.Sliced;
-            img.color = Theme.Alpha(Theme.Cream, 0.95f);
+            // White keeps the sprite's own navy. Alpha only, never a hue.
+            img.color = img.sprite != null
+                ? Theme.Alpha(Color.white, 0.95f)
+                : Theme.Alpha(Theme.Ink, 0.80f);   // no sprite: a dark quad, same relationship
             img.raycastTarget = false;   // UNDO and CHECK ORDER are directly beneath it
 
             statusText.rectTransform.SetParent(rect, false);
@@ -273,6 +287,9 @@ namespace SummaRace.Features.Arrange
             trt.anchorMax = Vector2.one;
             trt.offsetMin = new Vector2(18f, 8f);
             trt.offsetMax = new Vector2(-18f, -8f);
+            // Cream ON the navy, not the authored slate, which was chosen for a cream bubble and
+            // is nearly invisible here. This is the same pairing the Summary tips block uses.
+            statusText.color = Theme.Cream;
             statusText.raycastTarget = false;
             SummaRace.UI.LabelFit.Harden(statusText);
 

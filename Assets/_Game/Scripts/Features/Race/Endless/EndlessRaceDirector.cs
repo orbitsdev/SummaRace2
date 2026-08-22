@@ -245,6 +245,37 @@ namespace SummaRace.Features.Race.Endless
         /// <summary>Whether a wrong-pick menace surge is running this frame. Owned by LateUpdate
         /// so it ticks whether or not the (currently disabled) patrol cop exists.</summary>
         private bool _menaceSurging;
+        /// <summary>
+        /// WHERE THE PATROL IS, 0 = furthest (PatrolFarGap) .. 1 = closest (PatrolChaseGap).
+        ///
+        /// He used to be a three-second flash: a wrong pick put him on screen, nothing happened,
+        /// he left, and the next wrong pick did exactly the same thing. Owner, on his first
+        /// device test: <i>"it appears and after a second it disappears? then what?"</i> - which
+        /// is the correct question. A signal that never accumulates and never resolves is noise
+        /// by the second session, and there are ten.
+        ///
+        /// He now carries the run. A wrong pick brings him in and he STAYS; a correct pick pushes
+        /// him back. That does three things the flash could not:
+        ///
+        /// 1. It is a continuous readout of how the run is going, legible at a glance, with a
+        ///    face on it - where the tracker says WHAT you have collected, he says HOW IT IS
+        ///    GOING.
+        /// 2. It finally gives a correct answer something to do in the world. The critique on
+        ///    record is that this game "is at its emptiest for the learner who is doing best",
+        ///    because the only dynamic element in the scene was a reward for failure. Now the
+        ///    strongest learner watches him shrink into the distance.
+        /// 3. It represents the researcher's "increasing the risk of being caught" honestly -
+        ///    the risk is shown and never realised.
+        ///
+        /// D7 IS INTACT AND STRUCTURALLY SO, not by tuning: the step is clamped to 1, one is
+        /// PatrolChaseGap, and that gap is a constant. There is no value of this field at which
+        /// he touches the runner, so <c>timesCaught</c> stays 0 by construction rather than by
+        /// luck. He also only MOVES when a gate resolves, never during a reading window, so he
+        /// cannot compete with the option panel for attention.
+        /// </summary>
+        private float _patrolStep = SummaRace.Constants.GameRules.PatrolStartStep;
+        private float _patrolStepTarget = SummaRace.Constants.GameRules.PatrolStartStep;
+
         private float _patrolGroundY;      // fixed run-height captured on activation
         private bool _patrolGrounded;      // has _patrolGroundY been captured yet
         private float _patrolGap = 30f;    // metres the cop trails behind the player (constant once running)
@@ -1182,6 +1213,10 @@ namespace SummaRace.Features.Race.Endless
             FlyCollectedToSlot(element, pickup.transform.position);
 
             ShowFeedback(SummaRace.Core.Praise.ForRace(element), new Color(0.55f, 1f, 0.55f));
+            // A right answer pushes the patrol back. This is the half of the chase that did not
+            // exist before, and it is the half that matters: it is the only thing in the race
+            // that rewards a learner who is getting everything right.
+            StepPatrol(-SummaRace.Constants.GameRules.PatrolStepCorrect);
 
             // The collected card flies up and pops away; the rest of the gate goes now.
             var cardT = pickup.transform;
@@ -1262,8 +1297,11 @@ namespace SummaRace.Features.Race.Endless
             // the gold, so the two beats stay visually distinct.
             ShowFeedback(SummaRace.Core.Praise.RaceNotQuite(), Theme.AmberWarn);
 
-            // Surge the chaser into view for a beat — the visible half of "not quite".
+            // The vignette beat still fires on the moment of the miss - that is the "not quite"
+            // flash, and it is short on purpose.
             _menaceTimer = SummaRace.Constants.GameRules.PatrolMenaceSeconds;
+            // ...and the patrol closes in, and STAYS closed in. See _patrolStep.
+            StepPatrol(+SummaRace.Constants.GameRules.PatrolStepWrong);
 
             if (track != null)
             {
@@ -1337,6 +1375,10 @@ namespace SummaRace.Features.Race.Endless
             {
                 _firstPickDone[element] = true;
                 _firstPickCorrect[element] = false;
+                // A gate run past costs the same ground as a gate answered wrongly - it is the
+                // same outcome in the log, so it must be the same outcome on screen. Inside the
+                // first-pick guard, so a re-presented gate cannot charge for the miss twice.
+                StepPatrol(+SummaRace.Constants.GameRules.PatrolStepWrong);
             }
 
             DestroyActiveGate();
@@ -3694,22 +3736,42 @@ namespace SummaRace.Features.Race.Endless
         /// He cannot catch anybody: the gap is constant, so there is nothing to close.
         /// timesCaught stays 0 for every run ever logged (D7/L3).
         /// </summary>
+        /// <summary>
+        /// Moves the patrol's target distance by one step and clamps it. Clamping here rather
+        /// than at the read site is what makes D7 structural: nothing downstream can produce a
+        /// gap shorter than PatrolChaseGap, whatever it is handed.
+        /// </summary>
+        private void StepPatrol(float delta)
+        {
+            _patrolStepTarget = Mathf.Clamp01(_patrolStepTarget + delta);
+        }
+
         private void UpdatePatrolCameo(TrackManager track)
         {
             if (_patrol == null || track == null) return;
             var runner = track.characterController;
             if (runner == null) return;
 
-            bool surging = _menaceSurging;
+            // VISIBLE BECAUSE OF WHERE HE IS, not because a timer is running. The old test was
+            // `_menaceSurging` - a three-second window after a wrong pick - which is why he
+            // flashed and vanished. Now he is on screen whenever he is anywhere near, and a clean
+            // run walks him out to nothing by about the third gate.
+            bool surging = _patrolStep > SummaRace.Constants.GameRules.PatrolStepHidden;
 
             if (!surging)
             {
-                // Off the moment the beat ends. Hidden rather than parked off-screen: a hidden
-                // renderer costs nothing, and there is no position to preserve between beats.
+                // Left behind entirely. Hidden rather than parked off-screen: a hidden renderer
+                // costs nothing, and the step field holds the only position worth preserving.
                 if (_patrol.gameObject.activeSelf) _patrol.gameObject.SetActive(false);
                 _wasSurging = false;
                 return;
             }
+
+            // 0 -> PatrolFarGap, 1 -> PatrolChaseGap. Lerp, so the clamp on _patrolStepTarget is
+            // the only place D7 has to hold.
+            float chaseGap = Mathf.Lerp(SummaRace.Constants.GameRules.PatrolFarGap,
+                                        SummaRace.Constants.GameRules.PatrolChaseGap,
+                                        _patrolStep);
 
             var playerPos = runner.transform.position;
             // The kid's LANE lives on the character, not on the controller's own transform:
@@ -3731,7 +3793,7 @@ namespace SummaRace.Features.Race.Endless
 
                 // Placed BEFORE he is first drawn, so no frame ever shows him mid-slide.
                 _patrol.position = new Vector3(bodyT.position.x, _patrolGroundY,
-                    playerPos.z - SummaRace.Constants.GameRules.PatrolChaseGap);
+                    playerPos.z - chaseGap);
                 _patrol.rotation = Quaternion.identity;
 
                 _patrol.gameObject.SetActive(true);
@@ -3787,7 +3849,7 @@ namespace SummaRace.Features.Race.Endless
             _patrol.position = new Vector3(
                 bodyT.position.x,
                 (_patrolGrounded ? _patrolGroundY : playerPos.y) + _patrolFootFix,
-                playerPos.z - SummaRace.Constants.GameRules.PatrolChaseGap);
+                playerPos.z - chaseGap);
             // Straight down the road, exactly as the runner faces. Never yawed: on this rigid rig
             // a yaw swings the mesh 0.65m off its pivot (measured during the chase work), which is
             // how a safe offset stops being safe.
@@ -4998,6 +5060,12 @@ namespace SummaRace.Features.Race.Endless
             _menaceSurging = _menaceTimer > 0f;
             if (_menaceSurging) _menaceTimer -= Time.deltaTime;
             UpdateDangerVignette(_menaceSurging);
+
+            // The cop slides toward wherever the last gate left him. Ticked beside the surge
+            // clock and for the same reason: it must not advance behind a pause menu, and the
+            // paused/leaving frames have already returned above.
+            _patrolStep = Mathf.MoveTowards(_patrolStep, _patrolStepTarget,
+                SummaRace.Constants.GameRules.PatrolStepLerpPerSecond * Time.deltaTime);
 
             // After TrackManager.Update has moved the runner, so the cop is placed against
             // THIS frame's player position rather than last frame's.

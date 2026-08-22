@@ -90,6 +90,38 @@ namespace SummaRace.Constants
         /// </summary>
         public const float PatrolChaseGap = 2.5f;
 
+        /// <summary>
+        /// How far back the patrol sits at his FURTHEST. The camera rides 6m behind the runner,
+        /// so at 24m he is 18m in front of the lens - visible, small, and plainly receding.
+        /// He is never parked off-screen on a clean run: a learner who is getting everything
+        /// right has to be able to SEE him being left behind, or the reward is invisible to
+        /// exactly the child who earned it.
+        /// </summary>
+        public const float PatrolFarGap = 24f;
+
+        /// <summary>
+        /// Where he starts, on the 0 (furthest) .. 1 (closest) scale. Deliberately not 0: the
+        /// first correct answer has to visibly push him back, and you cannot push back something
+        /// that is already gone.
+        /// </summary>
+        public const float PatrolStartStep = 0.35f;
+
+        /// <summary>How much closer a wrong pick (or a run-past gate) brings him, on that same
+        /// scale. Three wrong answers take him from the start to the floor.</summary>
+        public const float PatrolStepWrong = 0.30f;
+
+        /// <summary>How much a correct pick pushes him back. Smaller than the wrong step on
+        /// purpose - recovering should be visible but should not erase the whole cost of a miss
+        /// in one gate, or the tension never means anything.</summary>
+        public const float PatrolStepCorrect = 0.18f;
+
+        /// <summary>How fast the cop slides to a newly-set distance. Slow enough to read as
+        /// running, fast enough to finish well inside the gap between two gates.</summary>
+        public const float PatrolStepLerpPerSecond = 0.55f;
+
+        /// <summary>Below this he is hidden outright. A clean run reaches it by gate three.</summary>
+        public const float PatrolStepHidden = 0.02f;
+
         /// <summary>Chase-camera offset applied WHILE the cameo is on screen, in the camera's
         /// own parent space (it is parented to the runner). Back and slightly up, so the road
         /// behind the kid comes into frame without changing his own framing much. Returns to
