@@ -33,5 +33,44 @@ compile/play verification happens centrally after all agents land.
 3. Commit per verified milestone (never the manifest).
 
 ## Owner-only (P0, gating the APK)
-- Commit the manifest fix (two commands, given in chat) + full Editor restart.
+- ~~Commit the manifest fix~~ ALREADY COMMITTED (79f4cc2). **Only the full Editor restart remains.**
 - Then: rebuild APK, device smoke test, participant codes + PIN at install, USB export proof.
+
+---
+
+# PHASE 2 (added 2026-08-22 evening) — readability sweep, exit consistency, finish line
+
+## 2a · UI readability sweep (owner's priority: "labels not readable")
+After the Editor restart (portrait render + play mode both needed):
+1. Drive every screen in Play mode at 1080x1920 and capture: Boot, NameEntry, MainMenu,
+   SessionMap, StorySelect (all 3 card states), Reader (page + question + wrong + correct),
+   Race (briefing, countdown, gate + preview, wrong beat, finish card), Arrange (empty,
+   held-piece, wrong, solved), Summary (empty, typing, nudge), Results (full reveal),
+   TeacherMenu (every gate step + actions + learner picker).
+2. For each capture: list every text element that fails easy-read at arm's length —
+   suspects from evidence so far: loading-tip text (now reference-scaled — recheck),
+   "Stars = your race score" pill, locked-card hint lines, race feedback pill over bright
+   sky, TeacherMenu status line length. Fix strictly via Theme pairings (measured ratios
+   in Theme.cs), never raw colors. The owner's device screenshots trump editor renders.
+3. Re-render after fixes; before/after strip for the owner.
+
+## 2b · Exit + navigation consistency
+- Results: register BackButtonGuard exit matching the NEXT button's destination
+  (SessionMap when session done, StorySelect otherwise) instead of the generic blocked card.
+- Verify (not change): Reader leave-window, race pause/leave, Arrange/Summary forward-only
+  with their friendly blocked lines — these are design, re-confirm the copy reads warmly.
+
+## 2c · PIN — documentation, not code
+No default PIN exists by design (hash-only storage). Testing instructions are in chat +
+Study_Operations_Runbook. No code change.
+
+## 2d · Settings
+Stays cut (F43). VOICE lives in Reader, music behind the PIN. Post-study wishlist only.
+
+## Finish line (what "done" means)
+1. Six-fix verification in Play mode (Phase 1) ✅ code-committed, awaiting Editor restart
+2. 2a+2b landed and re-rendered
+3. EditMode tests green (restart unblocks the suite — expect 45+)
+4. SummaRace ▸ Build Preflight: FAIL 0
+5. APK built with Addressables, installed on the Infinix, full loop smoke test on device
+6. Owner plays 2-3 stories on device; researcher email sent
