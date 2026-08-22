@@ -50,6 +50,33 @@ namespace SummaRace.Constants
         /// <summary>Headings on cream, where TextBrown lacks weight.</summary>
         public static readonly Color TextBrownDeep = new Color(0.24f, 0.157f, 0.086f);
 
+        /// <summary>
+        /// PANEL FILL. Warm mid-brown wood — the colour a card, banner or plaque is PAINTED,
+        /// as opposed to <see cref="TextBrownDeep"/>, which is a colour text is WRITTEN in.
+        ///
+        /// WHY THIS EXISTS (owner, 2026-08-22: <i>"the dark colour you use is not good, in the
+        /// eye or in the context of friendly theme game — too dark"</i>). The 2026-08-22 pass
+        /// took the app's furniture off saturated kit yellow, which was right, and then painted
+        /// it all <c>TextBrownDeep</c>, which was wrong: that token was authored as a HEADING
+        /// colour for dark text on cream, and at luminance 0.026 it is very nearly black. Used
+        /// as a fill, against this game's bright playground art, ten of them read as holes
+        /// punched in the screen — the Session Map in particular looked entirely disabled.
+        ///
+        /// This is <b>3.6x lighter</b> (L 0.026 -> 0.096) and visibly wood rather than
+        /// near-black, while still carrying cream type at <b>6.6:1</b> and gold at 5.2:1 — both
+        /// past WCAG AA for the sizes used. Warm rather than grey, because every other surface
+        /// this game owns is warm and a neutral dark reads as "system UI", not "toy".
+        ///
+        /// ⚠️ Two different jobs, two different tokens. Do not merge them: TextBrownDeep is
+        /// still correct for TEXT on cream (11.9:1) and would fail as a fill; Wood is correct as
+        /// a FILL and would be too light to write body text in.
+        /// </summary>
+        public static readonly Color Wood = new Color(0.46f, 0.31f, 0.17f);
+
+        /// <summary>A step lighter again, for a plaque that has to sit ON Wood and still be
+        /// seen as a separate object (the tracker's current slot, a chip on a card).</summary>
+        public static readonly Color WoodLight = new Color(0.56f, 0.40f, 0.22f);
+
         // ---- Depth -----------------------------------------------------------------------
         /// <summary>Navy. Progress pills, HUD backings, the loading bar's trough.</summary>
         public static readonly Color Navy = new Color(0.11f, 0.169f, 0.33f);

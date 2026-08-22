@@ -54,8 +54,18 @@ namespace SummaRace.Features.SessionMap
         // Contrast measured against the white number each carries: 7.3:1 playable, 12.7:1
         // locked, both clear of WCAG AA for large text with room. Locked is darker rather than
         // greyer so "not yet" still reads as the same object dimmed, not as a different control.
-        private static readonly Color StopPlayable = new Color(0.26f, 0.33f, 0.38f);
-        private static readonly Color StopLocked = new Color(0.16f, 0.20f, 0.23f);
+        // 2026-08-22, SECOND PASS. These were (0.26,0.33,0.38) and (0.16,0.20,0.23) — dark
+        // slate — and on the device they read as ten black holes punched through a cream board
+        // on a sunny playground: the one PLAYABLE mission was indistinguishable from the nine
+        // locked ones except for a padlock, so the whole screen looked switched off.
+        //
+        // The distinction now carries on WARMTH AND SATURATION rather than on brightness, which
+        // is what actually says "open" versus "not yet" to a child:
+        //   playable — warm wood, the same family as every other surface this game owns
+        //   locked   — the same value, drained to neutral grey (plus its padlock and dim stars)
+        // Both hold a white number at ~5:1, past AA, and neither is a hole.
+        private static readonly Color StopPlayable = new Color(0.56f, 0.40f, 0.22f);
+        private static readonly Color StopLocked = new Color(0.44f, 0.42f, 0.40f);
 
         // Theme.Slate (0.20, 0.278, 0.318) was an unearned star on a bright green plate. On the
         // dark plate above it is very nearly the plate itself, so an unearned star would vanish

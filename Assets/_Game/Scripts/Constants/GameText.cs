@@ -22,9 +22,11 @@ namespace SummaRace.Constants
         /// <summary>Asked when the current screen HAS a legal exit.</summary>
         public const string BackLeavePrompt = "Leave this screen?";
         /// <summary>The big, safe answer. Named for what it does, not for what it declines.</summary>
-        public const string BackStayLabel = "STAY HERE";
+        /// <summary>Left half of the fork. Short, because the pair is side by side now and
+        /// two long labels on one row shrink each other.</summary>
+        public const string BackStayLabel = "NO, STAY";
         /// <summary>The small, quiet one.</summary>
-        public const string BackLeaveLabel = "LEAVE";
+        public const string BackLeaveLabel = "YES, LEAVE";
         /// <summary>The single button on the blocked form. A two-button dialog where one button
         /// does nothing teaches a child that their answer did not matter.</summary>
         public const string BackOkLabel = "OK!";
@@ -746,7 +748,7 @@ namespace SummaRace.Constants
         /// <summary>The big, safe answer. Named for what it DOES ("go back"), not for what it
         /// declines — a nine-year-old reading fast should not have to work out that the large
         /// green button is the "no".</summary>
-        public const string RaceLeaveCancelLabel = "GO BACK";
+        public const string RaceLeaveCancelLabel = "NO, KEEP RACING";
 
         public const string RaceFinishBanner = "FINISH!";
         /// <summary>Heads the finish card that reads the five collected parts back. Names what

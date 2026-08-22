@@ -185,6 +185,11 @@ namespace SummaRace.Core
             // that teaches a child their answer did not matter.
             _stayLabel.text = canLeave ? GameText.BackStayLabel : GameText.BackOkLabel;
             _leaveButton.SetActive(canLeave);
+            // With no second choice there is no fork, so the single button returns to centre -
+            // an off-centre lone button reads as one half of a pair whose other half failed to
+            // draw.
+            var stayRect = (RectTransform)_stayLabel.transform.parent;
+            stayRect.anchoredPosition = new Vector2(canLeave ? -167f : 0f, 0f);
 
             _root.SetActive(true);
             _open = true;
@@ -239,7 +244,7 @@ namespace SummaRace.Core
             var card = new GameObject("Card");
             card.transform.SetParent(canvasGo.transform, false);
             var cardImg = card.AddComponent<Image>();
-            cardImg.color = Theme.TextBrownDeep;   // the app's dark furniture, post-2026-08-22
+            cardImg.color = Theme.Wood;   // the app's warm wood furniture
             var crt = cardImg.rectTransform;
             crt.anchorMin = new Vector2(0.08f, 0.36f);
             crt.anchorMax = new Vector2(0.92f, 0.64f);
@@ -249,25 +254,40 @@ namespace SummaRace.Core
             _promptLabel.color = new Color(1f, 0.96f, 0.88f);
             _promptLabel.rectTransform.sizeDelta = new Vector2(760f, 220f);
 
-            // STAY is the big one. Same rule as the race's leave confirmation: the safe answer is
-            // the one the thumb finds first, and it is named for what it does, not for what it
-            // declines.
-            var stay = MakeButton(card.transform, new Vector2(0.5f, 0.28f),
-                                  new Vector2(560f, 150f), new Color(0.16f, 0.46f, 0.22f));
-            stay.onClick.AddListener(Close);
-            _stayLabel = MakeLabel(stay.transform, new Vector2(0.5f, 0.5f), 46f);
-            _stayLabel.color = Color.white;
-            _stayLabel.rectTransform.sizeDelta = new Vector2(520f, 120f);
+            // ---- SIDE BY SIDE, NOT STACKED (owner, 2026-08-22) ----------------------------
+            //
+            // "please use the yes or no design side by side instead of vertical panel question
+            // — most commonly games ask yes/no then left and right decision, to avoid confusion."
+            //
+            // He is right, and it is not only convention. A stacked pair reads as a LIST, and a
+            // list implies ranking and invites reading top-to-bottom before deciding; a pair
+            // side by side reads as a FORK, which is what a yes/no actually is. It is also the
+            // layout a child has already met in every other game and every OS dialog they have
+            // touched, so it costs no learning.
+            //
+            // NO is on the LEFT and YES on the RIGHT. That ordering is deliberate and matches
+            // Android's own convention (dismiss left, confirm right), so muscle memory built
+            // anywhere else on the tablet keeps working here. The safe answer stays the visually
+            // louder of the two - green, and it is the one that does nothing irreversible.
+            const float rowY = 0.30f;
+            const float halfW = 310f, gap = 24f;
 
-            var leave = MakeButton(canvasGo.transform, new Vector2(0.5f, 0.30f),
-                                   new Vector2(380f, 104f), new Color(0.30f, 0.22f, 0.14f));
-            var lrt = (RectTransform)leave.transform;
-            lrt.anchorMin = lrt.anchorMax = lrt.pivot = new Vector2(0.5f, 0.29f);
+            var stay = MakeButton(canvasGo.transform, new Vector2(0.5f, rowY),
+                                  new Vector2(halfW, 140f), new Color(0.16f, 0.46f, 0.22f));
+            ((RectTransform)stay.transform).anchoredPosition = new Vector2(-(halfW + gap) * 0.5f, 0f);
+            stay.onClick.AddListener(Close);
+            _stayLabel = MakeLabel(stay.transform, new Vector2(0.5f, 0.5f), 44f);
+            _stayLabel.color = Color.white;
+            _stayLabel.rectTransform.sizeDelta = new Vector2(halfW - 30f, 110f);
+
+            var leave = MakeButton(canvasGo.transform, new Vector2(0.5f, rowY),
+                                   new Vector2(halfW, 140f), new Color(0.52f, 0.34f, 0.20f));
+            ((RectTransform)leave.transform).anchoredPosition = new Vector2((halfW + gap) * 0.5f, 0f);
             leave.onClick.AddListener(ConfirmLeave);
-            var ll = MakeLabel(leave.transform, new Vector2(0.5f, 0.5f), 38f);
+            var ll = MakeLabel(leave.transform, new Vector2(0.5f, 0.5f), 44f);
             ll.text = GameText.BackLeaveLabel;
-            ll.color = new Color(1f, 0.94f, 0.84f);
-            ll.rectTransform.sizeDelta = new Vector2(350f, 90f);
+            ll.color = new Color(1f, 0.96f, 0.88f);
+            ll.rectTransform.sizeDelta = new Vector2(halfW - 30f, 110f);
             _leaveButton = leave.gameObject;
 
             canvasGo.SetActive(false);

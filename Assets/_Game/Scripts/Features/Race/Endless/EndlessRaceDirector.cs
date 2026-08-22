@@ -227,6 +227,11 @@ namespace SummaRace.Features.Race.Endless
 
         private Transform _patrol;
         private Animator _patrolAnim;
+        /// <summary>The run state on PatrolAnimator. A name, because the cop's controller is
+        /// ours (_Game/Animation/PatrolAnimator.controller) and its states are Idle / Run /
+        /// Stumble / Dance. If it is ever renamed, Play() no-ops and the cop falls back to the
+        /// transition - visibly worse, but not broken.</summary>
+        private const string PatrolRunState = "Run";
         private float _menaceTimer;
 
         /// <summary>Project-wide Time.maximumDeltaTime, saved on race entry and restored in
@@ -1804,7 +1809,7 @@ namespace SummaRace.Features.Race.Endless
             var img = card.AddComponent<UnityEngine.UI.Image>();
             img.sprite = WoodPlaqueSprite();
             img.type = UnityEngine.UI.Image.Type.Sliced;
-            img.color = Theme.Alpha(Theme.TextBrownDeep, 0.95f);
+            img.color = Theme.Alpha(Theme.Wood, 0.95f);
             img.raycastTarget = false;
             var rt = img.rectTransform;
             // Below the tracker and above the road, in the band the option panel vacates at the
@@ -1826,7 +1831,16 @@ namespace SummaRace.Features.Race.Endless
                 var rimg = row.AddComponent<UnityEngine.UI.Image>();
                 rimg.sprite = WoodPlaqueSprite();
                 rimg.type = UnityEngine.UI.Image.Type.Sliced;
-                rimg.color = SummaRace.Constants.SwbstPalette.ForIndex(i);
+                // CREAM ROW, COLOURED TEXT — not the element's full colour behind its own ink.
+                //
+                // Measured on the device build: ink is Lerp(colour, black, 0.45), i.e. exactly
+                // 55% of the background in every channel, so every row landed at 2.5-2.9:1 and
+                // the five answers were effectively invisible (owner screenshot, 2026-08-22).
+                // The Ink variant is measured against CREAM (5.2-7.4:1) and that is the pairing
+                // it exists for; putting it on the element's own colour threw the measurement
+                // away. This is now the exact pairing the tracker's collected slot uses, which
+                // is the one part of the HUD the same screenshots show reading cleanly.
+                rimg.color = Theme.Cream;
                 rimg.raycastTarget = false;
                 var rrt = rimg.rectTransform;
                 float top = 0.80f - i * 0.155f;
@@ -1834,10 +1848,24 @@ namespace SummaRace.Features.Race.Endless
                 rrt.anchorMax = new Vector2(0.965f, top);
                 rrt.offsetMin = Vector2.zero; rrt.offsetMax = Vector2.zero;
 
+                // The element's colour survives as a strip down the row's leading edge, so the
+                // five parts are still colour-coded without the text sitting on top of the code.
+                var strip = new GameObject("Strip");
+                strip.transform.SetParent(row.transform, false);
+                var simg = strip.AddComponent<UnityEngine.UI.Image>();
+                simg.sprite = WoodPlaqueSprite();
+                simg.type = UnityEngine.UI.Image.Type.Sliced;
+                simg.color = SummaRace.Constants.SwbstPalette.ForIndex(i);
+                simg.raycastTarget = false;
+                var srt = simg.rectTransform;
+                srt.anchorMin = new Vector2(0f, 0f); srt.anchorMax = new Vector2(0f, 1f);
+                srt.pivot = new Vector2(0f, 0.5f);
+                srt.offsetMin = new Vector2(8f, 8f); srt.offsetMax = new Vector2(0f, -8f);
+                srt.sizeDelta = new Vector2(16f, srt.sizeDelta.y);
+
                 var lbl = MakeHudText(row.transform, new Vector2(0.5f, 0.5f), Vector2.zero, 34f);
                 lbl.text = _story.elements[i].correct;
-                // Ink, not white: measured against a cream/coloured card at 5.18-7.31:1, where
-                // white on the lighter palette entries (WANTED green, SO orange) does not clear AA.
+                // Ink on cream: 5.2-7.4:1, the pairing this variant was measured for.
                 lbl.color = SummaRace.Constants.SwbstPalette.InkForIndex(i);
                 lbl.fontStyle = FontStyles.Bold;
                 lbl.enableAutoSizing = true;
@@ -1846,7 +1874,7 @@ namespace SummaRace.Features.Race.Endless
                 lbl.overflowMode = TextOverflowModes.Ellipsis;
                 var lrt = lbl.rectTransform;
                 lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one;
-                lrt.offsetMin = new Vector2(18f, 4f); lrt.offsetMax = new Vector2(-18f, -4f);
+                lrt.offsetMin = new Vector2(36f, 4f); lrt.offsetMax = new Vector2(-18f, -4f);
 
                 // One at a time, so the child watches the story assemble rather than being shown
                 // a finished list. 0.16s apart puts the last one at 0.8s, well inside the beat.
@@ -2096,7 +2124,7 @@ namespace SummaRace.Features.Race.Endless
             var bimg = board.AddComponent<UnityEngine.UI.Image>();
             bimg.sprite = WoodPlaqueSprite();
             bimg.type = UnityEngine.UI.Image.Type.Sliced;
-            bimg.color = Theme.Alpha(Theme.TextBrownDeep, 0.94f); // same wood language as the tracker
+            bimg.color = Theme.Alpha(Theme.Wood, 0.94f); // same wood language as the tracker
             bimg.raycastTarget = false;
             var brt = bimg.rectTransform;
             brt.anchorMin = new Vector2(0.03f, PreviewBandBottom);
@@ -2450,7 +2478,7 @@ namespace SummaRace.Features.Race.Endless
                         // the race screen and reads as an alert rather than as the game's own
                         // furniture. Deep wood keeps it plainly distinct from the three white
                         // option columns - which is the only job the colour actually had.
-                        ? Theme.TextBrownDeep
+                        ? Theme.Wood
                         : new Color(0.98f, 0.97f, 0.93f);      // the answer card's white
             }
         }
@@ -2851,7 +2879,7 @@ namespace SummaRace.Features.Race.Endless
             var lImg = leave.AddComponent<UnityEngine.UI.Image>();
             lImg.sprite = WoodPlaqueSprite();
             lImg.type = UnityEngine.UI.Image.Type.Sliced;
-            lImg.color = Theme.Alpha(Theme.TextBrownDeep, 0.95f);
+            lImg.color = Theme.Alpha(Theme.Wood, 0.95f);
             var lRt = lImg.rectTransform;
             lRt.anchorMin = lRt.anchorMax = lRt.pivot = new Vector2(0.5f, 0.135f);
             lRt.sizeDelta = new Vector2(380f, 110f);
@@ -2934,8 +2962,14 @@ namespace SummaRace.Features.Race.Endless
             brImg.color = new Color(0.10f, 0.30f, 0.14f);
             brImg.raycastTarget = false;
             var brRt = brImg.rectTransform;
-            brRt.anchorMin = brRt.anchorMax = brRt.pivot = new Vector2(0.5f, 0.30f);
-            brRt.sizeDelta = new Vector2(648f, 206f);
+            // SIDE BY SIDE (owner, 2026-08-22). NO on the left, YES on the right — the fork
+            // shape a yes/no actually is, and the ordering Android itself uses, so muscle memory
+            // from anywhere else on the tablet still works. See Core/BackButtonGuard for the
+            // full reasoning; the two confirmations in this game must not disagree about which
+            // side means what.
+            brRt.anchorMin = brRt.anchorMax = brRt.pivot = new Vector2(0.5f, 0.28f);
+            brRt.sizeDelta = new Vector2(438f, 176f);
+            brRt.anchoredPosition = new Vector2(-227f, 0f);
 
             var back = new GameObject("BackButton");
             back.transform.SetParent(root.transform, false);
@@ -2944,8 +2978,9 @@ namespace SummaRace.Features.Race.Endless
             if (bImg.sprite != null) bImg.type = UnityEngine.UI.Image.Type.Sliced;
             bImg.color = greenPillSprite != null ? Color.white : new Color(0.30f, 0.75f, 0.35f);
             var bRt = bImg.rectTransform;
-            bRt.anchorMin = bRt.anchorMax = bRt.pivot = new Vector2(0.5f, 0.30f);
-            bRt.sizeDelta = new Vector2(620f, 180f);
+            bRt.anchorMin = bRt.anchorMax = bRt.pivot = new Vector2(0.5f, 0.28f);
+            bRt.sizeDelta = new Vector2(410f, 150f);
+            bRt.anchoredPosition = new Vector2(-227f, 0f);
             var bBtn = back.AddComponent<UnityEngine.UI.Button>();
             bBtn.targetGraphic = bImg;
             bBtn.onClick.AddListener(DisarmLeave);
@@ -2954,17 +2989,19 @@ namespace SummaRace.Features.Race.Endless
             bLabel.text = SummaRace.Constants.GameText.RaceLeaveCancelLabel;
             bLabel.color = Color.white;
             bLabel.fontStyle = FontStyles.Bold;
-            bLabel.rectTransform.sizeDelta = new Vector2(580f, 150f);
+            bLabel.rectTransform.sizeDelta = new Vector2(380f, 120f);
+            bLabel.enableAutoSizing = true; bLabel.fontSizeMin = 30f; bLabel.fontSizeMax = 44f;
 
             var go = new GameObject("ConfirmLeaveButton");
             go.transform.SetParent(root.transform, false);
             var gImg = go.AddComponent<UnityEngine.UI.Image>();
             gImg.sprite = WoodPlaqueSprite();
             gImg.type = UnityEngine.UI.Image.Type.Sliced;
-            gImg.color = Theme.Alpha(Theme.TextBrownDeep, 0.95f);
+            gImg.color = new Color(0.52f, 0.34f, 0.20f);   // warm, but not the green of "stay"
             var gRt = gImg.rectTransform;
-            gRt.anchorMin = gRt.anchorMax = gRt.pivot = new Vector2(0.5f, 0.145f);
-            gRt.sizeDelta = new Vector2(420f, 116f);
+            gRt.anchorMin = gRt.anchorMax = gRt.pivot = new Vector2(0.5f, 0.28f);
+            gRt.sizeDelta = new Vector2(410f, 150f);
+            gRt.anchoredPosition = new Vector2(227f, 0f);
             var gBtn = go.AddComponent<UnityEngine.UI.Button>();
             gBtn.targetGraphic = gImg;
             gBtn.onClick.AddListener(LeaveRace);
@@ -2973,7 +3010,8 @@ namespace SummaRace.Features.Race.Endless
             gLabel.text = SummaRace.Constants.GameText.RaceLeaveConfirm;
             gLabel.color = new Color(1f, 0.94f, 0.84f);
             gLabel.fontStyle = FontStyles.Bold;
-            gLabel.rectTransform.sizeDelta = new Vector2(390f, 100f);
+            gLabel.rectTransform.sizeDelta = new Vector2(380f, 120f);
+            gLabel.enableAutoSizing = true; gLabel.fontSizeMin = 30f; gLabel.fontSizeMax = 44f;
 
             _leaveConfirmRoot = root;
             root.SetActive(false);
@@ -3163,7 +3201,7 @@ namespace SummaRace.Features.Race.Endless
             board.transform.SetParent(row.transform, false);
             var bimg = board.AddComponent<UnityEngine.UI.Image>();
             bimg.sprite = wood; bimg.type = UnityEngine.UI.Image.Type.Sliced;
-            bimg.color = Theme.TextBrown;
+            bimg.color = Theme.Wood;
             bimg.raycastTarget = false;
             var brt = bimg.rectTransform;
             brt.anchorMin = Vector2.zero; brt.anchorMax = Vector2.one;
@@ -3297,7 +3335,7 @@ namespace SummaRace.Features.Race.Endless
                 }
                 else if (i == current) // current target — lifted, bright letter, pulse
                 {
-                    _slotBg[i].color = new Color(0.42f, 0.30f, 0.17f);
+                    _slotBg[i].color = Theme.WoodLight;
                     if (acc != null) acc.color = swbst;
                     lbl.text = letter;
                     lbl.color = Color.white;
@@ -3306,7 +3344,7 @@ namespace SummaRace.Features.Race.Endless
                 }
                 else // upcoming / empty — dark wood, dimmed strip, faded "?"
                 {
-                    _slotBg[i].color = new Color(0.27f, 0.19f, 0.11f);
+                    _slotBg[i].color = new Color(0.40f, 0.29f, 0.18f);   // lifted 2026-08-22
                     if (acc != null) acc.color = Theme.Alpha(Color.Lerp(swbst, Color.black, 0.45f), 0.75f);
                     lbl.text = "?";
                     lbl.color = new Color(1f, 0.96f, 0.85f, 0.5f);
@@ -3343,7 +3381,7 @@ namespace SummaRace.Features.Race.Endless
             var frame = card.AddComponent<UnityEngine.UI.Image>();
             frame.sprite = WoodPlaqueSprite();
             frame.type = UnityEngine.UI.Image.Type.Sliced;
-            frame.color = Theme.TextBrownDeep;
+            frame.color = Theme.Wood;
 
             var inner = new GameObject("Inner");
             inner.transform.SetParent(card.transform, false);
@@ -3534,7 +3572,11 @@ namespace SummaRace.Features.Race.Endless
 
             _patrol = go.transform;
             _patrolAnim = go.GetComponentInChildren<Animator>();
-            if (_patrolAnim != null) _patrolAnim.SetBool("Running", true);
+            // NO SetBool HERE. The object is spawned INACTIVE (the cameo is hidden until a wrong
+            // pick), and Unity resets an Animator when its GameObject is enabled - so this call
+            // was silently discarded every time. Worse, it read like the run had been started,
+            // which is half of why the real entry below was left relying on a transition.
+            // UpdatePatrolCameo enters the run state directly on the frame he becomes visible.
 
             // Station him out of shot at the depth he will run at for the whole race: the bump
             // moves him sideways, never forward, so there is nothing to ease in from behind.
@@ -3631,18 +3673,35 @@ namespace SummaRace.Features.Race.Endless
                 _patrol.gameObject.SetActive(true);
                 if (_patrolAnim != null)
                 {
+                    // ---- THE COP USED TO GLIDE ALONG STANDING STILL FOR A FIFTH OF A SECOND ----
+                    //
+                    // Owner, 2026-08-22: "the patrol looks buggy, are you triggering the
+                    // animation double?" - and the substance of that is exactly right.
+                    //
+                    // PatrolAnimator's DEFAULT STATE IS `Idle`, and `Run` is reachable only
+                    // through a transition (0.1-0.2s) driven by the `Running` bool. Activating
+                    // the GameObject resets the Animator to that default. So the sequence was:
+                    // enable -> Animator resets to Idle -> we set the bool -> a 0.1-0.2s blend
+                    // begins. For those frames a STANDING man slid down the road at 10-30 m/s
+                    // and then popped into a run. On a 19-part rigid rig that reads as a glitch,
+                    // and it happened on every single wrong-answer beat.
+                    //
+                    // Play() enters the state outright, so his first rendered frame is already
+                    // mid-stride. The bool is still set, so the state machine agrees with us and
+                    // nothing fights the transition afterwards.
                     _patrolAnim.SetBool("Running", true);
                     // Their Animator ships as CullUpdateTransforms and resolves visibility from
-                    // the PREVIOUS frame, so the first visible frame would draw the authored
-                    // bind pose - and this cop is a 19-part RIGID rig, so an unposed frame is
-                    // limbs scattered at bind offsets rather than a slightly wrong pose.
+                    // the PREVIOUS frame, so an unposed first frame would be limbs at bind
+                    // offsets rather than a slightly wrong pose.
                     _patrolAnim.cullingMode = AnimatorCullingMode.AlwaysAnimate;
                     // 1x, because he holds a constant gap: his ground speed IS the runner's, so
                     // the run clip drives the motion exactly. The overtake needed 1.35 to cover
                     // for 15 m/s of sweep it was doing on top of the animation, and still lost.
                     _patrolAnim.speed = 1f;
-                    // Force the pose NOW so the bounds measured below describe a running cop
-                    // rather than the bind pose (same trick HoldRunnerPreRace uses on the kid).
+                    // Random phase so two beats in a row do not start on the same footfall.
+                    _patrolAnim.Play(PatrolRunState, 0, UnityEngine.Random.value);
+                    // Evaluate now, so the bounds measured below describe a running cop and the
+                    // first visible frame is already correct.
                     _patrolAnim.Update(0f);
                 }
                 _wasSurging = true;
@@ -4082,7 +4141,7 @@ namespace SummaRace.Features.Race.Endless
             var tpImg = titlePill.AddComponent<UnityEngine.UI.Image>();
             tpImg.sprite = WoodPlaqueSprite();
             tpImg.type = UnityEngine.UI.Image.Type.Sliced;
-            tpImg.color = new Color(0.36f, 0.24f, 0.13f);
+            tpImg.color = Theme.WoodLight;
             var tpRt = tpImg.rectTransform;
             tpRt.anchorMin = new Vector2(0.09f, 0.915f);
             tpRt.anchorMax = new Vector2(0.91f, 1.045f);
@@ -4358,7 +4417,12 @@ namespace SummaRace.Features.Race.Endless
             var img = chip.AddComponent<UnityEngine.UI.Image>();
             img.sprite = WoodPlaqueSprite();
             img.type = UnityEngine.UI.Image.Type.Sliced;
-            img.color = new Color(0.27f, 0.19f, 0.11f);   // the tracker's upcoming-slot wood
+            // CREAM, not near-black. These were five dark plaques with a thin colour strip, and
+            // on the device they read as five holes in the mission card — the over-correction
+            // the owner flagged on 2026-08-22. Cream plaque + the element's ink letter is the
+            // tracker's COLLECTED look, which the same screenshots show working, and it keeps
+            // the palette doing real teaching work instead of being reduced to a hairline.
+            img.color = Theme.Cream;
             var rt = img.rectTransform;
             rt.anchorMin = new Vector2(index * 0.2f + 0.02f, 0f);
             rt.anchorMax = new Vector2((index + 1) * 0.2f - 0.02f, 1f);
@@ -4379,7 +4443,7 @@ namespace SummaRace.Features.Race.Endless
 
             var letter = MakeHudText(chip.transform, new Vector2(0.5f, 0.5f), Vector2.zero, 58f);
             letter.text = string.IsNullOrEmpty(type) ? "?" : type.Substring(0, 1);
-            letter.color = Color.white;
+            letter.color = SummaRace.Constants.SwbstPalette.InkForIndex(index);   // 5.2-7.4:1 on cream
             letter.fontStyle = FontStyles.Bold;
             letter.rectTransform.sizeDelta = new Vector2(150f, 140f);
             // Lifted clear of the accent strip so a letter never sits on it.

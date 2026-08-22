@@ -70,6 +70,12 @@ namespace SummaRace.Features.Arrange
         private readonly int[] _missCount = new int[5];     // per element, for hints
         private readonly Stack<(int piece, int slot)> _undoStack = new();
         private int _selectedPiece = -1;                // element index of selected pool piece
+
+        /// <summary>An empty slot while a piece is held: brighter than its resting pastel so it
+        /// reads as "drop it here", and applied to ALL empty slots so it never hints which one
+        /// is correct. Warm cream-white rather than a colour, so it does not collide with the
+        /// SWBST palette those slots are already labelled in.</summary>
+        private static readonly Color SlotArmed = new Color(1f, 0.97f, 0.86f);
         private int _attempts;
         private bool _busy;
 
@@ -607,7 +613,30 @@ namespace SummaRace.Features.Arrange
                     slotLabels[i].color = filled ? LabelFilled : SwbstPalette.InkForIndex(i);
                 }
                 if (slotButtons[i] != null && !_slotLocked[i])
-                    slotButtons[i].image.color = filled ? SlotFilled : SwbstPalette.PastelForIndex(i);
+                {
+                    // ---- "WHERE CAN THIS GO?" (owner, 2026-08-22) ----------------------------
+                    //
+                    // "when you select an answer, at least highlight the box where the answer
+                    // can be put, so there is an indicator that it can be selected or moved,
+                    // because the player doesn't know how to do it."
+                    //
+                    // Correct, and it was the screen's biggest gap: tap-a-piece-then-tap-a-slot
+                    // is only discoverable if the second tap TARGET announces itself. Nothing
+                    // changed at all between "nothing selected" and "a piece is in my hand", so
+                    // a child who tapped a piece saw one pill tint and no hint of what to do
+                    // next.
+                    //
+                    // Every empty slot now brightens and breathes while a piece is held. Every
+                    // empty slot, not the correct one — this screen is a test of sequence, and
+                    // lighting only the right box would answer the question for them.
+                    bool armed = _selectedPiece >= 0 && !filled && !_slotLocked[i];
+                    slotButtons[i].image.color =
+                        filled ? SlotFilled
+                               : armed ? SlotArmed
+                                       : SwbstPalette.PastelForIndex(i);
+                    var srt = slotButtons[i].transform as RectTransform;
+                    if (srt != null) srt.localScale = Vector3.one * (armed ? 1.04f : 1f);
+                }
 
                 int element = _poolOrder[i];
                 bool placed = IsPlaced(element);

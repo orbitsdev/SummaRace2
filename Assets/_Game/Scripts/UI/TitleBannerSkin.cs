@@ -26,17 +26,20 @@ namespace SummaRace.UI
     /// then sets the fill and the label TOGETHER, in one place, and does nothing at all if it
     /// cannot find the fill. So the three possible states are:
     ///
-    ///   * this runs        -> dark fill  + cream label   (11.7:1, measured below)
+    ///   * this runs        -> wood fill  + cream label   (6.6:1, measured below)
     ///   * this cannot run  -> grey fill  + the scene's own dark label (still readable)
     ///   * the field is null-> nothing happens
     ///
     /// There is no path that leaves dark text on a dark fill, which is the failure a blind
     /// colour change would normally risk on a device nobody can playtest today.
     ///
-    /// CONTRAST. Fill <see cref="Theme.TextBrownDeep"/> (0.24, 0.157, 0.086) against the cream
-    /// (1, 0.96, 0.88) this writes: relative luminance 0.0269 vs 0.9042, so
-    /// (0.9042 + 0.05) / (0.0269 + 0.05) = <b>12.4:1</b> — far past WCAG AA for large text, and
-    /// it stays past AA even if a future pass lightens the fill considerably.
+    /// CONTRAST. Fill <see cref="Theme.Wood"/> (0.46, 0.31, 0.17) against the cream
+    /// (1, 0.96, 0.88) this writes: <b>6.6:1</b>, past WCAG AA for large text with margin.
+    ///
+    /// It was TextBrownDeep (12.4:1) until 2026-08-22 — technically excellent contrast, and far
+    /// too dark to look at: the owner reported the whole app reading as heavy and unfriendly,
+    /// and the Session Map's ten near-black tiles as "everything is switched off". Contrast is a
+    /// floor to clear, not a score to maximise; 6.6:1 clears it and looks like a children's game.
     /// </summary>
     public static class TitleBannerSkin
     {
@@ -63,7 +66,7 @@ namespace SummaRace.UI
             var fill = parent.GetComponent<Image>();
             if (fill == null) return;   // structure differs — change nothing, including the text
 
-            fill.color = Theme.TextBrownDeep;
+            fill.color = Theme.Wood;
             title.color = Label;
         }
     }
