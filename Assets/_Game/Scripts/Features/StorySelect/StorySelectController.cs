@@ -548,24 +548,34 @@ namespace SummaRace.Features.StorySelect
         }
 
         /// <summary>
-        /// PLAY on gold for the card being asked for; REPLAY on a quiet dark pill for one
-        /// already finished. Both are WORDS — the difference between "do this next" and "you
-        /// can do this again" must survive a muted tablet, a colour-blind reader and a child
-        /// who is not looking for it. Cream on the dark pill measures far past WCAG AA; dark
-        /// brown on gold is the pairing the gold badge was already measured for (Theme).
+        /// GOLD PLAY on the navy pill for the card being asked for; quiet cream REPLAY on a
+        /// near-ink pill for one already finished. Both are WORDS — the difference between
+        /// "do this next" and "you can do this again" must survive a muted tablet, a
+        /// colour-blind reader and a child who is not looking for it.
+        ///
+        /// WHY NOT A GOLD PILL: the badge sprite is UI/bar_bg, the NAVY loading-bar trough,
+        /// and an Image's colour MULTIPLIES its sprite — so tinting it GoldDeep rendered
+        /// navy x gold = dark olive-green, and the old TextBrownDeep label on that murk was
+        /// ~1.1:1, unreadable over the card art (owner screenshot 2026-08-22). A multiply can
+        /// only darken; navy cannot be turned gold, only the AVERAGE-chip trick (a different
+        /// sprite) could — and that is a layout change this pass does not make. So the pill
+        /// keeps the sprite's own navy (white = neutral tint, same as BuildStarCaption) and
+        /// the WORD carries the gold: Gold on Navy is Theme's documented 10.0:1, and Theme's
+        /// own rule is "put gold type on Navy or Ink instead". Hierarchy survives — bright
+        /// gold type for PLAY, dimmer cream on a darker pill for REPLAY.
         /// </summary>
         private static void StyleBadge(Transform badge, bool cleared)
         {
             if (badge == null) return;
 
             var pill = badge.GetComponent<Image>();
-            if (pill != null) pill.color = cleared ? Theme.Alpha(Theme.Ink, 0.72f) : Theme.GoldDeep;
+            if (pill != null) pill.color = cleared ? Theme.Alpha(Theme.Ink, 0.72f) : Color.white;
 
             var label = badge.GetComponentInChildren<TMP_Text>(true);
             if (label == null) return;
 
             label.text = cleared ? GameText.ReplayBadge : GameText.PlayBadge;
-            label.color = cleared ? Theme.Cream : Theme.TextBrownDeep;
+            label.color = cleared ? Theme.Cream : Theme.Gold;
             // REPLAY is 6 chars against PLAY's 4 in the same pill, so give autosize room to
             // find a smaller size rather than letting it run over the pill's rounded ends.
             label.fontSizeMin = cleared ? 14f : 18f;
@@ -742,15 +752,16 @@ namespace SummaRace.Features.StorySelect
         }
 
         /// <summary>
-        /// The word PLAY on a gold pill at the card's foot — the readable counterpart to the
-        /// padlock on the other two, so the state is carried by a WORD and not only by how
-        /// bright the picture is (the same reasoning that removed colour-only feedback from the
-        /// Reader and Arrange).
+        /// The word PLAY, in gold, on the navy pill at the card's foot — the readable
+        /// counterpart to the padlock on the other two, so the state is carried by a WORD and
+        /// not only by how bright the picture is (the same reasoning that removed colour-only
+        /// feedback from the Reader and Arrange).
         ///
         /// The label is cloned from the difficulty chip's own text so it carries this screen's
         /// TMP font asset and material; a fresh TMP_Text falls back to the project default and
-        /// reads as a different typeface. Dark brown on gold, because gold on gold is invisible
-        /// and gold type generally is a fill colour here, never a text one (Theme).
+        /// reads as a different typeface. Colours here are only DEFAULTS — StyleBadge runs
+        /// right after and owns the pairing (see its comment for why the pill is navy, not
+        /// gold: bar_bg is the navy trough sprite and an Image tint can only darken it).
         /// </summary>
         private Transform BuildPlayBadge(DifficultyCard card, RectTransform root)
         {
@@ -762,7 +773,7 @@ namespace SummaRace.Features.StorySelect
             var pill = pillGo.AddComponent<Image>();
             pill.sprite = Resources.Load<Sprite>("UI/bar_bg");
             if (pill.sprite != null) pill.type = Image.Type.Sliced;
-            pill.color = Theme.GoldDeep;
+            pill.color = Color.white;   // neutral: the sprite's own navy (see StyleBadge)
             pill.raycastTarget = false;
 
             var prect = pill.rectTransform;
@@ -779,7 +790,7 @@ namespace SummaRace.Features.StorySelect
             if (label == null) { Destroy(labelGo); return pillGo.transform; }
 
             label.text = GameText.PlayBadge;
-            label.color = Theme.TextBrownDeep;
+            label.color = Theme.Gold;   // Gold on the navy pill: Theme's measured 10.0:1
             label.alignment = TextAlignmentOptions.Center;
             label.enableAutoSizing = true;
             label.fontSizeMin = 18f;

@@ -901,6 +901,10 @@ namespace SummaRace.Features.TeacherMenu
                 if (row == null) continue;
 
                 ShapeRow(row);
+                // The badge the child chose at Name Entry, on the row that names them — on a
+                // shared tablet "which of these is the kid with the purple gem?" is a question
+                // the teacher can now answer without reading.
+                AttachBadge(row, learner.avatarIndex);
                 // Re-picking whoever is already playing would only flush their log for nothing.
                 row.interactable = !playing;
                 var chosen = learner;              // capture per row, not per loop
@@ -1143,6 +1147,57 @@ namespace SummaRace.Features.TeacherMenu
             scroll.inertia = true;
             scroll.decelerationRate = 0.135f;
             scroll.scrollSensitivity = 30f;
+        }
+
+        /// <summary>
+        /// The four Name Entry badges, by <c>avatarIndex</c>: 0 heart (red), 1 star (gold),
+        /// 2 gem (purple), 3 lightning (blue). The actual icons are Layer Lab pack sprites
+        /// under <c>Assets/Plugins/</c> — reachable only by scene reference, never by
+        /// Resources.Load — so the badge appears as the icon's COLOUR (plus a 45° turn on the
+        /// odd indexes, so colour is never the only channel — the F49 rule). An Image rather
+        /// than a glyph in the label for the reason TeacherLearnerRowActive already records: a
+        /// glyph outside the TMP atlas renders as an empty box. MainMenu carries the same
+        /// table — features never call each other, so the four values live in both by design.
+        /// </summary>
+        private static readonly Color[] BadgeColors =
+        {
+            new Color(0.910f, 0.283f, 0.333f),   // #E84855 — heart red
+            Theme.GoldDeep,                      // star gold
+            new Color(0.482f, 0.310f, 0.847f),   // #7B4FD8 — gem purple
+            new Color(0.216f, 0.494f, 0.882f),   // lightning blue
+        };
+
+        /// <summary>Square side. Rows are <see cref="LearnerRowHeight"/> (120) tall, so a 56
+        /// square — diagonal ≈ 79 when turned — stays inside the pill with room over.</summary>
+        private const float BadgeSize = 56f;
+
+        /// <summary>
+        /// Puts the learner's badge at the left end of a picker row. Skipped entirely for an
+        /// index outside the table (a profile from an older or hand-edited save) — the row then
+        /// looks exactly as it does today. Anchored, not a layout child: the VerticalLayoutGroup
+        /// only shapes the rows themselves, so this never disturbs the column.
+        /// </summary>
+        private static void AttachBadge(Button row, int avatarIndex)
+        {
+            if (row == null) return;
+            if (avatarIndex < 0 || avatarIndex >= BadgeColors.Length) return;
+
+            var badgeGo = new GameObject("Badge", typeof(RectTransform));
+            badgeGo.transform.SetParent(row.transform, false);
+
+            var badge = badgeGo.AddComponent<Image>();
+            badge.color = BadgeColors[avatarIndex];
+            badge.raycastTarget = false;   // the row keeps the tap
+
+            var rect = badge.rectTransform;
+            rect.anchorMin = new Vector2(0f, 0.5f);
+            rect.anchorMax = new Vector2(0f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.sizeDelta = new Vector2(BadgeSize, BadgeSize);
+            rect.anchoredPosition = new Vector2(24f + BadgeSize * 0.5f, 0f);
+            // Shape channel: odd indexes turn into a diamond, so star/lightning never differ
+            // from heart/gem by colour alone.
+            if ((avatarIndex & 1) == 1) rect.localRotation = Quaternion.Euler(0f, 0f, 45f);
         }
 
         /// <summary>Rows are laid out by the column, so their height has to be stated as a

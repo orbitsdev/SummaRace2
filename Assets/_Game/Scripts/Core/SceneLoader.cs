@@ -232,6 +232,14 @@ namespace SummaRace.Core
             var canvas = canvasGo.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 999; // always on top
+            var scaler = canvasGo.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1080f, 1920f);
+            scaler.matchWidthOrHeight = 0.5f;   // the authored scenes' value; this floats over them
+            // Without a raycaster the canvas is never hit-tested, so the CanvasGroup's
+            // blocksRaycasts had nothing to act on and taps during a load fell through
+            // to the scene underneath.
+            canvasGo.AddComponent<GraphicRaycaster>();
 
             // Bright playground-trail backdrop — same identity as the Boot splash.
             var imageGo = new GameObject("FadeImage");

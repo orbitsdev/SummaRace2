@@ -529,14 +529,30 @@ namespace SummaRace.Features.Race.Endless
 
             var go = new GameObject("Weather");
             go.transform.SetParent(cam.transform, false);
-            // a box above and ahead of the lens, wide enough to cover the corridor
+            // a box above and ahead of the lens, wide enough to cover the corridor: local
+            // (0, 9, 14) on the 15deg-pitched camera at world y=4 works out to a sheet ~9m
+            // above the road, centred ~16m ahead of the lens (~10m ahead of the runner).
             go.transform.localPosition = new Vector3(0f, 9f, 14f);
+            // A Box shape emits along its OWN local +Z. Parented with no rotation of its own,
+            // that axis was simply the camera's forward (~15deg below horizontal), so "rain"
+            // travelled DOWN THE CORRIDOR at startSpeed instead of falling — measured live.
+            // Point +Z at world DOWN instead. This is a WORLD rotation set once after
+            // parenting, which is safe because the chase camera's pitch is fixed for the
+            // whole run; it is simpler than deriving the local rotation that cancels the
+            // pitch, and would only drift if the camera ever started pitching mid-race.
+            // Rain re-tilts slightly off vertical in its case below.
+            go.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
 
             _weather = go.AddComponent<ParticleSystem>();
             var em = _weather.emission; em.rateOverTime = rate;
             var sh = _weather.shape;
             sh.shapeType = ParticleSystemShapeType.Box;
-            sh.scale = new Vector3(26f, 1f, 30f);
+            // The shape rotates with the transform, so the axes have MOVED: local X is still
+            // world X (across the road), local Y is now world Z (along the road), and local Z
+            // is world vertical. The plan-view footprint therefore lives on (x, y) — the same
+            // 26m-wide, 30m-deep cover the old (26, 1, 30) intended — and z is the emitting
+            // sheet's thickness, from which everything falls through the camera's view.
+            sh.scale = new Vector3(26f, 30f, 1f);
 
             var main = _weather.main;
             main.simulationSpace = ParticleSystemSimulationSpace.World; // so it does not turn with the camera
@@ -550,18 +566,38 @@ namespace SummaRace.Features.Race.Endless
             switch (kind)
             {
                 case RaceWorlds.WeatherRain:
-                    main.startSpeed = 24f; main.startLifetime = 1.1f;
+                    // ~12deg forward lean off vertical: +Z becomes (0, -0.98, 0.21), a steep
+                    // fall with a slight down-road drift — how rain reads past a moving runner,
+                    // and what Stretch mode below turns into near-vertical streaks.
+                    go.transform.rotation = Quaternion.Euler(78f, 0f, 0f);
+                    main.startSpeed = 24f;
+                    // The sheet sits ~9m up; at 24 m/s the drop is ~0.4s, so the old 1.1s left
+                    // two thirds of the live particles simulating unseen under the road.
+                    main.startLifetime = 0.6f;
                     main.startSize = 0.10f; main.startColor = new Color(0.78f, 0.86f, 1f, 0.55f);
                     rend.renderMode = ParticleSystemRenderMode.Stretch;
                     rend.velocityScale = 0.28f;   // the streak IS the rain
                     break;
                 case RaceWorlds.WeatherSnow:
-                    main.startSpeed = 3.2f; main.startLifetime = 4.5f;
+                    main.startSpeed = 3.2f;
+                    // ~2.8s to reach the road from ~9m at 3.2 m/s; a little over that so the
+                    // noise's sideways wander never culls a flake mid-air, without paying for
+                    // seconds of invisible under-road simulation.
+                    main.startLifetime = 3.6f;
                     main.startSize = 0.16f; main.startColor = new Color(1f, 1f, 1f, 0.85f);
                     var nz = _weather.noise; nz.enabled = true; nz.strength = 0.6f; nz.frequency = 0.3f;
                     break;
                 default: // motes — dust, pollen, fireflies: hang in the air rather than fall
-                    main.startSpeed = 0.6f; main.startLifetime = 6f;
+                    // NOT a falling sheet. Motes must fill the air the camera looks through,
+                    // so the box gains vertical depth (local z = world vertical now) and the
+                    // emitter drops so the volume spans roughly road level to ~8m, centred
+                    // ~14.5m ahead — rather than a 1m film hanging 9m overhead that nothing
+                    // would ever bring down into view. Emission speed goes to ~0: the drift
+                    // is the job of the noise plus the slight negative gravity (a slow,
+                    // firefly-like rise), not of streaming the particles anywhere.
+                    go.transform.localPosition = new Vector3(0f, 4f, 14f);
+                    sh.scale = new Vector3(26f, 30f, 8f);
+                    main.startSpeed = 0.05f; main.startLifetime = 6f;
                     main.startSize = 0.09f; main.startColor = new Color(1f, 0.93f, 0.72f, 0.6f);
                     var n2 = _weather.noise; n2.enabled = true; n2.strength = 0.35f; n2.frequency = 0.2f;
                     main.gravityModifier = -0.02f;

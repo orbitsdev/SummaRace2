@@ -2,6 +2,7 @@ using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using SummaRace.Constants;
 
@@ -115,9 +116,12 @@ namespace SummaRace.Core
             _customAction = action;
         }
 
-        /// <summary>Forget the current screen's registration. Called on every new registration
-        /// and by scene teardown, so a stale destination from the previous screen can never be
-        /// what BACK does on this one.</summary>
+        /// <summary>Forget the current screen's registration. Called on every new registration,
+        /// and automatically on every scene change (<see cref="OnActiveSceneChanged"/>), so a
+        /// stale destination from the previous screen can never be what BACK does on this one.
+        /// Scenes never need to remember to call this on the way out — no scene ever did, which
+        /// is how MainMenu (registering nothing) replayed NameEntry's blocked card, or
+        /// TeacherMenu's "leave?" dialog whose LEAVE reloaded MainMenu onto itself.</summary>
         public static void Clear()
         {
             _blockedReason = null;
@@ -130,12 +134,37 @@ namespace SummaRace.Core
 
         private void Awake() => _instance = this;
 
-        private void OnEnable() => Application.wantsToQuit += RefuseQuit;
+        private void OnEnable()
+        {
+            Application.wantsToQuit += RefuseQuit;
+            // This component lives on [Core] (DontDestroyOnLoad), so it outlives every scene —
+            // which is exactly why it must be the one to forget them: the registrations are
+            // static, no scene ever called Clear() on its way out, and Unity gives a destroyed
+            // controller no reliable place to do so anyway. Hooked here, the leak is
+            // structurally impossible rather than a convention each new screen must remember.
+            SceneManager.activeSceneChanged += OnActiveSceneChanged;
+        }
 
         private void OnDisable()
         {
             Application.wantsToQuit -= RefuseQuit;
+            SceneManager.activeSceneChanged -= OnActiveSceneChanged;
             if (_instance == this) _instance = null;
+        }
+
+        /// <summary>
+        /// Scene teardown for the registrations AND the overlay. Without this, BACK on a screen
+        /// that registered nothing replayed whatever the PREVIOUS screen registered — after
+        /// NameEntry, MainMenu showed "Let's get you set up first!"; after TeacherMenu, a
+        /// "leave?" dialog whose LEAVE reloaded MainMenu onto itself. Each scene then registers
+        /// its own rule in Start(), which always runs after this fires, so a legitimate
+        /// registration is never wiped. The dialog is dismissed SILENTLY: nobody tapped
+        /// anything, so playing Close()'s click here would answer a scene change with a sound.
+        /// </summary>
+        private void OnActiveSceneChanged(Scene previous, Scene next)
+        {
+            Clear();
+            Dismiss();
         }
 
         /// <summary>Always refuses. There is no state in which a learner tapping BACK should end
@@ -196,10 +225,18 @@ namespace SummaRace.Core
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxPop);
         }
 
-        private void Close()
+        /// <summary>Hides the dialog without a sound — the scene-change path, where no tap
+        /// happened and a click would be feedback for nothing.</summary>
+        private void Dismiss()
         {
             _open = false;
             if (_root != null) _root.SetActive(false);
+        }
+
+        /// <summary>The learner's own "no": dismiss, and answer the tap.</summary>
+        private void Close()
+        {
+            Dismiss();
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxClick);
         }
 

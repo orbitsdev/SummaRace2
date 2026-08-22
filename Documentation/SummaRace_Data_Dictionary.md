@@ -4,11 +4,10 @@
 No programming knowledge assumed. Everything below describes the files a tablet produces,
 what each variable means, and the traps to avoid when you load them.
 
-- Schema version described here: **6** — **verified field by field against commit `04a4040`
-  on 2026-08-06** (schema 5), by reading what the code writes rather than what the previous version
-  of this document said, and extended in the same way for the six schema-6 keys. All 47 keys
-  `SessionLog` emits are documented below; none is undocumented and none is documented that the
-  code does not write.
+- **Schema 6 — regenerated 2026-08-22 from `SessionLogService.cs`/`SaveModels.cs` (code is
+  authoritative).** Every field below was re-read from what the code writes, not from the
+  previous version of this document. All 47 keys `SessionLog` emits are documented below;
+  none is undocumented and none is documented that the code does not write.
 - Source of truth in code: `Assets/_Game/Scripts/Data/SaveModels.cs` (`SessionLog`, `RacePick`) and
   `Assets/_Game/Scripts/Core/SessionLogService.cs` (what writes it, and when — `SchemaVersion`
   is the one authority on the number at the top of this list). The export files themselves are
@@ -21,6 +20,13 @@ what each variable means, and the traps to avoid when you load them.
   per-card race record and pause accounting (§3.3) · **4** `participantCode` on every row (§3.1)
   · **5** `arrangeOrders`, the order the learner actually built (§3.4) · **6** the **backgrounded
   clocks** — how much of each phase duration the app was not on screen for (§3.6).
+- **One behaviour change without a schema bump (2026-08-22):** the race's *re-present* mechanic —
+  the single gold correct card handed back after a wrong pick or a missed gate — was **removed
+  from the game**. The row shape did not change, so the version stays 6, but on every row from
+  the current build: `represent` is **always `false`**, each race gate produces **at most one**
+  `racePicks` entry (so at most five per run), a **`missed` gate produces no `racePicks` entry
+  at all**, and every `raceWrongPicks` entry is `0` or `1`. Rows written by builds before that
+  date can still carry `represent: true` and repeat picks at a gate; §3.3 covers both readings.
 - **An older tablet keeps writing its own schema.** If one device is never re-flashed its rows
   simply lack the newer keys. A missing key is **not recorded**, which is not the same as zero —
   see §5.4 and the `*_captured` columns the analysis toolkit writes.
@@ -97,6 +103,14 @@ from the PIN-gated teacher screen, and it is a pseudonym you chose, not the chil
 empty `participantCode` means nobody set one on that tablet — a finding about the install, and
 worth chasing before the study ends rather than after.
 
+**Export backfills late-set codes.** A row is stamped with the code when the run *starts*, so a
+tablet where the teacher set the code only after the child had already played carries early rows
+with an empty code. At export time those rows get the learner's current code filled into the
+**exported copy** (the on-device originals are never rewritten — study data is append-only). So
+in an export file, an empty `participantCode` on a row means the code was **still unset when the
+export was made**, not merely when the run happened; those rows are joinable only through the
+roster.
+
 One export covers **one tablet**. With 40 learners on 40 tablets you will concatenate 40
 `.jsonl` files and 40 rosters. Rows stay separable because every row carries its own
 `learnerId`, and every learner id is unique per tablet.
@@ -117,7 +131,7 @@ which version brought each one in.
 | `runId` | string (32 hex) | story start | Unique id for this play-through. **Several rows can share one `runId`** — see §5, deduplication. |
 | `isPartial` | boolean | on write | `true` = a mid-run safety snapshot. `false` = the row written when the run ended. |
 | `learnerId` | string (guid) | story start | The child. Join key to the roster. Never blank in exported data. Minted on the tablet, so it appears nowhere on paper — use `participantCode` to reach the booklets. |
-| `participantCode` | string | story start | **Schema 4.** The researcher's own participant id for this child (e.g. `P07`), copied off their paper booklet by the teacher behind the PIN. **This is the join to the pretest/posttest scores**, and it is duplicated here from the roster on purpose: a lost or forgotten roster file would otherwise sever every row from the outcome measure. Normalised to upper case with spaces removed, and refused at entry if it duplicates another child on that tablet. Empty = the teacher never set one. |
+| `participantCode` | string | story start | **Schema 4.** The researcher's own participant id for this child (e.g. `P07`), copied off their paper booklet by the teacher behind the PIN. **This is the join to the pretest/posttest scores**, and it is duplicated here from the roster on purpose: a lost or forgotten roster file would otherwise sever every row from the outcome measure. Normalised to upper case with spaces removed, and refused at entry if it duplicates another child on that tablet. May be empty on a row written before the teacher set the code — but Export fills those in from the profile at export time (§2), so in an **export** file empty = still unset when the export was made. |
 | `storyId` | string | story start | e.g. `s07_average`. 30 possible values: `s01`–`s10` × `easy`/`average`/`hard`. |
 | `session` | integer 1–10 | story start | Which of the ten teaching sessions this story belongs to. |
 | `difficulty` | string | story start | `easy`, `average` or `hard` — the third within-session step. |
@@ -155,11 +169,17 @@ All five-element lists are in fixed **S-W-B-S-T order**:
 |---|---|---|---|---|---|
 | slot | Somebody | Wanted | But | So | Then |
 
+**When these are written.** `racePicks`, `raceWrongPicks` and the `correct`/`wrong` half of
+`raceFirstOutcome` are recorded **the moment each card is touched**; `raceFirstPickCorrect`,
+`raceRunSeconds`, `timesCaught` and the `missed` verdicts are written **only when the finish
+line is crossed**. That ordering is why a partial row can carry picks while
+`raceFirstPickCorrect` is still an empty list.
+
 | Field | Type | Meaning |
 |---|---|---|
 | `raceFirstPickCorrect` | list of 5 booleans | Was the learner's **first** encounter with each gate the correct card. **This is the star measure** (§4). Empty list if the race never finished. |
-| `raceFirstOutcome` | list of 5 strings | What actually happened at that first encounter: `correct`, `wrong` (they chose a distractor — a comprehension error) or `missed` (they touched no card at all and steered past the gate — an attention/motor event). Empty string = **no free pick was recorded for that slot, and the run never reached the finish line to have the gaps resolved** — see the note below. **Use this rather than `raceFirstPickCorrect` whenever "did not know" and "did not hit it" must be told apart** — the boolean collapses `wrong` and `missed` into the same `false`. |
-| `raceWrongPicks` | list of 5 integers | How many wrong cards were picked at each element in total, including any after the first. A wrong pick makes the correct card come back, so this can exceed 1. |
+| `raceFirstOutcome` | list of 5 strings | What actually happened at that first encounter: `correct`, `wrong` (they chose a distractor — a comprehension error) or `missed` (they touched no card at all and steered past the gate — an attention/motor event). A `missed` gate raised no pick, so it also has **no `racePicks` entry** — that absence is what a miss looks like in the item-level record. Empty string = **no free pick was recorded for that slot, and the run never reached the finish line to have the gaps resolved** — see the note below. **Use this rather than `raceFirstPickCorrect` whenever "did not know" and "did not hit it" must be told apart** — the boolean collapses `wrong` and `missed` into the same `false`. |
+| `raceWrongPicks` | list of 5 integers | How many wrong cards were picked at each element. **In the current build every entry is `0` or `1`**: each gate allows exactly one pick, and after a wrong pick the app shows the correct answer on the reading panel and moves on — nothing comes back to pick again. Rows from builds before 2026-08-22 (the re-present mechanic) can exceed 1. |
 | `raceRunSeconds` | float, seconds | Duration of the race itself, from the world starting to move to the finish line. Excludes the mission briefing and the 3-2-1 countdown. |
 | `timesCaught` | integer | **Always `0`. This is by design, not a bug** (GDD decision D7): the patrol is a friendly chase that can never catch the learner, because the game must never punish. The field exists because the design document lists it; treat it as a constant and do not model it. |
 | `racePicks` | list of objects | **Schema 3. Every card touched in the race, in the order it happened** — the item-level record. See below. |
@@ -183,7 +203,11 @@ All five-element lists are in fixed **S-W-B-S-T order**:
 "chose the retelling instead of the problem" and "chose a detail instead of the goal" are
 different misconceptions, and only this can tell them apart.
 
-One object per pick, including repeat picks at the same gate:
+One object per pick, in the order they happened. In the current build that is **at most one per
+gate, so at most five per run** — a gate is spent by its first pick, and a **`missed` gate
+contributes no entry at all** (the absence of a row for an element is exactly what a miss looks
+like here). Rows from builds before 2026-08-22 can additionally carry repeat picks and
+`represent: true` entries; the field meanings below cover both:
 
 | Key | Type | Meaning |
 |---|---|---|
@@ -192,11 +216,12 @@ One object per pick, including repeat picks at the same gate:
 | `text` | string | The card's exact words, stored beside the index so the row still reads on its own if the story files are ever regenerated and the indices point at different words. |
 | `lane` | integer | `0` left, `1` centre, `2` right; `-1` unknown. Lanes are randomised per gate, so this is what lets position bias be **checked** rather than assumed away. |
 | `correct` | boolean | Was this the right card. |
-| `represent` | boolean | **`true` = the single gold card the app handed back** after a wrong pick or a missed gate — not a free choice among three. It is never a first encounter. **Exclude `represent: true` from any "what did they choose" analysis**, or the correct answer will appear to have been chosen far more often than it was. |
+| `represent` | boolean | **Always `false` on rows from the current build** — the re-present mechanic (the single gold correct card the app handed back after a wrong pick or a missed gate) was removed from the game on 2026-08-22. The field remains because a study column is never deleted. On rows from **older builds** `true` marks exactly that gold card: not a free choice among three, and never a first encounter. **When analysing mixed data, exclude `represent: true` from any "what did they choose" analysis**, or the correct answer will appear to have been chosen far more often than it was. |
 | `atSeconds` | float | Seconds since the play-through opened, for ordering picks against the phase clocks. |
 
-> **Truncation rule.** The list is capped at **64 picks**. A well-behaved run produces at most
-> 35, so this cannot be reached in play — it exists so that no stuck gate can grow one JSON line
+> **Truncation rule.** The list is capped at **64 picks**. A well-behaved run on the current
+> build produces at most 5 (at most 35 under the old re-present mechanic), so this cannot be
+> reached in play — it exists so that no stuck gate can grow one JSON line
 > without bound on a low-memory tablet. If the cap is ever hit, the **earliest picks are kept and
 > the newest dropped**, because the early ones are the first encounters and those are the measure.
 > A row with exactly 64 entries is the only way to see it happened, and it is worth a glance.
@@ -280,7 +305,7 @@ Five more things to know before quoting it:
 
 | Field | Type | Meaning |
 |---|---|---|
-| `starsEarned` | integer 1–3 | The reward shown to the learner. Computed **only** from first-pick race accuracy: 5 of 5 → 3 stars, 4 of 5 → 2 stars, 3 or fewer → 1 star. Minimum is always 1 — there is no zero. `0` in the data means the run never reached Results. |
+| `starsEarned` | integer 1–3 | The reward shown to the learner. Computed **only** from first-pick race accuracy: 5 of 5 → 3 stars, **3 or 4 of 5 → 2 stars, 2 or fewer → 1 star**. (The GDD's original 2-star gate was 4 of 5; it was deliberately lowered to 3 — owner decision D4 — so do not "correct" the data against the GDD.) Minimum is always 1 — there is no zero. `0` in the data means the run never reached Results. Display only: it carries no information `raceFirstPickCorrect` does not already carry. |
 | `totalSeconds` | float | Whole play-through, story opened → row written. |
 | `readingSeconds` | float | Story opened → last reading question answered. |
 | `raceSeconds` | float | Reading finished → finish line. Includes briefing + countdown; `raceRunSeconds` is the moving part alone. |
@@ -363,7 +388,7 @@ One completed run. In the real file this is a **single line**; it is wrapped her
   "arrangeAssisted": false,
   "nudgeCount": 1,
   "summaryText": "Ana wanted to join the parade but she lost her slippers so her lola made new ones and she danced.",
-  "starsEarned": 1,
+  "starsEarned": 2,
   "isReplay": false,
   "schemaVersion": 6,
   "appVersion": "1.0.0",
@@ -387,7 +412,6 @@ One completed run. In the real file this is a **single line**; it is wrapped her
     {"element":0,"option":0,"text":"Ana, a girl from the barangay","lane":2,"correct":true,"represent":false,"atSeconds":131.4},
     {"element":1,"option":0,"text":"To dance in the fiesta parade","lane":0,"correct":true,"represent":false,"atSeconds":146.9},
     {"element":2,"option":2,"text":"The parade started very early","lane":1,"correct":false,"represent":false,"atSeconds":161.2},
-    {"element":2,"option":0,"text":"Her only slippers were lost","lane":1,"correct":true,"represent":true,"atSeconds":166.0},
     {"element":4,"option":0,"text":"She danced at the front","lane":1,"correct":true,"represent":false,"atSeconds":205.7}
   ],
   "racePauseCount": 0,
@@ -411,15 +435,16 @@ Slot 3 (**So**) reads `false` in `raceFirstPickCorrect` but `missed` in `raceFir
 with **zero** wrong picks: they never chose a wrong answer, they simply drove past the gate.
 Counting that as a comprehension failure would understate this child. They then ordered the
 five parts unaided on the second attempt and wrote a sentence that carries all five SWBST
-slots after one nudge — much stronger performance than `starsEarned: 1` suggests, because
-stars come from race accuracy alone.
+slots after one nudge — stronger performance than `starsEarned: 2` alone suggests, because
+stars come from race accuracy alone and ignore everything after the race.
 
 **What the two new lists add.** `racePicks` names the wrong idea: at **But** this child chose
-*"The parade started very early"* — a detail from the story rather than the problem — and the
-following entry has `represent: true`, which is the app handing back the gold card and must not
-be counted as a choice. Note there is **no free pick at all for element 3 (So)**: that is what a
-`missed` gate looks like in this list, and it is why the outcome field says `missed` rather than
-`wrong`. `arrangeOrders` shows the same **But/So confusion again on a different screen** — the
+*"The parade started very early"* — a detail from the story rather than the problem. That is the
+only entry for element 2: a wrong pick ends the gate, and the app then *shows* the correct answer
+on the reading panel rather than offering anything to collect, so nothing else is logged there.
+Note there is **no entry at all for element 3 (So)**: that is what a `missed` gate looks like in
+this list, and it is why the outcome field says `missed` rather than `wrong`.
+`arrangeOrders` shows the same **But/So confusion again on a different screen** — the
 first board `"01324"` put the So part in the But slot and the But part in the So slot, and the
 second board (with those two now the only unlocked slots) got it right. One child agreeing with
 themselves across two phases is far stronger evidence than either screen alone.
@@ -483,8 +508,8 @@ On an abandoned row `raceFirstOutcome` only reaches as far as the learner got, a
 **Two things about abandoned rows that are easy to get wrong:**
 
 - **Handing the tablet to another child closes the run in flight.** Teacher-gated learner
-  switching writes out whatever the previous child had done, as an abandoned row with an **empty
-  `abandonReason: "learner_switched"`**, stamped with the *previous* learner's id — which is
+  switching writes out whatever the previous child had done, as an abandoned row with
+  **`abandonReason: "learner_switched"`**, stamped with the *previous* learner's id — which is
   correct, but it means a **shared tablet manufactures abandoned rows that are not dropouts**.
   Filter that token out before computing any dropout figure. (Rows written by builds before this
   token existed carry an empty reason instead and are indistinguishable from a dead device; if a
@@ -528,7 +553,7 @@ rows in its data-quality report; do the same if you load the files yourself.
 | **Support-removal drop** | reading accuracy − race accuracy, per run |
 | Per-slot difficulty | for each index 0–4, proportion `correct` across learners — shows which SWBST slot the cohort finds hardest |
 | Comprehension error rate | proportion of `raceFirstOutcome == "wrong"` (excludes `missed`) |
-| Which wrong idea, per slot | count `racePicks` entries by (`element`, `option`), **excluding `represent: true`** and keeping only each element's first free pick |
+| Which wrong idea, per slot | count `racePicks` entries by (`element`, `option`). On current-build rows every entry already is a first free pick; on pre-2026-08-22 rows **exclude `represent: true`** and keep only each element's first free pick |
 | Sequencing accuracy | proportion of runs whose `arrangeOrders[0] == "01234"` |
 | **Per-slot sequencing confusion** | for each slot *k* and part *e*, how often `arrangeOrders[0][k] == str(e)`. The 5×5 matrix; the diagonal is correct, the off-diagonal cells are the systematic confusions |
 | Clean two-part swaps | for each pair *(a,b)*, how often `order[a]==str(b)` **and** `order[b]==str(a)` on the first attempt — a transposition is stronger evidence than one wrong slot, because guessing rarely produces a tidy swap |
@@ -646,11 +671,12 @@ in the Python step above and export a flat CSV.
 4. **`starsEarned` is a function of `raceFirstPickCorrect` alone** — it carries no information
    the race lists do not already carry, and it ignores the reading, arrange and summary phases.
    Do not use it as an overall performance score.
-5. **The `represent` trap in `racePicks`.** After a wrong pick or a missed gate the app hands the
-   learner the correct card back. That pick is logged like any other but carries
-   `represent: true`, and counting it as a choice would make the correct answer look far more
-   popular than it was. Filter it out of every "what did they choose" analysis. (This is the one
-   real footgun in the item-level data; the item-level record itself has existed since schema 3.)
+5. **The `represent` trap in `racePicks` — historical, but still a trap in mixed data.** Builds
+   before 2026-08-22 handed the correct card back after a wrong pick or a missed gate; that pick
+   was logged like any other but carries `represent: true`, and counting it as a choice would
+   make the correct answer look far more popular than it was. The mechanic no longer exists —
+   current-build rows are always `represent: false` — but filter `represent: true` out of every
+   "what did they choose" analysis anyway, so the same code is safe on rows from any build.
 6. **One row = one story, not one classroom session.** A session is three stories; aggregate by
    `session` yourself.
 7. **No content-pack version in the row.** If story text or answer options are revised

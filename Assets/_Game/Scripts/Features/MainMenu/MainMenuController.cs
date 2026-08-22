@@ -113,6 +113,16 @@ namespace SummaRace.Features.MainMenu
             if (startLabel != null) startLabel.text = GameText.TapToStart;
             if (subtitleText != null) subtitleText.text = GameText.BootTagline;
 
+            // Android BACK now answers instead of being swallowed (owner, 2026-08-22).
+            // Registered rather than handled here, so one overlay serves every scene and
+            // each screen only supplies its own rule - see Core/BackButtonGuard. MainMenu is
+            // the app's ROOT screen: there is nowhere behind it to leave to, so BACK gets the
+            // blocked form pointing the child forward. Before this screen registered anything,
+            // BACK here replayed whatever the PREVIOUS scene had registered — NameEntry's
+            // "Let's get you set up first!", or TeacherMenu's leave dialog whose LEAVE
+            // reloaded MainMenu onto itself.
+            Core.BackButtonGuard.RegisterBlocked(GameText.BackBlockedMainMenu);
+
             if (activeLearnerText == null) activeLearnerText = BuildActiveLearnerLine();
             if (activeLearnerText != null)
             {
@@ -121,6 +131,10 @@ namespace SummaRace.Features.MainMenu
                 activeLearnerText.text = learner != null ? GameText.PlayingAs(learner.displayName) : string.Empty;
                 // An empty pill reads as a UI glitch, so the chip goes with the name.
                 if (_activeLearnerPill != null) _activeLearnerPill.SetActive(learner != null);
+                // The badge the learner chose at Name Entry, next to the name it belongs to —
+                // avatarIndex was written there and read by nothing, so on a shared tablet the
+                // one choice a child made about their identity never appeared again.
+                EnsureLearnerBadge(learner);
             }
             else if (learner != null)
             {
@@ -221,6 +235,70 @@ namespace SummaRace.Features.MainMenu
             // Amber is a FILL colour in this project's theme and fails as a text background for
             // light type (see Theme's measured pairs), so the label flips to dark brown.
             if (activeLearnerText != null) activeLearnerText.color = Theme.TextBrownDeep;
+        }
+
+        // ---------- the learner's badge, resurfaced ----------
+
+        /// <summary>
+        /// The four Name Entry badges, by <c>avatarIndex</c>: 0 heart (red), 1 star (gold),
+        /// 2 gem (purple), 3 lightning (blue). The actual icons are Layer Lab pack sprites
+        /// under <c>Assets/Plugins/</c> — reachable only by scene reference, never by
+        /// Resources.Load — so the badge resurfaces as the icon's COLOUR (plus a 45° turn on
+        /// the odd indexes, so colour is never the only channel — the F49 rule). Red and
+        /// purple reuse BootTagline's exact values; gold is the brand token. Not Theme tokens:
+        /// like SwbstPalette, these are per-badge identity colours whose job is to differ, and
+        /// Theme's own exclusions bar exactly that class. TeacherMenu carries the same table —
+        /// features never call each other, so the four values live in both files by design.
+        /// </summary>
+        private static readonly Color[] BadgeColors =
+        {
+            new Color(0.910f, 0.283f, 0.333f),   // #E84855 — heart red
+            Theme.GoldDeep,                      // star gold
+            new Color(0.482f, 0.310f, 0.847f),   // #7B4FD8 — gem purple
+            new Color(0.216f, 0.494f, 0.882f),   // lightning blue
+        };
+
+        /// <summary>Square side, sized to sit inside the pill (pill ≈ 98 canvas units tall at
+        /// the 1080×1920 reference; a rotated square's diagonal ≈ 85 still clears it).</summary>
+        private const float BadgeSize = 60f;
+
+        /// <summary>
+        /// Puts the learner's chosen badge at the left end of the "Playing as …" pill.
+        /// Null-safe in every direction: no learner (editor-direct — the pill is hidden
+        /// anyway), no pill (the scene wired its own label, so there is nothing to anchor
+        /// into), or an index outside the table (a profile from an older or hand-edited save)
+        /// all leave the pill exactly as it was.
+        /// </summary>
+        private void EnsureLearnerBadge(Data.LearnerProfile learner)
+        {
+            if (_activeLearnerPill == null || learner == null) return;
+            if (learner.avatarIndex < 0 || learner.avatarIndex >= BadgeColors.Length) return;
+
+            var badgeGo = new GameObject("LearnerBadge", typeof(RectTransform));
+            badgeGo.transform.SetParent(_activeLearnerPill.transform, false);
+
+            var badge = badgeGo.AddComponent<Image>();
+            badge.color = BadgeColors[learner.avatarIndex];
+            badge.raycastTarget = false;   // decor: never steal a tap (same rule as the decor sweep)
+
+            var rect = badge.rectTransform;
+            rect.anchorMin = new Vector2(0f, 0.5f);
+            rect.anchorMax = new Vector2(0f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.sizeDelta = new Vector2(BadgeSize, BadgeSize);
+            rect.anchoredPosition = new Vector2(18f + BadgeSize * 0.5f, 0f);
+            // Shape channel: odd indexes turn into a diamond, so star/lightning never differ
+            // from heart/gem by colour alone.
+            if ((learner.avatarIndex & 1) == 1) rect.localRotation = Quaternion.Euler(0f, 0f, 45f);
+
+            // Keep the name clear of the badge — only when the badge exists, so an unbadged
+            // pill stays byte-identical to today's layout.
+            if (activeLearnerText != null)
+            {
+                var textRect = activeLearnerText.rectTransform;
+                if (textRect.parent == _activeLearnerPill.transform)
+                    textRect.offsetMin = new Vector2(18f + BadgeSize + 12f, textRect.offsetMin.y);
+            }
         }
 
         /// <summary>

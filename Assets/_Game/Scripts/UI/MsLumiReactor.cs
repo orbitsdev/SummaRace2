@@ -157,11 +157,24 @@ namespace SummaRace.UI
         {
             var cheer = LumiExpressions.Next(cheerPool) ?? cheerSprite;
             ApplyPose(cheer);
-            if (_group != null) _group.alpha = 1f; // pop back in (she may have been hidden)
-            Tween.PunchScale(transform, Vector3.one * 0.18f, 0.5f);
-            yield return new WaitForSeconds(cheerSeconds);
-            ShowRest();
-            _routine = null;
+
+            // The screen owns this alpha (Reader hides her behind its question with alpha 0),
+            // so the pop-in must be temporary. Restoring in finally covers interruption too:
+            // StopCoroutine disposes the iterator, running this finally, so a superseding
+            // cheer captures the true pre-cheer value — never the mid-cheer 1.
+            float alphaBefore = _group != null ? _group.alpha : 1f;
+            try
+            {
+                if (_group != null) _group.alpha = 1f; // pop back in (she may have been hidden)
+                Tween.PunchScale(transform, Vector3.one * 0.18f, 0.5f);
+                yield return new WaitForSeconds(cheerSeconds);
+                ShowRest();
+                _routine = null;
+            }
+            finally
+            {
+                if (_group != null) _group.alpha = alphaBefore;
+            }
         }
 
         /// <summary>

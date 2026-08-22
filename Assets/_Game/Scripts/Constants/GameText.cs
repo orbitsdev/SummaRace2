@@ -37,6 +37,9 @@ namespace SummaRace.Constants
         public const string BackBlockedArrange = "Put the story parts in order first!";
         public const string BackBlockedSummary = "Write your sentence first - you can do it!";
         public const string BackBlockedNameEntry = "Let's get you set up first!";
+        /// <summary>MainMenu is the app's root — there is nothing behind it to go back TO, so
+        /// BACK points the child forward instead of pretending a "back" exists.</summary>
+        public const string BackBlockedMainMenu = "You're at the start! Tap TAP TO START to play!";
 
         // Where BACK may legally go, per screen. Worded as the destination, so the child knows
         // what they are choosing rather than only what they are leaving.
