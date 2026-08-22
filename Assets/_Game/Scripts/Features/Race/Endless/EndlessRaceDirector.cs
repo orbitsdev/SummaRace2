@@ -2399,13 +2399,27 @@ namespace SummaRace.Features.Race.Endless
             float target = _activeGateRoot != null ? _activeGateDistance : _pendingGateDistance;
             if (target < 0f) return;
 
-            float speed = Mathf.Max(track.speed, track.minSpeed);
-            // Costed with the SAME number NextGateGap reserved the metres for. Reading
-            // RacePreviewLeadSeconds directly here would have easy paying for a 16.2s window
-            // and then opening a 12s one, putting the 4 seconds it bought straight back into
-            // dead running - which is the bug this pass exists to remove.
-            float lead = speed * ReadWindowSeconds();
-            if (target - track.worldDistance > lead) return;
+            // Costed with the SAME number NextGateGap reserved the metres for - and, since
+            // 2026-08-22, with the same CONVERSION. Reading RacePreviewLeadSeconds directly here
+            // would have easy paying for a 16.2s window and then opening a 12s one, putting the
+            // 4 seconds it bought straight back into dead running.
+            //
+            // ⚠️ This line used to read `speed * ReadWindowSeconds()`, and the comment above it
+            // claimed parity with NextGateGap that the arithmetic did not deliver. Same seconds,
+            // different conversion: NextGateGap reserves its metres by INTEGRATING the track's
+            // 0.2 m/s^2 (`d = v*T + 0.5*a*T^2`), while this opened the panel on a naive
+            // `v * T`. The runner accelerates across the lead, so the naive product is short,
+            // and the panel therefore went up LATER than the runway that had been bought for it:
+            // easy delivered ~14.2-15.3s against the 16.2s ReadWindowEasy was raised to buy, and
+            // average/hard ~10.8-11.5s against the ~11.6s a 100wpm reader needs per gate.
+            //
+            // That is the exact class of bug this file has already fixed twice - in NextGateGap
+            // and in SecondsToCover - and reading time is the one place it actually costs the
+            // study something, because the race is the headline measure and a window that comes
+            // up short pressures the slow readers the whole D2 decision exists to protect.
+            // Reuse SecondsToCover rather than re-deriving: one conversion, one place to be
+            // wrong, and it is the exact inverse of the one NextGateGap reserved with.
+            if (SecondsToCover(track, target - track.worldDistance) > ReadWindowSeconds()) return;
 
             RevealOptionPreview();
         }
