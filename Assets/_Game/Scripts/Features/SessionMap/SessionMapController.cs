@@ -206,20 +206,50 @@ namespace SummaRace.Features.SessionMap
             // opposite: a soft translucent ink panel that darkens the art just enough for the
             // light tiles to lift off it, with a thin gold edge to say "this is a board". The
             // hierarchy stays tiles-first, which is what a level select is for.
-            // ⚠️ AND IT MUST BE A CARD, NOT A GLASS SLAB. Tinting panel_gold to a translucent
-            // grey produced exactly that (owner, 2026-08-23: "you wrap parent in square glass
-            // granite") — a 9-slice at full alpha keeps its rounded corners, but drop the alpha
-            // and the corner pixels go translucent-grey instead of away, so the panel reads as
-            // a rectangle of frosted glass. It uses the WOOD PLAQUE at full alpha instead: real
-            // rounded corners, its own grain, tinted to a soft parchment shadow that still lets
-            // the playground art read through as tone rather than as picture.
+            // ---- THE BOARD GETS ITS OWN MATERIAL ------------------------------------------
+            // Wood banner + wood board + paper tiles was one material doing two jobs, which is
+            // why no amount of re-toning the browns made it sit together (owner, 2026-08-23:
+            // "even the colour and design doesn't fit as one"). The kit ships a panel built for
+            // exactly this screen — teal with a gold rim, Panel_Sprites/Level screen pannel —
+            // and it was what this scene used before tonight. With it back the hierarchy reads
+            // in one glance: WOOD SIGN above, TEAL BOARD below, PAPER PAGES on it.
             var boardImg = board.GetComponent<Image>();
             if (boardImg != null)
             {
                 boardImg.enabled = true;
-                boardImg.sprite = Resources.Load<Sprite>("UI/wood_plaque");
-                if (boardImg.sprite != null) boardImg.type = Image.Type.Sliced;
-                boardImg.color = new Color(0.94f, 0.88f, 0.78f, 0.92f);
+                var panel = Resources.Load<Sprite>("UI/board_level");
+                if (panel != null)
+                {
+                    boardImg.sprite = panel;
+                    boardImg.type = Image.Type.Sliced;
+                    boardImg.color = Color.white;
+                }
+                else boardImg.color = new Color(0.94f, 0.88f, 0.78f, 0.92f);
+            }
+
+            // The race's own dirt path, running down the middle of the board — the map shows
+            // the track the child is about to run on, so this screen belongs to THIS game
+            // rather than to any level select (owner: "why not use some texture from the race
+            // scene?"). Behind the tiles, tiled vertically, never a raycast target.
+            if (board.Find("BoardTrail") == null)
+            {
+                var trail = Resources.Load<Sprite>("UI/trail_dirt");
+                if (trail != null)
+                {
+                    var go = new GameObject("BoardTrail", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+                    var trt = (RectTransform)go.transform;
+                    trt.SetParent(board, false);
+                    trt.SetAsFirstSibling();
+                    trt.anchorMin = new Vector2(0.5f, 0f); trt.anchorMax = new Vector2(0.5f, 1f);
+                    trt.pivot = new Vector2(0.5f, 0.5f);
+                    trt.sizeDelta = new Vector2(150f, -80f);
+                    trt.anchoredPosition = Vector2.zero;
+                    var timg = go.GetComponent<Image>();
+                    timg.sprite = trail;
+                    timg.type = Image.Type.Tiled;
+                    timg.color = new Color(1f, 1f, 1f, 0.30f);
+                    timg.raycastTarget = false;
+                }
             }
 
             // Panel parts an earlier build added are removed, so a rebuilt scene cannot keep a
