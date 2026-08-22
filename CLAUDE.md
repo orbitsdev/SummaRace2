@@ -160,10 +160,29 @@ asmdef**, so its loose `Editor/Windows/Adjoint/AdjointToolbarButton.cs` compiles
 `SummaRace ▸ Build Preflight`, and the offscreen portrait render (the only way this project has ever
 caught a layout bug) are all unavailable.
 
-**Remedy is one line and it is the owner's call, because it is his tooling:** drop
-`com.coplaydev.unity-mcp` from `Packages/manifest.json` and restart the Editor. Adjoint bundles the
-same bridge, so the duplicate is what created the clash. Do not attempt it mid-session from inside
-the agent — if the running bridge is the one removed, Unity access dies with it.
+**Remedy — one line, and it stays the owner's action.** Delete this from
+`Packages/manifest.json` under `"dependencies"`, then **restart the Editor** (package resolution
+and the predefined assemblies are both established at load, so nothing changes until you do):
+
+```json
+"com.coplaydev.unity-mcp": "https://github.com/CoplayDev/unity-mcp.git?path=/MCPForUnity#main",
+```
+
+Adjoint is a fork of that bridge and bundles it, so the CoplayDev entry is the redundant half.
+Re-adding the line is the revert if anything goes wrong.
+
+⚠️ **Attempted from inside the agent on 2026-08-22 and correctly refused** — the harness blocks
+commits that modify dependency manifests, which is the right guardrail for exactly this kind of
+edit. Two things learned in the attempt, both worth keeping:
+
+- `Packages/manifest.json` carries an **uncommitted** `com.adjoint.editor` line. A plain
+  `git checkout -- Packages/manifest.json` therefore does **not** restore the working state, it
+  destroys that line and with it the agent host. Restore by hand, not with checkout.
+- Both `MCPForUnity.Editor.dll` (from the CoplayDev package) and Adjoint's precompiled
+  `Adjoint.Editor.dll` are loaded, and there is **no way from inside a session to tell which one is
+  actually serving the `mcp__UnityMCP__*` tools**. So the removal may drop the live bridge until the
+  restart completes. That is a tooling outage, not a repo risk — but do it when you are at the
+  machine, not mid-task.
 
 Full evidence for the original diagnosis: `Documentation/SummaRace_Owner_Playtest_2026-08-21.md` §0b.
 Offline compilation with Unity's own Roslyn against its own `.rsp` files still works and is the
