@@ -243,15 +243,28 @@ namespace SummaRace.Core
 
             var card = new GameObject("Card");
             card.transform.SetParent(canvasGo.transform, false);
-            var cardImg = card.AddComponent<Image>();
-            cardImg.color = Theme.Wood;   // the app's warm wood furniture
+            // THE SAME CARD THE RACE DRAWS, not a flat rectangle (owner, 2026-08-22: "why do you
+            // use simple flat card in confirms when leave? consider as well the consistency of
+            // game interface"). This was a single solid Theme.Wood Image while every other card
+            // in the app — the mission briefing, the pause card, the race's own leave prompt — is
+            // a wood FRAME around a cream FACE. On the one screen that interrupts a learner, the
+            // app stopped looking like itself.
+            //
+            // WoodPanel lives in SummaRace.UI precisely so this can reach it: BackButtonGuard is
+            // on [Core] and must not depend on a feature assembly's internals. Build() adds the
+            // frame and the face and returns the FRAME, so the anchors below are unchanged.
+            var cardImg = SummaRace.UI.WoodPanel.Build(card);
             var crt = cardImg.rectTransform;
             crt.anchorMin = new Vector2(0.08f, 0.36f);
             crt.anchorMax = new Vector2(0.92f, 0.64f);
             crt.offsetMin = Vector2.zero; crt.offsetMax = Vector2.zero;
 
             _promptLabel = MakeLabel(card.transform, new Vector2(0.5f, 0.70f), 56f);
-            _promptLabel.color = new Color(1f, 0.96f, 0.88f);
+            // DARK INK, because the face under it is now CREAM, not wood. Cream type was correct
+            // against the solid wood card above and would have been invisible the moment the
+            // face went in — swapping the panel without swapping this is exactly how a 1:1
+            // contrast ships. Theme.TextBrownDeep on Theme.Cream measures 11.9:1.
+            _promptLabel.color = Theme.TextBrownDeep;
             _promptLabel.rectTransform.sizeDelta = new Vector2(760f, 220f);
 
             // ---- SIDE BY SIDE, NOT STACKED (owner, 2026-08-22) ----------------------------
