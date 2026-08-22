@@ -67,6 +67,16 @@ namespace SummaRace.Features.TeacherMenu
         private const int AttemptsBeforeCooldown = 5;
         private const float CooldownSeconds = 30f;
 
+        /// <summary>How long OK must be held to open first-run PIN setup. Shorter than the
+        /// recovery hold because nothing is destroyed here — it only has to outlast a child's
+        /// tap. See <see cref="GameText.TeacherFirstRunLocked"/> for why the step exists.</summary>
+        private const float FirstRunHoldSeconds = 3f;
+
+        /// <summary>True while a PIN-less tablet is showing the hold prompt rather than the
+        /// setup keyboard. Cleared by the hold, and never persisted: on the next visit an
+        /// unclaimed tablet asks for the gesture again.</summary>
+        private bool _firstRunLocked;
+
         // Layout of the action column, also local for the same reason. The scene authored three
         // buttons at y = 150 / 0 / -150 inside ActionsPanel and gave it no layout group; a
         // fourth no longer centres on that spacing, so the column is positioned from one rule
@@ -210,7 +220,17 @@ namespace SummaRace.Features.TeacherMenu
         private void ShowGate()
         {
             bool hasPin = TeacherGate.HasPin();
+            // A tablet with no PIN yet does not open the setup keyboard on a tap: it asks for a
+            // 3-second hold first, so the first person to wander in cannot be a nine-year-old
+            // claiming the tablet (undoing that costs a full erase). See TeacherFirstRunLocked.
+            _firstRunLocked = !hasPin;
             SetStep(hasPin ? GateStep.EnterPin : GateStep.CreatePin);
+            if (_firstRunLocked)
+            {
+                Prompt(GameText.TeacherFirstRunLocked);
+                if (pinInput != null) pinInput.gameObject.SetActive(false);
+            }
+            else if (pinInput != null) pinInput.gameObject.SetActive(true);
             Status(string.Empty);
             // Deliberately NOT cleared here any more - see the fields. Re-entering the screen
             // used to be the reset.
@@ -398,10 +418,12 @@ namespace SummaRace.Features.TeacherMenu
         {
             _swallowNextSubmit = false;  // a fresh press is always a real tap
 
-            // Two deliberate conditions: only on the "enter the PIN you already set" step (there
-            // is nothing to recover before one exists) and only with the box empty.
+            // Two holds share this gesture, and they never overlap: the RECOVERY hold needs an
+            // existing PIN (EnterPin step, empty box), the FIRST-RUN hold needs the opposite —
+            // no PIN at all. Both are timed in Update against their own threshold.
             bool boxEmpty = pinInput == null || string.IsNullOrEmpty(pinInput.text);
-            _holdStart = _step == GateStep.EnterPin && boxEmpty ? Time.unscaledTime : -1f;
+            bool recovery = _step == GateStep.EnterPin && boxEmpty;
+            _holdStart = recovery || _firstRunLocked ? Time.unscaledTime : -1f;
         }
 
         private void EndHold() => _holdStart = -1f;
@@ -420,10 +442,24 @@ namespace SummaRace.Features.TeacherMenu
         private void Update()
         {
             if (_holdStart < 0f) return;
-            if (Time.unscaledTime - _holdStart < RecoveryHoldSeconds) return;
+
+            float need = _firstRunLocked ? FirstRunHoldSeconds : RecoveryHoldSeconds;
+            if (Time.unscaledTime - _holdStart < need) return;
 
             _holdStart = -1f;
-            ArmReset();
+            if (_firstRunLocked) OpenFirstRunSetup();
+            else ArmReset();
+        }
+
+        /// <summary>The first-run hold landed: reveal the keyboard and the real setup prompt.
+        /// Nothing is written yet — the PIN still has to be typed twice.</summary>
+        private void OpenFirstRunSetup()
+        {
+            _firstRunLocked = false;
+            _swallowNextSubmit = true;   // the finger that opened this is still down
+            Click();
+            if (pinInput != null) pinInput.gameObject.SetActive(true);
+            SetStep(GateStep.CreatePin);
         }
 
         /// <summary>The hold landed: show the cost. Nothing is erased yet.</summary>

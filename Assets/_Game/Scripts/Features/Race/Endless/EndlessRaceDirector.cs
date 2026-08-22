@@ -306,6 +306,10 @@ namespace SummaRace.Features.Race.Endless
         private Renderer[] _patrolRenderers; // cached for the per-frame body measurement
         private float _patrolFootFix;      // pivot-to-feet correction, measured once per beat
         private bool _patrolFootFixed;     // has _patrolFootFix been measured for this beat
+        /// <summary>Set on the frame the cop is activated: the body-drift correction must run
+        /// for that frame too, or frame one uses the pivot rule and frame two snaps to the
+        /// body rule. Cleared as soon as the correction below runs.</summary>
+        private bool _patrolAppearFixPending;
         // The chase camera's authored resting pose, captured by CountdownRoutine (it already has
         // to know it to swoop back onto it after GO!), and the surge dolly that borrows it.
         private Vector3 _camChaseLocalPos;
@@ -3914,6 +3918,14 @@ namespace SummaRace.Features.Race.Endless
                 _patrol.rotation = Quaternion.identity;
 
                 _patrol.gameObject.SetActive(true);
+                // ---- AND THE APPEAR FRAME GETS THE BODY CORRECTION TOO --------------------
+                // The placement above pins the PIVOT, while the per-frame block at the end of
+                // this method pins the rendered BODY (the run clip carries the rig up to ~1m
+                // fore/aft of its pivot). So the first visible frame landed on the pivot rule
+                // and the second snapped to the body rule — the "tiny snap left" the owner
+                // still saw after the main fix. Applying the same correction here, after the
+                // Animator is posed below, makes frame one already correct.
+                _patrolAppearFixPending = true;
                 if (_patrolAnim != null)
                 {
                     // ---- THE COP USED TO GLIDE ALONG STANDING STILL FOR A FIFTH OF A SECOND ----
@@ -3979,7 +3991,12 @@ namespace SummaRace.Features.Race.Endless
                 desiredZ);
             Bounds poseB;
             if (BodyBounds(_patrol, ref _patrolRenderers, out poseB))
+            {
                 _patrol.position += new Vector3(0f, 0f, desiredZ - poseB.center.z);
+                // The appear frame is corrected by this same pass (the flag only records that
+                // it happened); clearing it here keeps the two paths from ever disagreeing.
+                _patrolAppearFixPending = false;
+            }
             // Straight down the road, exactly as the runner faces. Never yawed: on this rigid rig
             // a yaw swings the mesh 0.65m off its pivot (measured during the chase work), which is
             // how a safe offset stops being safe.

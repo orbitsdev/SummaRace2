@@ -90,6 +90,18 @@ namespace SummaRace.Constants
         // teacher's PIN on one tap. Typing it twice makes setting it a decision, and catches
         // the researcher's own typo — a typo is a lockout too.
         public const string TeacherSetPin = "Teacher setup:\nchoose a PIN (4+ digits)";
+
+        /// <summary>
+        /// Shown INSTEAD of the setup prompt on a tablet that has no PIN yet, until an adult
+        /// makes the deliberate gesture below. Owner, 2026-08-23: "a student might enter a new
+        /// PIN" — on a fresh tablet whoever reaches this screen first owns it, and a child who
+        /// claims it costs the teacher a full data-erasing reset to undo.
+        ///
+        /// Deliberately says HOLD rather than showing a keyboard: a child taps, an adult who
+        /// has read the runbook holds. It is a speed bump, not a secret — the real control is
+        /// setting every PIN at install (Study Operations Runbook 1.2), which this backs up.
+        /// </summary>
+        public const string TeacherFirstRunLocked = "Teacher setup\n\nHold OK for 3 seconds to set this tablet's PIN.";
         public const string TeacherConfirmPin = "Type the same PIN again";
         /// <summary>Submit label on the first setup step — says there is a second one.</summary>
         public const string TeacherSubmitNext = "NEXT";
