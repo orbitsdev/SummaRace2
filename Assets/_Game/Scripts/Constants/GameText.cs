@@ -761,6 +761,20 @@ namespace SummaRace.Constants
         /// green button is the "no".</summary>
         public const string RaceLeaveCancelLabel = "NO, KEEP RACING";
 
+        /// <summary>
+        /// The Results headline. The payoff screen of a five-minute loop did not have one: its
+        /// largest text was the STORY'S NAME, so the screen announced which story had just
+        /// happened and never that the learner had cleared it. Both prototypes lead with
+        /// "Mission Cleared!" and they are right to.
+        ///
+        /// "Mission" is correct here and does not collide with the game's other use of the word.
+        /// A mission is a session of three stories on the Session Map; this line is shown once
+        /// the story is done and the button beneath it reads either NEXT STORY or NEXT MISSION
+        /// depending on which is true - so the headline names the thing that was cleared without
+        /// having to know which.
+        /// </summary>
+        public const string ResultsCleared = "Mission Cleared!";
+
         public const string RaceFinishBanner = "FINISH!";
         /// <summary>Heads the finish card that reads the five collected parts back. Names what
         /// they built, in the vocabulary Arrange and Summary use next ("story parts"), so the

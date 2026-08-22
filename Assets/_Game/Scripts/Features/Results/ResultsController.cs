@@ -97,7 +97,7 @@ namespace SummaRace.Features.Results
 
             if (titleText != null)
             {
-                titleText.text = _story.title;
+                titleText.text = GameText.ResultsCleared;
                 SummaRace.UI.TitleBannerSkin.Apply(titleText);
             }
             if (mainIdeaHeader != null) mainIdeaHeader.text = GameText.MainIdeaHeader;
@@ -128,6 +128,27 @@ namespace SummaRace.Features.Results
             StartCoroutine(RevealRoutine(stars));
         }
 
+        /// <summary>
+        /// Punches a sibling of this screen's own canvas, found by name, if it is there.
+        ///
+        /// By name rather than by a serialized field because every one of these already exists
+        /// in the scene and wiring three more fields means three more things that can be left
+        /// unassigned by whoever next edits Results. Null-safe at every step: a missing canvas,
+        /// a missing child or a renamed object costs the flourish and nothing else. That matters
+        /// more here than elsewhere - this runs inside the reveal coroutine, and a throw in
+        /// there would strand the learner on a screen whose only exit appears at the end.
+        /// </summary>
+        private void PunchByName(string path, float strength, float seconds)
+        {
+            var root = ResolveSceneCanvas();
+            if (root == null) return;
+            var t = root.Find(path);
+            if (t == null) return;
+            Tween.StopAll(onTarget: t);
+            t.localScale = Vector3.one;
+            Tween.PunchScale(t, Vector3.one * strength, seconds);
+        }
+
         private IEnumerator RevealRoutine(int stars)
         {
             // The continue button is the only way off this screen, and it is hidden until the reveal
@@ -137,34 +158,79 @@ namespace SummaRace.Features.Results
             {
                 yield return new WaitForSeconds(0.6f);
 
+                // The fanfare starts WITH the first star rather than after the praise. It used
+                // to begin four beats late, so three stars landed under the menu loop and the
+                // victory sting arrived once the celebration had already peaked.
+                if (AudioManager.Instance != null) AudioManager.Instance.PlayMusic(AudioKeys.MusicVictory, false);
+
                 int lit = starImages != null ? Mathf.Min(stars, starImages.Length) : 0;
                 for (int i = 0; i < lit; i++)
                 {
                     if (starImages[i] != null)
                     {
                         starImages[i].color = StarOn;
-                        Tween.PunchScale(starImages[i].transform, Vector3.one * 0.45f, 0.4f);
+                        // ESCALATING, not repeating. Every star used to land with the identical
+                        // punch, the identical sound and the identical pause, so a 3-star run
+                        // read as the same event three times rather than as something building
+                        // to a third. Each one now hits harder, holds longer and sounds higher,
+                        // and the gaps shorten, so the last star is the loudest moment on the
+                        // screen - which is what it is.
+                        Tween.PunchScale(starImages[i].transform,
+                                         Vector3.one * (0.45f + 0.20f * i), 0.4f + 0.08f * i);
                     }
-                    if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxStar);
+                    if (AudioManager.Instance != null)
+                        AudioManager.Instance.PlaySfx(AudioKeys.SfxStar, 1f + 0.08f * i);
                     // A star landing is one of the two moments GDD §11.4 asks to be felt. It also
                     // matters more than it sounds: a classroom tablet is usually muted, so for a
                     // learner with the sound off this is the only channel the celebration has
                     // besides the animation.
                     SummaRace.Core.Haptics.Play(SummaRace.Core.Haptics.Medium);
-                    yield return new WaitForSeconds(0.45f);
+
+                    // The trophy sits in the banner through the whole reveal and never moves,
+                    // on the screen that is entirely about having earned it. It reacts once, to
+                    // the last star. Found by name and null-checked: no trophy in a scene simply
+                    // means no punch, never a throw inside the reveal - and a throw here would
+                    // strand the learner, which is what the try/finally around this exists for.
+                    if (i == lit - 1) PunchByName("TitleBanner/TrophyIcon", 0.30f, 0.5f);
+
+                    yield return new WaitForSeconds(0.45f - 0.06f * i);
                 }
 
                 yield return RevealTreasure();
+                // Five gems fly into a chest that did nothing about it.
+                PunchByName("TreasureChest", 0.35f, 0.5f);
 
-                if (praiseText != null) praiseText.text = SummaRace.Core.Praise.ForStars(stars);
-                // D3: the finished race time, hung under the praise on the same beat. Only when
-                // a real run produced one — played direct-in-editor there is no race result,
-                // and the praise then stands alone exactly as before.
+                if (praiseText != null)
+                {
+                    praiseText.text = SummaRace.Core.Praise.ForStars(stars);
+                    // It used to arrive by plain assignment - no motion, no sound - on the one
+                    // sentence the screen most wants read. Scale from zero, not a punch: it is
+                    // appearing, not reacting.
+                    praiseText.transform.localScale = Vector3.zero;
+                    Tween.Scale(praiseText.transform, Vector3.one, 0.35f, Ease.OutBack);
+                    if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxPop);
+                }
+
+                // THE STORY'S NAME MOVED HERE when the banner took the headline. It rides the
+                // line that already existed under the praise rather than a new one under the
+                // title: measured on the scene, TitleBanner's bottom edge is at y 0.872 and the
+                // star row's top at 0.860 - a 23px gap on a 1920 reference, where SubtitleLine
+                // needs 62. A subtitle up there would have landed on the stars, which is exactly
+                // the collision F56h had to fix once already in this same band.
+                //
+                // D3's race time joins it when a real run produced one. Played direct in the
+                // editor there is no race result, and the line is then just the story's name -
+                // which is why the title is added unconditionally and the time appended, rather
+                // than the whole line being gated on the run.
                 var race = SummaRace.Core.GameManager.Instance != null
                     ? SummaRace.Core.GameManager.Instance.LastRaceResult : null;
-                if (race != null && race.runSeconds > 0f && praiseText != null)
-                    SummaRace.UI.SubtitleLine.Add(praiseText,
-                        GameText.ResultsRaceTime(Mathf.RoundToInt(race.runSeconds)));
+                if (praiseText != null && _story != null && !string.IsNullOrEmpty(_story.title))
+                {
+                    string sub = "\u201C" + _story.title + "\u201D";
+                    if (race != null && race.runSeconds > 0f)
+                        sub += "   " + GameText.ResultsRaceTime(Mathf.RoundToInt(race.runSeconds));
+                    SummaRace.UI.SubtitleLine.Add(praiseText, sub);
+                }
                 // Ms. Lumi reacts on the same beat as the praise, so the line has a face saying
                 // it. Null-safe: no badge object or no badge art leaves the screen unchanged.
                 if (_lumi != null) _lumi.Celebrate();
@@ -181,7 +247,17 @@ namespace SummaRace.Features.Results
             }
             finally
             {
-                if (nextButton != null) nextButton.gameObject.SetActive(true);
+                if (nextButton != null)
+                {
+                    nextButton.gameObject.SetActive(true);
+                    // It used to appear with no motion and no sound at the end of a celebration.
+                    // The punch goes on the FRAME, never on the button: NextButton carries
+                    // ButtonSquash, and two tweens driving one localScale leave it wherever the
+                    // last one wrote. The SetActive is deliberately not gated on any of this -
+                    // the exit must be handed back however this routine ends.
+                    if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxPop);
+                    PunchByName("NextButtonFrame", 0.22f, 0.4f);
+                }
             }
         }
 

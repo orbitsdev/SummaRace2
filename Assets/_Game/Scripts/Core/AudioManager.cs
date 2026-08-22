@@ -133,10 +133,31 @@ namespace SummaRace.Core
             _voiceSource.Play();
         }
 
-        public void PlaySfx(string key)
+        public void PlaySfx(string key) => PlaySfx(key, 1f);
+
+        /// <summary>
+        /// A one-shot at a given pitch. Three stars that land on a rising three-note run read as
+        /// something BUILDING; three identical clips read as the same event happening three
+        /// times. It is the cheapest escalation available on the payoff screen and it costs no
+        /// asset.
+        ///
+        /// Pitch is set on the shared source rather than restored afterwards, because
+        /// PlayOneShot follows its source's pitch for the whole of the clip - resetting on the
+        /// next line would cancel the effect before it was audible. Every caller comes through
+        /// here and the no-argument overload passes 1f, so the source is always left carrying an
+        /// explicit value rather than whatever the last caller happened to want.
+        ///
+        /// The one visible consequence: a still-ringing one-shot shifts pitch if a differently
+        /// pitched sound starts over it. Today the only non-1f caller is the Results star run,
+        /// where the clips are short, 0.35-0.45s apart and deliberately ascending, so the
+        /// overlap is the effect rather than a defect.
+        /// </summary>
+        public void PlaySfx(string key, float pitch)
         {
             var clip = GetClip(key);
-            if (clip != null) _sfxSource.PlayOneShot(clip, _sfxVolume);
+            if (clip == null) return;
+            _sfxSource.pitch = Mathf.Clamp(pitch, 0.5f, 2f);
+            _sfxSource.PlayOneShot(clip, _sfxVolume);
         }
 
         public void PlayMusic(string key, bool loop = true)
