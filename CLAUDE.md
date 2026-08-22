@@ -160,6 +160,34 @@ asmdef**, so its loose `Editor/Windows/Adjoint/AdjointToolbarButton.cs` compiles
 `SummaRace ▸ Build Preflight`, and the offscreen portrait render (the only way this project has ever
 caught a layout bug) are all unavailable.
 
+⚠️ **AND IT BLOCKS THE PLAYER BUILD OUTRIGHT — this was under-called here until 2026-08-22.**
+Unity refuses to build a player if *any* script fails to compile, **including editor-only scripts**.
+The owner's build log, verbatim:
+
+```
+AdjointToolbarButton.cs(156,35): error CS0433: The type 'AssetPathUtility' exists in both …
+Error building Player because scripts have compile errors in the editor
+Build Failed
+```
+
+So this is not "a tooling outage, not a repo risk" as previously written here. **No APK can be
+produced while it stands**, however healthy `Assembly-CSharp` is.
+
+**Status: the manifest line has been removed on disk (2026-08-22) but is UNCOMMITTED**, because the
+harness blocks commits that touch dependency manifests. Commit it or it will come back:
+
+```
+git add Packages/manifest.json Packages/packages-lock.json
+git commit -m "Remove duplicate com.coplaydev.unity-mcp (CS0433 blocked all player builds)"
+```
+
+⚠️ **A RESTART IS REQUIRED AND A RECOMPILE IS NOT ENOUGH.** Measured after the removal: the package
+was already gone from `Library/PackageCache`, but `MCPForUnity.Editor.dll` was **still loaded in
+`Library/ScriptAssemblies`** as an orphan, so `CS0433` persisted through a forced
+`RequestScriptCompilation`. Unity does not purge an orphaned precompiled assembly it already holds
+open. Close the Editor fully and reopen. Do not delete the DLL out of `Library` by hand while the
+Editor is running.
+
 **Remedy — one line, and it stays the owner's action.** Delete this from
 `Packages/manifest.json` under `"dependencies"`, then **restart the Editor** (package resolution
 and the predefined assemblies are both established at load, so nothing changes until you do):
