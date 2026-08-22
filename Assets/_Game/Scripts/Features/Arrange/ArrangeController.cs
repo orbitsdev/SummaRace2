@@ -576,8 +576,16 @@ namespace SummaRace.Features.Arrange
                 {
                     // Stays busy on purpose: the assist ends by leaving the scene, so the
                     // board must not accept taps while it plays out.
-                    yield return StartCoroutine(AssistRoutine());
+                    // handedOff BEFORE the yield, not after. Unity logs an inner coroutine's
+                    // exception and simply never resumes the outer one - so a throw inside
+                    // AssistRoutine abandoned this iterator with handedOff still false, the
+                    // finally never ran, _busy stayed true and the board was dead for good. This
+                    // file states that exact rule twenty lines up and then broke it.
+                    //
+                    // Setting it first is safe: the flag only tells the finally "someone else
+                    // owns the exit now", and the assist owns it from the moment it starts.
                     handedOff = true;
+                    yield return StartCoroutine(AssistRoutine());
                     yield break;
                 }
 

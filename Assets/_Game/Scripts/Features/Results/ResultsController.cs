@@ -482,11 +482,32 @@ namespace SummaRace.Features.Results
         /// <summary>Was that the last story of the session? One test drives both where the
         /// continue button goes and what it is called, so the label and the destination
         /// cannot drift apart.</summary>
+        /// <summary>
+        /// Whether this was the last unplayed story of its session. Drives both the onward
+        /// button's label and its destination, so the two cannot disagree.
+        ///
+        /// TOTALLY defensive, because of WHERE it is called from: Start() runs it while the exit
+        /// button is hidden and before RevealRoutine's try/finally exists to hand the exit back.
+        /// Anything that throws in here strands the learner on a screen with no way off and no
+        /// timeout. IsSessionComplete walks CurrentLearner.progress, and the null-conditional in
+        /// there guards the LEARNER, not the list - an older or hand-edited profiles.json with a
+        /// null progress list was a hard NRE in exactly that window.
+        /// </summary>
         private static bool IsSessionDone()
         {
-            var gm = SummaRace.Core.GameManager.Instance;
-            return gm != null && gm.CurrentStory != null
-                && gm.IsSessionComplete(gm.CurrentStory.session);
+            try
+            {
+                var gm = SummaRace.Core.GameManager.Instance;
+                return gm != null && gm.CurrentStory != null
+                    && gm.IsSessionComplete(gm.CurrentStory.session);
+            }
+            catch (System.Exception e)
+            {
+                // False is the safe answer: it routes to Story Select rather than the map, which
+                // is never a dead end from here.
+                Debug.LogWarning("[Results] session-complete check failed: " + e.Message);
+                return false;
+            }
         }
     }
 }

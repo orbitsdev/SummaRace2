@@ -200,6 +200,15 @@ namespace SummaRace.Constants
         public const string TeacherDelete = "Delete all data";
         public const string TeacherDeleteConfirm = "Tap again to confirm";
         public const string TeacherDeleted = "All learner data deleted.";
+
+        /// <summary>
+        /// Shown when the wipe threw part-way. It matters that this is DISTINCT and that it says
+        /// the data may still be there: the wipe is the consent promise, and the failure mode it
+        /// used to have was reporting success on a tablet that still held a named child's
+        /// profile and ten sessions of logs.
+        /// </summary>
+        public const string TeacherDeleteFailed =
+            "Delete did not finish - some data may still be on this tablet. Try again.";
         public const string TeacherNothingToExport = "No logs to export yet.";
 
         /// <summary>

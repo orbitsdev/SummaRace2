@@ -94,8 +94,16 @@ namespace SummaRace.Features.TeacherMenu
         /// the one moment the code is guaranteed to be asked for, which is what stops a tablet
         /// reaching a child with an unidentifiable profile on it.</summary>
         private bool _codeThenNameEntry;
-        private int _wrongAttempts;
-        private float _retryAt;
+        /// <summary>
+        /// STATIC ON PURPOSE. These were instance fields on a scene-scoped controller, and
+        /// ShowGate() reset both on Start() - so the five-try lockout was defeated by two taps:
+        /// Back to the menu, teacher corner again, fresh scene, cooldown gone. It is the only
+        /// thing standing between a nine-year-old and Delete-all-data, and "1111 / 1234 / 0000"
+        /// is exactly the attack it exists for. Static survives the scene; a full app restart
+        /// still clears it, which is the honest limit of doing this without persisting to disk.
+        /// </summary>
+        private static int _wrongAttempts;
+        private static float _retryAt;
 
         /// <summary>Unscaled time the recovery hold began, or -1 when nothing is being held.</summary>
         private float _holdStart = -1f;
@@ -126,7 +134,14 @@ namespace SummaRace.Features.TeacherMenu
                 () => SceneLoader.Go(SceneNames.MainMenu));
             if (unlockLabel != null) unlockLabel.text = GameText.TeacherUnlockNext;
             if (exportLabel != null) exportLabel.text = GameText.TeacherExport;
-            if (deleteLabel != null) deleteLabel.text = GameText.TeacherDelete;
+            if (deleteLabel != null)
+            {
+                deleteLabel.text = GameText.TeacherDelete;
+                // White on the kit orange measured 2.40:1 - failing even the 3.0 large-text bar,
+                // on the one action that cannot be undone, and its armed state ("Tap again to
+                // confirm") was in the same pairing. Dark brown on that orange is about 7.9:1.
+                deleteLabel.color = Theme.TextBrownDeep;
+            }
 
             if (promptText != null)
             {
@@ -174,8 +189,8 @@ namespace SummaRace.Features.TeacherMenu
             bool hasPin = TeacherGate.HasPin();
             SetStep(hasPin ? GateStep.EnterPin : GateStep.CreatePin);
             Status(string.Empty);
-            _wrongAttempts = 0;
-            _retryAt = 0f;
+            // Deliberately NOT cleared here any more - see the fields. Re-entering the screen
+            // used to be the reset.
             if (gatePanel != null) gatePanel.SetActive(true);
             if (actionsPanel != null) actionsPanel.SetActive(false);
             // The picker lives behind the PIN too — it must not survive a return to the gate.
@@ -653,12 +668,15 @@ namespace SummaRace.Features.TeacherMenu
                 return;
             }
 
-            if (SaveManager.Instance != null) SaveManager.Instance.DeleteAllData();
+            // Checked, not assumed. A wipe that half-failed used to answer with the success
+            // line; the researcher would hand the tablet back believing it clean.
+            bool wiped = SaveManager.Instance != null && SaveManager.Instance.DeleteAllData();
             if (Core.GameManager.Instance != null) Core.GameManager.Instance.InitProfiles();
 
             _deleteArmed = false;
             if (deleteLabel != null) deleteLabel.text = GameText.TeacherDelete;
-            Status(GameText.TeacherDeleted);
+            if (wiped) Status(GameText.TeacherDeleted);
+            else Reject(GameText.TeacherDeleteFailed);
         }
 
         // ---------- Who is holding the tablet ----------

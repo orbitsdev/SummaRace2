@@ -337,7 +337,16 @@ namespace SummaRace.Core
         }
 
         /// <summary>Post-study wipe: removes profiles and all logs (GDD §9.4).</summary>
-        public void DeleteAllData()
+        /// <summary>
+        /// Erases every learner artefact on the tablet. <b>Returns false if anything threw</b> -
+        /// and the caller must check, because this is the consent promise. It used to return
+        /// void and swallow into RaiseFailure, so a locked file or a permission change after an
+        /// OS update produced the same cheerful "All learner data deleted." as a clean wipe, and
+        /// a tablet went back to a school believed empty with a named child's profile and ten
+        /// sessions of logs still on it. Every neighbouring teacher action already reports its
+        /// own failure; the destructive one was the exception.
+        /// </summary>
+        public bool DeleteAllData()
         {
             // Before anything is removed, not after: SessionLogService drops the run in flight
             // here. Otherwise its next write recreates the logs folder for a learner this call
@@ -392,7 +401,10 @@ namespace SummaRace.Core
             catch (Exception e)
             {
                 RaiseFailure("delete: " + e.Message);
+                return false;
             }
+
+            return true;
         }
 
         /// <summary>
