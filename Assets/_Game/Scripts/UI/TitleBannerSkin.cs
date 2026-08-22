@@ -120,8 +120,14 @@ namespace SummaRace.UI
             {
                 fill.sprite = parchment;
                 fill.type = parchment.border != Vector4.zero ? Image.Type.Sliced : Image.Type.Simple;
-                fill.color = Color.white;
-                title.color = Theme.TextBrownDeep;
+                // Owner, 2026-08-23, on seeing the untinted parchment: the banner should be the
+                // WOOD PLAQUE the race tracker taught — brown plate, cream type — not a pale
+                // card with a yellow rim. And on THIS sprite the wood tint finally works: the
+                // multiply trap above only bites dark sprites, while parchment (~0.93) tinted by
+                // Theme.Wood renders as true wood, its gold border settling into bronze trim.
+                // Cream on that plate is the tracker's own measured pairing (~6.6:1).
+                fill.color = Theme.Wood;
+                title.color = Label;
             }
             else
             {
