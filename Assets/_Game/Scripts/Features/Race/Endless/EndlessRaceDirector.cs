@@ -4484,13 +4484,16 @@ namespace SummaRace.Features.Race.Endless
             var chip = new GameObject("Chip_" + index);
             chip.transform.SetParent(row, false);
             var img = chip.AddComponent<UnityEngine.UI.Image>();
-            img.sprite = WoodPlaqueSprite();
-            img.type = UnityEngine.UI.Image.Type.Sliced;
-            // CREAM, not near-black. These were five dark plaques with a thin colour strip, and
-            // on the device they read as five holes in the mission card — the over-correction
-            // the owner flagged on 2026-08-22. Cream plaque + the element's ink letter is the
-            // tracker's COLLECTED look, which the same screenshots show working, and it keeps
-            // the palette doing real teaching work instead of being reduced to a hairline.
+            // THE CHIPS RENDERED TAN ON A CREAM CARD (owner device, 2026-08-23), which is the
+            // same multiply trap the card face had: Theme.Cream tinted onto the plaque's
+            // ~0.7-luminance centre lands at khaki, and against the now-light parchment face
+            // the five chips read as muddy blocks. They use the light parchment sprite too, so
+            // a chip is a small page of the same book, with only its accent strip and ink
+            // letter carrying the SWBST colour.
+            // A flat cream page, like the card face: the plaque sprite multiplies cream into
+            // khaki, and the parchment sprite would bake a gold ring around each chip. The
+            // SWBST colour lives where it teaches — the accent strip and the ink letter.
+            img.sprite = null;
             img.color = Theme.Cream;
             var rt = img.rectTransform;
             rt.anchorMin = new Vector2(index * 0.2f + 0.02f, 0f);

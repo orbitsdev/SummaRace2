@@ -254,6 +254,18 @@ namespace SummaRace.Core
             rect.offsetMin = Vector2.zero;
             rect.offsetMax = Vector2.zero;
 
+            // Focus layer over the art (owner device, 2026-08-23: the overlay read as a tip
+            // card adrift in empty sky). Same translucent ink the question/Arrange/Summary
+            // screens use, so the loading beat joins the family and the card owns the frame.
+            var dim = new GameObject("FocusDim");
+            dim.transform.SetParent(canvasGo.transform, false);
+            var dimImg = dim.AddComponent<Image>();
+            dimImg.color = Theme.Alpha(Theme.Ink, 0.30f);
+            dimImg.raycastTarget = false;
+            var dimRt = dimImg.rectTransform;
+            dimRt.anchorMin = Vector2.zero; dimRt.anchorMax = Vector2.one;
+            dimRt.offsetMin = Vector2.zero; dimRt.offsetMax = Vector2.zero;
+
             // Gold-bordered card holding the SWBST tip.
             var cardGo = new GameObject("TipCard");
             _tipCard = cardGo;
@@ -319,20 +331,33 @@ namespace SummaRace.Core
             fillRect.offsetMin = new Vector2(5f, 5f);
             fillRect.offsetMax = new Vector2(-5f, -5f);
 
-            // Small "Loading..." above the card.
+            // "Loading..." as a wood plaque header docked onto the tip card's top edge — the
+            // briefing's title-over-card composition, replacing a naked label floating in sky.
             var loadGo = new GameObject("LoadingText");
             _loadingLabel = loadGo;
             loadGo.transform.SetParent(canvasGo.transform, false);
-            var loading = loadGo.AddComponent<TextMeshProUGUI>();
+            var loadPlate = loadGo.AddComponent<Image>();
+            var plaqueSprite = Resources.Load<Sprite>("UI/wood_plaque");
+            if (plaqueSprite != null) { loadPlate.sprite = plaqueSprite; loadPlate.type = Image.Type.Sliced; }
+            else loadPlate.color = Theme.Wood;
+            var loadRect = loadPlate.rectTransform;
+            loadRect.anchorMin = new Vector2(0.30f, 0.565f);
+            loadRect.anchorMax = new Vector2(0.70f, 0.615f);
+            loadRect.offsetMin = Vector2.zero;
+            loadRect.offsetMax = Vector2.zero;
+
+            var loadTextGo = new GameObject("Label");
+            loadTextGo.transform.SetParent(loadGo.transform, false);
+            var loading = loadTextGo.AddComponent<TextMeshProUGUI>();
             loading.text = GameText.LoadingLabel;
             loading.fontSize = 34;
             loading.alignment = TextAlignmentOptions.Center;
-            loading.color = Theme.Alpha(Theme.Navy, 0.95f); // deep navy — readable on the bright sky
-            var loadRect = loading.rectTransform;
-            loadRect.anchorMin = new Vector2(0.2f, 0.585f);
-            loadRect.anchorMax = new Vector2(0.8f, 0.635f);
-            loadRect.offsetMin = Vector2.zero;
-            loadRect.offsetMax = Vector2.zero;
+            loading.color = new Color(1f, 0.96f, 0.88f);   // cream on the plaque, the banner pairing
+            var loadTextRect = loading.rectTransform;
+            loadTextRect.anchorMin = Vector2.zero;
+            loadTextRect.anchorMax = Vector2.one;
+            loadTextRect.offsetMin = Vector2.zero;
+            loadTextRect.offsetMax = Vector2.zero;
 
             _fadeGroup = canvasGo.AddComponent<CanvasGroup>();
             _fadeGroup.alpha = 0f;

@@ -323,7 +323,7 @@ namespace SummaRace.Core
             const float halfW = 310f, gap = 24f;
 
             var stay = MakeButton(canvasGo.transform, new Vector2(0.5f, rowY),
-                                  new Vector2(halfW, 140f), new Color(0.16f, 0.46f, 0.22f));
+                                  new Vector2(halfW, 140f), new Color(0.16f, 0.46f, 0.22f), "pill_green");
             ((RectTransform)stay.transform).anchoredPosition = new Vector2(-(halfW + gap) * 0.5f, 0f);
             stay.onClick.AddListener(Close);
             _stayLabel = MakeLabel(stay.transform, new Vector2(0.5f, 0.5f), 44f);
@@ -331,7 +331,7 @@ namespace SummaRace.Core
             _stayLabel.rectTransform.sizeDelta = new Vector2(halfW - 30f, 110f);
 
             var leave = MakeButton(canvasGo.transform, new Vector2(0.5f, rowY),
-                                   new Vector2(halfW, 140f), new Color(0.52f, 0.34f, 0.20f));
+                                   new Vector2(halfW, 140f), new Color(0.52f, 0.34f, 0.20f), "pill_gold");
             ((RectTransform)leave.transform).anchoredPosition = new Vector2((halfW + gap) * 0.5f, 0f);
             leave.onClick.AddListener(ConfirmLeave);
             var ll = MakeLabel(leave.transform, new Vector2(0.5f, 0.5f), 44f);
@@ -368,12 +368,28 @@ namespace SummaRace.Core
             return t;
         }
 
-        private static Button MakeButton(Transform parent, Vector2 anchor, Vector2 size, Color fill)
+        /// <summary>
+        /// A confirmation button on the kit's GLOSSY pill, not a flat rectangle (owner,
+        /// 2026-08-23: "the button you use in confirmation, please use the glossy, not the
+        /// flat"). The kit sprites now live in Resources/UI/Buttons so code-built controls can
+        /// reach them — until today only scene-authored buttons could, which is the whole
+        /// reason this dialog looked unlike the game's other buttons. Shown untinted (the
+        /// sprite carries its own colour and shine); the flat fill remains the fallback, so a
+        /// stripped build degrades to exactly the old look rather than to nothing.
+        /// </summary>
+        private static Button MakeButton(Transform parent, Vector2 anchor, Vector2 size, Color fill, string pill = null)
         {
             var go = new GameObject("Button");
             go.transform.SetParent(parent, false);
             var img = go.AddComponent<Image>();
-            img.color = fill;
+            var sprite = pill != null ? Resources.Load<Sprite>("UI/Buttons/" + pill) : null;
+            if (sprite != null)
+            {
+                img.sprite = sprite;
+                img.type = Image.Type.Sliced;
+                img.color = Color.white;
+            }
+            else img.color = fill;
             var rt = img.rectTransform;
             rt.anchorMin = rt.anchorMax = rt.pivot = anchor;
             rt.sizeDelta = size;

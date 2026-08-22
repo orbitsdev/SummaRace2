@@ -169,6 +169,40 @@ namespace SummaRace.Features.SessionMap
             if (justFinished > 0) StartCoroutine(CelebrateSession(justFinished));
         }
 
+        /// <summary>The thin wood picture-frame behind an OPEN stop — the owner's storybook
+        /// rule made literal: wood carries the border, parchment carries the page. Border-only
+        /// (fillCenter off), sibling behind the button at its own index, found by name on a
+        /// revisit so re-running SetupStop never stacks a second frame.</summary>
+        private static void EnsureStopFrame(SessionStop stop)
+        {
+            if (stop == null || stop.button == null) return;
+            var rt0 = stop.button.transform as RectTransform;
+            if (rt0 == null || rt0.parent == null) return;
+
+            string frameName = "WoodFrame_" + rt0.name;
+            var parent = rt0.parent;
+            for (int i = 0; i < parent.childCount; i++)
+                if (parent.GetChild(i).name == frameName) return;
+
+            var plaque = Resources.Load<Sprite>("UI/wood_plaque");
+            if (plaque == null) return;
+
+            var frame = new GameObject(frameName, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            var rt = (RectTransform)frame.transform;
+            rt.SetParent(parent, false);
+            rt.SetSiblingIndex(rt0.GetSiblingIndex());
+            rt.anchorMin = rt0.anchorMin; rt.anchorMax = rt0.anchorMax; rt.pivot = rt0.pivot;
+            rt.anchoredPosition = rt0.anchoredPosition;
+            rt.sizeDelta = rt0.sizeDelta + new Vector2(20f, 20f);
+            rt.localScale = rt0.localScale;   // stops are scaled 1.22x; the frame must ride along
+
+            var img = frame.GetComponent<Image>();
+            img.sprite = plaque;
+            img.type = Image.Type.Sliced;
+            img.fillCenter = false;
+            img.raycastTarget = false;
+        }
+
         /// <summary>
         /// A dotted trail from stop 1 to stop 10, three dots per leg, drawn behind the plates
         /// (inserted at the first stop's own sibling index, so every plate still draws over
@@ -287,13 +321,18 @@ namespace SummaRace.Features.SessionMap
             // yet" reading as a dimmed object is exactly right, and the value gap between the
             // two states is finally real instead of 1.03:1.
             var background = stop.button.GetComponent<Image>();
+            // Owner's storybook rule, refined on device 2026-08-23: "wood only in border —
+            // don't use it in all design." A solid wood plate fought the parchment board, so
+            // an OPEN stop is a parchment page wearing a thin wood picture-frame (built
+            // below), with its number in the book's own ink. Locked keeps the dimmed grey.
             var parchment = Resources.Load<Sprite>("UI/panel_gold");
             if (playable && parchment != null && background != null)
             {
                 background.sprite = parchment;
-                background.type = parchment.border != Vector4.zero ? Image.Type.Sliced : Image.Type.Simple;
+                background.type = Image.Type.Sliced;
                 background.color = Color.white;
                 if (stop.numberText != null) stop.numberText.color = Theme.TextBrownDeep;
+                EnsureStopFrame(stop);
             }
             else if (background != null)
             {
@@ -301,12 +340,14 @@ namespace SummaRace.Features.SessionMap
                 if (stop.numberText != null) stop.numberText.color = Color.white;
             }
 
+            // Earned stars are gold on the page; empty ones are the page's own ink at a
+            // whisper — the olive steel used before read as mud on both plate styles.
             if (stop.stars != null)
                 for (int i = 0; i < stop.stars.Length; i++)
                     if (stop.stars[i] != null)
                         stop.stars[i].color = i < done
                             ? (playable && parchment != null ? Theme.GoldDeep : StarOn)
-                            : StarOff;
+                            : (playable && parchment != null ? Theme.Alpha(Theme.TextBrownDeep, 0.28f) : StarOff);
 
             // The plates were sized for a board with far more breathing room than ten stops
             // need; on the device they read as small chips lost in cream. Scaled here rather

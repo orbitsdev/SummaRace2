@@ -53,8 +53,18 @@ namespace SummaRace.UI
             var inner = new GameObject("Inner");
             inner.transform.SetParent(card.transform, false);
             var innerImg = inner.AddComponent<Image>();
-            innerImg.sprite = Plaque();
-            innerImg.type = Image.Type.Sliced;
+            // THE FACE RENDERED TAN, NOT CREAM (owner device, 2026-08-23: "not readable —
+            // change the back color to light"). Cream TINTED onto the plaque sprite multiplies
+            // into its ~0.7-luminance recessed centre — khaki, under every line of body text
+            // this class carries. A tint can only darken, so the face is re-sprited onto the
+            // light parchment panel instead (untinted, its own cream), leaving the wood to the
+            // FRAME — which is the owner's stated storybook rule: wood borders, paper faces.
+            // A PLAIN CREAM QUAD, not the parchment sprite: that sprite carries a baked GOLD
+            // BORDER, so using it as the face drew a yellow ring inside the wood frame (owner
+            // device, 2026-08-23: "remove the yellow border"). A sprite-less Image is a flat
+            // fill that no tint can darken, which is exactly what a page needs — the wood
+            // frame around it supplies all the edge this card should have.
+            innerImg.sprite = null;
             innerImg.color = Theme.Cream;
             innerImg.raycastTarget = false;
             var irt = innerImg.rectTransform;

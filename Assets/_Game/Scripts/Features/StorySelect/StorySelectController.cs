@@ -252,6 +252,38 @@ namespace SummaRace.Features.StorySelect
                 });
         }
 
+        /// <summary>The wood picture-frame behind a story card (see SetupCard). Built once per
+        /// card, found again by name on a revisit. Null-safe: no button, no plaque sprite, or
+        /// no parent simply leaves the card exactly as it was.</summary>
+        private static void EnsureWoodFrame(DifficultyCard card)
+        {
+            if (card == null || card.button == null) return;
+            var cardRt = card.button.transform as RectTransform;
+            if (cardRt == null || cardRt.parent == null) return;
+
+            string frameName = "WoodFrame_" + cardRt.name;
+            var parent = cardRt.parent;
+            for (int i = 0; i < parent.childCount; i++)
+                if (parent.GetChild(i).name == frameName) return;   // already built
+
+            var plaque = Resources.Load<Sprite>("UI/wood_plaque");
+            if (plaque == null) return;
+
+            var frame = new GameObject(frameName, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            var rt = (RectTransform)frame.transform;
+            rt.SetParent(parent, false);
+            rt.SetSiblingIndex(cardRt.GetSiblingIndex());
+            rt.anchorMin = cardRt.anchorMin; rt.anchorMax = cardRt.anchorMax; rt.pivot = cardRt.pivot;
+            rt.anchoredPosition = cardRt.anchoredPosition;
+            rt.sizeDelta = cardRt.sizeDelta + new Vector2(28f, 28f);
+
+            var img = frame.GetComponent<Image>();
+            img.sprite = plaque;
+            img.type = Image.Type.Sliced;
+            img.fillCenter = false;   // the carved rim only — a picture frame, not a plate
+            img.raycastTarget = false;
+        }
+
         private void SetupCard(DifficultyCard card, string difficulty, string storyId,
                                StoryData story, CardState state)
         {
@@ -259,6 +291,13 @@ namespace SummaRace.Features.StorySelect
 
             if (card.chipText != null) card.chipText.text = DifficultyLabel(difficulty);
             StyleChip(card, difficulty);
+
+            // Owner, 2026-08-23: "use that pattern... even in border seems cool." Each story
+            // card gains a grained wood picture-frame: the generated plaque drawn Sliced with
+            // fillCenter OFF, so only its carved 26px rim renders around the hero art — the
+            // storybook look of a picture in a wooden frame, at zero cost to the card's own
+            // layout. Sibling behind the card at its own index so nothing draws over it wrongly.
+            EnsureWoodFrame(card);
 
             // A story that fails to load never reaches anything but Locked (see Start).
             bool playable = state != CardState.Locked;
@@ -310,7 +349,23 @@ namespace SummaRace.Features.StorySelect
                 card.heroImage.gameObject.SetActive(sprite != null || !playable);
             }
 
-            if (card.lockIcon != null) card.lockIcon.gameObject.SetActive(!playable);
+            if (card.lockIcon != null)
+            {
+                card.lockIcon.gameObject.SetActive(!playable);
+                // Owner, 2026-08-23: the lock read as a small decal in a corner — "center the
+                // lock icon and make it bigger so it feels game-full". Centered on the card
+                // with real presence (and nudged up so the locked hint text below stays clear).
+                // Idempotent: anchors and size are absolute, so re-running changes nothing.
+                if (!playable)
+                {
+                    var lockRt = card.lockIcon.rectTransform;
+                    lockRt.anchorMin = lockRt.anchorMax = new Vector2(0.5f, 0.5f);
+                    lockRt.pivot = new Vector2(0.5f, 0.5f);
+                    lockRt.anchoredPosition = new Vector2(0f, 30f);
+                    lockRt.sizeDelta = new Vector2(150f, 150f);
+                    card.lockIcon.preserveAspect = true;
+                }
+            }
             if (card.lockedLabel != null)
             {
                 card.lockedLabel.text = GameText.LockedLabel;
@@ -336,7 +391,15 @@ namespace SummaRace.Features.StorySelect
                 : 0;
             if (card.stars != null)
                 for (int i = 0; i < card.stars.Length; i++)
-                    if (card.stars[i] != null) card.stars[i].color = i < best ? StarOn : StarOff;
+                    if (card.stars[i] != null)
+                    {
+                        card.stars[i].color = i < best ? StarOn : StarOff;
+                        // Owner, 2026-08-23: the three stars read as small dark dots. Scaled up
+                        // in place (localScale, so the scene row's spacing survives) — earned
+                        // stars a touch louder than empty ones, which keeps "how well you did"
+                        // legible from arm's length.
+                        card.stars[i].transform.localScale = Vector3.one * (i < best ? 1.35f : 1.18f);
+                    }
 
             if (card.button == null) return;
 
