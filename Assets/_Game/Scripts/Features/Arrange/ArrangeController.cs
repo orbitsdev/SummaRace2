@@ -192,10 +192,18 @@ namespace SummaRace.Features.Arrange
             if (undoLabel != null) undoLabel.text = GameText.UndoLabel;
             if (verifyLabel != null) verifyLabel.text = GameText.VerifyLabel;
 
-            // Mid-run, so there is no legal exit: the race is already logged and the
-            // ladder is not finished. Android BACK says so warmly instead of doing
-            // nothing (owner, 2026-08-22) - see Core/BackButtonGuard.
-            Core.BackButtonGuard.RegisterBlocked(GameText.BackBlockedArrange);
+            // BACK offers a real way out (owner, 2026-08-23: "when playing I cannot
+            // leave"). This used to be RegisterBlocked, which made Arrange and Summary
+            // the only two screens in the game with NO exit at all - a child stuck here
+            // when class ends had to kill the app, which files the run as a device
+            // death instead of a choice. The race already has a sanctioned leave path;
+            // this is the same one: the log row flushes as a partial run with an honest
+            // reason, because the next StoryStarted may be a different child.
+            Core.BackButtonGuard.RegisterExit(GameText.BackLeaveToStories, () =>
+            {
+                EventBus.Raise(new RunAbandoned { reason = "arrange_left_by_learner" });
+                SceneLoader.Go(SceneNames.StorySelect);
+            });
 
             RefreshUI();
             SetStatus(GameText.ArrangeIntroStatus);

@@ -210,30 +210,44 @@ namespace SummaRace.Features.SessionMap
             // Wood banner + wood board + paper tiles was one material doing two jobs, which is
             // why no amount of re-toning the browns made it sit together (owner, 2026-08-23:
             // "even the colour and design doesn't fit as one"). The kit ships a panel built for
-            // exactly this screen — teal with a gold rim, Panel_Sprites/Level screen pannel —
+            // exactly this screen — gold-rimmed, Panel_Sprites/Level screen pannel — recoloured
             // and it was what this scene used before tonight. With it back the hierarchy reads
-            // in one glance: WOOD SIGN above, TEAL BOARD below, PAPER PAGES on it.
+            // in one glance: WOOD SIGN above, DARK BROWN BOARD below, PAPER PAGES on it.
             var boardImg = board.GetComponent<Image>();
             if (boardImg != null)
             {
                 boardImg.enabled = true;
-                var panel = Resources.Load<Sprite>("UI/board_level");
+                var panel = Resources.Load<Sprite>("UI/board_level_brown");
+                if (panel == null) panel = Resources.Load<Sprite>("UI/board_level");
                 if (panel != null)
                 {
                     boardImg.sprite = panel;
                     boardImg.type = Image.Type.Sliced;
-                    // ---- WARM BROWN, AND TRANSLUCENT SO THE WORLD SHOWS THROUGH -------------
-                    // Three attempts failed here and each failed the same way: this sprite is
-                    // TEAL, and a uGUI tint MULTIPLIES, so brown over teal lands near-black —
-                    // "a hole punched in a sunny playground" (owner device shots, 2026-08-23).
-                    // A multiply cannot make a cool sprite warm.
+                    // ---- DARK BROWN, AND THE TINT IS NOT WHAT DOES IT ----------------------
+                    // Owner, 2026-08-23: "dark brown". Four attempts before this one tried to
+                    // reach it by tinting the kit's TEAL panel, and every one of them was
+                    // arithmetically incapable of it. Measured rather than eyeballed:
                     //
-                    // So the tint carries a strong red/green lift and a low alpha: the red
-                    // channel is pushed far past 1 to overpower the sprite's own blue, and the
-                    // panel sits at ~72% so the playground reads through it as depth instead of
-                    // being covered by a slab. Result: a warm brown board of the same family as
-                    // the banner and the tiles, on a screen that still feels outdoors.
-                    boardImg.color = new Color(2.2f, 1.35f, 0.75f, 0.72f);
+                    //   • The sprite's body is (0.271, 0.580, 0.640) — teal, and its RED channel
+                    //     is the SMALLEST one. A uGUI tint MULTIPLIES, so the most red a tint can
+                    //     ever leave on this sprite is 0.271. Any tint that gets the hue to brown
+                    //     (R > G > B) therefore lands at luminance ~0.031 — near-black, which is
+                    //     precisely the "hole punched in the screen" F59 had to undo.
+                    //   • The previous fix tried to escape that with an over-driven tint
+                    //     (2.35, 1.30, 0.62). It CANNOT work: Image packs its colour into a
+                    //     Color32 vertex colour, which clamps each channel to 1.0, so what
+                    //     actually shipped was (1, 1, 0.62) — and 0.580 × 1 against 0.271 × 1
+                    //     leaves green ABOVE red. The board rendered dark GREEN, which is exactly
+                    //     what the owner kept reporting. Do not reintroduce a >1 tint anywhere in
+                    //     uGUI; it is silently a no-op, not a boost.
+                    //
+                    // So the colour lives in the ART now: board_level_brown.png is the same kit
+                    // panel with its teal body recoloured to (0.380, 0.251, 0.133) — a real dark
+                    // brown, a step deeper than Theme.Wood so the wood banner above still reads
+                    // as its own object and the cream tiles lift off it (9.0:1). The gold rim is
+                    // untouched, pixel for pixel, because the ask was the background only. The
+                    // tint here is white on purpose: the sprite is already the right colour.
+                    boardImg.color = Color.white;
                 }
                 else boardImg.color = new Color(0.94f, 0.88f, 0.78f, 0.92f);
             }

@@ -104,10 +104,18 @@ namespace SummaRace.Features.Summary
 
             // See ArrangeController: this screen had no music either. No-ops when the loop is
             // already running, so arriving from Arrange is free.
-            // Mid-run, so there is no legal exit: the race is already logged and the
-            // ladder is not finished. Android BACK says so warmly instead of doing
-            // nothing (owner, 2026-08-22) - see Core/BackButtonGuard.
-            SummaRace.Core.BackButtonGuard.RegisterBlocked(GameText.BackBlockedSummary);
+            // BACK offers a real way out — same change and same reasoning as Arrange
+            // (owner, 2026-08-23: "when playing I cannot leave"). The reading and race
+            // data are already captured; leaving here flushes the row as a partial run
+            // with an honest reason instead of trapping the child until the app is killed.
+            SummaRace.Core.BackButtonGuard.RegisterExit(GameText.BackLeaveToStories, () =>
+            {
+                SummaRace.Core.EventBus.Raise(new SummaRace.Core.RunAbandoned
+                {
+                    reason = "summary_left_by_learner"
+                });
+                SceneLoader.Go(SceneNames.StorySelect);
+            });
 
             if (AudioManager.Instance != null) AudioManager.Instance.PlayMusic(AudioKeys.MusicMenu);
 

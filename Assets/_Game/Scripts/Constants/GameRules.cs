@@ -91,13 +91,45 @@ namespace SummaRace.Constants
         public const float PatrolChaseGap = 2.5f;
 
         /// <summary>
-        /// How far back the patrol sits at his FURTHEST. The camera rides 6m behind the runner,
-        /// so at 24m he is 18m in front of the lens - visible, small, and plainly receding.
-        /// He is never parked off-screen on a clean run: a learner who is getting everything
-        /// right has to be able to SEE him being left behind, or the reward is invisible to
-        /// exactly the child who earned it.
+        /// How far back the patrol sits at his FURTHEST.
+        ///
+        /// ⚠️ 2026-08-23: this was 24f, and the comment justifying it had the camera the wrong
+        /// way round — it read "the camera rides 6m behind the runner, so at 24m he is 18m in
+        /// FRONT of the lens", which is backwards. The camera is behind the runner, so a BIGGER
+        /// gap puts him further BEHIND the lens, not in front of it. Every symptom the owner
+        /// reported as "snapping / appearing in the camera" followed from that one inverted
+        /// sentence. Swept through the scene's own camera (fov 58.7, local (0,4,-3), pitch
+        /// 14.947, portrait 9:16), worst projected body corner where 1.0 is the frame edge:
+        ///
+        ///   gap  |  resting cam  |  pulled-back cam      (999 = behind the lens entirely)
+        ///   24.0 |     999       |     999
+        ///   10.0 |     999       |     999
+        ///    9.0 |     999       |   14.6 - 16.3      <-- fills and clips the screen
+        ///    6.0 |  14.1 - 20.5  |    1.82            <-- fills and clips the screen
+        ///    4.5 |   2.88        |    1.18 - 1.21     <-- just outside the frame
+        ///    3.5 |   1.85        |    0.92 - 1.00     <-- entering at the frame edge
+        ///    2.5 |   1.30 - 1.56 |    0.73 - 0.86     <-- PatrolChaseGap, framed
+        ///
+        /// So the old 24 -> 2.5 travel dragged the rendered cop from 15m behind the lens,
+        /// THROUGH it, past a band where he projects at 14-20x the frame, and only then into
+        /// shot. That traversal is the glitch, and no amount of smoothing fixes it because the
+        /// path itself runs through the camera.
+        ///
+        /// 4.5 keeps the whole travel band on the safe side: at his furthest he is a shade
+        /// outside the frame (1.18), at his closest he is comfortably inside it (0.86), and the
+        /// lens is never between the two. The learner still SEES him leave — he recedes out of
+        /// the frame edge instead of being teleported — and EndlessRaceDirector only draws him
+        /// while he actually projects inside the frame, so the on/off always happens off-screen.
         /// </summary>
-        public const float PatrolFarGap = 24f;
+        public const float PatrolFarGap = 4.5f;
+
+        /// <summary>Worst projected body corner (1.0 = frame edge) at which the cop is allowed
+        /// to become visible, and the slightly looser value at which he is taken away again.
+        /// Both are outside the frame on purpose: the SetActive therefore always happens where
+        /// nobody can see it, which is the whole trick behind a "natural entrance". The small
+        /// gap between them is hysteresis, so a cop hovering at the boundary cannot strobe.</summary>
+        public const float PatrolFrameEnterLimit = 1.10f;
+        public const float PatrolFrameExitLimit = 1.28f;
 
         /// <summary>
         /// Where he starts, on the 0 (furthest) .. 1 (closest) scale. Deliberately not 0: the
@@ -119,7 +151,12 @@ namespace SummaRace.Constants
         /// running, fast enough to finish well inside the gap between two gates.</summary>
         public const float PatrolStepLerpPerSecond = 0.55f;
 
-        /// <summary>Below this he is hidden outright. A clean run reaches it by gate three.</summary>
+        /// <summary>Below this he is left behind for good — a cheap early-out before the
+        /// projection test below it. It is NOT the thing that decides whether he is on screen:
+        /// that is PatrolFrameEnterLimit / PatrolFrameExitLimit, measured against the live
+        /// camera, because a step value cannot know where the lens is and this constant used to
+        /// pretend it did (it turned him on at gap 23.6m, fifteen metres behind the lens, and
+        /// left him rendering all the way through it).</summary>
         public const float PatrolStepHidden = 0.02f;
 
         /// <summary>Chase-camera offset applied WHILE the cameo is on screen, in the camera's
