@@ -651,6 +651,7 @@ namespace SummaRace.Features.Race.Endless
             { tmWait += Time.deltaTime; yield return null; }
             if (TrackManager.instance == null) { ShowBriefingEscape("TrackManager"); yield break; }
             TrackManager.instance.newSegmentCreated += OnNewSegment;
+            StartCoroutine(ApplyChosenRunner());
             _subscribed = true;
             SeedExistingSegments();
             SpawnPatrol();
@@ -793,6 +794,55 @@ namespace SummaRace.Features.Race.Endless
         }
 
         // ---------- gate spawning / scheduling ----------
+
+        /// <summary>
+        /// <summary>
+        /// Show the runner this child chose (LearnerProfile.runnerIndex: 0 = boy, 1 = girl).
+        ///
+        /// BOTH BODIES LIVE IN THE ONE RUNNER PREFAB as sibling roots — `KidModel` (Aj) and
+        /// `GirlModel` (Ch29) — and this only flips which is active, then re-points
+        /// `Character.animator` at the live one. Deliberately NOT a second Addressables
+        /// character: that would force an Addressables content rebuild before every player
+        /// build, and Trash Dash switches its own character-select carousel back on the moment
+        /// `PlayerData.characters.Count > 1` (LoadoutState.cs), which is a menu this game hides.
+        ///
+        /// Runs as a coroutine because the runner is instantiated ASYNCHRONOUSLY by their
+        /// TrackManager (Addressables.InstantiateAsync), so it is not there on the frame the
+        /// TrackManager instance appears. Bounded by the same budget as the other boot waits;
+        /// giving up leaves the boy, which is the default every profile already carries.
+        /// </summary>
+        private System.Collections.IEnumerator ApplyChosenRunner()
+        {
+            var learner = Core.GameManager.Instance != null ? Core.GameManager.Instance.CurrentLearner : null;
+            int choice = learner != null ? learner.runnerIndex : 0;
+            if (choice <= 0) yield break;   // boy is what the prefab already shows
+
+            float waited = 0f;
+            while (waited < BootWaitSeconds)
+            {
+                var track = TrackManager.instance;
+                var runner = track != null ? track.characterController : null;
+                var character = runner != null ? runner.character : null;
+                if (character != null)
+                {
+                    var boy = character.transform.Find("KidModel");
+                    var girl = character.transform.Find("GirlModel");
+                    if (girl != null)
+                    {
+                        girl.gameObject.SetActive(true);
+                        if (boy != null) boy.gameObject.SetActive(false);
+                        var anim = girl.GetComponent<Animator>();
+                        // Their CharacterInputController drives character.animator for every
+                        // state (run, jump, hit), so the swap is only real once this points at
+                        // the body that is actually on screen.
+                        if (anim != null) character.animator = anim;
+                    }
+                    yield break;
+                }
+                waited += Time.deltaTime;
+                yield return null;
+            }
+        }
 
         /// <summary>
         /// Adopt any segments that already existed when we subscribed.

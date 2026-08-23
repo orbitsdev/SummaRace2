@@ -68,7 +68,12 @@ namespace SummaRace.Constants
         /// Documentation/SummaRace_Character_Select_Spec.md - when that lands, this string goes
         /// back to naming a runner and starts telling the truth.
         /// </summary>
-        public const string NameEntryPickAvatar = "Pick your badge";
+        /// ✅ AND NOW IT IS TRUE AGAIN (2026-08-23). The stopgap above renamed this to "badge"
+        /// because the tiles were heart/star/gem/lightning and the runner was always the boy.
+        /// The row now shows the two real runners — the boy (Aj) and the girl (Ch29), rendered
+        /// from the models themselves — and the choice is stored on the learner and applied by
+        /// EndlessRaceDirector, so the label describes what the tap does.
+        public const string NameEntryPickAvatar = "Pick your runner";
         public const string NameEntryConfirm = "LET'S GO!";
 
         /// <summary>Closes the on-screen keyboard on the FIRST screen a learner ever sees, where

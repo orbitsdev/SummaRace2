@@ -59,6 +59,19 @@ namespace SummaRace.Data
         /// screen treats as an unfinished install.
         /// </summary>
         public string participantCode = "";
+
+        /// <summary>
+        /// WHICH RUNNER THIS CHILD RACES AS — 0 = the boy (Aj, the original and the default),
+        /// 1 = the girl (Ch29). Appended at the end per this class's own append-only rule, so
+        /// every profile written before this existed loads with 0 and keeps the boy.
+        ///
+        /// It exists because the game asked a child to "pick your runner" and then ran the same
+        /// boy for everyone (owner, 2026-08-23), in a study whose classes are about half girls.
+        /// Applied by EndlessRaceDirector, which toggles the two model roots inside the one
+        /// runner prefab — deliberately NOT a second Addressables character, because that would
+        /// force a content rebuild and switch Trash Dash's own character carousel back on.
+        /// </summary>
+        public int runnerIndex;
     }
 
     /// <summary>

@@ -107,11 +107,18 @@ namespace SummaRace.Features.NameEntry
                     placeholder.text = GameText.NameEntryHint;
             }
 
-            _avatarIndex = learner != null ? Mathf.Clamp(learner.avatarIndex, 0, avatarButtons.Length - 1) : 0;
+            // THE ROW IS NOW THE RUNNER PICKER (owner, 2026-08-23). It showed four badges under
+            // a label that used to read "pick your runner", and the runner was always the boy —
+            // in a study whose classes are about half girls. The four scene buttons become TWO,
+            // each carrying a rendered portrait of the character the child will actually race
+            // as; buttons 2 and 3 are switched off rather than deleted, so the scene file is
+            // untouched (the whole session's rule) and a later build can restore badges cheaply.
+            _avatarIndex = learner != null ? Mathf.Clamp(learner.runnerIndex, 0, RunnerCount - 1) : 0;
 
             for (int i = 0; i < avatarButtons.Length; i++)
             {
                 if (avatarButtons[i] == null) continue;
+                if (i >= RunnerCount) { avatarButtons[i].gameObject.SetActive(false); continue; }
                 int index = i;                       // capture per button, not per loop
                 avatarButtons[i].onClick.AddListener(() => SelectAvatar(index));
             }
@@ -129,9 +136,97 @@ namespace SummaRace.Features.NameEntry
                 doneTypingButton.gameObject.SetActive(false);
             }
 
+            DressTheScreen();
+
             // Last, so everything above already exists and can be classified correctly.
             EnsureKeyboardDismissCatcher();
             SilenceBackgroundRaycasts();
+        }
+
+        /// <summary>
+        /// Makes the first screen look like a game rather than a form (owner, 2026-08-23: "seems
+        /// boring and doesn't look game-like"). Three additions, all code-built and null-safe:
+        /// Ms. Lumi greeting the child (she introduces every other screen and was absent from the
+        /// one that meets them first), a card behind the name field so it belongs to the same
+        /// world as every other panel, and a few drifting sparkles for life. Everything is
+        /// inserted behind the interactive controls and never takes a raycast.
+        /// </summary>
+        private void DressTheScreen()
+        {
+            var canvas = ResolveSceneCanvas();
+            if (canvas == null) return;
+
+            // --- the name field becomes a card -------------------------------------------
+            if (nameInput != null)
+            {
+                var field = nameInput.GetComponent<Image>();
+                var page = Resources.Load<Sprite>("UI/panel_gold");
+                if (field != null && page != null)
+                {
+                    field.sprite = page;
+                    field.type = Image.Type.Sliced;
+                    field.color = Color.white;
+                }
+            }
+
+            // --- Ms. Lumi welcomes them ---------------------------------------------------
+            if (canvas.transform.Find("WelcomeLumi") == null)
+            {
+                var lumi = SummaRace.UI.LumiExpressions.Next("idle");
+                if (lumi != null)
+                {
+                    var go = new GameObject("WelcomeLumi", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+                    var rt = (RectTransform)go.transform;
+                    rt.SetParent(canvas.transform, false);
+                    // Just ABOVE the Sky backdrop, not first: first sibling draws behind the
+                    // full-screen background image, which is where she vanished on the first
+                    // attempt. One index up puts her on the grass and still under every control.
+                    rt.SetSiblingIndex(1);
+                    // RIGHT of the runner row, not behind it: the first placement put her under
+                    // the two tiles, cropped and colliding. The band right of the tiles is empty
+                    // on every aspect (the row is left-anchored), so she greets from there.
+                    rt.anchorMin = new Vector2(0.60f, 0.30f);
+                    rt.anchorMax = new Vector2(0.96f, 0.60f);
+                    rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
+                    var img = go.GetComponent<Image>();
+                    img.sprite = lumi;
+                    img.preserveAspect = true;
+                    img.raycastTarget = false;
+                    go.transform.localScale = Vector3.one * 0.8f;
+                    PrimeTween.Tween.Scale(go.transform, Vector3.one, 0.45f, PrimeTween.Ease.OutBack, startDelay: 0.2f);
+                }
+            }
+
+            // --- sparkles -----------------------------------------------------------------
+            if (canvas.transform.Find("EntrySparkles") == null)
+            {
+                var glow = Resources.Load<Sprite>("UI/glow_gold");
+                if (glow != null)
+                {
+                    var root = new GameObject("EntrySparkles", typeof(RectTransform));
+                    var rrt = (RectTransform)root.transform;
+                    rrt.SetParent(canvas.transform, false);
+                    rrt.SetSiblingIndex(1);   // above the Sky backdrop, under the controls
+                    rrt.anchorMin = Vector2.zero; rrt.anchorMax = Vector2.one;
+                    rrt.offsetMin = Vector2.zero; rrt.offsetMax = Vector2.zero;
+                    for (int i = 0; i < 5; i++)
+                    {
+                        var go = new GameObject("S" + i, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+                        var rt = (RectTransform)go.transform;
+                        rt.SetParent(root.transform, false);
+                        rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.16f + i * 0.17f, 0.62f + (i % 2) * 0.12f);
+                        rt.sizeDelta = Vector2.one * (22f + (i % 3) * 8f);
+                        var img = go.GetComponent<Image>();
+                        img.sprite = glow;
+                        img.color = new Color(1f, 0.95f, 0.75f, 0.5f);
+                        img.raycastTarget = false;
+                        PrimeTween.Tween.UIAnchoredPositionY(rt, rt.anchoredPosition.y + 60f, 3f + i * 0.4f,
+                            PrimeTween.Ease.InOutSine, cycles: -1, cycleMode: PrimeTween.CycleMode.Yoyo, startDelay: i * 0.3f);
+                        PrimeTween.Tween.Alpha(img, 0.15f, 1.8f + i * 0.3f, PrimeTween.Ease.InOutSine,
+                            cycles: -1, cycleMode: PrimeTween.CycleMode.Yoyo, startDelay: i * 0.4f);
+                    }
+                }
+            }
         }
 
         private void SelectAvatar(int index)
@@ -145,6 +240,11 @@ namespace SummaRace.Features.NameEntry
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxClick);
         }
 
+        /// <summary>How many runners a child can choose between: the boy (Aj) and the girl
+        /// (Ch29). Both live as sibling model roots inside the one runner prefab, and
+        /// EndlessRaceDirector activates the chosen one — see LearnerProfile.runnerIndex.</summary>
+        private const int RunnerCount = 2;
+
         private void RefreshAvatars()
         {
             for (int i = 0; i < avatarButtons.Length; i++)
@@ -155,8 +255,8 @@ namespace SummaRace.Features.NameEntry
                 // THE TILES WERE PLAIN GREY SQUARES (owner device shot, 2026-08-23: "basic,
                 // nothing to do with a game"). They are cards now, like every other card in the
                 // app — the light parchment page the mission tiles and title banners use — so
-                // the badge row belongs to the same world as the rest of the screen. Selection
-                // still carries on three channels: brightness, the gold halo, and size.
+                // the row belongs to the same world as the rest of the screen. Selection still
+                // carries on three channels: brightness, the gold halo, and size.
                 var image = avatarButtons[i].GetComponent<Image>();
                 if (image != null)
                 {
@@ -168,6 +268,29 @@ namespace SummaRace.Features.NameEntry
                         image.color = selected ? Color.white : new Color(0.86f, 0.83f, 0.78f);
                     }
                     else image.color = selected ? AvatarOn : AvatarOff;
+                }
+
+                // The runner's own portrait replaces the badge glyph, so the child chooses a
+                // CHARACTER rather than a symbol. Rendered from the real models (see
+                // Resources/UI/Runners), so what they pick is what runs.
+                var iconImage = AvatarIcon(i) != null ? AvatarIcon(i).GetComponent<Image>() : null;
+                if (iconImage != null)
+                {
+                    var portrait = Resources.Load<Sprite>("UI/Runners/runner_" + i);
+                    if (portrait != null)
+                    {
+                        iconImage.sprite = portrait;
+                        iconImage.color = Color.white;
+                        iconImage.preserveAspect = true;
+                        // The badge glyphs were square, so the scene sized this rect square
+                        // (126 in a 180 tile) — a TALL portrait then fits by width and renders
+                        // a small figure adrift in the card. Fill the tile instead; the aspect
+                        // lock keeps the character undistorted.
+                        var irt = iconImage.rectTransform;
+                        irt.anchorMin = new Vector2(0.04f, 0.02f);
+                        irt.anchorMax = new Vector2(0.96f, 0.98f);
+                        irt.offsetMin = Vector2.zero; irt.offsetMax = Vector2.zero;
+                    }
                 }
 
                 // Cue two: a gold halo around the chosen badge — a shape that is either there
@@ -263,7 +386,12 @@ namespace SummaRace.Features.NameEntry
                 // An empty box is never an error — the learner just keeps the default name.
                 string typed = nameInput != null ? nameInput.text.Trim() : string.Empty;
                 learner.displayName = string.IsNullOrEmpty(typed) ? GameText.DefaultLearnerName : typed;
-                learner.avatarIndex = _avatarIndex;
+                // The chosen runner, and the badge kept in step with it: avatarIndex still drives
+            // the learner marker on MainMenu and in the teacher's picker, and with the badge row
+            // gone it would otherwise never change from 0 — every child on a shared tablet
+            // wearing the same heart. Two runners, two markers.
+            learner.runnerIndex = _avatarIndex;
+            learner.avatarIndex = _avatarIndex;
                 learner.named = true;
                 Core.GameManager.Instance.PersistProfiles();
             }
