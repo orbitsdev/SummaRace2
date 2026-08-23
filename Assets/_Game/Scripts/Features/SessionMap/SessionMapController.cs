@@ -227,30 +227,14 @@ namespace SummaRace.Features.SessionMap
                 else boardImg.color = new Color(0.94f, 0.88f, 0.78f, 0.92f);
             }
 
-            // The race's own dirt path, running down the middle of the board — the map shows
-            // the track the child is about to run on, so this screen belongs to THIS game
-            // rather than to any level select (owner: "why not use some texture from the race
-            // scene?"). Behind the tiles, tiled vertically, never a raycast target.
-            if (board.Find("BoardTrail") == null)
-            {
-                var trail = Resources.Load<Sprite>("UI/trail_dirt");
-                if (trail != null)
-                {
-                    var go = new GameObject("BoardTrail", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-                    var trt = (RectTransform)go.transform;
-                    trt.SetParent(board, false);
-                    trt.SetAsFirstSibling();
-                    trt.anchorMin = new Vector2(0.5f, 0f); trt.anchorMax = new Vector2(0.5f, 1f);
-                    trt.pivot = new Vector2(0.5f, 0.5f);
-                    trt.sizeDelta = new Vector2(150f, -80f);
-                    trt.anchoredPosition = Vector2.zero;
-                    var timg = go.GetComponent<Image>();
-                    timg.sprite = trail;
-                    timg.type = Image.Type.Tiled;
-                    timg.color = new Color(1f, 1f, 1f, 0.30f);
-                    timg.raycastTarget = false;
-                }
-            }
+            // ⚠️ NO DIRT TRAIL. Tying the map to the race with its own trail_dirt texture was a
+            // good idea that does not survive contact: a tan texture at 30% alpha over a teal
+            // board renders as a pale BLUE-GREY STRIPE (owner device shot, 2026-08-23), which
+            // reads as a rendering fault, not as a path. A tint cannot add warmth it does not
+            // have. Any trail left by an earlier build is removed here so a rebuilt scene
+            // cannot keep one.
+            var staleTrail = board.Find("BoardTrail");
+            if (staleTrail != null) Destroy(staleTrail.gameObject);
 
             // Panel parts an earlier build added are removed, so a rebuilt scene cannot keep a
             // stale wood frame around.
@@ -523,7 +507,11 @@ namespace SummaRace.Features.SessionMap
                     // board they lost their gold edge and read as flat slabs (device shot,
                     // 2026-08-23). Warmer and lighter keeps the set coherent — the padlock and
                     // the missing number carry "not yet", not a colour change this heavy.
-                    background.color = playable ? Color.white : new Color(0.78f, 0.73f, 0.66f);
+                    // ⚠️ AND THE GAP HAS TO BE BIG. That 0.78 sat within a whisker of white on
+                    // the device: mission 1 was told apart from the nine locked ones only by
+                    // its ring, so a screen of padlocks read as the normal state rather than as
+                    // "not yet". Locked steps down hard AND cools off; open stays full parchment.
+                    background.color = playable ? Color.white : new Color(0.55f, 0.53f, 0.51f);
                 }
                 else background.color = playable ? StopPlayable : StopLocked;
             }
