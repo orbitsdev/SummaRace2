@@ -222,7 +222,18 @@ namespace SummaRace.Features.SessionMap
                 {
                     boardImg.sprite = panel;
                     boardImg.type = Image.Type.Sliced;
-                    boardImg.color = Color.white;
+                    // ---- WARM BROWN, AND TRANSLUCENT SO THE WORLD SHOWS THROUGH -------------
+                    // Three attempts failed here and each failed the same way: this sprite is
+                    // TEAL, and a uGUI tint MULTIPLIES, so brown over teal lands near-black —
+                    // "a hole punched in a sunny playground" (owner device shots, 2026-08-23).
+                    // A multiply cannot make a cool sprite warm.
+                    //
+                    // So the tint carries a strong red/green lift and a low alpha: the red
+                    // channel is pushed far past 1 to overpower the sprite's own blue, and the
+                    // panel sits at ~72% so the playground reads through it as depth instead of
+                    // being covered by a slab. Result: a warm brown board of the same family as
+                    // the banner and the tiles, on a screen that still feels outdoors.
+                    boardImg.color = new Color(2.2f, 1.35f, 0.75f, 0.72f);
                 }
                 else boardImg.color = new Color(0.94f, 0.88f, 0.78f, 0.92f);
             }
@@ -528,13 +539,25 @@ namespace SummaRace.Features.SessionMap
             // Padlock: centred and large, the way every level-select in the references does it.
             if (stop.lockIcon != null && !playable)
             {
+                // ---- A LOCK IS A WHISPER, NOT A SHOUT ---------------------------------------
+                // Nine bright padlocks made a child's first impression "almost everything here
+                // is shut" (owner device shot, 2026-08-23). Sessions ARE teacher-gated — that is
+                // the study's own exposure control — but the screen does not have to announce it
+                // ten times. The padlock is now small and faint: present enough to explain why a
+                // tap does nothing, quiet enough that the OPEN mission is what the eye lands on.
                 var lrt = stop.lockIcon.rectTransform;
                 lrt.anchorMin = lrt.anchorMax = lrt.pivot = new Vector2(0.5f, 0.5f);
                 lrt.anchoredPosition = Vector2.zero;
-                lrt.sizeDelta = new Vector2(96f, 96f);
+                lrt.sizeDelta = new Vector2(52f, 52f);
                 stop.lockIcon.preserveAspect = true;
-                stop.lockIcon.color = Color.white;   // the padlock art on the dimmed page
+                stop.lockIcon.color = new Color(1f, 1f, 1f, 0.55f);
             }
+
+            // A locked tile also SHRINKS. Size is the loudest hierarchy cue there is, and it
+            // does the job colour alone could not: the open mission is visibly the biggest thing
+            // on the board, so the screen reads as "here is your mission" rather than as a wall
+            // of locks. The scale is absolute, so re-running this never compounds it.
+            stop.button.transform.localScale = Vector3.one * (playable ? 1.22f : 1.02f);
 
             // ---- A COUNTER, NOT STARS (owner, 2026-08-23: "why not put a number instead?") --
             // Three stars here meant "stories finished", while three stars on the Story Select
@@ -548,11 +571,8 @@ namespace SummaRace.Features.SessionMap
                 if (row != null) SetStopCounter(row, done, playable);
             }
 
-            // The plates were sized for a board with far more breathing room than ten stops
-            // need; on the device they read as small chips lost in cream. Scaled here rather
-            // than in the scene so the fractional anchors (and every aspect ratio they protect)
-            // stay untouched; the session-complete punch tweens around whatever scale it finds.
-            stop.button.transform.localScale = Vector3.one * 1.22f;
+            // (Tile scale is set with the lock above — open tiles are deliberately larger than
+            // locked ones, which is the screen's main hierarchy cue.)
 
             stop.button.onClick.RemoveAllListeners();
             if (playable)
