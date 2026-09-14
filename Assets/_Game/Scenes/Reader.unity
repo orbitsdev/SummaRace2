@@ -2178,7 +2178,7 @@ MonoBehaviour:
   cheerPool: cheer
   restPose: 
   shuffleRestPose: 1
-  cheerSeconds: 1.6
+  cheerSeconds: 3
   reactToReaderAnswer: 1
   reactToArrangeVerified: 1
   reactToSummarySubmitted: 1

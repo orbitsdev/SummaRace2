@@ -355,7 +355,7 @@ namespace SummaRace.Constants
         public const string SummaryTitle = "Write your summary!";
         /// <summary>Ghost text inside the box. "One-sentence summary" is a compound the title
         /// above already carries ("summary") — the box only has to say how much to write.</summary>
-        public const string SummaryPlaceholder = "Write one sentence here...";
+        public const string SummaryPlaceholder = "Write your summary here...";
         public const string SubmitLabel = "SUBMIT";
 
         /// <summary>Closes the on-screen keyboard, which on a portrait tablet covers SUBMIT and
@@ -450,6 +450,38 @@ namespace SummaRace.Constants
             "Almost! Name the Somebody — who the story is about.",
             "So close! Try putting it all into one sentence.",
         };
+
+        // ---- Summary check (client feedback 2026-09-14) ----
+        // Shown when SummaryChecker refuses a summary. Warm, never "wrong"; names which PART to
+        // add, never the answer. After GameRules.SummaryCheckNameMissingAfter tries the missing
+        // parts are named exactly.
+        public const string SummaryCheckTooShort = "Tell me a little more! Use the story parts above.";
+        public const string SummaryCheckNotEnglish = "Let's write it in English words, like the story.";
+        public const string SummaryCheckSomebody = "Who is the story about? Name the Somebody.";
+        public const string SummaryCheckParts = "Good start! What else happened in the story?";
+        public const string SummaryCheckOrder = "Almost! Tell it in story order: Somebody, Wanted, But, So, Then.";
+        public const string SummaryCheckAddPrefix = "Almost! Now add the ";
+
+        public static string SummaryCheckFeedback(SummaRace.Data.SummaryChecker.Verdict verdict,
+                                                  System.Collections.Generic.List<int> missingParts,
+                                                  bool nameMissing)
+        {
+            switch (verdict)
+            {
+                case SummaRace.Data.SummaryChecker.Verdict.TooShort: return SummaryCheckTooShort;
+                case SummaRace.Data.SummaryChecker.Verdict.NotEnglish: return SummaryCheckNotEnglish;
+                case SummaRace.Data.SummaryChecker.Verdict.MissingSomebody: return SummaryCheckSomebody;
+                case SummaRace.Data.SummaryChecker.Verdict.OutOfOrder: return SummaryCheckOrder;
+                case SummaRace.Data.SummaryChecker.Verdict.MissingParts:
+                    if (!nameMissing || missingParts == null || missingParts.Count == 0) return SummaryCheckParts;
+                    string[] names = { "SOMEBODY", "WANTED", "BUT", "SO", "THEN" };
+                    var parts = new System.Collections.Generic.List<string>();
+                    foreach (int p in missingParts) if (p >= 0 && p < names.Length) parts.Add(names[p]);
+                    return SummaryCheckAddPrefix + string.Join(" and ", parts) + " part"
+                           + (parts.Count > 1 ? "s." : ".");
+                default: return "";
+            }
+        }
 
         // Praise lines by star count (index 1..3) — one picked at random per result
         public static readonly string[][] PraiseByStars =
@@ -669,14 +701,15 @@ namespace SummaRace.Constants
         public const string NextLabel = "QUESTION!";
         public const string NextPageLabel = "NEXT PAGE";
         public const string StartRaceLabel = "START RACE!";
-        /// <summary>Says nothing about colour. "The green one is the answer" made colour the ONLY
-        /// channel carrying the answer, which tells a red-green colour-blind learner nothing at
-        /// all — ~8% of boys, so 1-2 children in a 40-learner study, silently excluded from the
-        /// one sentence that teaches after a wrong pick. ReaderController highlights the correct
-        /// option AND punch-scales it (see OnOptionChosen), so the answer is already carried by
-        /// motion as well as colour; this line just stops naming the channel a learner may not
-        /// have. Deliberately NOT a tick glyph — there is no tick in the UI to point at.</summary>
-        public const string ReaderWrongFeedback = "Not quite — here is the answer!";
+        // ---- Reader mastery (client feedback 2026-09-14) ----
+        // A wrong answer no longer reveals the right one. The learner is invited to read the
+        // page again or try another answer, and cannot move on until the question is answered
+        // correctly. The option they tapped is set aside, so it always converges. None of these
+        // name a colour (F49: colour must never be the only channel).
+        public const string ReaderTryAgainFeedback = "Not quite! Do you want to read the page again?";
+        public const string ReaderLastTryFeedback = "Almost there! Read the page again, or try the other answer.";
+        public const string ReaderReadAgainLabel = "READ AGAIN";
+        public const string ReaderBackToQuestionLabel = "TRY AGAIN";
 
         /// <summary>Reader's quiet corner exit. It is only offered before the learner's first
         /// answer (see ReaderController.RefreshSecondaryControls), so it is worded as a plain
@@ -891,7 +924,6 @@ namespace SummaRace.Constants
         /// </summary>
         public const string ResultsCleared = "Mission Cleared!";
 
-        public const string RaceFinishBanner = "FINISH!";
         /// <summary>Heads the finish card that reads the five collected parts back. Names what
         /// they built, in the vocabulary Arrange and Summary use next ("story parts"), so the
         /// three screens are visibly about one thing.</summary>
@@ -942,28 +974,46 @@ namespace SummaRace.Constants
         public const string RaceLastGateTimerFar = "Last part coming up!";
 
 
+        // ---- Race mastery (client feedback 2026-09-14) ----
+
         /// <summary>
-        /// The framing line in the race feedback pill on a wrong pick, one beat BEFORE the
-        /// answer itself appears on the reading panel (EndlessRaceDirector.HitWrong then
-        /// ShowAnswerReveal).
-        ///
-        /// The pill used to show the correct answer and the panel then showed it again, so
-        /// the moment said one thing twice and said nothing about why the pick was wrong.
-        /// These lines do the teaching that repetition was wasting: the distractors are
-        /// usually TRUE of the story - what makes them wrong is that they are not the part
-        /// being collected. Naming that is the whole point of the framework.
-        ///
-        /// Warm, never scolding (D7): no "wrong", no "no", nothing that reads as a buzzer.
-        /// The answer follows immediately, so the learner is never left holding only a
-        /// correction.
+        /// The feedback line on a WRONG race pick. The answer is no longer revealed: the same
+        /// part comes back down the road (without the option just chosen) until the learner
+        /// collects it, so every line promises the return. Drawn through Praise.RaceNotQuite's
+        /// shuffle bag so a hard run does not repeat one sentence. Warm, never scolding (D7).
         /// </summary>
         public static readonly string[] RaceWrongLines =
         {
-            "That detail isn't the most important.",
-            "Not quite - here's the part we need!",
-            "Close! That's not the part we're collecting.",
-            "That happened, but it isn't this part.",
+            "Not quite! It will come back - watch for it.",
+            "Close! That part will come back - try again.",
+            "That happened, but it isn't this part. It's coming back!",
+            "Not this one! Look for it again soon.",
         };
+
+        /// <summary>A part the learner ran past without touching any card.</summary>
+        public const string RaceMissedComesBack = "Missed it! It will come back - watch for it.";
+
+        /// <summary>Said once as the patrol runs up behind the runner after GO!.</summary>
+        public const string RaceChaseIntro = "Here comes the patrol! Collect the parts to get away!";
+
+        /// <summary>The finish stamp - the end of the mission, said like one.</summary>
+        public const string RaceMissionComplete = "MISSION COMPLETE!";
+
+        /// <summary>The finish badge's headline: every part was collected (the race cannot
+        /// finish otherwise).</summary>
+        public const string RaceFinishPartsBadge = "5/5 story parts";
+
+        /// <summary>The finish badge's second line. Encouraging at every count - the first-try
+        /// number is information, never a grade.</summary>
+        public static string RaceFinishFirstTry(int firstTry)
+        {
+            if (firstTry >= 5) return "All 5 on the first try!";
+            if (firstTry <= 0) return "You kept trying and got them all!";
+            return firstTry + " on the first try - and you got the rest too!";
+        }
+
+        /// <summary>The prompt that ends the finish beat.</summary>
+        public const string RaceTapToContinue = "TAP TO CONTINUE";
 
         /// <summary>
         /// Race HUD banner, e.g. "Collect: SOMEBODY  1/5".
@@ -1021,13 +1071,18 @@ namespace SummaRace.Constants
         /// "already in place" names something every learner can perceive.</summary>
         public const string ArrangeAlmost = "Almost! The parts already in place are right — try the others again.";
 
-        /// <summary>Shown when the screen finishes the order for a learner who is stuck
-        /// (GameRules.ArrangeMaxAttempts). Deliberately NOT drawn from the praise pools:
-        /// this is not a correct answer, and congratulating a solve the learner did not
-        /// make is the ability-praise trap the tone rules avoid. It says "together",
-        /// names no mistake, and hands the story straight on to the next step.</summary>
-        public const string ArrangeAssistIntro = "This one's tricky — let's put the rest in place together.";
-        public const string ArrangeAssistDone = "There's the whole story! Now tell it in your own words.";
+        /// <summary>
+        /// The growing hint on a wrong order (client feedback 2026-09-14: no auto-solve, retry
+        /// until correct). Names the most-missed box and asks the SAME question the Reader asked
+        /// for that part (<see cref="ReaderSlotHints"/>), so the learner meets a familiar prompt
+        /// rather than a definition. Never names which piece goes there.
+        /// </summary>
+        public static string ArrangeSlotHint(int element)
+        {
+            string[] names = { "SOMEBODY", "WANTED", "BUT", "SO", "THEN" };
+            if (element < 0 || element >= names.Length) return ArrangeAlmost;
+            return ArrangeHintPrefix + "Look at the " + names[element] + " box. " + ReaderSlotHint(element);
+        }
 
         /// <summary>Shown for the moment before Arrange bounces back to Story Select
         /// because no story could be loaded — a failure the learner never caused.</summary>

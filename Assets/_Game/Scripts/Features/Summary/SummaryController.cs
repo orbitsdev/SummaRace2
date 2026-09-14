@@ -8,9 +8,10 @@ using UnityEngine.UI;
 namespace SummaRace.Features.Summary
 {
     /// <summary>
-    /// Type ONE summary sentence with the arranged SWBST parts as reference
-    /// (TDD §10.3). Checks are light and warm: at most 2 nudges, then the
-    /// summary is always accepted — the app encourages, it never grades.
+    /// Type a summary with the arranged SWBST parts as reference (TDD §10.3).
+    /// Client feedback 2026-09-14: the summary is accepted only when it is a real English
+    /// summary of this story (see <see cref="SummaryChecker"/>). Grammar and spelling are never
+    /// graded, the feedback names the part to add rather than the answer, and BACK still leaves.
     /// </summary>
     public class SummaryController : MonoBehaviour
     {
@@ -306,12 +307,19 @@ namespace SummaRace.Features.Summary
 
             string text = summaryInput != null ? summaryInput.text.Trim() : "";
 
-            // Light checks (GDD §4.5) — nudge at most twice, then accept.
-            if (_nudgeCount < GameRules.SummaryMaxNudges && !PassesLightChecks(text))
+            // MASTERY (client feedback 2026-09-14): the summary is no longer accepted after two
+            // nudges. It must be a real English summary of THIS story — the Somebody and at least
+            // three of the other four parts, in story order — before the learner moves on.
+            // Grammar and spelling are never graded. The feedback grows more specific with each
+            // try and names which PART to add, never the answer. BACK still leaves (never a dead end).
+            var check = SummaryChecker.Check(text, _story);
+            if (check.verdict != SummaryChecker.Verdict.Ok)
             {
                 if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxNotQuite);
-                SetNudge(GameText.SummaryNudges[NudgeIndexFor(text)]);
                 _nudgeCount++;
+                SetNudge(GameText.SummaryCheckFeedback(check.verdict, check.missingParts,
+                    _nudgeCount > GameRules.SummaryCheckNameMissingAfter));
+                EventBus.Raise(new SummaryRejected { verdict = check.verdict.ToString() });
                 return;
             }
 
@@ -385,157 +393,6 @@ namespace SummaRace.Features.Summary
                 // would tell a child their sentence had been judged.
                 if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxPop);
             }
-        }
-
-        /// <summary>
-        /// Picks the nudge that matches what actually stopped the sentence, instead of walking
-        /// the list in order: a learner who wrote three good lines but never named the Somebody
-        /// used to be told "try writing a little more", which is advice for a different problem
-        /// and cannot be acted on. The nudge count the study logs is unchanged.
-        ///
-        /// THERE ARE THREE WAYS TO FAIL AND THERE WERE ONLY TWO NUDGES. The clamp meant the
-        /// third mode — wrote plenty, named the Somebody, but used three sentences — collapsed
-        /// onto nudge 1, which told the child to "start with the Somebody" they had already
-        /// named. Being corrected for something you did right is worse than no feedback at all,
-        /// and it burned one of the only two nudges the screen is allowed.
-        ///
-        /// Ordered by what the learner can act on first: with fewer than SummaryMinWords there
-        /// is nothing else worth judging; a missing protagonist is a gap in the CONTENT; and the
-        /// sentence count is the last thing left once the content is there. The clamp stays so
-        /// that a GameText.SummaryNudges array with only two entries degrades to the previous
-        /// behaviour instead of throwing on a screen the learner cannot leave.
-        /// </summary>
-        private int NudgeIndexFor(string text)
-        {
-            int index;
-            if (!HasEnoughWords(text)) index = 0;            // wrote too little
-            else if (!MentionsSomebody(text)) index = 1;     // never said who it is about
-            else index = 2;                                  // more than one sentence
-            return Mathf.Clamp(index, 0, GameText.SummaryNudges.Length - 1);
-        }
-
-        /// <summary>
-        /// The accept test, expressed as the same three predicates NudgeIndexFor asks about, so
-        /// the two cannot disagree about why a sentence was held back. Never a score: it decides
-        /// whether to nudge, and after GameRules.SummaryMaxNudges the answer stops being asked.
-        /// </summary>
-        private bool PassesLightChecks(string text)
-        {
-            return HasEnoughWords(text) && IsOneSentence(text) && MentionsSomebody(text);
-        }
-
-        /// <summary>At least a few words of effort.</summary>
-        private static bool HasEnoughWords(string text)
-        {
-            return !string.IsNullOrWhiteSpace(text)
-                && text.Split(' ', System.StringSplitOptions.RemoveEmptyEntries).Length
-                       >= GameRules.SummaryMinWords;
-        }
-
-        /// <summary>One sentence: no sentence break before the final punctuation.</summary>
-        private static bool IsOneSentence(string text)
-        {
-            if (string.IsNullOrEmpty(text)) return true;
-            string body = text.TrimEnd('.', '!', '?', ' ');
-            return body.IndexOfAny(new[] { '.', '!', '?' }) < 0;
-        }
-
-        /// <summary>
-        /// Does the sentence name the story's Somebody?
-        ///
-        /// TWO DEFECTS, and both of them polluted a logged variable. The old test was
-        /// <c>word.Length &gt; 2 &amp;&amp; lower.Contains(word)</c>, so:
-        ///
-        /// (1) SUBSTRING, not word. "the" from "The Giant" matched "there", "then", "other",
-        ///     "together", "brother"; "and" matched "sand", "handed", "understand"; "her"
-        ///     matched "there", "other", "where". Nine of the thirty Somebody lines contain one
-        ///     of those four words, and on every one of them ANY sentence carrying the substring
-        ///     passed this check. <c>nudgeCount</c> is exported per run, so part of what it was
-        ///     measuring was WHICH STORY THE CHILD HAPPENED TO DRAW.
-        /// (2) The length floor was 3 characters (<c>&gt; 2</c>), which is exactly what let those
-        ///     four function words be candidates in the first place.
-        ///
-        /// Now: whole-word matching, and function words are not candidates. Punctuation does not
-        /// break a match, so "Molly's" and "Molly," still name Molly.
-        ///
-        /// If nothing survives the filter — a Somebody made entirely of short function words —
-        /// the check PASSES. Nudging a child twice for something no sentence of theirs could
-        /// satisfy is the failure mode this is guarding, the same reasoning as the
-        /// no-elements case below (GDD D7, never punish). Verified against all 30 stories:
-        /// every one leaves at least one candidate word today, so this is a guard, not a path.
-        /// </summary>
-        private bool MentionsSomebody(string text)
-        {
-            if (string.IsNullOrWhiteSpace(text)) return false;
-
-            // A story with no elements cannot supply a Somebody to look for, so this could only
-            // ever fail. Broken content passes instead (GDD D7).
-            if (_story == null || _story.elements == null || _story.elements.Length == 0) return true;
-            var somebody = _story.elements[0] != null ? _story.elements[0].correct : null;
-            if (string.IsNullOrWhiteSpace(somebody)) return true;
-
-            string lower = text.ToLowerInvariant();
-            bool anyCandidate = false;
-            foreach (var raw in somebody.ToLowerInvariant().Split(' '))
-            {
-                string word = TrimToWord(raw);
-                if (word.Length == 0 || IsSomebodyStopWord(word)) continue;
-                anyCandidate = true;
-                if (ContainsWholeWord(lower, word)) return true;
-            }
-            return !anyCandidate;
-        }
-
-        /// <summary>
-        /// Function words that must never stand in for the Somebody. All four are three
-        /// characters, so the length rule below already excludes them — they are named anyway
-        /// because they are the ones that actually occur in the thirty Somebody lines, so a
-        /// later edit that relaxes the length rule cannot quietly re-open the hole.
-        /// </summary>
-        private static readonly string[] SomebodyStopWords = { "and", "the", "his", "her" };
-
-        private static bool IsSomebodyStopWord(string word)
-        {
-            if (word.Length <= 3) return true;
-            foreach (var stop in SomebodyStopWords)
-                if (word == stop) return true;
-            return false;
-        }
-
-        /// <summary>Strips punctuation off both ends of a word — the Somebody lines carry commas
-        /// ("Maggie, Travis, and Lucy") and the learner's typing carries everything.</summary>
-        private static string TrimToWord(string raw)
-        {
-            int start = 0, end = raw.Length;
-            while (start < end && !char.IsLetterOrDigit(raw[start])) start++;
-            while (end > start && !char.IsLetterOrDigit(raw[end - 1])) end--;
-            return raw.Substring(start, end - start);
-        }
-
-        /// <summary>
-        /// <paramref name="needle"/> as a WHOLE word inside <paramref name="haystack"/> (both
-        /// already lowercased). A letter or digit on either side breaks the match; punctuation
-        /// does not, so "Molly's" and "(Molly)" both count. Scans past a failed boundary rather
-        /// than giving up, so a later legitimate occurrence is still found.
-        /// </summary>
-        private static bool ContainsWholeWord(string haystack, string needle)
-        {
-            if (string.IsNullOrEmpty(haystack) || string.IsNullOrEmpty(needle)) return false;
-
-            int from = 0;
-            while (from <= haystack.Length - needle.Length)
-            {
-                int at = haystack.IndexOf(needle, from, System.StringComparison.Ordinal);
-                if (at < 0) return false;
-
-                bool leftClear = at == 0 || !char.IsLetterOrDigit(haystack[at - 1]);
-                int end = at + needle.Length;
-                bool rightClear = end >= haystack.Length || !char.IsLetterOrDigit(haystack[end]);
-                if (leftClear && rightClear) return true;
-
-                from = at + 1;
-            }
-            return false;
         }
 
         private void Accept(string text)

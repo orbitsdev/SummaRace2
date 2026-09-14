@@ -262,6 +262,8 @@ namespace SummaRace.Data
         /// can be told apart from time the learner spent working.</item>
         /// <item>7 — adds <see cref="raceSteerCount"/>, so a passive run (no steering at all)
         /// can be told apart from an engaged run that scored the same.</item>
+        /// <item>8 — adds <see cref="readingAttempts"/> and <see cref="readingRereads"/>: the
+        /// Reader now requires a correct answer before moving on (client feedback 2026-09-14).</item>
         /// </list>
         /// This list was stale at "1 and 2" for three versions. It is the comment a reader opens
         /// first, so keep it current — but the AUTHORITY is
@@ -465,5 +467,23 @@ namespace SummaRace.Data
         /// the tap is the taught, primary input, so 0 stays meaningful.
         /// </summary>
         public int raceSteerCount;
+
+        // ---- schema 8 (client feedback 2026-09-14: mastery before moving on) ----
+
+        /// <summary>Answers given on each Reader page until it was answered correctly, index
+        /// 0..4 by page. 1 = right first time. The Reader no longer reveals the answer after a
+        /// wrong pick, so every completed page ends on a correct answer; the FIRST answer stays
+        /// the measure in <see cref="readingFirstCorrect"/> and this is how much practice it took.
+        /// 0 = the page's question was never answered (an abandoned run).</summary>
+        public List<int> readingAttempts = new List<int> { 0, 0, 0, 0, 0 };
+
+        /// <summary>Times the learner chose READ AGAIN from a question on each page, index 0..4.</summary>
+        public List<int> readingRereads = new List<int> { 0, 0, 0, 0, 0 };
+
+        /// <summary>Why each refused SUBMIT was refused, in order (TooShort / NotEnglish /
+        /// MissingSomebody / MissingParts / OutOfOrder). The summary is no longer accepted after
+        /// two nudges; <see cref="nudgeCount"/> still counts the refusals and equals this list's
+        /// length on a completed run.</summary>
+        public List<string> summaryVerdicts = new List<string>();
     }
 }

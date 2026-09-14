@@ -46,9 +46,9 @@ namespace SummaRace.Core
                 : Draw("racecollect", GameText.PraiseRaceCollect);
         }
 
-        /// <summary>The warm framing line shown for a beat after a WRONG race pick,
-        /// before the answer itself appears. Not praise - but it is drawn the same way
-        /// so a learner having a hard run does not hear the same sentence five times.
+        /// <summary>The warm line shown after a WRONG race pick, promising the part will come
+        /// back (mastery loop). Not praise - but it is drawn the same way so a learner having a
+        /// hard run does not hear the same sentence five times.
         /// </summary>
         public static string RaceNotQuite() => Draw("racewrong", GameText.RaceWrongLines);
 

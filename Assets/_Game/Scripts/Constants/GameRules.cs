@@ -151,13 +151,9 @@ namespace SummaRace.Constants
         /// running, fast enough to finish well inside the gap between two gates.</summary>
         public const float PatrolStepLerpPerSecond = 0.55f;
 
-        /// <summary>Below this he is left behind for good — a cheap early-out before the
-        /// projection test below it. It is NOT the thing that decides whether he is on screen:
-        /// that is PatrolFrameEnterLimit / PatrolFrameExitLimit, measured against the live
-        /// camera, because a step value cannot know where the lens is and this constant used to
-        /// pretend it did (it turned him on at gap 23.6m, fifteen metres behind the lens, and
-        /// left him rendering all the way through it).</summary>
-        public const float PatrolStepHidden = 0.02f;
+        // PatrolStepHidden (0.02) is GONE (2026-09-14): replaced by PatrolShowStep in the Race
+        // mastery block, which also scales the chase-camera pull-back so visibility and framing
+        // agree.
 
         /// <summary>Chase-camera offset applied WHILE the cameo is on screen, in the camera's
         /// own parent space (it is parented to the runner). Back and slightly up, so the road
@@ -495,11 +491,73 @@ namespace SummaRace.Constants
         // assume it is live - it is not.
         public const float RaceLeaveConfirmSeconds = 4f;
 
-        /// <summary>How long the finish beat holds before Arrange loads. 2.2 was tuned for a
-        /// character standing still; the runner now dances (owner, 2026-08-21) and a celebration
-        /// that is cut off mid-move reads as a bug rather than as a reward. Long enough for a
-        /// couple of bars, short enough that a nine-year-old is not waiting.</summary>
-        public const float RaceFinishBeatSeconds = 3.2f;
+        // RaceFinishBeatSeconds (a fixed 3.2s hold) is GONE: the finish now waits
+        // RaceFinishMinBeatSeconds, then TAP TO CONTINUE with a RaceFinishAutoContinueSeconds
+        // fallback (see the Race mastery block below).
+
+        // ---- Race mastery (client feedback 2026-09-14) ----
+        //
+        // The researchers asked for four things: a chase that feels like Subway Surfers, answer
+        // items that come out while running, a wrong item that comes back until it is collected,
+        // and a finish that feels like the end of a mission. The numbers for all four live here.
+        // The FIRST pick per part is still the study measure (raceFirstPickCorrect / stars);
+        // every later encounter of the same part is practice and is logged as a re-present.
+
+        /// <summary>Seconds after a wrong pick or a run-past before the part's options come back
+        /// on the reading panel. The feedback line owns this beat, so "Not quite" and the
+        /// returning options are two moments, not one.</summary>
+        public const float RaceRetryPanelDelaySeconds = 1.4f;
+
+        /// <summary>Reading seconds a RETURNING part gets before its cards arrive. Shorter than
+        /// the first window (RacePreviewLeadSeconds) on purpose: the learner has already read
+        /// these options once, and each return carries one option fewer.</summary>
+        public const float RaceRetryReadSeconds = 8f;
+
+        /// <summary>Floor on the retry runway in metres, so a returning gate is never placed
+        /// inside the segment the runner is already standing on.</summary>
+        public const float RaceRetryMinGap = 70f;
+
+        /// <summary>How many times in a row a learner may run PAST the same part (touching no
+        /// card) before its next return fills all three lanes with the correct card. A wrong pick
+        /// already converges on its own (the chosen option is removed each time); a run-past
+        /// removes nothing, so without this a learner who never steers could loop forever.</summary>
+        public const int RaceRetryPassByLimit = 2;
+
+        /// <summary>Metres ahead of the runner at which a gate's cards pop up out of the road.
+        /// Inside the scene's fog start, so the pop happens in clear view.</summary>
+        public const float RaceCardRevealDistance = 50f;
+
+        /// <summary>...but never fewer than this many seconds of warning at the speed being run,
+        /// so a fast runner still sees the cards before they are on top of him.</summary>
+        public const float RaceCardRevealMinSeconds = 2.2f;
+
+        /// <summary>The pop itself: rise + overshoot duration, the depth the card rises from,
+        /// and the stagger between the three lanes.</summary>
+        public const float RaceCardPopSeconds = 0.38f;
+        public const float RaceCardPopRise = 0.9f;
+        public const float RaceCardPopStagger = 0.07f;
+
+        /// <summary>Collectible idle motion once a card is up: bob height (m), bob rate (Hz)
+        /// and yaw sway (degrees). Small, because the card still has to be recognisable.</summary>
+        public const float RaceCardBobHeight = 0.12f;
+        public const float RaceCardBobHz = 1.1f;
+        public const float RaceCardSwayDegrees = 9f;
+
+        /// <summary>Chase intro: seconds after GO! the patrol spends running up close behind the
+        /// runner (the run-up itself takes ~1.8s at PatrolStepLerpPerSecond) and holding there,
+        /// before dropping back to PatrolStartStep. Visual pressure only (D7).</summary>
+        public const float PatrolIntroHoldSeconds = 3.6f;
+
+        /// <summary>The patrol is drawn only while _patrolStep is above this, and the chase
+        /// camera pull-back is scaled from 0 here to full at PatrolDollyFullStep — so "the cop is
+        /// visible" and "the camera has made room for him" can never disagree.</summary>
+        public const float PatrolShowStep = 0.12f;
+        public const float PatrolDollyFullStep = 0.5f;
+
+        /// <summary>Finish: minimum celebration before TAP TO CONTINUE appears, and the
+        /// auto-continue that guarantees the finish can never become a dead end.</summary>
+        public const float RaceFinishMinBeatSeconds = 2.5f;
+        public const float RaceFinishAutoContinueSeconds = 10f;
 
         // Tap-to-move (EndlessTouchInput). A tap is only a tap if the finger stayed inside this
         // fraction of the screen WIDTH and lifted within this long; anything larger belongs to
@@ -677,10 +735,9 @@ namespace SummaRace.Constants
         // where being wrong could trap a learner. Two ladders keep it moving:
         //   a hint appears after this many misses on the same piece...
         public const int ArrangeHintAfterMisses = 3;
-        //   ...and after this many failed verifies the screen finishes the order WITH the
-        //   learner and continues. 4 rather than the 3 used elsewhere (race auto-resolve,
-        //   summary accept) because the hint needs 3 misses to fire — so a 4th attempt is
-        //   the first one the learner makes with the hint in front of them.
+        //   ⚠️ RETIRED 2026-09-14: Arrange no longer finishes the order for the learner
+        //   (client feedback: retry until correct). Kept only so older docs/tests that name it
+        //   still compile; nothing in the game reads it. See ArrangeHintFromAttempt.
         public const int ArrangeMaxAttempts = 4;
 
         // Summary light checks (GDD §4.5)
@@ -728,5 +785,42 @@ namespace SummaRace.Constants
         /// </summary>
         public const int TargetFrameRate = 30;
         public const float SplashSeconds = 2f;
+
+        // ---- Reader pacing (client feedback 2026-09-14: "the teacher/narration is too fast") ----
+
+        /// <summary>The page's QUESTION button waits for the narration to finish, so a page is
+        /// heard in full before it can be left. This is the pause after the voice ends.</summary>
+        public const float ReaderNextAfterNarrationSeconds = 0.6f;
+
+        /// <summary>With VOICE OFF there is no clip to wait on, so the button waits this long
+        /// instead — enough to read a short page, never long enough to feel stuck.</summary>
+        public const float ReaderMinPageSeconds = 4f;
+
+        /// <summary>Safety cap: however the audio behaves, the button always appears by then.</summary>
+        public const float ReaderMaxNarrationWaitSeconds = 45f;
+
+        // ---- Arrange mastery (client feedback 2026-09-14) ----
+
+        /// <summary>From this CHECK ORDER attempt on, a wrong order names the most-missed box and
+        /// asks that part's question. Arrange has no auto-solve any more.</summary>
+        public const int ArrangeHintFromAttempt = 2;
+
+        // ---- Summary check (client feedback 2026-09-14: the summary must match the story) ----
+
+        /// <summary>Fewest words a summary may have. Five SWBST parts fit in about ten.</summary>
+        public const int SummaryCheckMinWords = 8;
+
+        /// <summary>Share of the learner's words that must be recognisable English (the story's
+        /// own words, a common-word list, or a near-spelling of either). Grammar is not graded;
+        /// this only refuses keyboard-mash like "asdf jkl qwe".</summary>
+        public const float SummaryCheckMinEnglishShare = 0.7f;
+
+        /// <summary>How many of the four story parts after SOMEBODY (Wanted, But, So, Then) the
+        /// summary must touch, in addition to naming the Somebody.</summary>
+        public const int SummaryCheckMinParts = 3;
+
+        /// <summary>After this many refused tries the feedback names exactly which parts are
+        /// still missing, so a learner is never left guessing what to add.</summary>
+        public const int SummaryCheckNameMissingAfter = 2;
     }
 }

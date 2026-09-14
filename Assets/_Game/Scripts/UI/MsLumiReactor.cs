@@ -49,7 +49,7 @@ namespace SummaRace.UI
         [SerializeField] private bool shuffleRestPose = true;
 
         [Header("Reaction")]
-        [SerializeField] private float cheerSeconds = 1.6f;
+        [SerializeField] private float cheerSeconds = 3f; // was 1.6 — client: Ms. Lumi left too quickly
         [SerializeField] private bool reactToReaderAnswer = true;
         [SerializeField] private bool reactToArrangeVerified = true;
         [SerializeField] private bool reactToSummarySubmitted = true;

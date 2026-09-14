@@ -12,12 +12,11 @@ namespace SummaRace.Features.Arrange
 {
     /// <summary>
     /// Order the 5 collected pieces into S-W-B-S-T slots (TDD §10.2).
-    /// Tap a piece, then tap a slot. VERIFY locks correct slots green;
-    /// wrong ones wiggle amber and return to the pool. Retries never run out and
-    /// never block: a hint appears after GameRules.ArrangeHintAfterMisses misses on
-    /// the same piece (and unconditionally on the attempt before the assist, so the
-    /// ladder can never be skipped), and after GameRules.ArrangeMaxAttempts failed
-    /// verifies the screen finishes the order with the learner (see AssistRoutine).
+    /// Tap a piece, then tap a slot. CHECK ORDER locks correct slots green;
+    /// wrong ones wiggle amber and return to the pool. The learner cannot move on to
+    /// the Summary until all five are in the right place (client feedback 2026-09-14 —
+    /// the old auto-solve after four tries is gone). Locked slots stay locked, so every
+    /// try shrinks the problem and it always ends; hints grow from the second try.
     /// </summary>
     public class ArrangeController : MonoBehaviour
     {
@@ -599,40 +598,18 @@ namespace SummaRace.Features.Arrange
                     placement = _submittedOrder
                 });
 
-                if (_attempts >= GameRules.ArrangeMaxAttempts)
-                {
-                    // Stays busy on purpose: the assist ends by leaving the scene, so the
-                    // board must not accept taps while it plays out.
-                    // handedOff BEFORE the yield, not after. Unity logs an inner coroutine's
-                    // exception and simply never resumes the outer one - so a throw inside
-                    // AssistRoutine abandoned this iterator with handedOff still false, the
-                    // finally never ran, _busy stayed true and the board was dead for good. This
-                    // file states that exact rule twenty lines up and then broke it.
-                    //
-                    // Setting it first is safe: the flag only tells the finally "someone else
-                    // owns the exit now", and the assist owns it from the moment it starts.
-                    handedOff = true;
-                    yield return StartCoroutine(AssistRoutine());
-                    yield break;
-                }
-
-                // The hint is meant to arrive BEFORE the assist does: GameRules sets
-                // ArrangeMaxAttempts to 4 precisely so the last attempt is the first one the
-                // learner makes with a hint in front of them. Counting misses per piece did not
-                // guarantee that — a learner who reshuffles everything each verify spreads the
-                // misses so no single piece ever reaches ArrangeHintAfterMisses, and the screen
-                // went straight from "Almost!" to finishing the order for them without once
-                // saying what any part means. On the last attempt the most-missed piece gets the
-                // hint whatever its count.
-                bool lastAttempt = _attempts >= GameRules.ArrangeMaxAttempts - 1;
+                // MASTERY (client feedback 2026-09-14): there is no auto-solve any more. The
+                // learner retries until the order is right. That is never a dead end, because
+                // every correct slot locks and stays locked, so each CHECK ORDER can only shrink
+                // the problem. What grows instead is the help: from the second try on (or once
+                // one piece has been missed ArrangeHintAfterMisses times) the status names the
+                // most-missed box and asks the same question the Reader asked for that part.
                 bool hintEarned = worstElement >= 0
-                    && (worstMisses >= GameRules.ArrangeHintAfterMisses || lastAttempt);
+                    && (worstMisses >= GameRules.ArrangeHintAfterMisses
+                        || _attempts >= GameRules.ArrangeHintFromAttempt);
 
-                // LoadingTips is the S-W-B-S-T definition list in element order — the array
-                // is named for the loading overlay that also shows it, but index i really is
-                // element i. See the note on GameText.LoadingTips before touching either.
                 SetStatus(hintEarned
-                    ? GameText.ArrangeHintPrefix + GameText.LoadingTips[worstElement]
+                    ? GameText.ArrangeSlotHint(worstElement)
                     : GameText.ArrangeAlmost);
             }
             finally
@@ -642,63 +619,6 @@ namespace SummaRace.Features.Arrange
                 // ArrangeVerified again with a higher attemptCount, which is a study variable.
                 if (!handedOff) _busy = false;
             }
-        }
-
-        /// <summary>
-        /// Anti-frustration path (GDD "never punish the learner" / TDD §13 "never a dead end").
-        /// Arrange is the only screen the story cannot pass until the answer is right, so after
-        /// <see cref="GameRules.ArrangeMaxAttempts"/> failed verifies the remaining parts are
-        /// placed for the learner and the story continues to Summary. In a 55-minute classroom
-        /// session the alternative is the supervising researcher force-quitting the app — which
-        /// files the run as abandoned and loses its data.
-        ///
-        /// The measure stays honest: the last <see cref="ArrangeVerified"/> raised carries
-        /// correct = false and the REAL attempt count, so an assisted finish is visible in the
-        /// log (attempts >= ArrangeMaxAttempts with correct = false) rather than dressed up as
-        /// a solve. Nothing further is raised here — helping must not rewrite the record.
-        /// </summary>
-        private IEnumerator AssistRoutine()
-        {
-            _selectedPiece = -1;
-            SetStatus(GameText.ArrangeAssistIntro);
-            yield return new WaitForSeconds(1.2f);
-
-            for (int i = 0; i < 5; i++)
-            {
-                if (_slotLocked[i]) continue;
-
-                _slotContent[i] = i;    // element i is, by definition, slot i's part
-                _slotLocked[i] = true;
-                RefreshUI();            // skips locked slots, so paint the lock colour after it
-                if (slotButtons[i] != null) slotButtons[i].image.color = SlotLocked;
-                if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxSlotLock);
-                yield return new WaitForSeconds(0.35f);
-            }
-
-            if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxCorrect);
-            SetStatus(GameText.ArrangeAssistDone);
-            if (SummaRace.Core.GameManager.Instance != null)
-                SummaRace.Core.GameManager.Instance.SetArrangeResult(_attempts);
-
-            // Record the assist explicitly. The true attempt count is already logged, but the
-            // researcher must be able to separate "solved it" from "was helped to the end"
-            // without inferring it from a threshold that may later be retuned. correct stays
-            // false: the learner did not order these themselves, and the log should not say so.
-            //
-            // placement stays NULL on purpose, for the same reason. The board is now the correct
-            // order, but the app put it there — appending it to arrangeOrders would file the
-            // app's own answer as a sixth thing the learner produced, and a per-slot confusion
-            // table built from that would count assisted runs as five slots correct. The
-            // learner's real last attempt is already the final entry.
-            EventBus.Raise(new ArrangeVerified
-            {
-                correct = false,
-                attemptCount = _attempts,
-                assisted = true
-            });
-
-            yield return new WaitForSeconds(1.6f); // time to read the completed order
-            SceneLoader.Go(SceneNames.Summary);
         }
 
         // ---------- helpers ----------

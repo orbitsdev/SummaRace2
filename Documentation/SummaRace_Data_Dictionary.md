@@ -4,10 +4,15 @@
 No programming knowledge assumed. Everything below describes the files a tablet produces,
 what each variable means, and the traps to avoid when you load them.
 
+- **Schema 8 (2026-09-15) — client feedback made every activity mastery-based: the Reader asks
+  until the answer is right, Arrange no longer finishes the order for the learner, and the summary
+  is checked against the story. Adds `readingAttempts`, `readingRereads` (§3.2) and
+  `summaryVerdicts` (§3.5); changes what `nudgeCount` and `arrangeAssisted` can hold. The
+  FIRST-answer fields keep their exact meaning.**
 - **Schema 7 — schema 6 was regenerated 2026-08-22 from `SessionLogService.cs`/`SaveModels.cs`
   (code is authoritative); schema 7, the same day, adds one field: `raceSteerCount` (§3.3).**
   Every field below was re-read from what the code writes, not from the
-  previous version of this document. All 48 keys `SessionLog` emits are documented below;
+  previous version of this document. All 51 keys `SessionLog` emits are documented below (48 through schema 7, +3 in schema 8);
   none is undocumented and none is documented that the code does not write.
 - Source of truth in code: `Assets/_Game/Scripts/Data/SaveModels.cs` (`SessionLog`, `RacePick`) and
   `Assets/_Game/Scripts/Core/SessionLogService.cs` (what writes it, and when — `SchemaVersion`
@@ -22,7 +27,8 @@ what each variable means, and the traps to avoid when you load them.
   · **5** `arrangeOrders`, the order the learner actually built (§3.4) · **6** the **backgrounded
   clocks** — how much of each phase duration the app was not on screen for (§3.6) · **7**
   `raceSteerCount` — how many deliberate steering inputs the race saw, so a **passive run**
-  (zero steering on a finished row) is visible in the data (§3.3).
+  (zero steering on a finished row) is visible in the data (§3.3) · **8** `readingAttempts`,
+  `readingRereads`, `summaryVerdicts` — practice after the first attempt (§3.2, §3.5).
 - **One behaviour change without a schema bump (2026-08-22):** the race's *re-present* mechanic —
   the single gold correct card handed back after a wrong pick or a missed gate — was **removed
   from the game**. The row shape did not change, so the version stays 6, but on every row from
@@ -130,7 +136,7 @@ which version brought each one in.
 
 | Field | Type | Written | Meaning |
 |---|---|---|---|
-| `schemaVersion` | integer | story start | Shape of this row. `7` = as documented here. A row with `0` came from an older build (schema 1) and lacks everything in §3.4–3.6. Lower numbers lack whatever their version had not yet added — see the version list at the top (a `6` row lacks only `raceSteerCount`). |
+| `schemaVersion` | integer | story start | Shape of this row. `8` = as documented here. A row with `0` came from an older build (schema 1) and lacks everything in §3.4–3.6. Lower numbers lack whatever their version had not yet added — see the version list at the top (a `6` row lacks only `raceSteerCount`). |
 | `runId` | string (32 hex) | story start | Unique id for this play-through. **Several rows can share one `runId`** — see §5, deduplication. |
 | `isPartial` | boolean | on write | `true` = a mid-run safety snapshot. `false` = the row written when the run ended. |
 | `learnerId` | string (guid) | story start | The child. Join key to the roster. Never blank in exported data. Minted on the tablet, so it appears nowhere on paper — use `participantCode` to reach the booklets. |
@@ -161,8 +167,16 @@ one question), shorter if the run was abandoned mid-reading.
 | `readingFirstCorrect` | list of booleans | Was that first answer correct. |
 | `narrationOn` | boolean | Whether the read-aloud voice was on when the reading phase ended. **This is a covariate, not a setting** — reading with audio support is a different condition from reading silently, and the learner can toggle it. |
 
-Only the **first** answer to each page is recorded. The learner cannot re-answer a page, so
-this is a belt-and-braces rule rather than a filter.
+Only the **first** answer to each page is recorded in the three lists above. **From schema 8 the
+learner DOES re-answer**: a wrong answer is no longer followed by the correct one — the app asks
+whether they want to read the page again, sets the tried option aside, and the page cannot be left
+until its question is answered correctly. The first answer is still the measure; the practice is
+recorded separately:
+
+| Field | Type | Meaning |
+|---|---|---|
+| `readingAttempts` | list of 5 integers, index = page | **Schema 8.** Answers given on that page until it was right. `1` = right first time, `2` or `3` = needed another try (three options, the tried one is set aside, so never more than 3). `0` = the page's question was never answered (abandoned run). |
+| `readingRereads` | list of 5 integers, index = page | **Schema 8.** Times the learner chose READ AGAIN from that page's question. `0` on a page with `readingAttempts > 1` means they retried without rereading. |
 
 ### 3.3 Race phase (support removed)
 
@@ -236,7 +250,7 @@ like here). Rows from builds before 2026-08-22 can additionally carry repeat pic
 |---|---|---|
 | `arrangeAttempts` | integer | How many times VERIFY ORDER was pressed. `1` = right first time. |
 | `arrangeSolved` | boolean | The learner produced the correct S-W-B-S-T order themselves. |
-| `arrangeAssisted` | boolean | After repeated failed attempts the app placed the remaining pieces **for** them (anti-frustration assist). |
+| `arrangeAssisted` | boolean | After repeated failed attempts the app placed the remaining pieces **for** them (anti-frustration assist). **Always `false` from schema 8** — the assist was removed; the learner retries until the order is right (correct slots lock, so it always ends). |
 | `arrangeOrders` | list of strings | **Schema 5. The order the learner actually built**, one entry per VERIFY press, in the order they were pressed. See below. |
 
 Read the two booleans together — this is the assist ladder:
@@ -303,7 +317,8 @@ Five more things to know before quoting it:
 | Field | Type | Meaning |
 |---|---|---|
 | `summaryText` | string | **The sentence the child typed, verbatim.** The only free-response data in the app; intended for qualitative coding against the same rubric constructs as the paper task. Never edited, never spell-corrected, may be empty if they submitted nothing. |
-| `nudgeCount` | integer 0–2 | How many gentle prompts the app showed before accepting ("tell me a little more", "say it in ONE sentence", "who was it about?"). `0` = accepted straight away. After 2 nudges anything is accepted — the app never blocks. **The app does not grade the sentence and this is not a quality score**; it is a rough proxy for how far the first attempt was from the expected shape. |
+| `nudgeCount` | integer ≥ 0 | **Schema ≤7:** gentle prompts shown before accepting, 0–2, anything accepted after 2. **Schema 8:** how many times SUBMIT was refused. The summary is now accepted only when it is an English summary of this story — it names the Somebody and touches at least three of Wanted/But/So/Then, in story order, using the story's own ideas (spelling and grammar are never graded). There is no upper limit. **Still not a quality score.** |
+| `summaryVerdicts` | list of strings | **Schema 8.** Why each refused SUBMIT was refused, in order: `TooShort` (under 8 words), `NotEnglish` (mostly unrecognisable words — keyboard mash or another language), `MissingSomebody`, `MissingParts`, `OutOfOrder`. Length equals `nudgeCount` on a completed run. |
 
 ### 3.6 Outcome and timing
 

@@ -11,7 +11,13 @@ namespace SummaRace.Core
         public int pageIndex;
         public int chosenIndex;
         public bool correct;
+        /// <summary>1 for the first answer on this page, 2 for the second... The Reader keeps
+        /// asking until the answer is right, so one page can raise this several times.</summary>
+        public int attemptNumber;
     }
+
+    /// <summary>The learner left a question to read its page again (READ AGAIN).</summary>
+    public struct PageReread { public int pageIndex; }
 
     public struct ReadingCompleted { }
 
@@ -117,6 +123,10 @@ namespace SummaRace.Core
         public string text;
         public int nudgeCount;
     }
+
+    /// <summary>SUBMIT refused by SummaryChecker. <c>verdict</c> is the enum name
+    /// (TooShort / NotEnglish / MissingSomebody / MissingParts / OutOfOrder).</summary>
+    public struct SummaryRejected { public string verdict; }
 
     public struct StoryCompleted
     {

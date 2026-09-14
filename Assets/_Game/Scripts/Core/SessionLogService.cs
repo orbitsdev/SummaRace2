@@ -35,7 +35,10 @@ namespace SummaRace.Core
         // keyboard) during the race, so a passive run (0 on a finished row: the learner never
         // steered and collected whatever lane held a card) can be told apart from an
         // engaged-but-wrong one, which score identically at chance.
-        private const int SchemaVersion = 7;
+        // 8: +readingAttempts / readingRereads — the Reader now asks until the answer is right
+        // (client feedback 2026-09-14); the first answer is still the measure. +summaryVerdicts —
+        // the summary is checked against the story and no longer accepted after two nudges.
+        private const int SchemaVersion = 8;
 
         /// <summary>Hard ceiling on <see cref="SessionLog.racePicks"/>. Since the re-present
         /// mechanic was removed (F55) a well-behaved run produces at most 5 entries — one per
@@ -104,6 +107,8 @@ namespace SummaRace.Core
             _instance = this;
             EventBus.Subscribe<StoryStarted>(OnStoryStarted);
             EventBus.Subscribe<PageAnswered>(OnPageAnswered);
+            EventBus.Subscribe<PageReread>(OnPageReread);
+            EventBus.Subscribe<SummaryRejected>(OnSummaryRejected);
             EventBus.Subscribe<ReadingCompleted>(OnReadingCompleted);
             EventBus.Subscribe<ElementCollected>(OnElementCollected);
             EventBus.Subscribe<RacePauseChanged>(OnRacePauseChanged);
@@ -121,6 +126,8 @@ namespace SummaRace.Core
             if (_instance == this) _instance = null;
             EventBus.Unsubscribe<StoryStarted>(OnStoryStarted);
             EventBus.Unsubscribe<PageAnswered>(OnPageAnswered);
+            EventBus.Unsubscribe<PageReread>(OnPageReread);
+            EventBus.Unsubscribe<SummaryRejected>(OnSummaryRejected);
             EventBus.Unsubscribe<ReadingCompleted>(OnReadingCompleted);
             EventBus.Unsubscribe<ElementCollected>(OnElementCollected);
             EventBus.Unsubscribe<RacePauseChanged>(OnRacePauseChanged);
@@ -220,11 +227,35 @@ namespace SummaRace.Core
         /// <summary>Only the FIRST answer per page is the measure; later ones are practice.</summary>
         private void OnPageAnswered(PageAnswered evt)
         {
-            if (_log == null || !_pagesRecorded.Add(evt.pageIndex)) return;
+            if (_log == null) return;
+
+            // Every answer counts toward the practice tally, not just the first.
+            if (_log.readingAttempts != null && evt.pageIndex >= 0 && evt.pageIndex < _log.readingAttempts.Count)
+            {
+                _log.readingAttempts[evt.pageIndex]++;
+                _dirtySinceWrite = true;
+            }
+
+            if (!_pagesRecorded.Add(evt.pageIndex)) return;
             // Kept index-aligned with the two answer lists — see readingPageIndices.
             _log.readingPageIndices.Add(evt.pageIndex);
             _log.readingFirstChoices.Add(evt.chosenIndex);
             _log.readingFirstCorrect.Add(evt.correct);
+            _dirtySinceWrite = true;
+        }
+
+        private void OnSummaryRejected(SummaryRejected evt)
+        {
+            if (_log == null || _log.summaryVerdicts == null) return;
+            if (_log.summaryVerdicts.Count < 64) _log.summaryVerdicts.Add(evt.verdict ?? string.Empty);
+            _dirtySinceWrite = true;
+        }
+
+        private void OnPageReread(PageReread evt)
+        {
+            if (_log == null || _log.readingRereads == null) return;
+            if (evt.pageIndex < 0 || evt.pageIndex >= _log.readingRereads.Count) return;
+            _log.readingRereads[evt.pageIndex]++;
             _dirtySinceWrite = true;
         }
 

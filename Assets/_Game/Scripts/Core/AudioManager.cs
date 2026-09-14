@@ -59,6 +59,11 @@ namespace SummaRace.Core
             _voiceSource.Play();
         }
 
+        /// <summary>True while a story page or an instructional line is being spoken (or is
+        /// queued to be). The Reader waits on it so a page is not rushed past its narration.</summary>
+        public bool IsVoicePlaying =>
+            (_voiceSource != null && _voiceSource.isPlaying) || _voiceQueue.Count > 0;
+
         public void StopNarration()
         {
             // Anything still waiting its turn dies with the line that is speaking. Without

@@ -12,9 +12,10 @@ namespace SummaRace.Features.Race.Endless
     /// Exists only in MainSummaRace.unity. While alive it sets EndlessRaceMode.Active
     /// (suppressing their coins/premium/powerups), skips their Loadout/FTUE, places
     /// one answer gate at a time along the generated track (TDD §11.4: sequential
-    /// scheduling — a wrong pick or a missed gate re-offers the glowing correct card
-    /// until the learner physically collects it, so they always leave holding the 5
-    /// correct pieces), resolves picks, then builds a RaceResult and exits to Arrange.
+    /// scheduling — a wrong pick or a missed gate brings the same part back, minus the
+    /// options already rejected, until the learner collects it: the mastery loop,
+    /// client feedback 2026-09-14), resolves picks, then builds a RaceResult, plays the
+    /// MISSION COMPLETE finish and exits to Arrange.
     /// Their scripts are untouched beyond the one TrackManager guard.
     /// NOTE: their GameManager collides with ours by name — everything of ours is
     /// fully qualified (SummaRace.Core.*), do not add `using SummaRace.Core;`.
@@ -66,13 +67,10 @@ namespace SummaRace.Features.Race.Endless
         /// Every other gap moved to a seconds-derived formula (see <see cref="NextGateGap"/>)
         /// precisely because their track accelerates: 10 m/s at the start, ~29 m/s by gate 5.
         /// This one was missed, so a fixed 30m shrank from a comfortable run-out into roughly one
-        /// second. That is not merely abrupt — <c>FinishRoutine</c> sets <c>_finished</c>, and
-        /// the answer-reveal loop exits on it, so a learner who got the LAST element wrong saw
-        /// the correct answer for well under its intended <see cref="AnswerRevealSeconds"/>.
-        /// The final slot is "Then", which is the one the written summary most depends on.
+        /// second, which read as abrupt.
         ///
-        /// Long enough to read the reveal and still feel like an ending; the floor keeps it sane
-        /// at the slow speeds an early wrong pick produces.
+        /// Long enough to feel like an ending; the floor keeps it sane at the slow speeds an
+        /// early wrong pick produces.
         /// </summary>
         private const float FinishSeconds = 3.4f;
         private const float FinishMinGap = 30f;
@@ -292,8 +290,10 @@ namespace SummaRace.Features.Race.Endless
         /// luck. He also only MOVES when a gate resolves, never during a reading window, so he
         /// cannot compete with the option panel for attention.
         /// </summary>
-        private float _patrolStep = SummaRace.Constants.GameRules.PatrolStartStep;
-        private float _patrolStepTarget = SummaRace.Constants.GameRules.PatrolStartStep;
+        // Both start at 0 (out of shot) since the chase intro (2026-09-14): ChaseIntroRoutine runs
+        // him up after GO! and then settles him on GameRules.PatrolStartStep.
+        private float _patrolStep;
+        private float _patrolStepTarget;
 
         private float _patrolGroundY;      // fixed run-height captured on activation
         private bool _patrolGrounded;      // has _patrolGroundY been captured yet
@@ -346,27 +346,45 @@ namespace SummaRace.Features.Race.Endless
         private GameObject _questionRoot;
         private GameObject _coachRoot;          // first-race steering coach; null after it is used
         private Coroutine _previewCue;
-        /// <summary>True while the panel is showing a QUESTION (three options, or the one option a
-        /// re-present carries) rather than the answer-reveal beat. Only in that state may a column
-        /// be tapped, and only in that state do the columns claim taps away from the road.</summary>
-        private bool _previewTappable = true;
+        // _previewTappable is GONE with the answer reveal (2026-09-14): the reveal was the only
+        // state in which the panel was not a question, so the flag would now be permanently true.
         private EndlessTouchInput _tapInput;
         // Pause chip + the two non-interactive HUD surfaces a confused learner taps (tracker,
         // question plaque). See ApplyTapBlockers for why those two are here.
         private RectTransform[] _tapBlockersPlain;
         private RectTransform[] _tapBlockersWithPanel;  // the above + the three panel columns
 
-        // The answer reveal that replaced the re-presented pickup. A wrong pick used to bring the
-        // correct card back alone for the learner to drive into — which is not a choice, teaches
-        // nothing, lengthens the run for the learner who is already struggling, and (the owner's
-        // words) "doesn't make sense": one lone card rendered as three columns with two dimmed
-        // reads as a question that has lost its options, not as an answer. Nothing downstream
-        // needed it either — ArrangeController falls back to the story's own text for any piece
-        // that was never collected — and it could never count for the measure, because the wrong
-        // pick has already closed _firstPickDone. So the answer is simply SHOWN for a beat.
-        private Coroutine _answerReveal;
-        private bool _revealing;                     // suppresses the normal window while shown
-        private const float AnswerRevealSeconds = 2.2f;
+        // ---- Race mastery (client feedback 2026-09-14) ----
+        //
+        // The answer reveal is GONE. The researchers who own the study asked for the opposite of
+        // what it did: "if the learner picks a wrong answer/item, they should encounter it again
+        // later until they get it correct". So a wrong pick or a run-past keeps the SAME part
+        // active and brings it back down the road, and the option just chosen wrongly is removed
+        // from every later encounter of that part. With three options that converges in at most
+        // three encounters (never a dead end), and a run-past — which removes nothing — is capped
+        // by GameRules.RaceRetryPassByLimit. The FIRST pick is still the only one that counts for
+        // stars and raceFirstPickCorrect; every return is logged as a re-present (practice).
+        /// <summary>[element, optionIndex] - true once the learner chose that distractor.</summary>
+        private readonly bool[,] _rejectedOption = new bool[5, 3];
+        /// <summary>How many times each part has been scheduled to come back.</summary>
+        private readonly int[] _retryCount = new int[5];
+        /// <summary>Consecutive run-pasts of each part (reset by any pick).</summary>
+        private readonly int[] _passByCount = new int[5];
+        /// <summary>True once a part has been collected correctly. FINISH waits on all five.</summary>
+        private readonly bool[] _collected = new bool[5];
+        /// <summary>Seconds the reading panel stays down after a wrong pick / run-past, so the
+        /// feedback line and the returning options are two beats.</summary>
+        private float _retryHoldTimer;
+
+        // Items appear while running: the live gate's card VISUALS (not their triggers, which
+        // stay live at full size the whole time so a fast runner can never tunnel an invisible
+        // card) are held down in the road until the runner is close, then pop up.
+        private readonly List<Transform> _activeCardVisuals = new List<Transform>();
+        private bool _activeCardsRevealed;
+
+        // Chase intro and finish flow.
+        private bool _chaseSwoopDone;         // the GO! camera swoop has handed the camera back
+        private bool _finishContinue;         // TAP TO CONTINUE pressed (or auto-continue)
 
         /// <summary>The option preview board's underside, as a fraction of screen height. Derived
         /// in BuildOptionPreview (the horizon sits at 0.7375, so nothing on the road can reach
@@ -778,7 +796,10 @@ namespace SummaRace.Features.Race.Endless
             if (_activeGateRoot != null && _activeElement >= 0 && _activeElement < 5)
                 UpdateLaneSelector(track);
 
+            if (_retryHoldTimer > 0f) _retryHoldTimer -= Time.deltaTime;
+
             TryPlacePending();
+            UpdateCardReveal(track);
             // After TryPlacePending, so a gate that was just placed can open its own window in
             // the same frame — that is the case where the track spawned late and the learner is
             // already inside the reading distance.
@@ -936,9 +957,9 @@ namespace SummaRace.Features.Race.Endless
             _pendingGateDistance = -1f;
 
             float local = placeDist - placeStart;
-            // No re-present branch any more: a wrong pick or a missed gate now shows the answer
-            // on the panel (ShowAnswerReveal) instead of sending a lone gold card back down the
-            // road, so every gate placed here is a real three-option gate.
+            // A returning part (mastery loop) is placed exactly like a first encounter: the
+            // options it carries were already decided by PrepareGateOptions, which leaves the
+            // lanes of rejected options empty.
             if (element >= 5) PlaceFinishGate(placeSeg, local);
             else PlaceAnswerGate(placeSeg, local, element);
         }
@@ -968,28 +989,49 @@ namespace SummaRace.Features.Race.Endless
             var correctFlags = _gateCorrect;
             var optionIndices = _gateOptionIndex;
 
+            _activeCardVisuals.Clear();
+            _activeCardsRevealed = false;
+            bool isReturn = _retryCount[elementIndex] > 0;
             for (int lane = 0; lane < 3; lane++)
             {
-                bool isCorrect = correctFlags[lane];
                 string text = texts[lane];
-                var card = BuildCard(root, new Vector3((lane - 1) * laneOffset, CardY, 0f),
-                    new Vector2(cardWidth, 0.85f), text, Color.black, Color.white, 2.4f);
+                // A lane whose option the learner already rejected carries NO card (mastery
+                // loop): the road and the reading panel agree that the option is gone.
+                if (string.IsNullOrEmpty(text)) continue;
+                bool isCorrect = correctFlags[lane];
 
-                var trigger = card.gameObject.AddComponent<BoxCollider>();
+                // HOLDER carries the trigger + pickup at full size for the whole life of the
+                // gate; the VISUAL is a child that pops up out of the road (UpdateCardReveal).
+                // Scaling the visual can therefore never shrink the catch volume — an invisible
+                // card must still be collectable, or a fast runner tunnels it (F44/F46).
+                var holder = new GameObject("Lane_" + lane).transform;
+                holder.SetParent(root, false);
+                holder.localPosition = new Vector3((lane - 1) * laneOffset, CardY, 0f);
+
+                var card = BuildCard(holder, Vector3.zero,
+                    new Vector2(cardWidth, 0.85f), text, Color.black, Color.white, 2.4f);
+                card.localScale = Vector3.zero;
+                card.localPosition = new Vector3(0f, -SummaRace.Constants.GameRules.RaceCardPopRise, 0f);
+                _activeCardVisuals.Add(card);
+
+                var trigger = holder.gameObject.AddComponent<BoxCollider>();
                 trigger.isTrigger = true;
                 trigger.size = new Vector3(TriggerWidth, 2.2f, TriggerDepth);
                 // Card sits on the road now — lift the catch volume over the character's body.
                 trigger.center = new Vector3(0f, 0.6f, 0f);
 
-                var pickup = card.gameObject.AddComponent<EndlessOptionPickup>();
+                var pickup = holder.gameObject.AddComponent<EndlessOptionPickup>();
                 pickup.elementIndex = elementIndex;
                 pickup.gateId = _activeGateId;
                 pickup.isCorrect = isCorrect;
                 pickup.optionIndex = optionIndices[lane];
                 pickup.lane = lane;
                 pickup.optionText = text;
+                pickup.isRepresent = isReturn;
             }
             BuildLaneSelector(root, elementIndex, new Vector2(cardWidth, 0.85f), laneOffset);
+            // Hidden with the cards; UpdateCardReveal brings it up with them.
+            if (_laneSelector != null) _laneSelector.gameObject.SetActive(false);
             // The cards themselves are physically unreadable at any distance worth reading them
             // at (the derivation is on GameRules.RaceFirstGateDistance) — the HUD preview is
             // where the learner actually reads the three options. It was ARMED when this gate was
@@ -1035,6 +1077,31 @@ namespace SummaRace.Features.Race.Endless
             _gateTexts[2] = element.distractors[1];
             _gateCorrect[0] = true; _gateCorrect[1] = false; _gateCorrect[2] = false;
             _gateOptionIndex[0] = 0; _gateOptionIndex[1] = 1; _gateOptionIndex[2] = 2;
+
+            // MASTERY LOOP (2026-09-14). An option the learner already chose wrongly for this part
+            // is blanked, so every return carries one option fewer and the loop converges. The
+            // shuffle below then moves the blank as well, so lane position still carries no
+            // information on any encounter (validity: see the summary).
+            for (int opt = 1; opt < 3; opt++)
+                if (elementIndex < 5 && _rejectedOption[elementIndex, opt])
+                {
+                    _gateTexts[opt] = null;
+                    _gateOptionIndex[opt] = -1;
+                }
+
+            // Run past too often without touching a card: fill every lane with the answer so the
+            // next encounter cannot be missed. Only reachable after the first pick is already
+            // closed (a run-past closes it), so it can never touch the study measure.
+            if (elementIndex < 5 && _passByCount[elementIndex] >= SummaRace.Constants.GameRules.RaceRetryPassByLimit)
+            {
+                for (int lane = 0; lane < 3; lane++)
+                {
+                    _gateTexts[lane] = element.correct;
+                    _gateCorrect[lane] = true;
+                    _gateOptionIndex[lane] = 0;
+                }
+            }
+
             for (int i = 2; i > 0; i--)
             {
                 int j = UnityEngine.Random.Range(0, i + 1);
@@ -1045,10 +1112,8 @@ namespace SummaRace.Features.Race.Endless
             ArmOptionPreview(_gateTexts);
         }
 
-        // PlaceRepresentGate is GONE (F55). It built the "one gold card in the centre lane" that
-        // came back after a wrong pick. See HitWrong for why that mechanic could not justify
-        // itself; the answer is now shown on the reading panel instead of staged as a pickup
-        // nobody could get wrong.
+        // PlaceRepresentGate is GONE (F55): the "one gold card in the centre lane". A returning
+        // part (mastery loop, 2026-09-14) is placed by PlaceAnswerGate like any other gate.
 
         /// <summary>
         /// The "you are here" marker: a SWBST-coloured frame that sits behind whichever card is
@@ -1134,6 +1199,12 @@ namespace SummaRace.Features.Race.Endless
             float kidX = bodyT.position.x;
 
             int lane = Mathf.Clamp(Mathf.RoundToInt(kidX / laneOffset), -1, 1);
+            // Only over a card that exists and has popped up: a returning part can leave a lane
+            // empty (its option was rejected), and a halo over bare road would read as a card.
+            bool laneHasCard = !string.IsNullOrEmpty(_gateTexts[lane + 1]);
+            bool wantSelector = _activeCardsRevealed && laneHasCard;
+            if (_laneSelector.gameObject.activeSelf != wantSelector)
+                _laneSelector.gameObject.SetActive(wantSelector);
             var p = _laneSelector.localPosition;
             float target = lane * laneOffset;
             // Exactly the kid's own lane-change speed, so the marker arrives with him instead of
@@ -1142,6 +1213,76 @@ namespace SummaRace.Features.Race.Endless
                 ? Mathf.MoveTowards(p.x, target, runner.laneChangeSpeed * Time.deltaTime)
                 : target;
             _laneSelector.localPosition = p;
+        }
+
+        /// <summary>
+        /// ITEMS COME OUT WHILE RUNNING (Race mastery, client feedback 2026-09-14: "the choices
+        /// should not be static ... nicer if they come out while running").
+        ///
+        /// A gate's card visuals sit scaled to zero, sunk below the road, until the runner is
+        /// within GameRules.RaceCardRevealDistance (or RaceCardRevealMinSeconds at the speed being
+        /// run, whichever is further), then rise with an overshoot, one lane after another, with
+        /// a pop. Once up they bob and sway like collectibles. Distance is measured along the RUN
+        /// (gate distance minus track.worldDistance), never in world z, because their track floats
+        /// its origin.
+        ///
+        /// ONLY the visuals move. The triggers live on the parent holders at full size from the
+        /// frame the gate is placed, so a card that is still hidden — or mid-pop — is exactly as
+        /// collectable as a settled one; a tunnelled card is logged as a wrong answer (F44/F46).
+        /// The reading surface is the screen panel, which never moves continuously (F47).
+        /// </summary>
+        private float _cardsRevealedAt;
+        private void UpdateCardReveal(TrackManager track)
+        {
+            if (track == null || _activeGateRoot == null || _activeElement < 0 || _activeElement >= 5) return;
+            if (_activeCardVisuals.Count == 0) return;
+
+            if (!_activeCardsRevealed)
+            {
+                float ahead = _activeGateDistance - track.worldDistance;
+                float speed = Mathf.Max(track.speed, track.minSpeed);
+                float revealAt = Mathf.Max(SummaRace.Constants.GameRules.RaceCardRevealDistance,
+                    speed * SummaRace.Constants.GameRules.RaceCardRevealMinSeconds);
+                if (ahead > revealAt) return;
+
+                _activeCardsRevealed = true;
+                _cardsRevealedAt = Time.time;
+                float pop = SummaRace.Constants.GameRules.RaceCardPopSeconds;
+                float stagger = SummaRace.Constants.GameRules.RaceCardPopStagger;
+                for (int i = 0; i < _activeCardVisuals.Count; i++)
+                {
+                    var v = _activeCardVisuals[i];
+                    if (v == null) continue;
+                    float delay = i * stagger;
+                    Tween.Scale(v, Vector3.one, pop, Ease.OutBack, startDelay: delay);
+                    Tween.LocalPositionY(v, 0f, pop, Ease.OutBack, startDelay: delay);
+                }
+                if (SummaRace.Core.AudioManager.Instance != null)
+                    SummaRace.Core.AudioManager.Instance.PlaySfx(SummaRace.Constants.AudioKeys.SfxPop);
+                return;
+            }
+
+            // Collectible idle: bob + yaw sway, starting once each card's pop has landed so the
+            // two never write the same channel at once. Phase-offset per lane so they do not
+            // move as one slab.
+            float bobH = SummaRace.Constants.GameRules.RaceCardBobHeight;
+            float hz = SummaRace.Constants.GameRules.RaceCardBobHz;
+            float sway = SummaRace.Constants.GameRules.RaceCardSwayDegrees;
+            for (int i = 0; i < _activeCardVisuals.Count; i++)
+            {
+                var v = _activeCardVisuals[i];
+                if (v == null) continue;
+                float settle = _cardsRevealedAt + SummaRace.Constants.GameRules.RaceCardPopSeconds
+                             + i * SummaRace.Constants.GameRules.RaceCardPopStagger + 0.02f;
+                float t = Time.time - settle;
+                if (t < 0f) continue;
+                float ramp = Mathf.Clamp01(t / 0.3f);
+                float phase = t * hz * Mathf.PI * 2f + i * 1.3f;
+                var p = v.localPosition;
+                p.y = Mathf.Sin(phase) * bobH * ramp;
+                v.localPosition = p;
+                v.localRotation = Quaternion.Euler(0f, Mathf.Sin(phase * 0.5f) * sway * ramp, 0f);
+            }
         }
 
         private void PlaceFinishGate(TrackSegment segment, float localDist)
@@ -1245,14 +1386,16 @@ namespace SummaRace.Features.Race.Endless
             if (pickup.gateId != _activeGateId) return;
             _activeGateId = 0; // this gate is spent; its other cards can no longer register
 
-            // Only the FIRST pick at each gate counts for stars (GDD §4.2). A re-present
-            // never changes this — it was already recorded false by the pick/miss that
-            // triggered the re-present.
+            // Only the FIRST pick at each part counts for stars (GDD §4.2). A returning part
+            // (mastery loop) never changes this — it was already recorded false by the pick or
+            // run-past that sent it back, and its cards carry isRepresent so the log files the
+            // later picks as practice.
             if (!_firstPickDone[_activeElement])
             {
                 _firstPickDone[_activeElement] = true;
                 _firstPickCorrect[_activeElement] = pickup.isCorrect;
             }
+            if (_activeElement >= 0 && _activeElement < 5) _passByCount[_activeElement] = 0;
 
             if (pickup.isCorrect) CollectCorrect(pickup);
             else HitWrong(pickup);
@@ -1276,6 +1419,8 @@ namespace SummaRace.Features.Race.Endless
         {
             var track = TrackManager.instance;
             int element = pickup.elementIndex;
+            if (element >= 0 && element < 5) _collected[element] = true;
+            _activeCardVisuals.Clear();
 
             if (SummaRace.Core.AudioManager.Instance != null)
                 SummaRace.Core.AudioManager.Instance.PlaySfx(SummaRace.Constants.AudioKeys.SfxCollect);
@@ -1342,25 +1487,18 @@ namespace SummaRace.Features.Race.Endless
         }
 
         /// <summary>
-        /// A WRONG PICK NOW SHOWS THE ANSWER INSTEAD OF STAGING A FAKE ONE.
+        /// A WRONG PICK SENDS THE PART BACK (Race mastery, client feedback 2026-09-14).
         ///
-        /// Until F55 this scheduled a "re-present": the correct card came back alone, in gold, in
-        /// the centre lane, and the learner drove into it. The owner asked twice what it was for,
-        /// and it could not answer:
-        ///   * it is not a choice — one card, and it is the answer, so steering into it decides
-        ///     and teaches nothing;
-        ///   * nothing downstream needs it. RaceResult.collectedPieces[i] is filled with
-        ///     _story.elements[i].correct at the finish line unconditionally (see FinishRoutine),
-        ///     and ArrangeController falls back to the same string anyway, so the learner reaches
-        ///     Arrange holding all five pieces whether or not a card was ever collected;
-        ///   * it cannot count for the measure — _firstPickDone is already closed by this very
-        ///     pick — so it was ceremony;
-        ///   * and it added distance to the run for exactly the learner already struggling.
+        /// The researchers who own the study: "if the learner picks a wrong answer/item, they
+        /// should encounter it again later until they get it correct" — the learner must
+        /// complete each part before moving on. So the answer is NOT revealed and the run does
+        /// NOT advance: the same part stays active, the option just chosen is removed from every
+        /// later encounter of it (so the loop converges within three encounters), and it comes
+        /// back down the road after a short runway with a fresh lane shuffle.
         ///
-        /// What replaces it is the honest version of the same intention: the answer is SHOWN,
-        /// clearly, for a beat, and the run moves on to the next gate. Unchanged, deliberately:
-        /// _firstPickDone/_firstPickCorrect (the study's headline measure), the friendly slow, the
-        /// chaser beat, and the rule that nothing here can ever end the run (GDD D7).
+        /// Unchanged, deliberately: _firstPickDone/_firstPickCorrect (closed by this very pick,
+        /// so the study's headline measure is exactly what it was), the friendly slow, the chaser
+        /// stepping closer, and the rule that nothing here can ever end the run (GDD D7).
         /// </summary>
         private void HitWrong(EndlessOptionPickup pickup)
         {
@@ -1368,16 +1506,15 @@ namespace SummaRace.Features.Race.Endless
             if (SummaRace.Core.AudioManager.Instance != null)
                 SummaRace.Core.AudioManager.Instance.PlaySfx(SummaRace.Constants.AudioKeys.SfxNotQuite);
 
-            // The FRAMING line, in the feedback pill; the answer itself follows a beat later on
-            // the reading panel (ShowAnswerReveal, below). The pill used to carry the answer too,
-            // so the moment said the same sentence twice and never said what was actually wrong
-            // with the pick. These lines do: the distractors are usually TRUE of the story, and
-            // what makes one wrong is that it is not the PART being collected.
-            //
-            // Drawn from a shuffle bag rather than fixed, because a learner having a hard run
-            // can see this up to five times in one race. Amber, never red (D7); the answer keeps
-            // the gold, so the two beats stay visually distinct.
+            // Every line promises the return ("It will come back - watch for it"). Drawn from a
+            // shuffle bag because a hard run can hear it several times. Amber, never red (D7).
             ShowFeedback(SummaRace.Core.Praise.RaceNotQuite(), Theme.AmberWarn);
+
+            // Remove this option from the part's later encounters. optionIndex 0 is the correct
+            // card and never reaches HitWrong; -1 (unknown) removes nothing.
+            if (pickup.elementIndex >= 0 && pickup.elementIndex < 5
+                && pickup.optionIndex > 0 && pickup.optionIndex < 3)
+                _rejectedOption[pickup.elementIndex, pickup.optionIndex] = true;
 
             // The vignette beat still fires on the moment of the miss - that is the "not quite"
             // flash, and it is short on purpose.
@@ -1401,68 +1538,74 @@ namespace SummaRace.Features.Race.Endless
             }
 
             int element = pickup.elementIndex;
-            DestroyActiveGate();               // the whole gate goes; nothing replaces it
-            if (track != null) AdvanceToNext(track, element);
+            DestroyActiveGate();               // the whole gate goes; the same part comes back
+            if (track != null) ScheduleRetry(track, element);
             else { _activeGateRoot = null; _activeElement = -1; _activeGateId = 0; }
-            ShowAnswerReveal(element);         // after AdvanceToNext, so it overrides the re-arm
         }
 
         /// <summary>
-        /// The answer, shown plainly for a beat on the panel the learner already reads from: one
-        /// full-width card in the gold the re-presented pickup used to wear, so the moment still
-        /// says "here is the right one" without pretending to be a question. The next gate is
-        /// already scheduled and armed underneath; when the beat ends the panel returns to
-        /// waiting, and its normal reading window opens on its own clock.
+        /// Keeps <paramref name="element"/> as the part being collected and brings it back down
+        /// the road (Race mastery, 2026-09-14). Nothing advances and nothing is revealed.
+        ///
+        /// Runway, in SECONDS converted to metres by integrating the track's acceleration
+        /// (<see cref="MetresInSeconds"/> — the same conversion NextGateGap and SecondsToCover
+        /// use, never a naive v*T): the feedback beat (RaceRetryPanelDelaySeconds, during which
+        /// the reading panel is held down) plus a reading window for the returning options
+        /// (RaceRetryReadSeconds). The panel then opens on UpdatePreviewWindow's normal clock,
+        /// which is always already inside its window at this distance, so it opens the moment
+        /// the hold ends.
         /// </summary>
-        private void ShowAnswerReveal(int element)
+        private void ScheduleRetry(TrackManager track, int element)
         {
-            if (_previewRoot == null || _story == null || element < 0 || element >= _story.elements.Length) return;
-            if (_answerReveal != null) StopCoroutine(_answerReveal);
-            _answerReveal = StartCoroutine(AnswerRevealRoutine(_story.elements[element].correct));
-        }
+            _activeGateRoot = null;
+            _activeElement = -1;
+            _activeGateId = 0;
+            if (element < 0 || element >= 5) { AdvanceToNext(track, element); return; }
 
-        private IEnumerator AnswerRevealRoutine(string correct)
-        {
-            _revealing = true;
-            PaintPreview(new string[] { null, correct, null }, true);
-            _previewWanted = true;
-            ApplyPreviewVisibility();
-            if (_previewRoot.activeSelf)
-            {
-                if (_previewCue != null) StopCoroutine(_previewCue);
-                _previewCue = StartCoroutine(PulseArrivalGlow());
-            }
+            _retryCount[element]++;
+            _retryHoldTimer = SummaRace.Constants.GameRules.RaceRetryPanelDelaySeconds;
 
-            float t = 0f;
-            while (t < AnswerRevealSeconds && !_finished && !_leaving)
-            {
-                if (!_paused) t += Time.deltaTime;
-                yield return null;
-            }
+            float seconds = SummaRace.Constants.GameRules.RaceRetryPanelDelaySeconds
+                          + SummaRace.Constants.GameRules.RaceRetryReadSeconds;
+            float gap = Mathf.Max(SummaRace.Constants.GameRules.RaceRetryMinGap,
+                                  MetresInSeconds(track, seconds));
 
-            _revealing = false;
-            _previewWanted = false;             // back to "armed, waiting for its window"
-            ApplyPreviewVisibility();
-            _answerReveal = null;
+            _pendingElement = element;
+            _pendingGateDistance = track.worldDistance + gap;
+            // Options decided now (minus every option already rejected), reshuffled across lanes.
+            PrepareGateOptions(element);
+            UpdateBanner();
+            TryPlacePending();
         }
 
         /// <summary>
-        /// An answer gate the learner ran past without touching any of its three cards.
+        /// Metres the runner covers in <paramref name="seconds"/>, integrating their track's
+        /// 0.2 m/s² acceleration up to its top speed — the exact inverse of
+        /// <see cref="SecondsToCover"/>. During a wrong-pick slow their maxSpeed is temporarily
+        /// clamped down, so the saved top speed is used when one is held; the helper also never
+        /// lets a top speed below the current speed produce a negative distance.
+        /// </summary>
+        private float MetresInSeconds(TrackManager track, float seconds)
+        {
+            if (track == null || seconds <= 0f) return 0f;
+            const float accel = 0.2f;   // TrackManager.k_Acceleration (protected const there)
+            float v = Mathf.Max(track.speed, track.minSpeed);
+            float top = _savedMaxSpeed > 0f ? _savedMaxSpeed : track.maxSpeed;
+            float vMax = Mathf.Max(top, v);
+            float toTop = Mathf.Max(0f, (vMax - v) / accel);
+            if (toTop >= seconds) return v * seconds + 0.5f * accel * seconds * seconds;
+            return v * toTop + 0.5f * accel * toTop * toTop + vMax * (seconds - toTop);
+        }
+
+        /// <summary>
+        /// An answer gate the learner ran past without touching any of its cards.
         ///
-        /// ⚠️ The summary this replaces (corrected 2026-08-22) described a mechanic F55 removed:
-        /// it promised the correct answer "comes back as a re-present, up to MaxRepresentMisses
-        /// dodges before an anti-frustration auto-resolve". There is no re-present, no dodge
-        /// counter and no auto-resolve — and a doc that describes a second chance the learner
-        /// does not get is exactly the kind of thing that makes a later pass "restore" a rule
-        /// that was deliberately deleted.
-        ///
-        /// What actually happens: the first pick is closed as INCORRECT if this is the first
-        /// time this element has resolved (a run-past is the same outcome in the log as a wrong
-        /// pick, so it must be the same outcome on screen), the gate is destroyed, the next one
-        /// is scheduled, and the answer is shown on the reading panel for a beat.
-        /// <c>raceFirstPickCorrect</c> is the star count and the study's headline measure, so the
-        /// first-pick close here is load-bearing and must not be made conditional on anything
-        /// the learner cannot control.
+        /// The first pick is closed as INCORRECT if this is the first encounter of the part (a
+        /// run-past is the same outcome in the log as a wrong pick). <c>raceFirstPickCorrect</c>
+        /// is the star count and the study's headline measure, so that close is load-bearing.
+        /// Then, as for a wrong pick, the same part comes back (mastery loop) — but a run-past
+        /// removes no option, so it is counted, and after GameRules.RaceRetryPassByLimit of them
+        /// in a row the return fills every lane with the answer (see PrepareGateOptions).
         /// </summary>
         private void HandleMissedActiveGate(TrackManager track)
         {
@@ -1471,18 +1614,15 @@ namespace SummaRace.Features.Race.Endless
             {
                 _firstPickDone[element] = true;
                 _firstPickCorrect[element] = false;
-                // A gate run past costs the same ground as a gate answered wrongly - it is the
-                // same outcome in the log, so it must be the same outcome on screen. Inside the
-                // first-pick guard, so a re-presented gate cannot charge for the miss twice.
-                StepPatrol(+SummaRace.Constants.GameRules.PatrolStepWrong);
             }
+            // Every miss brings the patrol closer, exactly like a wrong pick (it is the chase, and
+            // it is clamped, so it can never catch — D7).
+            StepPatrol(+SummaRace.Constants.GameRules.PatrolStepWrong);
+            _passByCount[element]++;
+            ShowFeedback(SummaRace.Constants.GameText.RaceMissedComesBack, Theme.AmberWarn);
 
             DestroyActiveGate();
-            // Same treatment as a wrong pick: show what the answer was and move on. There is no
-            // second attempt to dodge any more, so the old dodge counter and its anti-frustration
-            // auto-resolve have nothing left to count.
-            AdvanceToNext(track, element);
-            ShowAnswerReveal(element);
+            ScheduleRetry(track, element);
         }
 
         /// <summary>FINISH was run past instead of collected. Nothing about the story is
@@ -1538,8 +1678,8 @@ namespace SummaRace.Features.Race.Endless
             // _activeElement survives a gate dying with its segment, so it is still valid.
             if (_activeElement >= 0 && _activeElement < 5)
             {
-                Debug.LogWarning("EndlessRaceDirector: nothing to present — resolving element "
-                    + _activeElement + " and moving on.");
+                Debug.LogWarning("EndlessRaceDirector: nothing to present — bringing element "
+                    + _activeElement + " back.");
                 int element = _activeElement;
                 _activeElement = -1;
                 // Close the first pick as a MISS. A strand is a fault on our side and the learner
@@ -1550,8 +1690,9 @@ namespace SummaRace.Features.Race.Endless
                     _firstPickDone[element] = true;
                     _firstPickCorrect[element] = false;
                 }
-                AdvanceToNext(track, element);
-                ShowAnswerReveal(element);
+                // Re-present, never skip: the part must still be collected before FINISH (mastery
+                // loop). Not counted as a run-past — the learner did nothing to cause a strand.
+                ScheduleRetry(track, element);
                 return;
             }
 
@@ -1586,19 +1727,25 @@ namespace SummaRace.Features.Race.Endless
             _activeGateId = 0;
             _laneSelector = null; // child of the gate root — it went with it
             _laneSelectorSr = null;
+            _activeCardVisuals.Clear();
+            _activeCardsRevealed = false;
             HideOptionPreview();
         }
 
-        /// <summary>Element fully resolved, whichever way it went (collected correct, collected
-        /// wrong, or run past) — clears the active slot and schedules the next answer gate, or
-        /// FINISH once element 4 is done, through the same pending mechanism.</summary>
+        /// <summary>A part was COLLECTED CORRECTLY (the only way a part resolves since the mastery
+        /// loop, 2026-09-14) — clears the active slot and schedules the next part the learner has
+        /// not yet collected, or FINISH once all five are collected, through the same pending
+        /// mechanism. Choosing "first uncollected" rather than "completed + 1" makes FINISH
+        /// structurally impossible while any part is still owed.</summary>
         private void AdvanceToNext(TrackManager track, int completedElement)
         {
             _activeGateRoot = null;
             _activeElement = -1;
             _activeGateId = 0;   // see DestroyActiveGate: -1 must never be indexable
 
-            int next = completedElement + 1;
+            int next = 5;
+            for (int i = 0; i < 5; i++)
+                if (!_collected[i]) { next = i; break; }
             if (next < 5)
             {
                 _pendingElement = next;
@@ -1800,19 +1947,11 @@ namespace SummaRace.Features.Race.Endless
         // (ReadWindowSeconds above). Its three constants are marked superseded in GameRules
         // rather than removed, so the numbers and the reason stay together.
 
-        // ScheduleRepresent lived here and is deliberately GONE, not merely unreferenced.
-        //
-        // The owner's objection to the re-present was that it made no sense as a game: get an
-        // answer wrong and a single lone card appears in the middle of the road carrying the
-        // right answer, which is a chance offered in a shape nobody would recognise as a chance.
-        // It was replaced by a 2.2s answer reveal, and TryPlacePending's represent branch went
-        // with it — so this method had no call sites left.
-        //
-        // Left on disk it was a loaded gun: calling it would place a full three-option gate for
-        // an element whose first pick is already CLOSED, and a collection there would be logged
-        // against a question the learner had already answered. raceFirstPickCorrect is the star
-        // count and the study's headline measure, so that is a data defect, not a gameplay one.
-        // RepresentDistance survives because FinishRunway is derived the same way.
+        // ScheduleRepresent (F55-deleted: one lone gold answer card) is NOT what came back on
+        // 2026-09-14. Its successor is ScheduleRetry: the same part returns as a real choice with
+        // the rejected options removed, and every pick on it is raised with wasRepresent = true
+        // so SessionLogService never lets it touch raceFirstOutcome / raceFirstPickCorrect.
+        // RepresentDistance survives because RescheduleFinish uses it.
 
         private void BoostSpeed(TrackManager track)
         {
@@ -1869,20 +2008,258 @@ namespace SummaRace.Features.Race.Endless
 
             if (SummaRace.Core.AudioManager.Instance != null)
                 SummaRace.Core.AudioManager.Instance.PlaySfx(SummaRace.Constants.AudioKeys.SfxStar);
-            if (_bannerText != null) _bannerText.text = SummaRace.Constants.GameText.RaceFinishBanner;
+            // The banner stays EMPTY: MISSION COMPLETE! (below) is the finish's one headline, and a
+            // second "FINISH!" line under the reading band would be two titles for one moment.
+            if (_bannerText != null) _bannerText.text = "";
 
-            // FIREWORKS, and then the story read back. See BuildFinishCard for why the readback
-            // is the part that actually matters.
+            // ---- MISSION COMPLETE (Race mastery, client feedback 2026-09-14) ----------------
+            // "The finish line should really feel like the end of the mission, with some kind of
+            // achievement or feedback." Stamp + badge + fireworks + a rising star run, then the
+            // story read back, then the learner decides when to move on.
+            // The tracker's job is done and the finish card repeats its five parts in colour, so
+            // it steps aside for the stamp.
+            if (_trackerRect != null)
+            {
+                var trackerT = _trackerRect;
+                Tween.Scale(trackerT, Vector3.zero, 0.25f, Ease.InBack)
+                    .OnComplete(() => { if (trackerT != null) trackerT.gameObject.SetActive(false); });
+            }
             StartCoroutine(FinishFireworks());
+            StartCoroutine(VictoryStarRun());
+            BuildMissionCompleteStamp();
             BuildFinishCard();
+            BuildFinishBadge();
 
-            // 2.2 -> RaceFinishBeatSeconds (3.2). The beat used to hold a still character, so
-            // 2.2s was ample; a dance needs long enough to read as a dance rather than as a
-            // glitch on the way out. Owner, 2026-08-21: "if game finish at least add animation,
-            // instead of pausing all character movement, make sure the player dance".
-            yield return new WaitForSeconds(SummaRace.Constants.GameRules.RaceFinishBeatSeconds);
+            // A minimum beat so the dance, the stamp and the read-back land, then TAP TO CONTINUE.
+            // Scaled time on purpose: if the tablet is backgrounded their focus-pause freezes the
+            // clock, and the beat must not run out behind a locked screen.
+            float t = 0f;
+            while (t < SummaRace.Constants.GameRules.RaceFinishMinBeatSeconds)
+            {
+                if (_leaving) yield break;
+                t += Time.deltaTime;
+                yield return null;
+            }
+
+            BuildTapToContinue();
+            // ...and never a dead end: auto-continue if nobody taps.
+            t = 0f;
+            while (!_finishContinue && t < SummaRace.Constants.GameRules.RaceFinishAutoContinueSeconds)
+            {
+                if (_leaving) yield break;
+                var kb = UnityEngine.InputSystem.Keyboard.current;
+                if (kb != null && (kb.spaceKey.wasPressedThisFrame || kb.enterKey.wasPressedThisFrame))
+                    _finishContinue = true;
+                t += Time.deltaTime;
+                yield return null;
+            }
+            _finishContinue = true;
+            if (SummaRace.Core.AudioManager.Instance != null)
+                SummaRace.Core.AudioManager.Instance.PlaySfx(SummaRace.Constants.AudioKeys.SfxClick);
 
             SummaRace.Core.SceneLoader.Go(SummaRace.Constants.SceneNames.Arrange);
+        }
+
+        /// <summary>Three rising star chimes, the same "earned it" language Results uses (F60's
+        /// pitched PlaySfx). Not the victory music: Results plays that, and hearing it twice in
+        /// ten seconds would spend the bigger payoff early.</summary>
+        private IEnumerator VictoryStarRun()
+        {
+            var audio = SummaRace.Core.AudioManager.Instance;
+            if (audio == null) yield break;
+            yield return new WaitForSeconds(0.35f);
+            audio.PlaySfx(SummaRace.Constants.AudioKeys.SfxCorrect);
+            float[] pitches = { 1f, 1.2f, 1.45f };
+            for (int i = 0; i < pitches.Length; i++)
+            {
+                if (_leaving) yield break;
+                yield return new WaitForSeconds(0.22f);
+                audio.PlaySfx(SummaRace.Constants.AudioKeys.SfxStar, pitches[i]);
+            }
+        }
+
+        /// <summary>
+        /// The "MISSION COMPLETE!" stamp: a big gold word on a dark plaque that slams down from
+        /// oversize with an overshoot and a punch, tilted like a rubber stamp. Sits in the band the
+        /// SWBST tracker vacates, above the read-back card, so it covers neither the card nor the
+        /// dancing runner. raycastTarget off throughout (TAP TO CONTINUE owns the taps).
+        /// </summary>
+        private void BuildMissionCompleteStamp()
+        {
+            var hud = transform.Find("SummaRaceHud");
+            if (hud == null) return;
+
+            var stamp = new GameObject("MissionCompleteStamp");
+            stamp.transform.SetParent(hud, false);
+            var img = stamp.AddComponent<UnityEngine.UI.Image>();
+            img.sprite = WoodPlaqueSprite();
+            img.type = UnityEngine.UI.Image.Type.Sliced;
+            img.color = Theme.Alpha(Theme.Ink, 0.92f);
+            img.raycastTarget = false;
+            var rt = img.rectTransform;
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.93f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(940f, 150f);
+
+            // Depth copy first (drawn behind), then the gold face — the Boot lockup's extrusion.
+            var depth = MakeHudText(stamp.transform, new Vector2(0.5f, 0.5f), new Vector2(0f, -7f), 86f);
+            depth.text = SummaRace.Constants.GameText.RaceMissionComplete;
+            depth.color = new Color(0.35f, 0.20f, 0.02f);
+            depth.fontStyle = FontStyles.Bold;
+            depth.rectTransform.sizeDelta = new Vector2(900f, 140f);
+            depth.enableAutoSizing = true; depth.fontSizeMin = 48f; depth.fontSizeMax = 86f;
+
+            var face = MakeHudText(stamp.transform, new Vector2(0.5f, 0.5f), Vector2.zero, 86f);
+            face.text = SummaRace.Constants.GameText.RaceMissionComplete;
+            face.color = Theme.Gold;
+            face.fontStyle = FontStyles.Bold;
+            face.rectTransform.sizeDelta = new Vector2(900f, 140f);
+            face.enableAutoSizing = true; face.fontSizeMin = 48f; face.fontSizeMax = 86f;
+
+            stamp.transform.localRotation = Quaternion.Euler(0f, 0f, -3.5f);
+            stamp.transform.localScale = Vector3.one * 2.4f;
+            Tween.Scale(stamp.transform, Vector3.one, 0.32f, Ease.OutBack, startDelay: 0.15f)
+                .OnComplete(() =>
+                {
+                    if (stamp == null) return;
+                    Tween.PunchScale(stamp.transform, Vector3.one * 0.12f, 0.35f);
+                    if (SummaRace.Core.AudioManager.Instance != null)
+                        SummaRace.Core.AudioManager.Instance.PlaySfx(SummaRace.Constants.AudioKeys.SfxBoost);
+                    SummaRace.Core.Haptics.Play(SummaRace.Core.Haptics.Light);
+                });
+        }
+
+        /// <summary>
+        /// The achievement badge: a gold medal disc reading "5/5" beside "5/5 story parts" and
+        /// how many came on the first try. Encouraging at every count (GameText.RaceFinishFirstTry)
+        /// — the number is information, never a grade (D7). Under the read-back card, above the
+        /// runner.
+        /// </summary>
+        private void BuildFinishBadge()
+        {
+            var hud = transform.Find("SummaRaceHud");
+            if (hud == null) return;
+
+            int firstTry = 0;
+            for (int i = 0; i < 5; i++) if (_firstPickCorrect[i]) firstTry++;
+
+            var badge = new GameObject("FinishBadge");
+            badge.transform.SetParent(hud, false);
+            var img = badge.AddComponent<UnityEngine.UI.Image>();
+            img.sprite = WoodPlaqueSprite();
+            img.type = UnityEngine.UI.Image.Type.Sliced;
+            img.color = Theme.Alpha(Theme.Wood, 0.95f);
+            img.raycastTarget = false;
+            var rt = img.rectTransform;
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.435f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(860f, 170f);
+
+            // Medal disc.
+            var medal = new GameObject("Medal");
+            medal.transform.SetParent(badge.transform, false);
+            var mimg = medal.AddComponent<UnityEngine.UI.Image>();
+            mimg.sprite = WoodPlaqueSprite();
+            mimg.type = UnityEngine.UI.Image.Type.Sliced;
+            mimg.color = Theme.Gold;
+            mimg.raycastTarget = false;
+            var mrt = mimg.rectTransform;
+            mrt.anchorMin = mrt.anchorMax = new Vector2(0f, 0.5f);
+            mrt.pivot = new Vector2(0f, 0.5f);
+            mrt.anchoredPosition = new Vector2(16f, 0f);
+            mrt.sizeDelta = new Vector2(150f, 150f);
+            var mlbl = MakeHudText(medal.transform, new Vector2(0.5f, 0.5f), Vector2.zero, 60f);
+            mlbl.text = "5/5";
+            mlbl.color = new Color(0.32f, 0.19f, 0.02f);   // deep brown on gold, 6.8:1 (see FINISH card)
+            mlbl.fontStyle = FontStyles.Bold;
+            mlbl.rectTransform.sizeDelta = new Vector2(140f, 110f);
+            mlbl.enableAutoSizing = true; mlbl.fontSizeMin = 36f; mlbl.fontSizeMax = 60f;
+
+            var head = MakeHudText(badge.transform, new Vector2(0.59f, 0.68f), Vector2.zero, 48f);
+            head.text = SummaRace.Constants.GameText.RaceFinishPartsBadge;
+            head.color = Theme.Cream;
+            head.fontStyle = FontStyles.Bold;
+            head.rectTransform.sizeDelta = new Vector2(650f, 70f);
+            head.enableAutoSizing = true; head.fontSizeMin = 30f; head.fontSizeMax = 48f;
+
+            var sub = MakeHudText(badge.transform, new Vector2(0.59f, 0.30f), Vector2.zero, 36f);
+            sub.text = SummaRace.Constants.GameText.RaceFinishFirstTry(firstTry);
+            sub.color = Theme.Gold;
+            sub.rectTransform.sizeDelta = new Vector2(650f, 60f);
+            sub.enableAutoSizing = true; sub.fontSizeMin = 24f; sub.fontSizeMax = 36f;
+
+            badge.transform.localScale = Vector3.zero;
+            Tween.Scale(badge.transform, Vector3.one, 0.35f, Ease.OutBack, startDelay: 1.15f)
+                .OnComplete(() =>
+                {
+                    if (medal == null) return;
+                    Tween.PunchScale(medal.transform, Vector3.one * 0.25f, 0.45f);
+                    if (SummaRace.Core.AudioManager.Instance != null)
+                        SummaRace.Core.AudioManager.Instance.PlaySfx(SummaRace.Constants.AudioKeys.SfxCoin);
+                });
+        }
+
+        /// <summary>
+        /// TAP TO CONTINUE: a full-screen invisible button (the HUD canvas has a raycaster) plus a
+        /// gently pulsing label near the bottom. Built only after the minimum beat, so a learner
+        /// still tapping at the finish line cannot skip the celebration by accident. The pulse is
+        /// a coroutine rather than an infinite tween, so nothing outlives the scene.
+        /// </summary>
+        private void BuildTapToContinue()
+        {
+            var hud = transform.Find("SummaRaceHud");
+            if (hud == null) { _finishContinue = true; return; }
+
+            var catcher = new GameObject("TapToContinue");
+            catcher.transform.SetParent(hud, false);
+            var cimg = catcher.AddComponent<UnityEngine.UI.Image>();
+            cimg.color = new Color(0f, 0f, 0f, 0f);
+            cimg.raycastTarget = true;
+            var crt = cimg.rectTransform;
+            crt.anchorMin = Vector2.zero; crt.anchorMax = Vector2.one;
+            crt.offsetMin = Vector2.zero; crt.offsetMax = Vector2.zero;
+            var btn = catcher.AddComponent<UnityEngine.UI.Button>();
+            btn.transition = UnityEngine.UI.Selectable.Transition.None;
+            btn.onClick.AddListener(() => _finishContinue = true);
+
+            var pill = new GameObject("Prompt");
+            pill.transform.SetParent(catcher.transform, false);
+            var pimg = pill.AddComponent<UnityEngine.UI.Image>();
+            pimg.sprite = WoodPlaqueSprite();
+            pimg.type = UnityEngine.UI.Image.Type.Sliced;
+            pimg.color = Theme.Alpha(Theme.Ink, 0.88f);
+            pimg.raycastTarget = false;
+            var prt = pimg.rectTransform;
+            prt.anchorMin = prt.anchorMax = new Vector2(0.5f, 0.085f);
+            prt.pivot = new Vector2(0.5f, 0.5f);
+            prt.sizeDelta = new Vector2(720f, 130f);
+
+            var lbl = MakeHudText(pill.transform, new Vector2(0.5f, 0.5f), Vector2.zero, 60f);
+            lbl.text = SummaRace.Constants.GameText.RaceTapToContinue;
+            lbl.color = Theme.Gold;
+            lbl.fontStyle = FontStyles.Bold;
+            lbl.rectTransform.sizeDelta = new Vector2(680f, 110f);
+            lbl.enableAutoSizing = true; lbl.fontSizeMin = 36f; lbl.fontSizeMax = 60f;
+
+            pill.transform.localScale = Vector3.zero;
+            Tween.Scale(pill.transform, Vector3.one, 0.3f, Ease.OutBack);
+            if (SummaRace.Core.AudioManager.Instance != null)
+                SummaRace.Core.AudioManager.Instance.PlaySfx(SummaRace.Constants.AudioKeys.SfxPop);
+            StartCoroutine(PulseTapPrompt(pill.transform));
+        }
+
+        /// <summary>Slow ~1Hz breathing pulse on the TAP TO CONTINUE pill (far under the 3Hz
+        /// photosensitivity ceiling). Starts after the pill's own pop-in has landed.</summary>
+        private IEnumerator PulseTapPrompt(Transform pill)
+        {
+            yield return new WaitForSeconds(0.35f);
+            float t = 0f;
+            while (pill != null && !_finishContinue && !_leaving)
+            {
+                t += Time.deltaTime;
+                pill.localScale = Vector3.one * (1f + 0.06f * Mathf.Sin(t * Mathf.PI * 2f));
+                yield return null;
+            }
         }
 
         /// <summary>
@@ -2180,9 +2557,9 @@ namespace SummaRace.Features.Race.Endless
             // inside the preview board's 0.745-0.885 — and the board is opaque (alpha 0.94) and
             // a later sibling, so it drew over the banner. The banner's only line is
             // RaceRunToFinish, set by UpdateBanner the moment _pendingElement reaches 5; a wrong
-            // or missed element 5 runs AdvanceToNext -> UpdateBanner and then ShowAnswerReveal,
-            // which puts the board up for 2.2s. So on the one gate where "Run to the FINISH!" is
-            // the whole instruction, it was behind a wooden board.
+            // or missed element 5 used to run AdvanceToNext -> UpdateBanner and then an answer
+            // reveal that put the board up for 2.2s. So on the one gate where "Run to the FINISH!"
+            // is the whole instruction, it was behind a wooden board.
             //
             // It is anchored to the BOARD'S UNDERSIDE rather than given a bigger fixed offset:
             // with matchWidthOrHeight = 0 the canvas is always 1080 units wide but its HEIGHT
@@ -2503,14 +2880,13 @@ namespace SummaRace.Features.Race.Endless
         /// 3-2-1, a pause, an exit and after FINISH, so a click cannot physically be raised in any
         /// of those states. They are restated rather than assumed because a Button that is only
         /// safe by virtue of its parent's active flag is one refactor away from not being safe.
-        /// _previewTappable additionally rules out the answer-reveal beat, where the panel carries
-        /// one gold card that is a statement, not a choice.
+        /// A greyed (rejected-option) column still steers: it is a lane, and moving into an empty
+        /// lane is harmless.
         /// </summary>
         private void OnPreviewColumnTapped(int lane)
         {
             if (lane < 0 || lane > 2) return;
             if (_paused || _leaving || _finished || !_runReleased) return;
-            if (!_previewTappable || _revealing) return;
             if (_previewRoot == null || !_previewRoot.activeInHierarchy) return;
             if (_previewColumn[lane] == null || !_previewColumn[lane].gameObject.activeInHierarchy) return;
             if (_tapInput == null) return;   // grey-box / editor-direct: nothing to steer
@@ -2534,11 +2910,8 @@ namespace SummaRace.Features.Race.Endless
         /// panel is up; SetBlockers is the mechanism the pause chip already uses, so this adds no
         /// second way of suppressing a tap.
         ///
-        /// It is re-applied rather than set once because the ANSWER-REVEAL beat must not create a
-        /// dead strip: there the panel is one full-width column that is not a choice, so the
-        /// columns stop blocking and a tap in that band falls through to the road mapping exactly
-        /// as it did before this existed. (IsOverBlocker already ignores inactive rects, so a hidden
-        /// panel needs no swap — only the reveal does.)
+        /// (The answer-reveal beat that once needed the plain array while the panel was up is gone
+        /// since 2026-09-14; IsOverBlocker ignores inactive rects, so a hidden panel needs no swap.)
         ///
         /// BOTH arrays also carry the SWBST tracker board and the question plaque (added
         /// 2026-08-22). Neither is a button and neither ever will be; they are here because a
@@ -2549,7 +2922,7 @@ namespace SummaRace.Features.Race.Endless
         private void ApplyTapBlockers()
         {
             if (_tapInput == null) return;
-            bool panelClaimsTaps = _previewTappable && _previewRoot != null;
+            bool panelClaimsTaps = _previewRoot != null;
             _tapInput.SetBlockers(panelClaimsTaps && _tapBlockersWithPanel != null
                 ? _tapBlockersWithPanel
                 : _tapBlockersPlain);
@@ -2583,12 +2956,10 @@ namespace SummaRace.Features.Race.Endless
         {
             if (!_previewArmed || _previewWanted || track == null) return;
             if (!_runReleased || _finished || _paused || _leaving) return;
-            // An answer reveal owns the panel for its beat. The next gate is already scheduled and
-            // armed underneath, and at the speeds this runs at its window can open while the
-            // reveal is still on screen — which would swap the answer the learner is reading for
-            // the next question mid-sentence. The reveal clears _revealing when it ends, and the
-            // window then opens on its own clock.
-            if (_revealing) return;
+            // After a wrong pick / run-past the feedback line owns a short beat before the part's
+            // returning options come up (mastery loop), so "Not quite" and the question are two
+            // moments rather than one stacked screen.
+            if (_retryHoldTimer > 0f) return;
 
             float target = _activeGateRoot != null ? _activeGateDistance : _pendingGateDistance;
             if (target < 0f) return;
@@ -2625,13 +2996,19 @@ namespace SummaRace.Features.Race.Endless
         private void RevealOptionPreview()
         {
             if (_previewRoot == null) return;
-            PaintPreview(_previewTexts, false);
+            PaintPreview(_previewTexts);
             SetQuestionForElement(_previewElement);
             _previewWanted = true;
             ApplyPreviewVisibility();
 
             if (_previewRoot.activeSelf)
             {
+                // ONE short pop as the board arrives (client feedback 2026-09-14: "choices should
+                // not be static"). A single 0.22s settle, never a continuous motion: the words
+                // must be still for the whole reading window (F47 legibility).
+                Tween.StopAll(_previewRoot.transform);
+                _previewRoot.transform.localScale = new Vector3(0.94f, 0.82f, 1f);
+                Tween.Scale(_previewRoot.transform, Vector3.one, 0.22f, Ease.OutBack);
                 if (_previewCue != null) StopCoroutine(_previewCue);
                 _previewCue = StartCoroutine(PulseArrivalGlow());
                 RefreshTracker();   // re-pulses the upcoming element's slot in its SWBST colour
@@ -2640,17 +3017,15 @@ namespace SummaRace.Features.Race.Endless
             }
         }
 
-        /// <summary>Fills the three columns. `single` is the answer-reveal form: one full-width
-        /// card in the gold the world's correct card wears, with the other two columns switched
-        /// OFF rather than ghosted — a nine-year-old reads two faded columns as a question that
-        /// has lost two options, which is precisely the confusion the re-present used to cause.
-        /// In the normal form all three columns are identical in size, colour and type: nothing
-        /// may mark the correct one (F44 — a surface cue was worth 84.7% against 33% guessing).</summary>
-        private void PaintPreview(string[] texts, bool single)
+        /// <summary>Fills the three columns, in lane order. Every column that carries an option is
+        /// identical in size, colour and type: nothing may mark the correct one (F44 — a surface
+        /// cue was worth 84.7% against 33% guessing). A lane whose option the learner already
+        /// rejected (mastery loop, 2026-09-14) has no card on the road, so its column is drawn as
+        /// an EMPTY greyed slot of the same size — still in place, so the three columns keep
+        /// mapping to the three lanes, but plainly holding nothing. The blank's position is
+        /// shuffled with the options, so it carries no information about the answer.</summary>
+        private void PaintPreview(string[] texts)
         {
-            // `single` is the answer reveal: a statement, not a question. Its one column must not
-            // be tappable, and must not claim taps away from the road either — see ApplyTapBlockers.
-            _previewTappable = !single;
             ApplyTapBlockers();
 
             const float pad = 0.014f;
@@ -2662,32 +3037,21 @@ namespace SummaRace.Features.Race.Endless
                 if (_previewLabel[i] != null)
                 {
                     _previewLabel[i].text = has ? text : "";
-                    // Cream on the reveal's wood, near-black on a white option column.
-                    _previewLabel[i].color = single
-                        ? new Color(1f, 0.96f, 0.88f)
-                        : new Color(0.10f, 0.10f, 0.12f);
+                    _previewLabel[i].color = new Color(0.10f, 0.10f, 0.12f);
                 }
                 if (_previewColumn[i] != null)
                 {
-                    _previewColumn[i].gameObject.SetActive(has);
-                    float x0 = single ? pad : pad + i * (w + pad);
-                    float x1 = single ? 1f - pad : x0 + w;
+                    _previewColumn[i].gameObject.SetActive(true);
+                    float x0 = pad + i * (w + pad);
                     _previewColumn[i].anchorMin = new Vector2(x0, 0.07f);
-                    _previewColumn[i].anchorMax = new Vector2(x1, 0.93f);
+                    _previewColumn[i].anchorMax = new Vector2(x0 + w, 0.93f);
                     _previewColumn[i].offsetMin = Vector2.zero;
                     _previewColumn[i].offsetMax = Vector2.zero;
                 }
                 if (_previewPlaque[i] != null)
-                    _previewPlaque[i].color = single
-                        // WOOD, NOT GOLD (owner device playtest 2026-08-21: "instead of yellow
-                        // border you can make it gray or brown like back button gray or some our
-                        // brown, more like game feel rather than colour yellow"). The reveal was
-                        // a full-width slab of Theme.Gold, which is the single loudest thing on
-                        // the race screen and reads as an alert rather than as the game's own
-                        // furniture. Deep wood keeps it plainly distinct from the three white
-                        // option columns - which is the only job the colour actually had.
-                        ? Theme.Wood
-                        : new Color(0.98f, 0.97f, 0.93f);      // the answer card's white
+                    _previewPlaque[i].color = has
+                        ? new Color(0.98f, 0.97f, 0.93f)            // the answer card's white
+                        : Theme.Alpha(Color.black, 0.22f);           // empty lane: a dim slot
             }
         }
 
@@ -2783,8 +3147,8 @@ namespace SummaRace.Features.Race.Endless
             // The question rides with the panel exactly: it is the question those three columns
             // are the answers to, and a question left on screen with nothing under it would be
             // asking about a gate that has already gone.
-            if (_questionRoot != null && _questionRoot.activeSelf != (show && !_revealing))
-                _questionRoot.SetActive(show && !_revealing);
+            if (_questionRoot != null && _questionRoot.activeSelf != show)
+                _questionRoot.SetActive(show);
         }
 
         // ---------- pause ----------
@@ -2842,7 +3206,8 @@ namespace SummaRace.Features.Race.Endless
         /// Deliberately NOT a race clock (L1). It counts toward an arrival, not a deadline -
         /// nothing happens at zero except that the cards are there, and every pick/miss rule is
         /// exactly what it was without it. It also hides itself during a pause, a leave, the
-        /// answer reveal and the finish, so it can never tick at a learner who is not running.
+        /// post-miss hold (mastery loop) and the finish, so it can never tick at a learner who is
+        /// not running.
         /// </summary>
         private void UpdateGateTimer(TrackManager track)
         {
@@ -2862,7 +3227,7 @@ namespace SummaRace.Features.Race.Endless
             // still running. Same plaque, same moment, no new geometry.
             bool lastGate = false;
 
-            if (track != null && _runReleased && !_finished && !_paused && !_leaving && !_revealing
+            if (track != null && _runReleased && !_finished && !_paused && !_leaving && _retryHoldTimer <= 0f
                 && SummaRace.Constants.GameRules.RaceGateTimerVisibleSeconds > 0f)
             {
                 bool active = _activeGateRoot != null;
@@ -3607,10 +3972,11 @@ namespace SummaRace.Features.Race.Endless
 
                 if (i < current) // resolved — the plaque takes its letter and its full colour
                 {
-                    // Was the part found, or only shown? `_firstPickDone` is belt-and-braces:
-                    // anything below `current` has always been closed, but reading the flag makes
-                    // the default (not found) the safe one if that ever stops being true.
-                    bool found = _firstPickDone[i] && _firstPickCorrect[i];
+                    // Since the mastery loop (2026-09-14) a part is only ever resolved by being
+                    // COLLECTED — on the first try or after it came back — so every resolved slot
+                    // earns the cream fill. The first-try count is told once, kindly, on the
+                    // finish badge; the tracker no longer marks a part as "only shown".
+                    bool found = _collected[i];
 
                     if (found)
                     {
@@ -3927,7 +4293,12 @@ namespace SummaRace.Features.Race.Endless
             // `_menaceSurging` - a three-second window after a wrong pick - which is why he
             // flashed and vanished. Now he is on screen whenever he is anywhere near, and a clean
             // run walks him out to nothing by about the third gate.
-            bool surging = _patrolStep > SummaRace.Constants.GameRules.PatrolStepHidden;
+            // PatrolShowStep, not PatrolStepHidden (2026-09-14): the chase camera's pull-back is
+            // scaled from zero at this same step (UpdateChaseCameraDolly), so the cop is drawn
+            // exactly while the camera is making room for him. Before, he was "visible" from
+            // step 0.02 while the camera only pulled back during a wrong-pick surge, so for most of
+            // a run he was switched on but sitting outside the frame.
+            bool surging = _patrolStep > SummaRace.Constants.GameRules.PatrolShowStep;
 
             if (!surging)
             {
@@ -4070,10 +4441,21 @@ namespace SummaRace.Features.Race.Endless
         private void UpdateChaseCameraDolly()
         {
             if (!_camChaseCaptured) return;
+            // Never while the GO! swoop still owns the camera (two writers on one transform).
+            if (!_chaseSwoopDone) return;
             var cam = Camera.main;
             if (cam == null) return;
 
-            float target = _menaceSurging ? 1f : 0f;
+            // FRAMING FOLLOWS VISIBILITY (2026-09-14). Full pull-back during a wrong-pick surge,
+            // as before; otherwise scaled by how close the patrol is, from 0 at PatrolShowStep
+            // (where UpdatePatrolCameo stops drawing him) to full at PatrolDollyFullStep. So the
+            // chase intro and a patrol still hanging on after a miss are actually in frame, and a
+            // clean run walks the camera home as it walks him away.
+            float byStep = Mathf.InverseLerp(SummaRace.Constants.GameRules.PatrolShowStep,
+                                             SummaRace.Constants.GameRules.PatrolDollyFullStep,
+                                             _patrolStep);
+            bool copShown = _patrol != null && _patrol.gameObject.activeSelf;
+            float target = _menaceSurging ? 1f : (copShown ? byStep : 0f);
             float step = Time.deltaTime
                        / Mathf.Max(0.01f, SummaRace.Constants.GameRules.PatrolCameraBlendSeconds);
             _camDolly = Mathf.MoveTowards(_camDolly, target, step);
@@ -4754,6 +5136,9 @@ namespace SummaRace.Features.Race.Endless
                 Debug.LogWarning("EndlessRaceDirector: RaceCountdown needs at least 2 entries; " +
                     "releasing the run without a countdown.");
                 ReleaseRun(hud, steps != null && steps.Length > 0 ? steps[steps.Length - 1] : "GO!");
+                if (cam != null) { _camChaseLocalPos = cam.transform.localPosition; _camChaseCaptured = true; }
+                _chaseSwoopDone = true;
+                StartCoroutine(ChaseIntroRoutine());
                 yield break;
             }
 
@@ -4811,6 +5196,42 @@ namespace SummaRace.Features.Race.Endless
                 yield return null;
             }
             if (cam != null) { cam.transform.localPosition = gpPos; cam.transform.localRotation = gpRot; }
+
+            // The camera is ours again: let the patrol dolly write it, and run the chase intro.
+            _chaseSwoopDone = true;
+            StartCoroutine(ChaseIntroRoutine());
+        }
+
+        /// <summary>
+        /// THE CHASE INTRO (Race mastery, client feedback 2026-09-14: "like Subway Surfers, with a
+        /// patrol chasing the character"). Right after GO! the patrol runs up close behind the
+        /// runner — the camera pulls back to frame him (UpdateChaseCameraDolly follows his step) —
+        /// holds for GameRules.PatrolIntroHoldSeconds, then drops back to PatrolStartStep, where
+        /// the first correct parts push him out of shot and a miss brings him back.
+        ///
+        /// Structurally D7-safe: it only moves _patrolStepTarget, which StepPatrol-style clamping
+        /// bounds to [0,1], and step 1 is the constant PatrolChaseGap — he can never touch the
+        /// runner and nothing here can end the run.
+        /// </summary>
+        private IEnumerator ChaseIntroRoutine()
+        {
+            if (!SummaRace.Constants.GameRules.RacePatrolCameoEnabled || _patrol == null) yield break;
+
+            _patrolStepTarget = 1f;
+            ShowFeedback(SummaRace.Constants.GameText.RaceChaseIntro, Theme.Gold);
+
+            float t = 0f;
+            while (t < SummaRace.Constants.GameRules.PatrolIntroHoldSeconds)
+            {
+                if (_finished || _leaving) yield break;
+                if (!_paused) t += Time.deltaTime;
+                yield return null;
+            }
+
+            // Take back only the intro's own boost, so a miss that happened during the hold (not
+            // reachable today — gate 1 is ~17s away — but cheap to respect) is not erased.
+            _patrolStepTarget = Mathf.Clamp01(_patrolStepTarget
+                - (1f - SummaRace.Constants.GameRules.PatrolStartStep));
         }
 
         /// <summary>

@@ -10,8 +10,14 @@ namespace SummaRace.Features.Reader
 {
     /// <summary>
     /// Shows story pages one at a time with a question after each (TDD §10.1).
-    /// Wrong answers never block — the correct option is highlighted and the
-    /// learner moves on (GDD north star: learning is never punished).
+    ///
+    /// MASTERY, NOT REVEAL (client feedback 2026-09-14). A wrong answer is no longer met with
+    /// the correct one. The learner is asked whether they want to read the page again, and
+    /// may either READ AGAIN or tap another answer; the page cannot be left until its question
+    /// is answered correctly. The option already tried is set aside, so with three options the
+    /// loop always ends within three taps — never a dead end, and still never a punishment
+    /// (no red, no buzzer, nothing lost). The FIRST answer per page remains the study measure
+    /// (SessionLogService); every later answer is counted as practice (readingAttempts).
     /// </summary>
     public class ReaderController : MonoBehaviour
     {
@@ -161,6 +167,17 @@ namespace SummaRace.Features.Reader
         private readonly int[] _displayOrder = new int[3];
         private bool _questionShown;
 
+        /// <summary>Options already tried and found wrong on this page, by STORY option index.
+        /// They stay set aside across READ AGAIN so the question always converges.</summary>
+        private readonly bool[] _eliminated = new bool[3];
+        /// <summary>Answers given on the current page (1 = first).</summary>
+        private int _pageAttempts;
+        /// <summary>The display order is shuffled once per page, not per showing — a learner
+        /// who reads the page again finds the answers where they left them.</summary>
+        private bool _orderShuffledForPage;
+        /// <summary>Holds the page's QUESTION button back until the narration has finished.</summary>
+        private Coroutine _nextGate;
+
         /// <summary>True when the reading card carries its own <see cref="SummaRace.UI.PanelIntro"/>,
         /// which already animates every page turn. Resolved once in Start — see ShowPage for why
         /// it decides whether we add a page-turn punch at all.</summary>
@@ -195,6 +212,7 @@ namespace SummaRace.Features.Reader
                                   readingCard.GetComponent<SummaRace.UI.PanelIntro>() != null;
 
             if (nextButton != null) nextButton.onClick.AddListener(OnNext);
+            CenterNextButton();
             if (voiceButton != null) voiceButton.onClick.AddListener(ToggleNarration);
             // Navy, not the authored white. Measured on the kit's cyan pill this label ran at
             // 1.78-2.09:1 in its ON state - the least readable text on the screen, on the control
@@ -244,11 +262,21 @@ namespace SummaRace.Features.Reader
             ShowPage(0);
         }
 
-        private void ShowPage(int index)
+        private void ShowPage(int index) => ShowPage(index, reread: false);
+
+        /// <param name="reread">true when the learner came back from this page's own question
+        /// to read it again: the tried answers and the attempt count are kept.</param>
+        private void ShowPage(int index, bool reread)
         {
             _pageIndex = index;
             _questionShown = false;
             _questionAnswered = false;
+            if (!reread)
+            {
+                for (int i = 0; i < _eliminated.Length; i++) _eliminated[i] = false;
+                _pageAttempts = 0;
+                _orderShuffledForPage = false;
+            }
 
             var page = _story.pages[index];
             if (readingCard != null) readingCard.SetActive(true);
@@ -297,14 +325,81 @@ namespace SummaRace.Features.Reader
             // across the page turn, to land on the NEXT question's nudge and cut its delay short.
             if (hintText != null) Tween.StopAll(onTarget: hintText);
             if (teacherGroup != null) teacherGroup.alpha = 1f; // buddy is back for reading
-            if (nextButton != null) nextButton.gameObject.SetActive(true);
-            if (nextButtonLabel != null) nextButtonLabel.text = GameText.NextLabel;
+            if (nextButtonLabel != null)
+                nextButtonLabel.text = reread ? GameText.ReaderBackToQuestionLabel : GameText.NextLabel;
 
-            if (index > 0 && AudioManager.Instance != null)
+            if ((index > 0 || reread) && AudioManager.Instance != null)
                 AudioManager.Instance.PlaySfx(AudioKeys.SfxPageTurn);
 
             RefreshSecondaryControls(readingPage: true);
             PlayPageNarration();
+
+            // The button waits for the voice, so Ms. Lumi and the narration own the page for as
+            // long as it is being read (client: "the teacher/narration is too fast").
+            if (_nextGate != null) StopCoroutine(_nextGate);
+            _nextGate = StartCoroutine(RevealNextWhenRead());
+        }
+
+        /// <summary>
+        /// Hides NEXT/QUESTION until the page has been heard: the narration finishing, or with
+        /// VOICE OFF a short minimum. Capped, so no audio fault can ever hold the page.
+        /// </summary>
+        private System.Collections.IEnumerator RevealNextWhenRead()
+        {
+            if (nextButton != null) nextButton.gameObject.SetActive(false);
+
+            float started = Time.unscaledTime;
+            var audio = AudioManager.Instance;
+            bool voice = NarrationEnabled && audio != null &&
+                         !string.IsNullOrEmpty(_story.pages[_pageIndex].narration);
+
+            // A frame for Play() to register before isPlaying is tested.
+            yield return null;
+            if (voice)
+            {
+                while (audio != null && audio.IsVoicePlaying &&
+                       Time.unscaledTime - started < GameRules.ReaderMaxNarrationWaitSeconds)
+                    yield return null;
+                yield return new WaitForSecondsRealtime(GameRules.ReaderNextAfterNarrationSeconds);
+            }
+            else
+            {
+                float wait = GameRules.ReaderMinPageSeconds - (Time.unscaledTime - started);
+                if (wait > 0f) yield return new WaitForSecondsRealtime(wait);
+            }
+
+            _nextGate = null;
+            ShowNextButton();
+        }
+
+        private void ShowNextButton()
+        {
+            if (nextButton == null) return;
+            nextButton.gameObject.SetActive(true);
+            var t = nextButton.transform;
+            Tween.StopAll(onTarget: t);
+            t.localScale = Vector3.one * 0.8f;
+            Tween.Scale(t, Vector3.one, 0.35f, Ease.OutBack);
+        }
+
+        /// <summary>
+        /// The NEXT/QUESTION button was anchored x 0.30–0.80, i.e. its middle sat at 55% of the
+        /// screen, so "NEXT PAGE" and "QUESTION!" read as off-centre (client feedback). Keeps the
+        /// authored width and height, only moves it to the horizontal centre.
+        /// </summary>
+        private void CenterNextButton()
+        {
+            if (nextButton == null) return;
+            var rt = nextButton.transform as RectTransform;
+            if (rt == null) return;
+            float half = (rt.anchorMax.x - rt.anchorMin.x) * 0.5f;
+            float offset = (rt.offsetMin.x + rt.offsetMax.x) * 0.5f; // any pixel skew in the offsets
+            rt.anchorMin = new Vector2(0.5f - half, rt.anchorMin.y);
+            rt.anchorMax = new Vector2(0.5f + half, rt.anchorMax.y);
+            rt.offsetMin = new Vector2(rt.offsetMin.x - offset, rt.offsetMin.y);
+            rt.offsetMax = new Vector2(rt.offsetMax.x - offset, rt.offsetMax.y);
+            if (nextButtonLabel != null) nextButtonLabel.alignment = TextAlignmentOptions.Center;
+            if (questionText != null) questionText.alignment = TextAlignmentOptions.Center;
         }
 
         // ---------- narration (GDD: optional voice, learner-controlled) ----------
@@ -430,12 +525,22 @@ namespace SummaRace.Features.Reader
                 return;
             }
 
+            // On an unanswered question the button is READ AGAIN (it only appears after a wrong
+            // pick): back to this same page, keeping the answers already set aside.
+            if (page.question != null && !_questionAnswered)
+            {
+                EventBus.Raise(new PageReread { pageIndex = _pageIndex });
+                ShowPage(_pageIndex, reread: true);
+                return;
+            }
+
             Advance();
         }
 
         private void ShowQuestion(QuestionData question)
         {
             _questionShown = true;
+            if (_nextGate != null) { StopCoroutine(_nextGate); _nextGate = null; }
             if (readingCard != null) readingCard.SetActive(false); // story gives way to its own question page
 
             // AND STOP READING IT ALOUD. The card is hidden here precisely so the question is
@@ -485,7 +590,11 @@ namespace SummaRace.Features.Reader
                 else hintText.alpha = 1f; // leave the field in a sane state for a wired scene
             }
 
-            ShuffleDisplayOrder(question.options != null ? question.options.Length : 0);
+            if (!_orderShuffledForPage)
+            {
+                ShuffleDisplayOrder(question.options != null ? question.options.Length : 0);
+                _orderShuffledForPage = true;
+            }
 
             for (int i = 0; i < optionButtons.Length; i++)
             {
@@ -513,11 +622,22 @@ namespace SummaRace.Features.Reader
                         ? GameText.OptionLetters[i] + "<indent=9%>" + optionText + "</indent>"
                         : optionText;
 
+                var option = optionButtons[i].transform;
+                Tween.StopAll(onTarget: option);
+
+                // An answer already tried stays set aside when the learner comes back from
+                // reading the page again: quieter pill, not tappable, settled like a key pressed in.
+                if (optionIndex < _eliminated.Length && _eliminated[optionIndex])
+                {
+                    optionButtons[i].interactable = false;
+                    if (optionButtons[i].image != null) optionButtons[i].image.color = OptionChosen;
+                    option.localScale = Vector3.one * 0.94f;
+                    continue;
+                }
+
                 // Fan the options in one after another so the page reads top-to-bottom
                 // instead of arriving all at once. ButtonSquash cached scale 1 in Awake,
                 // so returning to Vector3.one keeps press-squash correct.
-                var option = optionButtons[i].transform;
-                Tween.StopAll(onTarget: option);
                 option.localScale = Vector3.one * 0.9f;
                 Tween.Scale(option, Vector3.one, OptionFanSeconds, Ease.OutBack,
                     startDelay: OptionFanStagger * i);
@@ -569,17 +689,33 @@ namespace SummaRace.Features.Reader
             // one-way, and spending them on a non-answer would lock the learner out of the item
             // and write a chosenIndex of -1 into the study data. Checked BEFORE the latches.
             if (chosenIndex < 0) return;
-
-            _questionAnswered = true;
+            if (chosenIndex < _eliminated.Length && _eliminated[chosenIndex]) return; // already tried
 
             // From here the play-through is study data: SessionLogService records the FIRST
-            // answer per page and this is one. The exit stays gone for the rest of the run.
+            // answer per page and this may be one. The exit stays gone for the rest of the run.
             _answerCommitted = true;
             RefreshSecondaryControls(readingPage: false);
 
             bool correct = chosenIndex == question.correctIndex;
+            _pageAttempts++;
 
-            // Always reveal the correct answer; never block (GDD §4.3).
+            EventBus.Raise(new PageAnswered
+            {
+                pageIndex = _pageIndex,
+                chosenIndex = chosenIndex,
+                correct = correct,
+                attemptNumber = _pageAttempts
+            });
+
+            if (!correct)
+            {
+                OnWrongAnswer(slot, chosenIndex, question);
+                return;
+            }
+
+            _questionAnswered = true;
+
+            // Right answer: light it up, grey the rest, and open the way on.
             for (int i = 0; i < optionButtons.Length; i++)
             {
                 if (optionButtons[i] == null) continue;
@@ -618,57 +754,17 @@ namespace SummaRace.Features.Reader
                 }
             }
 
-            // ACKNOWLEDGE THE TAP THAT WAS ACTUALLY MADE.
-            //
-            // Until now a wrong pick looked identical to the two options the learner never
-            // touched: the loop above greys all three with the same disabled tint and only the
-            // correct one moves. So the screen answered "here is the answer" without ever
-            // answering "here is what YOU chose" — and a learner who fat-fingered the wrong pill
-            // could not tell a slip from a misunderstanding, on the one screen whose first
-            // answers are the study's readingFirstCorrect.
-            //
-            // This is deliberately a SETTLE, not a rejection: it eases DOWN and stays there, like
-            // a key pressed in. No red, no shake, no bounce-back — those read as "wrong of you"
-            // and D7 forbids punishing a wrong answer. It is also deliberately quieter and
-            // shorter than the correct answer's punch (0.94 over 0.22s against a 12% punch over
-            // 0.45s), so the reveal stays the loudest thing on screen.
-            //
-            // Scale is the channel because the disabled ColorTint MULTIPLIES image colour, so a
-            // colour-only cue would be flattened along with the other two; OptionChosen is only
-            // the supporting half. Nothing here depends on which option was correct — it marks
-            // the tapped slot, so it cannot leak the answer.
-            if (!correct)
-            {
-                int chosenSlot = Mathf.Clamp(slot, 0, optionButtons.Length - 1);
-                var chosen = optionButtons.Length > 0 ? optionButtons[chosenSlot] : null;
-                if (chosen != null)
-                {
-                    if (chosen.image != null) chosen.image.color = OptionChosen;
-
-                    // Same ButtonSquash guard as the correct-answer punch above: its release
-                    // tween is still driving this localScale when the click handler fires, and
-                    // two tweens on one transform leave it wherever the last one wrote.
-                    var chosenT = chosen.transform;
-                    Tween.StopAll(onTarget: chosenT);
-                    chosenT.localScale = Vector3.one;
-                    Tween.Scale(chosenT, Vector3.one * 0.94f, 0.22f, Ease.OutQuad);
-                }
-            }
-
             if (AudioManager.Instance != null)
-                AudioManager.Instance.PlaySfx(correct ? AudioKeys.SfxCorrect : AudioKeys.SfxNotQuite);
+                AudioManager.Instance.PlaySfx(AudioKeys.SfxCorrect);
 
-            // GDD 11.4 asks for a tiny vibration on collect and on star pops. Only the star pops
-            // were ever wired, so Haptics.Light — documented as "Collect / correct answer" — was
-            // declared and called from nowhere. A classroom tablet is usually muted, which is
-            // exactly when a non-audio confirmation carries the beat. Correct only: a wrong answer
-            // is never punished, so it gets no buzz.
-            if (correct) SummaRace.Core.Haptics.Play(SummaRace.Core.Haptics.Light);
+            // GDD 11.4: a tiny vibration on a correct answer. A classroom tablet is usually
+            // muted, which is exactly when a non-audio confirmation carries the beat.
+            SummaRace.Core.Haptics.Play(SummaRace.Core.Haptics.Light);
 
             if (feedbackText != null)
             {
-                feedbackText.text = correct ? Praise.Generic() : GameText.ReaderWrongFeedback;
-                feedbackText.color = correct ? FeedbackCorrect : FeedbackNotQuite;
+                feedbackText.text = Praise.Generic();
+                feedbackText.color = FeedbackCorrect;
 
                 // Pop it in, matching the race's feedback pill (F16) — the Reader was
                 // the one scene where feedback just silently appeared.
@@ -678,16 +774,54 @@ namespace SummaRace.Features.Reader
                 Tween.Scale(fb, Vector3.one, 0.35f, Ease.OutBack);
             }
 
-            EventBus.Raise(new PageAnswered
-            {
-                pageIndex = _pageIndex,
-                chosenIndex = chosenIndex,
-                correct = correct
-            });
-
-            if (nextButton != null) nextButton.gameObject.SetActive(true);
             if (nextButtonLabel != null)
                 nextButtonLabel.text = _pageIndex == _story.pages.Length - 1 ? GameText.StartRaceLabel : GameText.NextPageLabel;
+            ShowNextButton();
+        }
+
+        /// <summary>
+        /// A wrong pick. The answer is NOT revealed. The tapped option is set aside (so the
+        /// question always converges), the learner is asked whether to read the page again, and
+        /// the button offers READ AGAIN while the remaining answers stay tappable.
+        /// Deliberately a settle, not a rejection: no red, no shake (D7).
+        /// </summary>
+        private void OnWrongAnswer(int slot, int chosenIndex, QuestionData question)
+        {
+            if (chosenIndex < _eliminated.Length) _eliminated[chosenIndex] = true;
+
+            int chosenSlot = Mathf.Clamp(slot, 0, optionButtons.Length - 1);
+            var chosen = optionButtons.Length > 0 ? optionButtons[chosenSlot] : null;
+            if (chosen != null)
+            {
+                chosen.interactable = false;
+                if (chosen.image != null) chosen.image.color = OptionChosen;
+
+                // ButtonSquash's release tween is still driving this localScale when the click
+                // handler fires; stop it first so the settle is the last word.
+                var chosenT = chosen.transform;
+                Tween.StopAll(onTarget: chosenT);
+                chosenT.localScale = Vector3.one;
+                Tween.Scale(chosenT, Vector3.one * 0.94f, 0.22f, Ease.OutQuad);
+            }
+
+            int remaining = 0;
+            int optionCount = question.options != null ? Mathf.Min(question.options.Length, _eliminated.Length) : 0;
+            for (int i = 0; i < optionCount; i++) if (!_eliminated[i]) remaining++;
+
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxNotQuite);
+
+            if (feedbackText != null)
+            {
+                feedbackText.text = remaining <= 1 ? GameText.ReaderLastTryFeedback : GameText.ReaderTryAgainFeedback;
+                feedbackText.color = FeedbackNotQuite;
+                var fb = feedbackText.transform;
+                Tween.StopAll(onTarget: fb);
+                fb.localScale = Vector3.one * 0.7f;
+                Tween.Scale(fb, Vector3.one, 0.35f, Ease.OutBack);
+            }
+
+            if (nextButtonLabel != null) nextButtonLabel.text = GameText.ReaderReadAgainLabel;
+            ShowNextButton();
         }
 
         private void Advance()

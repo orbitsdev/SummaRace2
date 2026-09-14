@@ -12,8 +12,9 @@ namespace SummaRace.Features.Race.Endless
     {
         public int elementIndex;
         /// <summary>Monotonic id of the gate this card belongs to. The element index alone
-        /// cannot identify a gate: a wrong pick re-presents the SAME element immediately, so
-        /// a stale card and the fresh re-present share an index. The id never repeats.</summary>
+        /// cannot identify a gate: a wrong pick or a run-past brings the SAME element back
+        /// (mastery loop, EndlessRaceDirector.ScheduleRetry), scheduled in the same call stack,
+        /// so a stale card and the returning gate share an index. The id never repeats.</summary>
         public int gateId;
         public bool isCorrect;
         public bool isFinishGate;
@@ -27,7 +28,10 @@ namespace SummaRace.Features.Race.Endless
         /// <summary>0 left, 1 centre, 2 right; -1 unknown.</summary>
         public int lane = -1;
 
-        /// <summary>This card is the single gold re-presented answer, not one of three.</summary>
+        /// <summary>This card belongs to a RETURN of its part (the part was already met once and
+        /// picked wrongly or run past). Raised as ElementCollected.wasRepresent, so the log keeps
+        /// the first encounter as the measure and files this pick as practice. A return carries
+        /// the part's remaining options (rejected ones removed), not a lone answer card.</summary>
         public bool isRepresent;
 
         /// <summary>The exact text drawn on the card, kept so the log row reads on its own
