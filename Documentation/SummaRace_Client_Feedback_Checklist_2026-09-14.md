@@ -25,7 +25,7 @@ Evidence screenshots (portrait, from Play mode) are in `Captures/client_feedback
 | 5 | Remove unnecessary text like "SO is what the character did about it." | ✅ | Loading screen no longer shows or speaks the SWBST definition tips. Also removed the italic line under each question that restated it ("Who is the story mainly about?" / "Who is this story about?") |
 | 6 | Teacher/narration too fast; keep her longer per page | ✅ | QUESTION! waits until the page narration has finished (4 s minimum with voice off) — verified with the Boot flow on `s03_average`. Ms. Lumi's cheer 1.6 s → 3 s |
 | 7 | Center "next page" and "question" texts | ✅ | The button was anchored off-centre (30–80% of the width); now centred |
-| 8 | Consistent voice, less obviously AI | ⬜ | All 150 pages already use one voice (checked: identical encoding on every clip). 6 alternative voices sent as samples — **pick one** and all pages + instruction lines are regenerated. Can also slow the reading rate. A real human recording is the only way to fully remove the "AI" sound |
+| 8 | Consistent voice, less obviously AI | ✅ | Voice C chosen: all 150 pages + 11 instruction lines regenerated in `en-US-AvaMultilingualNeural` (rate −5%), one voice everywhere; verified 161/161 clips load in the Editor (`8fa172d`). A human recording remains the only way to remove the synthetic sound entirely |
 
 ## Processing questions
 
@@ -75,7 +75,7 @@ Evidence screenshots (portrait, from Play mode) are in `Captures/client_feedback
 
 ## Before study day
 
-- [ ] Pick the narration voice (item 8)
+- [x] Pick the narration voice (item 8) — voice C
 - [ ] Decide F, G, I, J
 - [ ] Play one full story on the tablet: card pop-in at speed, patrol framing, finish screen on a 4:3 tablet
 - [ ] Build a new APK (the target is now Android) and re-run `SummaRace ▸ Build Preflight`
