@@ -40,9 +40,10 @@ namespace SummaRace.Core
         // the summary is checked against the story and no longer accepted after two nudges.
         private const int SchemaVersion = 8;
 
-        /// <summary>Hard ceiling on <see cref="SessionLog.racePicks"/>. Since the re-present
-        /// mechanic was removed (F55) a well-behaved run produces at most 5 entries — one per
-        /// gate — so this cannot be reached in play; it exists so that no future mechanic, and
+        /// <summary>Hard ceiling on <see cref="SessionLog.racePicks"/>. The re-present mechanic is
+        /// BACK (client feedback 2026-09-14: a wrong part returns until collected, with the wrong
+        /// card removed), so a run produces at most ~15 picks — three encounters per part — plus
+        /// the run-past fallback; far under this cap. It exists so that no future mechanic, and
         /// no stuck gate, can grow one JSON line without bound on a 2GB device. Overflow drops
         /// the newest picks and keeps the earliest, because the early ones are the first
         /// encounters and those are the measure.</summary>

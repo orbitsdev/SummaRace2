@@ -36,6 +36,12 @@ what each variable means, and the traps to avoid when you load them.
   `racePicks` entry (so at most five per run), a **`missed` gate produces no `racePicks` entry
   at all**, and every `raceWrongPicks` entry is `0` or `1`. Rows written by builds before that
   date can still carry `represent: true` and repeat picks at a gate; §3.3 covers both readings.
+- **⚠️ Reversed in schema 8 (2026-09-15):** re-present is **back**, in a stricter form. A wrong
+  pick or a missed gate brings the **same SWBST part back** later with the wrong card(s) removed,
+  until it is collected — no answer is revealed and FINISH waits for all five. So on schema-8 rows
+  `represent` **can be `true`**, a part can produce **up to three** `racePicks` entries, and
+  `raceWrongPicks` entries can be `0`–`2`. `raceFirstPickCorrect` / `raceFirstOutcome` still
+  describe only the **first** encounter and remain the measure.
 - **An older tablet keeps writing its own schema.** If one device is never re-flashed its rows
   simply lack the newer keys. A missing key is **not recorded**, which is not the same as zero —
   see §5.4 and the `*_captured` columns the analysis toolkit writes.
