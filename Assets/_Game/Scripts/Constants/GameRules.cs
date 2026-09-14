@@ -548,11 +548,19 @@ namespace SummaRace.Constants
         /// before dropping back to PatrolStartStep. Visual pressure only (D7).</summary>
         public const float PatrolIntroHoldSeconds = 3.6f;
 
-        /// <summary>The patrol is drawn only while _patrolStep is above this, and the chase
-        /// camera pull-back is scaled from 0 here to full at PatrolDollyFullStep — so "the cop is
-        /// visible" and "the camera has made room for him" can never disagree.</summary>
-        public const float PatrolShowStep = 0.12f;
-        public const float PatrolDollyFullStep = 0.5f;
+        /// <summary>
+        /// The patrol is drawn only while _patrolStep is above this, always at PatrolChaseGap and
+        /// always with the full camera pull-back — the one combination measured as fully in frame.
+        ///
+        /// 0.5, sitting between the start (0.35, hidden: a clean start has no one chasing) and
+        /// one wrong pick (0.35 + 0.30 = 0.65, shown). A correct pick after that (-0.18 = 0.47)
+        /// sends him away again; two misses in a row keep him on screen. The chase intro at GO!
+        /// runs him up to 1 and back, so every race still opens with him in view.
+        ///
+        /// Was 0.12 with a partial pull-back scaled up to 0.5 (removed 2026-09-15): at the start
+        /// step that framed only his hat, cut off at the bottom of the screen.
+        /// </summary>
+        public const float PatrolShowStep = 0.5f;
 
         /// <summary>Finish: minimum celebration before TAP TO CONTINUE appears, and the
         /// auto-continue that guarantees the finish can never become a dead end.</summary>
@@ -798,6 +806,11 @@ namespace SummaRace.Constants
 
         /// <summary>Safety cap: however the audio behaves, the button always appears by then.</summary>
         public const float ReaderMaxNarrationWaitSeconds = 45f;
+
+        /// <summary>The italic SWBST nudge under each Reader question. OFF (client feedback
+        /// 2026-09-14: unnecessary text) — it restated the question. static readonly, not const,
+        /// so the branch it guards is not flagged as unreachable.</summary>
+        public static readonly bool ReaderShowSlotHint = false;
 
         // ---- Arrange mastery (client feedback 2026-09-14) ----
 

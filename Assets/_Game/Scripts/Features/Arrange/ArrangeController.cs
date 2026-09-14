@@ -79,6 +79,10 @@ namespace SummaRace.Features.Arrange
         private static readonly Color SlotArmed = new Color(1f, 0.97f, 0.86f);
         private int _attempts;
         private bool _busy;
+        /// <summary>Pieces placed in a wrong box on the most recent CHECK ORDER.</summary>
+        private readonly bool[] _wrongThisTry = new bool[5];
+        /// <summary>The part the last hint named, so the next hint can move on (-1 = none yet).</summary>
+        private int _lastHintElement = -1;
 
         /// <summary>The board exactly as the learner submitted it on the current attempt —
         /// element index per slot. Taken in <see cref="OnVerify"/> because verification empties
@@ -526,6 +530,7 @@ namespace SummaRace.Features.Arrange
             try
             {
                 bool allCorrect = true;
+                for (int k = 0; k < 5; k++) _wrongThisTry[k] = false;
                 int worstElement = -1;   // the piece this learner has misplaced most often
                 int worstMisses = 0;
 
@@ -545,6 +550,7 @@ namespace SummaRace.Features.Arrange
                         allCorrect = false;
                         int wrongElement = _slotContent[i];
                         _missCount[wrongElement]++;
+                        _wrongThisTry[wrongElement] = true;
                         // Hint about the part the learner is struggling with MOST, not simply the
                         // last one in slot order to qualify — otherwise a piece missed eight times
                         // is shadowed by one that has only just crossed the threshold. The
@@ -608,9 +614,27 @@ namespace SummaRace.Features.Arrange
                     && (worstMisses >= GameRules.ArrangeHintAfterMisses
                         || _attempts >= GameRules.ArrangeHintFromAttempt);
 
+                // Play-mode check 2026-09-15: the SAME hint repeated on every try while other
+                // boxes were also wrong, so a stuck learner read one sentence five times. Move on
+                // to another part that was wrong THIS try when the most-missed one was just named.
+                if (hintEarned && worstElement == _lastHintElement)
+                {
+                    for (int k = 1; k < 5; k++)
+                    {
+                        int candidate = (worstElement + k) % 5;
+                        if (_wrongThisTry[candidate]) { worstElement = candidate; break; }
+                    }
+                }
+                if (hintEarned) _lastHintElement = worstElement;
+
+                // "Almost! The parts already in place are right" was shown even when NOTHING was
+                // in place (seen in Play mode after an all-wrong first try).
+                bool anyLocked = false;
+                for (int i = 0; i < 5; i++) if (_slotLocked[i]) anyLocked = true;
+
                 SetStatus(hintEarned
                     ? GameText.ArrangeSlotHint(worstElement)
-                    : GameText.ArrangeAlmost);
+                    : anyLocked ? GameText.ArrangeAlmost : GameText.ArrangeNotYet);
             }
             finally
             {

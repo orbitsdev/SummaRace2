@@ -570,7 +570,11 @@ namespace SummaRace.Features.Reader
             // line rather than leaving an empty band under the question.
             if (hintText != null)
             {
-                string hint = GameText.ReaderSlotHint(_pageIndex);
+                // Client feedback 2026-09-14 ("remove unnecessary text"): on the question page the
+                // hint restated the question in other words ("Who is the story mainly about?" /
+                // "Who is this story about?"). Off by GameRules.ReaderShowSlotHint; the race keeps
+                // the same line, where it IS the question.
+                string hint = GameRules.ReaderShowSlotHint ? GameText.ReaderSlotHint(_pageIndex) : "";
                 bool hasHint = !string.IsNullOrEmpty(hint);
                 hintText.text = hint;
                 hintText.gameObject.SetActive(hasHint);

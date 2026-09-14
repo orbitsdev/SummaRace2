@@ -855,8 +855,10 @@ namespace SummaRace.Constants
         /// re-cut it, per the narration recipe in CLAUDE.md:
         ///   python -m edge_tts --voice en-PH-RosaNeural --rate=-10% -f &lt;file&gt; --write-media vo_race_briefing_patrol.mp3
         /// generating OUTSIDE Assets/ and importing as one batch.
+        /// ✅ 2026-09-15: now also says a missed part COMES BACK (mastery loop), and the clip was
+        /// re-cut with these exact words in the current voice.
         public const string RaceBriefingPatrol =
-            "If you miss a part, the patrol runs up behind you. It never catches you!";
+            "If you miss a part, it comes back. The patrol runs up behind you, but it never catches you!";
 
         /// <summary>
         /// The first-race steering coach, shown over the 3-2-1 while the world is still held.
@@ -973,6 +975,12 @@ namespace SummaRace.Constants
         /// the LAST part arriving is the more emphatic of the two, not the less.</summary>
         public const string RaceLastGateTimerFar = "Last part coming up!";
 
+        /// <summary>The same chip while a MISSED part is coming back (mastery loop). "Next part"
+        /// would be untrue — it is the same part, with the tried card gone.</summary>
+        public static string RaceReturnTimer(int seconds) =>
+            "Try again in " + (seconds < 0 ? 0 : seconds) + "s";
+        public const string RaceReturnTimerFar = "It's coming back - try again!";
+
 
         // ---- Race mastery (client feedback 2026-09-14) ----
 
@@ -1070,6 +1078,9 @@ namespace SummaRace.Constants
         /// possible. A correct slot is also physically locked — it stops responding to taps — so
         /// "already in place" names something every learner can perceive.</summary>
         public const string ArrangeAlmost = "Almost! The parts already in place are right — try the others again.";
+        /// <summary>A wrong order with NOTHING locked yet — "Almost!… already in place" would be
+        /// untrue there. Warm, names no mistake.</summary>
+        public const string ArrangeNotYet = "Not yet! Try a different order. Start with who the story is about.";
 
         /// <summary>
         /// The growing hint on a wrong order (client feedback 2026-09-14: no auto-solve, retry

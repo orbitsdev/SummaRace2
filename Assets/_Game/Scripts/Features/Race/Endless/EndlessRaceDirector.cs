@@ -245,6 +245,7 @@ namespace SummaRace.Features.Race.Endless
         /// <summary>Whether the chip's last-painted text used the fifth gate's wording. Part of
         /// the repaint cache key alongside the second, so the two forms cannot stick.</summary>
         private bool _gateTimerLastShown;
+        private bool _gateTimerReturning;
 
         private Transform _patrol;
         private Animator _patrolAnim;
@@ -2168,25 +2169,33 @@ namespace SummaRace.Features.Race.Endless
             mrt.pivot = new Vector2(0f, 0.5f);
             mrt.anchoredPosition = new Vector2(16f, 0f);
             mrt.sizeDelta = new Vector2(150f, 150f);
-            var mlbl = MakeHudText(medal.transform, new Vector2(0.5f, 0.5f), Vector2.zero, 60f);
+            // MakeHudText sets pivot = anchor, which is right for a label hung off a screen edge
+            // but wrong for text placed INSIDE a small plaque: a pivot of 0.68 / 0.30 pushed the
+            // two lines into each other and "5/5" past the medal's edge (seen in Play mode).
+            // Every label here is centred on its own pivot and fills a defined band instead.
+            var mlbl = MakeHudText(medal.transform, new Vector2(0.5f, 0.5f), Vector2.zero, 52f);
             mlbl.text = "5/5";
             mlbl.color = new Color(0.32f, 0.19f, 0.02f);   // deep brown on gold, 6.8:1 (see FINISH card)
             mlbl.fontStyle = FontStyles.Bold;
-            mlbl.rectTransform.sizeDelta = new Vector2(140f, 110f);
-            mlbl.enableAutoSizing = true; mlbl.fontSizeMin = 36f; mlbl.fontSizeMax = 60f;
+            FillBand(mlbl.rectTransform, 0.08f, 0.92f, 0.15f, 0.85f);
+            mlbl.enableAutoSizing = true; mlbl.fontSizeMin = 28f; mlbl.fontSizeMax = 52f;
+            mlbl.textWrappingMode = TextWrappingModes.NoWrap;
 
-            var head = MakeHudText(badge.transform, new Vector2(0.59f, 0.68f), Vector2.zero, 48f);
+            // Text column to the right of the medal (medal = 16 + 150 px of 860).
+            const float colLeft = 190f / 860f, colRight = 0.97f;
+            var head = MakeHudText(badge.transform, new Vector2(0.5f, 0.5f), Vector2.zero, 46f);
             head.text = SummaRace.Constants.GameText.RaceFinishPartsBadge;
             head.color = Theme.Cream;
             head.fontStyle = FontStyles.Bold;
-            head.rectTransform.sizeDelta = new Vector2(650f, 70f);
-            head.enableAutoSizing = true; head.fontSizeMin = 30f; head.fontSizeMax = 48f;
+            FillBand(head.rectTransform, colLeft, colRight, 0.52f, 0.92f);
+            head.enableAutoSizing = true; head.fontSizeMin = 28f; head.fontSizeMax = 46f;
+            head.textWrappingMode = TextWrappingModes.NoWrap;
 
-            var sub = MakeHudText(badge.transform, new Vector2(0.59f, 0.30f), Vector2.zero, 36f);
+            var sub = MakeHudText(badge.transform, new Vector2(0.5f, 0.5f), Vector2.zero, 32f);
             sub.text = SummaRace.Constants.GameText.RaceFinishFirstTry(firstTry);
             sub.color = Theme.Gold;
-            sub.rectTransform.sizeDelta = new Vector2(650f, 60f);
-            sub.enableAutoSizing = true; sub.fontSizeMin = 24f; sub.fontSizeMax = 36f;
+            FillBand(sub.rectTransform, colLeft, colRight, 0.10f, 0.50f);
+            sub.enableAutoSizing = true; sub.fontSizeMin = 20f; sub.fontSizeMax = 32f;
 
             badge.transform.localScale = Vector3.zero;
             Tween.Scale(badge.transform, Vector3.one, 0.35f, Ease.OutBack, startDelay: 1.15f)
@@ -3226,6 +3235,7 @@ namespace SummaRace.Features.Race.Endless
             // hidden. A fifth-gate line in the banner would land on top of the countdown that is
             // still running. Same plaque, same moment, no new geometry.
             bool lastGate = false;
+            bool returning = false;
 
             if (track != null && _runReleased && !_finished && !_paused && !_leaving && _retryHoldTimer <= 0f
                 && SummaRace.Constants.GameRules.RaceGateTimerVisibleSeconds > 0f)
@@ -3234,6 +3244,10 @@ namespace SummaRace.Features.Race.Endless
                 int element = active ? _activeElement : _pendingElement;
                 float target = active ? _activeGateDistance : _pendingGateDistance;
                 lastGate = element == 4;
+                // A RETURNING part is not the "next part" (Play-mode check 2026-09-15: the chip
+                // said "Next part in 2s" over the same SOMEBODY cards coming back). Encoded into
+                // lastGate's cache slot via _gateTimerReturning below.
+                returning = element >= 0 && element < 5 && _retryCount[element] > 0;
 
                 if (element >= 0 && element < 5 && target >= 0f)
                 {
@@ -3259,11 +3273,16 @@ namespace SummaRace.Features.Race.Endless
             // Repaint on the second, not every frame: TMP rebuilds its mesh on every text set.
             // The last-gate flag is part of the cache key - without it, a fifth gate arriving on
             // the same second reading as the fourth would keep the fourth's wording.
-            if (seconds == _gateTimerShown && lastGate == _gateTimerLastShown) return;
+            if (seconds == _gateTimerShown && lastGate == _gateTimerLastShown
+                && returning == _gateTimerReturning) return;
             _gateTimerShown = seconds;
             _gateTimerLastShown = lastGate;
+            _gateTimerReturning = returning;
             if (_gateTimerText != null)
-                _gateTimerText.text = seconds == FarSentinel
+                _gateTimerText.text = returning
+                    ? (seconds == FarSentinel ? SummaRace.Constants.GameText.RaceReturnTimerFar
+                                              : SummaRace.Constants.GameText.RaceReturnTimer(seconds))
+                    : seconds == FarSentinel
                     ? (lastGate ? SummaRace.Constants.GameText.RaceLastGateTimerFar
                                 : SummaRace.Constants.GameText.RaceGateTimerFar)
                     : (lastGate ? SummaRace.Constants.GameText.RaceLastGateTimer(seconds)
@@ -4309,11 +4328,15 @@ namespace SummaRace.Features.Race.Endless
                 return;
             }
 
-            // 0 -> PatrolFarGap, 1 -> PatrolChaseGap. Lerp, so the clamp on _patrolStepTarget is
-            // the only place D7 has to hold.
-            float chaseGap = Mathf.Lerp(SummaRace.Constants.GameRules.PatrolFarGap,
-                                        SummaRace.Constants.GameRules.PatrolChaseGap,
-                                        _patrolStep);
+            // DRAWN = FRAMED (Play-mode check, 2026-09-15). This used to lerp the gap from
+            // PatrolFarGap (4.5) toward PatrolChaseGap (2.5) by step, so at the starting step he
+            // ran ~3.8m back — which the measured table in GameRules puts OUTSIDE the frame even
+            // with the camera pulled back. On screen that was a big blue police hat cut off at
+            // the bottom edge for the whole early race: read as a glitch, not a chaser. Whenever
+            // he is drawn he now holds the one gap that is measured as fully framed, and "how
+            // close" is expressed by WHETHER he is drawn (PatrolShowStep), never by a half-in
+            // position.
+            float chaseGap = SummaRace.Constants.GameRules.PatrolChaseGap;
 
             var playerPos = runner.transform.position;
             // The kid's LANE lives on the character, not on the controller's own transform:
@@ -4446,16 +4469,12 @@ namespace SummaRace.Features.Race.Endless
             var cam = Camera.main;
             if (cam == null) return;
 
-            // FRAMING FOLLOWS VISIBILITY (2026-09-14). Full pull-back during a wrong-pick surge,
-            // as before; otherwise scaled by how close the patrol is, from 0 at PatrolShowStep
-            // (where UpdatePatrolCameo stops drawing him) to full at PatrolDollyFullStep. So the
-            // chase intro and a patrol still hanging on after a miss are actually in frame, and a
-            // clean run walks the camera home as it walks him away.
-            float byStep = Mathf.InverseLerp(SummaRace.Constants.GameRules.PatrolShowStep,
-                                             SummaRace.Constants.GameRules.PatrolDollyFullStep,
-                                             _patrolStep);
+            // FRAMING FOLLOWS VISIBILITY. Full pull-back during a wrong-pick surge and whenever
+            // the patrol is drawn; the authored pose otherwise.
+            // Full pull-back whenever he is drawn: he now always runs at PatrolChaseGap, which is
+            // only framed with the whole pull-back applied (see UpdatePatrolCameo).
             bool copShown = _patrol != null && _patrol.gameObject.activeSelf;
-            float target = _menaceSurging ? 1f : (copShown ? byStep : 0f);
+            float target = (_menaceSurging || copShown) ? 1f : 0f;
             float step = Time.deltaTime
                        / Mathf.Max(0.01f, SummaRace.Constants.GameRules.PatrolCameraBlendSeconds);
             _camDolly = Mathf.MoveTowards(_camDolly, target, step);
@@ -5547,6 +5566,16 @@ namespace SummaRace.Features.Race.Endless
             if (_gameState.countdownText.enabled) _gameState.countdownText.enabled = false;
             if (_gameState.countdownText.gameObject.activeSelf)
                 _gameState.countdownText.gameObject.SetActive(false);
+        }
+
+        /// <summary>Stretches a rect over a fractional band of its parent (no pixel offsets).</summary>
+        private static void FillBand(RectTransform rt, float xMin, float xMax, float yMin, float yMax)
+        {
+            rt.anchorMin = new Vector2(xMin, yMin);
+            rt.anchorMax = new Vector2(xMax, yMax);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
         }
 
         private TextMeshProUGUI MakeHudText(Transform parent, Vector2 anchor, Vector2 offset, float size)
