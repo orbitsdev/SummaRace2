@@ -123,7 +123,7 @@ being tested for the first time.
 Per page the learner gets:
 
 1. **The passage**, on a card
-2. **Narration** — a recorded voice reads it aloud (Filipino-English, `en-PH-RosaNeural`, slowed 10%)
+2. **Narration** — a recorded voice reads it aloud (`en-US-AvaMultilingualNeural`, slowed 5% — changed from `en-PH-RosaNeural` on 2026-09-15)
 3. **A progress bar** that sweeps — not snaps — to show how much story is left
 4. **NEXT**, which reveals **one question** about that page
 5. **Three options**, labelled `A. / B. / C.`, in a **seeded shuffle** so the answer is not always in the same place
