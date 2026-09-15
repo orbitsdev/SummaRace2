@@ -121,6 +121,19 @@ namespace SummaRace.Features.NameEntry
                 if (i >= RunnerCount) { avatarButtons[i].gameObject.SetActive(false); continue; }
                 int index = i;                       // capture per button, not per loop
                 avatarButtons[i].onClick.AddListener(() => SelectAvatar(index));
+
+                // BIG RUNNER CARDS (end-to-end review 2026-09-15). The scene authored four
+                // 180px badge slots; with two runners left in them the choice was two small
+                // tiles off to one side — the weakest images on the first screen a child ever
+                // sees. Two tall character cards, centred, side by side.
+                var rt = avatarButtons[i].transform as RectTransform;
+                if (rt != null)
+                {
+                    rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.405f);
+                    rt.pivot = new Vector2(0.5f, 0.5f);
+                    rt.sizeDelta = new Vector2(RunnerCardWidth, RunnerCardHeight);
+                    rt.anchoredPosition = new Vector2((i == 0 ? -1f : 1f) * (RunnerCardWidth * 0.5f + 22f), 0f);
+                }
             }
             EnsureSelectionRings();   // must exist before the first refresh paints the choice
             RefreshAvatars();
@@ -185,8 +198,9 @@ namespace SummaRace.Features.NameEntry
                     // RIGHT of the runner row, not behind it: the first placement put her under
                     // the two tiles, cropped and colliding. The band right of the tiles is empty
                     // on every aspect (the row is left-anchored), so she greets from there.
-                    rt.anchorMin = new Vector2(0.60f, 0.30f);
-                    rt.anchorMax = new Vector2(0.96f, 0.60f);
+                    // Bottom-left beside LET'S GO! now that the two runner cards fill the middle.
+                    rt.anchorMin = new Vector2(0.0f, 0.05f);
+                    rt.anchorMax = new Vector2(0.28f, 0.29f);
                     rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
                     var img = go.GetComponent<Image>();
                     img.sprite = lumi;
@@ -244,6 +258,8 @@ namespace SummaRace.Features.NameEntry
         /// (Ch29). Both live as sibling model roots inside the one runner prefab, and
         /// EndlessRaceDirector activates the chosen one — see LearnerProfile.runnerIndex.</summary>
         private const int RunnerCount = 2;
+        private const float RunnerCardWidth = 330f;
+        private const float RunnerCardHeight = 400f;
 
         private void RefreshAvatars()
         {
@@ -260,14 +276,12 @@ namespace SummaRace.Features.NameEntry
                 var image = avatarButtons[i].GetComponent<Image>();
                 if (image != null)
                 {
-                    var page = Resources.Load<Sprite>("UI/panel_gold");
-                    if (page != null)
-                    {
-                        image.sprite = page;
-                        image.type = Image.Type.Sliced;
-                        image.color = selected ? Color.white : new Color(0.86f, 0.83f, 0.78f);
-                    }
-                    else image.color = selected ? AvatarOn : AvatarOff;
+                    // Chunky character card (game skin): white when chosen with a thick SUNNY
+                    // outline, a dimmer card with the normal dark outline when not.
+                    SummaRace.UI.GameSkin.Card(image, selected ? Color.white : new Color(0.94f, 0.94f, 0.96f),
+                        selected ? 10f : 5f, selected ? 12f : 6f);
+                    SummaRace.UI.GameSkin.Chunky(image, image.color, selected ? 10f : 5f, selected ? 12f : 6f,
+                        selected ? SummaRace.Constants.Theme.Sunny : (Color?)null);
                 }
 
                 // The runner's own portrait replaces the badge glyph, so the child chooses a
