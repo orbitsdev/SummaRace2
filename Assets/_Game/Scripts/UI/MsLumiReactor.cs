@@ -292,6 +292,7 @@ namespace SummaRace.UI
             }
             _bubbleText.text = line;
             _bubble.SetAsLastSibling();
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(SummaRace.Constants.AudioKeys.SfxPop);
             Tween.StopAll(onTarget: _bubble);
             _bubble.localScale = Vector3.zero;
             Sequence.Create()

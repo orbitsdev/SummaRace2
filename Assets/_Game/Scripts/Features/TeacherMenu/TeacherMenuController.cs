@@ -147,6 +147,12 @@ namespace SummaRace.Features.TeacherMenu
 
         private void Start()
         {
+            // Colour roles: the kit panel is tinted lilac; reading panels are white cards.
+            foreach (var panel in new[] { gatePanel, actionsPanel })
+            {
+                var pimg = panel != null ? panel.GetComponent<Image>() : null;
+                if (pimg != null) SummaRace.UI.GameSkin.Card(pimg, Color.white, 4f, 6f);
+            }
             if (titleText != null)
             {
                 titleText.text = GameText.TeacherTitle;

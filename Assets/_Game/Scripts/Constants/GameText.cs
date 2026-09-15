@@ -285,6 +285,8 @@ namespace SummaRace.Constants
         /// cards are the same action one level apart, and two verbs for it is a word a
         /// second-language reader has to learn for nothing.</summary>
         public const string SessionMapTitle = "Pick a Mission";
+        /// <summary>The pulsing badge on the mission the learner is on now.</summary>
+        public const string MapGoBadge = "GO!";
         /// <summary>Sessions open one at a time via the teacher's PIN (GDD §8.3), so the
         /// locked state has to read as "not yet", never as the learner's fault.</summary>
         public const string SessionLockedHint = "Your teacher opens the next mission!";

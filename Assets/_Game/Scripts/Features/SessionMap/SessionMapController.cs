@@ -492,7 +492,35 @@ namespace SummaRace.Features.SessionMap
 
             // The glow marks where the learner is now — the mission still being worked on, not
             // the newest one the teacher happened to open (see CurrentSession).
-            if (stop.glow != null) stop.glow.gameObject.SetActive(session == currentSession);
+            if (stop.glow != null)
+            {
+                bool here = session == currentSession;
+                stop.glow.gameObject.SetActive(here);
+                // "YOU ARE HERE" has to be unmissable (end-to-end review 2026-09-15: in the
+                // capture the current mission did not stand out from the other open tiles).
+                // The glow now breathes in gold: the one moving thing on the board.
+                if (here && stop.button != null)
+                {
+                    // A green "GO!" badge on the tile, pulsing. The soft gold glow alone was a faint
+                    // haze on the dark board (seen in a capture) — green is the game's "go" colour.
+                    var go = SummaRace.UI.GameSkin.Badge(stop.button.transform, "GoBadge", GameText.MapGoBadge,
+                        Theme.Grass, Color.white, new Vector2(1f, 1f), new Vector2(0.65f, 0.6f), Vector2.zero, 96f);
+                    var bt = go.transform.parent;
+                    PrimeTween.Tween.StopAll(onTarget: bt);
+                    bt.localScale = Vector3.one;
+                    PrimeTween.Tween.Scale(bt, Vector3.one * 1.2f, 0.55f, PrimeTween.Ease.InOutSine,
+                        cycles: -1, cycleMode: PrimeTween.CycleMode.Yoyo);
+                }
+                if (here)
+                {
+                    stop.glow.color = Theme.Alpha(Theme.Sunny, 0.95f);
+                    var gt = stop.glow.transform;
+                    PrimeTween.Tween.StopAll(onTarget: gt);
+                    gt.localScale = Vector3.one;
+                    PrimeTween.Tween.Scale(gt, Vector3.one * 1.18f, 0.7f, PrimeTween.Ease.InOutSine,
+                        cycles: -1, cycleMode: PrimeTween.CycleMode.Yoyo);
+                }
+            }
 
             // Colour alone was not telling open from locked apart; a rim is a shape.
             MarkPlayableStop(stop, playable);

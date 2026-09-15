@@ -2241,9 +2241,9 @@ namespace SummaRace.Features.Race.Endless
             var pill = new GameObject("Prompt");
             pill.transform.SetParent(catcher.transform, false);
             var pimg = pill.AddComponent<UnityEngine.UI.Image>();
-            pimg.sprite = WoodPlaqueSprite();
-            pimg.type = UnityEngine.UI.Image.Type.Sliced;
-            pimg.color = Theme.Alpha(Theme.Ink, 0.88f);
+            // GREEN: this is the finish screen's one "go forward" action (Theme colour roles).
+            // It was a near-black plaque, the only dark primary button in the game.
+            SummaRace.UI.GameSkin.Card(pimg, Theme.Grass, 6f, 9f);
             pimg.raycastTarget = false;
             var prt = pimg.rectTransform;
             prt.anchorMin = prt.anchorMax = new Vector2(0.5f, 0.085f);
@@ -2252,7 +2252,7 @@ namespace SummaRace.Features.Race.Endless
 
             var lbl = MakeHudText(pill.transform, new Vector2(0.5f, 0.5f), Vector2.zero, 60f);
             lbl.text = SummaRace.Constants.GameText.RaceTapToContinue;
-            lbl.color = Theme.Gold;
+            SummaRace.UI.GameSkin.Heading(lbl, Color.white);
             lbl.fontStyle = FontStyles.Bold;
             lbl.rectTransform.sizeDelta = new Vector2(680f, 110f);
             lbl.enableAutoSizing = true; lbl.fontSizeMin = 36f; lbl.fontSizeMax = 60f;
@@ -2725,7 +2725,10 @@ namespace SummaRace.Features.Race.Endless
                 img.sprite = worldCardSprite != null ? worldCardSprite : WoodPlaqueSprite();
                 img.type = UnityEngine.UI.Image.Type.Sliced;
                 // The world card's white, so the mapping panel -> road is obvious at a glance.
-                img.color = new Color(0.98f, 0.97f, 0.93f);
+                // GAME SKIN (end-to-end review 2026-09-15): the world-card sprite carries a pink
+                // tint, so these rendered pink - the only pink answer cards in the game. Neutral
+                // rounded card with a dark outline, the same answer card as Reader/Arrange.
+                SummaRace.UI.GameSkin.Card(img, Color.white, 4f, 5f);
                 img.raycastTarget = true;   // this column IS the control now — see below
                 var rt = img.rectTransform;
                 float x0 = pad + i * (w + pad);
@@ -4771,9 +4774,9 @@ namespace SummaRace.Features.Race.Endless
                 var bubble = new GameObject("LumiBubble");
                 bubble.transform.SetParent(canvasGo.transform, false);
                 var bImg = bubble.AddComponent<UnityEngine.UI.Image>();
-                bImg.sprite = worldCardSprite;
-                if (worldCardSprite != null) bImg.type = UnityEngine.UI.Image.Type.Sliced;
-                bImg.color = new Color(1f, 1f, 1f, 0.97f);
+                // White comic bubble with an outline, the same as Ms. Lumi's bubbles on every other
+                // screen (the world-card sprite tinted this one pink).
+                SummaRace.UI.GameSkin.Card(bImg, Color.white, 4f, 5f);
                 var bRt = bImg.rectTransform;
                 // THE BUBBLE WAS BEING CUT IN HALF BY THE START BUTTON — only "Ready, ru" showed.
                 // The comment two blocks up works out that START is centred and 520 wide on a 1080
