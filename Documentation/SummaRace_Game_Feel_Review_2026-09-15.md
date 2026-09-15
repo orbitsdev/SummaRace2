@@ -78,7 +78,8 @@ Colour roles now in force (`Theme.cs`): **green** = go · **navy** = secondary a
 
 ### Name Entry (first screen a child sees, once)
 - ✅ Wood title, green LET'S GO!, Ms. Lumi.
-- 🟡 **Images:** the two runner choices are small tiles. Enlarging them needs a layout change; left for the art pass.
+- 🔧 **Images:** the two runner choices were small tiles off to one side → two tall character cards, centred; chosen card outlined in sunny yellow; Ms. Lumi moved beside LET'S GO!.
+- 🔧 **Art bug found while fixing it:** the girl runner had a white sheet over her face (in the portrait AND in the race) — her texture's see-through visor rendered opaque. Alpha-clipped material; both runners' normal maps imported correctly; portraits re-rendered in an idle pose (were T-pose).
 
 ### Session Map
 - Progress: 🔧 the current mission did not stand out (its gold glow was a faint haze on the dark board) → **pulsing green GO! badge** on the current mission.
@@ -157,5 +158,4 @@ Colour roles now in force (`Theme.cs`): **green** = go · **navy** = secondary a
 
 - **Tablet playtest** — colours at classroom brightness, touch sizes, performance.
 - **Voice** — one consistent voice, slower; still synthetic (only a human recording removes that).
-- **Name Entry runner tiles** are small (art/layout pass).
 - **Researcher sign-off** — retry-until-correct overrides locked GDD rules; the first attempt is still the study measure.
