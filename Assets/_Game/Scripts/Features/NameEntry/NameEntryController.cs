@@ -354,7 +354,7 @@ namespace SummaRace.Features.NameEntry
             var existing = card.Find("ChosenBadge");
             if (!on) { if (existing != null) existing.gameObject.SetActive(false); return; }
             var label = SummaRace.UI.GameSkin.Badge(card, "ChosenBadge", "", SummaRace.Constants.Theme.Grass, Color.white,
-                new Vector2(1f, 1f), new Vector2(0.5f, 0.5f), new Vector2(-14f, -14f), 84f);
+                new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-12f, -12f), 76f);
             var badge = label.transform.parent;
             badge.gameObject.SetActive(true);
             badge.SetAsLastSibling();
