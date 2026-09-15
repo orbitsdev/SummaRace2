@@ -149,9 +149,18 @@ namespace SummaRace.Features.Summary
                 // are barely visible, and this list is what the learner writes their summary
                 // FROM. InkForIndex keeps each element's own hue and lands them at
                 // 7.13 / 5.61 / 7.31 / 5.18 / 7.25:1, all clear of WCAG AA's 4.5:1.
+                // CLIENT GOAL (2026-09-14): "the summary should show that the learner understood
+                // the story". This card used to list all five ANSWERS, so a learner could copy
+                // the card into the box and pass without understanding anything. It now lists
+                // the five parts with the question each one answers (the same questions the
+                // Reader asked), so the structure is still on screen but every word of the
+                // summary has to come from the learner's own memory of the story.
                 var sb = new System.Text.StringBuilder();
                 for (int i = 0; i < _story.elements.Length; i++)
-                    sb.AppendLine($"{i + 1}. <color=#{SwbstPalette.InkHexForIndex(i)}><b>{_story.elements[i].type}</b></color>: {_story.elements[i].correct}");
+                {
+                    string ask = GameText.ReaderSlotHint(i);
+                    sb.AppendLine($"<color=#{SwbstPalette.InkHexForIndex(i)}><b>{_story.elements[i].type}</b></color>: {ask}");
+                }
                 referenceText.text = sb.ToString();
 
                 // Overflow guard, not a fix: measured across all 30 stories this list needs
@@ -175,9 +184,10 @@ namespace SummaRace.Features.Summary
                 // it cannot be submitted, and the first keystroke removes it (L6: the child
                 // produces every word). It also breaks off at "but...", leaving the three
                 // parts the summary is really judged on entirely to them.
-                placeholderText.text = _story.elements != null && _story.elements.Length >= 2
-                    ? GameText.SummaryGhost(_story.elements[0].correct, _story.elements[1].correct)
-                    : GameText.SummaryPlaceholder;
+                // It used to be built from this story's own Somebody and Wanted answers
+                // ("Molly wanted to swing after counting to 100, but..."), which handed the
+                // learner two of the five parts. Neutral now (client goal: their own words).
+                placeholderText.text = GameText.SummaryPlaceholder;
             }
             if (submitLabel != null) submitLabel.text = GameText.SubmitLabel;
             if (hintText != null)
@@ -388,6 +398,10 @@ namespace SummaRace.Features.Summary
                 vp.offsetMin = new Vector2(vp.offsetMin.x, Mathf.Max(vp.offsetMin.y, rowHeight + 6f));
             }
 
+            var canvas = summaryInput.GetComponentInParent<Canvas>();
+            if (canvas != null)
+                SummaRace.UI.CoinHud.Ensure(canvas.rootCanvas.transform, new Vector2(0.35f, 0.06f), new Vector2(0.65f, 0.105f));
+
             var row = new GameObject("SwbstGems", typeof(RectTransform));
             row.transform.SetParent(summaryInput.transform, false);
             var rrt = (RectTransform)row.transform;
@@ -571,6 +585,10 @@ namespace SummaRace.Features.Summary
         /// </summary>
         private void EnsureTipsBlock()
         {
+            // Removed (client feedback 2026-09-14, "remove unnecessary text"): the two tip
+            // sentences under SUBMIT said what the live SWBST gems now SHOW. The coin counter
+            // takes their place.
+            if (GameRules.SummaryShowTips == false) return;
             var tips = GameText.SummaryTips;
             if (tips == null || tips.Length == 0) return;
 

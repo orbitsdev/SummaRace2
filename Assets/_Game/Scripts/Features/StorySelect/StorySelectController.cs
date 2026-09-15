@@ -410,9 +410,10 @@ namespace SummaRace.Features.StorySelect
                         var background = card.button.GetComponent<Image>();
             if (background != null) background.color = playable ? Color.white : CardLocked;
 
-            // Says what THESE three stars count, on the screen they are on. Built after the
-            // stars so a card with no star row simply never gets one.
-            BuildStarCaption(card);
+            // The "Stars = your race score" caption is no longer drawn (client feedback
+            // 2026-09-14, remove unnecessary text): a star row on a story card is a convention
+            // every game uses, and the caption was a line of explanation on all three cards.
+            if (GameRules.StorySelectShowStarCaption) BuildStarCaption(card);
 
             MarkPlayable(card, state);
 

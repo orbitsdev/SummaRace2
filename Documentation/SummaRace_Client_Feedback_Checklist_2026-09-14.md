@@ -67,7 +67,7 @@ Evidence screenshots (portrait, from Play mode) are in `Captures/client_feedback
 | C | Finish badge text overflowing / overlapping | ✅ fixed |
 | D | Race briefing didn't say a missed part comes back (written + spoken) | ✅ fixed, clip re-recorded |
 | E | Arrange "Almost!" message untrue when nothing was right; hint never changed | ✅ fixed |
-| F | **The Summary screen shows all five answers above the text box, so a learner can copy them in and pass the check.** That is copying, not understanding | ⬜ decision: keep the list (scaffold), show only the labels (SOMEBODY: ___), or hide it after the first try |
+| F | The Summary screen showed all five answers (and the text-box placeholder started the answer), so a learner could copy them in and pass | ✅ fixed 2026-09-15: the card now lists the five parts with the question each one answers; neutral placeholder |
 | G | The check uses the five SWBST parts, not the story's `mainIdea` sentence | ⬜ decision: SWBST coverage is the framework being taught; adding a main-idea requirement is possible but would refuse more real summaries |
 | H | A passive race (never steering) can now be long — one test run took ~4.5 km because every missed part returns | 🟡 expected with mastery; watch on device |
 | I | The race still has only one visible "obstacle" type (the answer gate). Coins/jump/slide obstacles are switched off by earlier design ("the only obstacle is a wrong answer") | ⬜ decision if the researchers want more "game" |
@@ -91,6 +91,16 @@ picture; and colour had no rules (green, orange, teal, cyan, yellow and blue but
 | Q | Colour roles, one job per colour on every screen: green = go, navy = secondary/HUD, wood = boards, cream+gold = reading, yellow = question, SWBST colours = story parts only (documented in `Theme.cs`) | ✅ |
 | R | Results: wood board like the map, soft empty stars instead of black ones | ✅ |
 | S | Check on the tablet: colours at classroom brightness, Ms. Lumi's bubble not covering text on small screens | 🟡 |
+
+## Double-check pass (2026-09-15) — against the goal
+
+| | Finding | Action |
+|---|---|---|
+| T | Summary tips block under SUBMIT repeated what the live gems show | Removed; coin counter in its place |
+| U | Race briefing was four paragraphs | Shortened to three lines; spoken lines re-recorded |
+| V | "Stars = your race score" caption on every story card | Removed |
+| W | Ms. Lumi overlapped READ AGAIN on the question screen | Moved clear of the button |
+| X | Voice C read faster than the original voice, against "too fast" | Regenerated at −15% (avg page 5.8s → 6.5s) |
 
 ## Before study day
 

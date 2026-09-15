@@ -355,7 +355,7 @@ namespace SummaRace.Constants
         public const string SummaryTitle = "Write your summary!";
         /// <summary>Ghost text inside the box. "One-sentence summary" is a compound the title
         /// above already carries ("summary") — the box only has to say how much to write.</summary>
-        public const string SummaryPlaceholder = "Write your summary here...";
+        public const string SummaryPlaceholder = "Tell the story in your own words...";
         public const string SubmitLabel = "SUBMIT";
 
         /// <summary>Closes the on-screen keyboard, which on a portrait tablet covers SUBMIT and
@@ -841,10 +841,11 @@ namespace SummaRace.Constants
         /// Kept short and idiom-free: it is also spoken aloud (AudioKeys.VoRaceBriefing), and the
         /// clip carries the same words minus the story title.
         /// </summary>
+        // Shortened (client feedback 2026-09-14: less survey-style text). Three short lines a
+        // Grade-4 reader takes in at a glance; tapping a side of the screen still steers.
         public static string RaceBriefingBody(string storyTitle) =>
             $"Collect the 5 story parts of\n\"{storyTitle}\" in order."
-            + "\n\nRead the 3 answers at the top.\nTap the answer you want."
-            + "\n\nOr tap the left, middle, or right side of the screen.";
+            + "\n\nTap the answer you want!";
 
         /// <summary>
         /// The patrol sentence, appended to the briefing ONLY when the cameo is switched on
@@ -871,7 +872,7 @@ namespace SummaRace.Constants
         /// ✅ 2026-09-15: now also says a missed part COMES BACK (mastery loop), and the clip was
         /// re-cut with these exact words in the current voice.
         public const string RaceBriefingPatrol =
-            "If you miss a part, it comes back. The patrol runs up behind you, but it never catches you!";
+            "Miss one? It comes back! The patrol chases you, but never catches you!";
 
         /// <summary>
         /// The first-race steering coach, shown over the 3-2-1 while the world is still held.

@@ -374,8 +374,8 @@ namespace SummaRace.Features.Reader
             }
             if (onQuestion)
             {
-                rt.anchorMin = new Vector2(-0.02f, 0.0f);
-                rt.anchorMax = new Vector2(0.26f, 0.19f);
+                rt.anchorMin = new Vector2(-0.05f, 0.0f);
+                rt.anchorMax = new Vector2(0.20f, 0.17f);
                 rt.SetAsLastSibling();
             }
             else

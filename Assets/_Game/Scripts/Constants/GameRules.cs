@@ -833,6 +833,14 @@ namespace SummaRace.Constants
 
         // ---- Summary check (client feedback 2026-09-14: the summary must match the story) ----
 
+        /// <summary>"Stars = your race score" under each story card's stars. OFF (remove
+        /// unnecessary text).</summary>
+        public static readonly bool StorySelectShowStarCaption = false;
+
+        /// <summary>The two tip sentences under SUBMIT. OFF: the live SWBST gems show the same
+        /// thing (client feedback 2026-09-14, remove unnecessary text).</summary>
+        public static readonly bool SummaryShowTips = false;
+
         /// <summary>Fewest words a summary may have. Five SWBST parts fit in about ten.</summary>
         public const int SummaryCheckMinWords = 8;
 
