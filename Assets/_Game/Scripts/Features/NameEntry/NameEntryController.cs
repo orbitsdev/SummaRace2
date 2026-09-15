@@ -142,8 +142,15 @@ namespace SummaRace.Features.NameEntry
             }
             EnsureSelectionRings();   // must exist before the first refresh paints the choice
             RefreshAvatars();
+            EnsureRunnerNames();
 
             if (confirmButton != null) confirmButton.onClick.AddListener(Confirm);
+
+            // Live screen (2026-09-15): the prompt names the child as they type, LET'S GO! wakes
+            // up once there is a name, and Ms. Lumi says hello out loud.
+            if (nameInput != null) nameInput.onValueChanged.AddListener(OnNameChanged);
+            OnNameChanged(nameInput != null ? nameInput.text : string.Empty, animate: false);
+            StartCoroutine(LumiHello());
 
             EnsureDoneTypingChip();
             if (doneTypingButton != null)
@@ -252,11 +259,153 @@ namespace SummaRace.Features.NameEntry
         {
             _avatarIndex = index;
             RefreshAvatars();
-            // Motion on the badge itself, so the choice is answered on a muted tablet. On the
-            // Icon child for the ButtonSquash reason in AvatarIcon().
-            var icon = AvatarIcon(index);
-            if (icon != null) Tween.PunchScale(icon, Vector3.one * 0.18f, 0.3f);
-            if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxClick);
+            // The runner JUMPS for joy when picked (2026-09-15): a hop and a squash on the
+            // portrait (the Icon child — see AvatarIcon for the ButtonSquash reason), a cheer pose
+            // if the art exists (Resources/UI/Runners/runner_N_cheer), sparkles and a chime.
+            var icon = AvatarIcon(index) as RectTransform;
+            if (icon != null)
+            {
+                Tween.StopAll(onTarget: icon);
+                icon.localScale = Vector3.one * SelectedIconScale;
+                var home = icon.anchoredPosition;
+                Sequence.Create()
+                    .Chain(Tween.UIAnchoredPositionY(icon, home.y + 46f, 0.18f, Ease.OutQuad))
+                    .Chain(Tween.UIAnchoredPositionY(icon, home.y, 0.22f, Ease.InQuad))
+                    .Chain(Tween.PunchScale(icon, new Vector3(0.12f, -0.10f, 0f), 0.25f));
+                StartCoroutine(CheerPose(index, icon));
+                SummaRace.UI.CoinHud.Sparkle(icon);
+            }
+            if (AudioManager.Instance != null)
+            {
+                AudioManager.Instance.PlaySfx(AudioKeys.SfxPop);
+                AudioManager.Instance.PlaySfx(AudioKeys.SfxCoin, 1.3f);
+            }
+            ShowLumiLine(GameText.NameEntryRunnerPicked(RunnerName(index)));
+        }
+
+        private static string RunnerName(int i) =>
+            i >= 0 && i < GameText.RunnerNames.Length ? GameText.RunnerNames[i] : "";
+
+        /// <summary>Swaps to the cheer portrait for a moment when the art exists; a no-op otherwise.</summary>
+        private System.Collections.IEnumerator CheerPose(int index, Transform icon)
+        {
+            var img = icon != null ? icon.GetComponent<Image>() : null;
+            var cheer = Resources.Load<Sprite>("UI/Runners/runner_" + index + "_cheer");
+            if (img == null || cheer == null) yield break;
+            img.sprite = cheer;
+            yield return new WaitForSeconds(1.2f);
+            var idle = Resources.Load<Sprite>("UI/Runners/runner_" + index);
+            if (img != null && idle != null) img.sprite = idle;
+        }
+
+        // ---------- names on the cards, live prompt, ready button, Ms. Lumi hello ----------
+
+        /// <summary>A navy name pill hanging off the bottom of each runner card.</summary>
+        private void EnsureRunnerNames()
+        {
+            for (int i = 0; i < avatarButtons.Length && i < RunnerCount; i++)
+            {
+                var card = avatarButtons[i] != null ? avatarButtons[i].transform : null;
+                if (card == null || card.Find("NamePill") != null) continue;
+                var go = new GameObject("NamePill", typeof(RectTransform));
+                go.transform.SetParent(card, false);
+                var img = go.AddComponent<Image>();
+                img.raycastTarget = false;
+                SummaRace.UI.GameSkin.Card(img, Theme.Navy, 4f, 5f);
+                var rt = img.rectTransform;
+                rt.anchorMin = new Vector2(0.18f, -0.07f); rt.anchorMax = new Vector2(0.82f, 0.06f);
+                rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
+                var tgo = new GameObject("Name", typeof(RectTransform));
+                tgo.transform.SetParent(go.transform, false);
+                var t = tgo.AddComponent<TextMeshProUGUI>();
+                SummaRace.UI.GameSkin.Heading(t, Theme.Gold, outlined: false);
+                t.alignment = TextAlignmentOptions.Center;
+                t.enableAutoSizing = true; t.fontSizeMin = 22f; t.fontSizeMax = 44f;
+                t.raycastTarget = false;
+                var trt = t.rectTransform;
+                trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one;
+                trt.offsetMin = new Vector2(8f, 2f); trt.offsetMax = new Vector2(-8f, -2f);
+                t.text = RunnerName(i);
+            }
+        }
+
+        private bool _hadName;
+
+        /// <summary>
+        /// Every keystroke: the prompt names the child ("Pick your runner, Maria!"), and LET'S GO!
+        /// is dim until there is a name, then pops bright. It stays tappable either way — an
+        /// empty name is never an error (the profile keeps its default).
+        /// </summary>
+        private void OnNameChanged(string value) => OnNameChanged(value, animate: true);
+
+        private void OnNameChanged(string value, bool animate)
+        {
+            string name = value != null ? value.Trim() : string.Empty;
+            bool hasName = name.Length > 0;
+            if (avatarPromptText != null)
+                avatarPromptText.text = hasName ? GameText.NameEntryPickAvatarFor(name) : GameText.NameEntryPickAvatar;
+
+            if (confirmButton != null)
+            {
+                var group = confirmButton.GetComponent<CanvasGroup>(); if (group == null) group = confirmButton.gameObject.AddComponent<CanvasGroup>();
+                group.alpha = hasName ? 1f : 0.55f;
+                if (animate && hasName && !_hadName)
+                {
+                    var label = confirmLabel != null ? confirmLabel.transform : null;
+                    if (label != null) { Tween.StopAll(onTarget: label); label.localScale = Vector3.one; Tween.PunchScale(label, Vector3.one * 0.3f, 0.4f); }
+                    if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxPop);
+                }
+            }
+            _hadName = hasName;
+        }
+
+        private RectTransform _lumiBubble;
+        private TMP_Text _lumiBubbleText;
+
+        private System.Collections.IEnumerator LumiHello()
+        {
+            yield return new WaitForSeconds(0.6f);
+            ShowLumiLine(GameText.NameEntryLumiHello, hold: 3.5f);
+            if (AudioManager.Instance != null) AudioManager.Instance.PlayVoice(AudioKeys.VoNameHello, true);
+        }
+
+        /// <summary>A white comic bubble above Ms. Lumi's head (the WelcomeLumi image).</summary>
+        private void ShowLumiLine(string line, float hold = 1.8f)
+        {
+            var canvas = confirmButton != null ? confirmButton.GetComponentInParent<Canvas>() : null;
+            var lumi = canvas != null ? canvas.rootCanvas.transform.Find("WelcomeLumi") : null;
+            if (lumi == null) return;
+            if (_lumiBubble == null)
+            {
+                var go = new GameObject("LumiHelloBubble", typeof(RectTransform));
+                go.transform.SetParent(canvas.rootCanvas.transform, false);
+                _lumiBubble = (RectTransform)go.transform;
+                // Beside her, under LET'S GO! (was above her head, where it covered the Jay card).
+                _lumiBubble.anchorMin = new Vector2(0.27f, 0.105f);
+                _lumiBubble.anchorMax = new Vector2(0.66f, 0.160f);
+                _lumiBubble.offsetMin = Vector2.zero; _lumiBubble.offsetMax = Vector2.zero;
+                var img = go.AddComponent<Image>();
+                img.raycastTarget = false;
+                SummaRace.UI.GameSkin.Card(img, Color.white, 4f, 5f);
+                var tgo = new GameObject("Text", typeof(RectTransform));
+                tgo.transform.SetParent(go.transform, false);
+                _lumiBubbleText = tgo.AddComponent<TextMeshProUGUI>();
+                SummaRace.UI.GameSkin.Heading(_lumiBubbleText, Theme.TextBrownDeep, outlined: false);
+                _lumiBubbleText.alignment = TextAlignmentOptions.Center;
+                _lumiBubbleText.enableAutoSizing = true; _lumiBubbleText.fontSizeMin = 20f; _lumiBubbleText.fontSizeMax = 38f;
+                _lumiBubbleText.raycastTarget = false;
+                var trt = _lumiBubbleText.rectTransform;
+                trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one;
+                trt.offsetMin = new Vector2(12f, 4f); trt.offsetMax = new Vector2(-12f, -4f);
+            }
+            _lumiBubble.SetAsLastSibling();
+            _lumiBubbleText.text = line;
+            Tween.StopAll(onTarget: _lumiBubble);
+            _lumiBubble.localScale = Vector3.zero;
+            Sequence.Create()
+                .Chain(Tween.Scale(_lumiBubble, Vector3.one, 0.25f, Ease.OutBack))
+                .ChainDelay(hold)
+                .Chain(Tween.Scale(_lumiBubble, Vector3.zero, 0.2f, Ease.InBack));
         }
 
         /// <summary>How many runners a child can choose between: the boy (Aj) and the girl

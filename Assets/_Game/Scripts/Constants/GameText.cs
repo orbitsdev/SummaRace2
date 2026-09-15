@@ -76,6 +76,17 @@ namespace SummaRace.Constants
         public const string NameEntryPickAvatar = "Pick your runner";
         public const string NameEntryConfirm = "LET'S GO!";
 
+        // ---- Name Entry life (2026-09-15) ----
+        /// <summary>The two runners' names, index = LearnerProfile.runnerIndex. Change freely —
+        /// only shown on the Name Entry cards.</summary>
+        public static readonly string[] RunnerNames = { "Jay", "Mia" };
+        /// <summary>Ms. Lumi greets the child on the first screen (also spoken: vo_name_hello).</summary>
+        public const string NameEntryLumiHello = "Hi! What's your name?";
+        /// <summary>The runner prompt once a name is typed, so the tablet visibly listens.</summary>
+        public static string NameEntryPickAvatarFor(string name) => "Pick your runner, " + name + "!";
+        /// <summary>Said when a runner is tapped.</summary>
+        public static string NameEntryRunnerPicked(string runner) => runner + " is ready!";
+
         /// <summary>Closes the on-screen keyboard on the FIRST screen a learner ever sees, where
         /// the keyboard covers the four runners AND "LET'S GO!" — i.e. everything left to do.
         /// Same words as <see cref="SummaryDoneTyping"/> on purpose: it is the same gesture in

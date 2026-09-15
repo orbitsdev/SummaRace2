@@ -57,6 +57,9 @@ namespace SummaRace.Constants
         /// <summary>"Tap a story part, then tap where it goes." (GameText.ArrangeIntroStatus)</summary>
         public const string VoArrangeHow = "vo_arrange_how";
 
+        /// <summary>"Hi! What's your name?" (GameText.NameEntryLumiHello), on the first screen.</summary>
+        public const string VoNameHello = "vo_name_hello";
+
         /// <summary>"Write your summary!" (GameText.SummaryTitle)</summary>
         public const string VoSummaryTitle = "vo_summary_title";
         /// <summary>GameText.SummaryHint. The written "___" is a visual blank, so it is

@@ -217,7 +217,7 @@ namespace SummaRace.UI
             rt.anchoredPosition = anchoredPos;
             rt.sizeDelta = new Vector2(diameter, diameter);
 
-            var img = go.GetComponent<Image>() ?? go.AddComponent<Image>();
+            var img = go.GetComponent<Image>(); if (img == null) img = go.AddComponent<Image>();
             img.sprite = RoundSprite;
             img.raycastTarget = false;
             Chunky(img, fill, 3f, 3f);
