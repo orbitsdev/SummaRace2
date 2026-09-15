@@ -167,6 +167,17 @@ Colour roles now in force (`Theme.cs`): **green** = go · **navy** = secondary a
 | Summary | Five small lines at the top of a tall empty card | Up to 46pt, centred, more line spacing; bigger title |
 | Results | Story-name strip stuck out past both board edges; Main Idea small | Strip kept inside the board; Main Idea up to 52pt, centred |
 
+### Race screens (Play-mode screenshots of every stage)
+
+| Stage | Found | Fixed |
+|---|---|---|
+| Answer cards on the road | Small pale plaques lying low; they read as street signs, not things to collect | Taller cards floating at chest height with a gold frame |
+| Correct pick | Almost no visible payoff; the flying word was a dark plaque that covered "Nice catch!", and the "Next part" chip popped up on top | Green "you got it" token starting above the feedback line and kept on screen; gold "+N" coin pop and coin sound at the card; the next-part chip waits until the feedback is gone |
+| Wrong pick → retry | Rejected lanes in the answer panel were black boxes that looked like holes | Pale see-through empty slots (still in lane order, so they give nothing away) |
+| Patrol intro | Suspected the message showed with no patrol on screen | Checked by trace + capture: the patrol is on screen when the intro plays; no change needed |
+| Finish read-back | The five collected parts were small | Rows up to 46pt |
+| Between gates | The road is empty between gates | **Not changed on purpose**: coins or obstacles there would compete with the reading window the study depends on |
+
 ## 5. Still open (honest)
 
 - **Tablet playtest** — colours at classroom brightness, touch sizes, performance.

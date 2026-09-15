@@ -89,6 +89,8 @@ namespace SummaRace.Features.Race.Endless
         // constant, and a tuning number nobody reads is worse than no number: it invites a future
         // pass to "adjust" it and believe the race changed.
         private const float CardY = 0.5f;
+        /// <summary>How far the collectible card floats above the holder (chest height).</summary>
+        private const float CardLift = 0.45f;
         // Watchdog: seconds with nothing in the world and nothing scheduled before the run is
         // treated as stranded and FINISH is forced back. Long enough that no legitimate
         // placement gap can trip it (placements are scheduled in the same frame they clear).
@@ -1009,10 +1011,18 @@ namespace SummaRace.Features.Race.Endless
                 holder.SetParent(root, false);
                 holder.localPosition = new Vector3((lane - 1) * laneOffset, CardY, 0f);
 
+                // COLLECTIBLE, NOT A SIGN (race critique 2026-09-15): the cards were small pale
+                // plaques lying low on the road and read as street signs. Taller, lifted to the
+                // runner's chest, with a thick gold frame behind — the look of a pickup. The
+                // trigger on the holder is unchanged (still the full catch volume).
                 var card = BuildCard(holder, Vector3.zero,
-                    new Vector2(cardWidth, 0.85f), text, Color.black, Color.white, 2.4f);
+                    new Vector2(cardWidth, 1.15f), text, Color.black, Color.white, 2.8f);
+                var glow = BuildCard(card, new Vector3(0f, 0f, 0.04f),
+                    new Vector2(cardWidth + 0.22f, 1.37f), "", Color.clear, SummaRace.Constants.Theme.GoldDeep, 0.1f);
+                foreach (var gsr in glow.GetComponentsInChildren<SpriteRenderer>()) gsr.sortingOrder = -1;
+                card.localPosition = new Vector3(0f, CardLift, 0f);
                 card.localScale = Vector3.zero;
-                card.localPosition = new Vector3(0f, -SummaRace.Constants.GameRules.RaceCardPopRise, 0f);
+                card.localPosition = new Vector3(0f, CardLift - SummaRace.Constants.GameRules.RaceCardPopRise, 0f);
                 _activeCardVisuals.Add(card);
 
                 var trigger = holder.gameObject.AddComponent<BoxCollider>();
@@ -1256,7 +1266,7 @@ namespace SummaRace.Features.Race.Endless
                     if (v == null) continue;
                     float delay = i * stagger;
                     Tween.Scale(v, Vector3.one, pop, Ease.OutBack, startDelay: delay);
-                    Tween.LocalPositionY(v, 0f, pop, Ease.OutBack, startDelay: delay);
+                    Tween.LocalPositionY(v, CardLift, pop, Ease.OutBack, startDelay: delay);
                 }
                 if (SummaRace.Core.AudioManager.Instance != null)
                     SummaRace.Core.AudioManager.Instance.PlaySfx(SummaRace.Constants.AudioKeys.SfxPop);
@@ -1280,7 +1290,7 @@ namespace SummaRace.Features.Race.Endless
                 float ramp = Mathf.Clamp01(t / 0.3f);
                 float phase = t * hz * Mathf.PI * 2f + i * 1.3f;
                 var p = v.localPosition;
-                p.y = Mathf.Sin(phase) * bobH * ramp;
+                p.y = CardLift + Mathf.Sin(phase) * bobH * ramp;
                 v.localPosition = p;
                 v.localRotation = Quaternion.Euler(0f, Mathf.Sin(phase * 0.5f) * sway * ramp, 0f);
             }
@@ -1440,6 +1450,11 @@ namespace SummaRace.Features.Race.Endless
 
             // Sparkle VFX at the collected card (TDD §11.4) — the visible "you got it".
             SpawnCollectSparkle(pickup.transform.position);
+            // "+3" in gold rising off the card: the payout the race was missing (critique).
+            if (element >= 0 && element < 5)
+                SpawnCoinPop(pickup.transform, _retryCount[element] == 0
+                    ? SummaRace.Constants.GameRules.CoinsRacePartFirstTry
+                    : SummaRace.Constants.GameRules.CoinsRacePartRetry);
             // The word lifts off and flies up into its SWBST slot (F40 collect-to-inventory).
             FlyCollectedToSlot(element, pickup.transform.position);
 
@@ -2420,8 +2435,8 @@ namespace SummaRace.Features.Race.Endless
                 lbl.color = SummaRace.Constants.SwbstPalette.InkForIndex(i);
                 lbl.fontStyle = FontStyles.Bold;
                 lbl.enableAutoSizing = true;
-                lbl.fontSizeMin = 20f;
-                lbl.fontSizeMax = 34f;
+                lbl.fontSizeMin = 24f;
+                lbl.fontSizeMax = 46f;   // was 34: small on the finish screen (critique 2026-09-15)
                 lbl.overflowMode = TextOverflowModes.Ellipsis;
                 var lrt = lbl.rectTransform;
                 lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one;
@@ -3070,7 +3085,9 @@ namespace SummaRace.Features.Race.Endless
                 if (_previewPlaque[i] != null)
                     _previewPlaque[i].color = has
                         ? new Color(0.98f, 0.97f, 0.93f)            // the answer card's white
-                        : Theme.Alpha(Color.black, 0.22f);           // empty lane: a dim slot
+                        // Empty lane: a pale see-through slot. Black at 22% on the dark wood
+                        // read as a hole in the board (race capture 2026-09-15).
+                        : Theme.Alpha(Color.white, 0.16f);
             }
         }
 
@@ -3247,7 +3264,10 @@ namespace SummaRace.Features.Race.Endless
             bool lastGate = false;
             bool returning = false;
 
+            // _feedbackTimer: the chip used to pop up under "Nice catch!" and the flying answer,
+            // three plaques stacked in one band (race capture 2026-09-15). It waits its turn.
             if (track != null && _runReleased && !_finished && !_paused && !_leaving && _retryHoldTimer <= 0f
+                && _feedbackTimer <= 0f
                 && SummaRace.Constants.GameRules.RaceGateTimerVisibleSeconds > 0f)
             {
                 bool active = _activeGateRoot != null;
@@ -4085,6 +4105,11 @@ namespace SummaRace.Features.Race.Endless
             var cam = Camera.main;
             Vector3 startScreen = cam != null ? cam.WorldToScreenPoint(worldPos) : _slotRect[element].position;
             startScreen.z = 0f;
+            // Start ABOVE the feedback line: from the card's own spot (near the horizon) the
+            // token covered "Nice catch!" and cut it off (race capture 2026-09-15).
+            startScreen.y = Mathf.Max(startScreen.y, Screen.height * 0.69f);
+            // ...and inside the screen: a side-lane card put the 600px token half off the edge.
+            startScreen.x = Mathf.Clamp(startScreen.x, Screen.width * 0.36f, Screen.width * 0.64f);
 
             // The token is a PILL, not bare text. Measured before: the answer was set at a fixed
             // 60pt in a 420x130 box with no autosizing, and a 52-character SO/THEN line ("Molly
@@ -4097,7 +4122,9 @@ namespace SummaRace.Features.Race.Endless
             var pill = tokenGo.AddComponent<UnityEngine.UI.Image>();
             pill.sprite = WoodPlaqueSprite();
             pill.type = UnityEngine.UI.Image.Type.Sliced;
-            pill.color = Theme.Alpha(Theme.Ink, 0.88f); // same backing as the feedback line
+            // GREEN, not ink: this is the "you got it" object, and green = correct everywhere else
+            // (Reader answers, Arrange locked boxes). A dark plaque read like a warning.
+            pill.color = Theme.Grass;
             pill.raycastTarget = false;
             var pillRt = pill.rectTransform;
             pillRt.sizeDelta = new Vector2(600f, 180f);
@@ -4111,6 +4138,8 @@ namespace SummaRace.Features.Race.Endless
             tmp.alignment = TextAlignmentOptions.Center;
             tmp.fontStyle = FontStyles.Bold;
             tmp.color = Color.white;
+            tmp.outlineWidth = 0.18f;
+            tmp.outlineColor = new Color32(20, 70, 20, 255);
             tmp.raycastTarget = false;
             tmp.enableAutoSizing = true;
             tmp.fontSizeMin = 26f;
@@ -5614,6 +5643,33 @@ namespace SummaRace.Features.Race.Endless
             int element = _activeGateRoot != null ? _activeElement : _pendingElement;
             // The tracker owns the per-element prompt; the banner only calls the final dash.
             _bannerText.text = element >= 5 ? SummaRace.Constants.GameText.RaceRunToFinish : "";
+        }
+
+        /// <summary>A gold "+N" that rises and fades above a collected card, in world space.</summary>
+        private void SpawnCoinPop(Transform at, int amount)
+        {
+            if (at == null || amount <= 0) return;
+            var go = new GameObject("CoinPop");
+            // Parent to the segment so a floating-origin recenter cannot strand it.
+            var parent = at.parent != null && at.parent.parent != null ? at.parent.parent : null;
+            go.transform.SetParent(parent, true);
+            go.transform.position = at.position + Vector3.up * 1.6f;
+            var tmp = go.AddComponent<TextMeshPro>();
+            if (worldLabelFont != null) tmp.font = worldLabelFont;
+            tmp.text = "+" + amount;
+            tmp.fontSize = 9f;
+            tmp.alignment = TextAlignmentOptions.Center;
+            tmp.color = SummaRace.Constants.Theme.Gold;
+            tmp.outlineWidth = 0.25f;
+            tmp.outlineColor = new Color32(70, 40, 5, 255);
+            tmp.rectTransform.sizeDelta = new Vector2(4f, 2f);
+            go.transform.localScale = Vector3.one * 0.3f;
+            Tween.Scale(go.transform, Vector3.one, 0.25f, Ease.OutBack);
+            Tween.PositionY(go.transform, go.transform.position.y + 2.2f, 0.9f, Ease.OutQuad);
+            Tween.Custom(tmp, 1f, 0f, 0.35f, (t, v) => t.alpha = v, startDelay: 0.6f)
+                .OnComplete(() => { if (go != null) Destroy(go); });
+            if (SummaRace.Core.AudioManager.Instance != null)
+                SummaRace.Core.AudioManager.Instance.PlaySfx(SummaRace.Constants.AudioKeys.SfxCoin, 1.2f);
         }
 
         private void ShowFeedback(string message, Color color)
