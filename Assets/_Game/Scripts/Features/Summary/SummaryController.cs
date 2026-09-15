@@ -212,6 +212,7 @@ namespace SummaRace.Features.Summary
 
             EnsureTipsBlock();
             EnsureCharCounter();
+            ApplyGameSkin();
             EnsureDoneTypingChip();
             // Once, with whatever is already in the box (nothing, in every real run) so the
             // counter starts in a state that matches the field rather than merely hidden.
@@ -346,6 +347,88 @@ namespace SummaRace.Features.Summary
         {
             ClearNudge();
             RefreshCharCounter(value);
+            RefreshGems(value);
+        }
+
+        // ---------- game skin: the live SWBST gems (client feedback 2026-09-14) ----------
+
+        private readonly UnityEngine.UI.Image[] _gems = new UnityEngine.UI.Image[5];
+        private readonly bool[] _gemLit = new bool[5];
+
+        /// <summary>
+        /// The Summary was literally a form — a text box and a SUBMIT button — the most
+        /// "survey" moment in the game. It is now a challenge with visible progress: five SWBST
+        /// gems along the bottom of the writing box light up in their colours, with a pop and a
+        /// chime, the moment the learner's writing touches that part of the story
+        /// (SummaryChecker.Detect, the same matching SUBMIT uses, so a lit gem never lies).
+        /// The input box becomes a chunky card and SUBMIT pays coins.
+        /// </summary>
+        private void ApplyGameSkin()
+        {
+            // Ms. Lumi's two speech bubbles were the kit's lilac/pink Rectangle 356: make them
+            // clean white comic bubbles with an outline, so they read as her talking.
+            foreach (var name in new[] { "SpeechBubble", "HintBubble" })
+            {
+                var bubble = GameObject.Find(name);
+                var bimg = bubble != null ? bubble.GetComponent<UnityEngine.UI.Image>() : null;
+                if (bimg != null) SummaRace.UI.GameSkin.Card(bimg, Color.white, 4f, 5f);
+            }
+            if (titleText != null) SummaRace.UI.GameSkin.Heading(titleText, Theme.TextBrownDeep, outlined: false);
+
+            if (summaryInput == null) return;
+            var box = summaryInput.GetComponent<UnityEngine.UI.Image>();
+            if (box != null) SummaRace.UI.GameSkin.Card(box, Color.white, 6f, 8f);
+            if (summaryInput.textComponent != null) SummaRace.UI.GameSkin.BodyBold(summaryInput.textComponent, new Color(0.13f, 0.13f, 0.18f));
+
+            // Make room at the bottom of the box: the typing area stops above the gem row.
+            const float rowHeight = 100f;
+            if (summaryInput.textViewport != null)
+            {
+                var vp = summaryInput.textViewport;
+                vp.offsetMin = new Vector2(vp.offsetMin.x, Mathf.Max(vp.offsetMin.y, rowHeight + 6f));
+            }
+
+            var row = new GameObject("SwbstGems", typeof(RectTransform));
+            row.transform.SetParent(summaryInput.transform, false);
+            var rrt = (RectTransform)row.transform;
+            rrt.anchorMin = new Vector2(0f, 0f); rrt.anchorMax = new Vector2(1f, 0f);
+            rrt.pivot = new Vector2(0.5f, 0f);
+            rrt.sizeDelta = new Vector2(0f, rowHeight);
+            rrt.anchoredPosition = new Vector2(0f, 4f);
+
+            string[] letters = { "S", "W", "B", "S", "T" };
+            for (int i = 0; i < 5; i++)
+            {
+                float x = (i + 0.5f) / 5f;
+                var label = SummaRace.UI.GameSkin.Badge(row.transform, "Gem_" + i, letters[i], GemOff, Color.white,
+                    new Vector2(x, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, 84f);
+                _gems[i] = label.transform.parent.GetComponent<UnityEngine.UI.Image>();
+            }
+            RefreshGems(summaryInput.text, animate: false);
+        }
+
+        private static readonly Color GemOff = new Color(0.78f, 0.78f, 0.80f);
+
+        private void RefreshGems(string text, bool animate = true)
+        {
+            if (_gems[0] == null || _story == null) return;
+            var found = SummaryChecker.Detect(text, _story);
+            for (int i = 0; i < 5; i++)
+            {
+                if (_gems[i] == null) continue;
+                bool lit = found[i];
+                _gems[i].color = lit ? SwbstPalette.ForIndex(i) : GemOff;
+                if (lit && !_gemLit[i] && animate)
+                {
+                    var t = _gems[i].transform;
+                    PrimeTween.Tween.StopAll(onTarget: t);
+                    t.localScale = Vector3.one;
+                    PrimeTween.Tween.PunchScale(t, Vector3.one * 0.45f, 0.35f);
+                    SummaRace.UI.CoinHud.Sparkle((RectTransform)t);
+                    if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxCoin, 1f + 0.08f * i);
+                }
+                _gemLit[i] = lit;
+            }
         }
 
         /// <summary>
@@ -398,6 +481,8 @@ namespace SummaRace.Features.Summary
         private void Accept(string text)
         {
             _submitted = true;
+            if (submitButton != null)
+                SummaRace.UI.CoinHud.Reward((RectTransform)submitButton.transform, GameRules.CoinsSummary);
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxCorrect);
             if (SummaRace.Core.GameManager.Instance != null) SummaRace.Core.GameManager.Instance.LastSummaryText = text;
 

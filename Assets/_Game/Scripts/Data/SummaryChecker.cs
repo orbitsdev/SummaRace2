@@ -127,6 +127,47 @@ namespace SummaRace.Data
 
         private static Result Fail(Result r, Verdict v) { r.verdict = v; return r; }
 
+        /// <summary>
+        /// Which of the five SWBST parts the text already touches (index 0 = Somebody .. 4 =
+        /// Then), with none of Check's gates (length, English, order). Drives the Summary
+        /// screen's live gems, so a learner SEES each part light up as they write it — the
+        /// same matching as <see cref="Check"/>, so a lit gem always means the gate agrees.
+        /// </summary>
+        public static bool[] Detect(string text, StoryData story)
+        {
+            var found = new bool[5];
+            if (story == null || story.elements == null || story.elements.Length < 5 ||
+                story.pages == null || story.pages.Length < 5) return found;
+
+            var content = new List<string>();
+            foreach (var w in Tokenize(text)) if (!StopWords.Contains(w)) content.Add(w);
+            if (content.Count == 0) return found;
+
+            var somebodyKeys = SomebodyKeywords(story.elements[0].correct);
+            var used = new HashSet<int>();
+            for (int j = 0; j < content.Count; j++)
+                foreach (var k in somebodyKeys)
+                    if (Fuzzy(content[j], k)) { used.Add(j); break; }
+            found[0] = used.Count > 0;
+
+            var candidates = new List<int>[PartCount];
+            for (int p = 0; p < PartCount; p++)
+            {
+                var keys = PartKeywords(story, p + 1);
+                foreach (var s in somebodyKeys) keys.Remove(s);
+                candidates[p] = new List<int>();
+                for (int j = 0; j < content.Count && candidates[p].Count < MaxCandidatesPerPart; j++)
+                {
+                    if (used.Contains(j)) continue;
+                    foreach (var k in keys)
+                        if (Fuzzy(content[j], k)) { candidates[p].Add(j); break; }
+                }
+            }
+            BestAssignment(candidates, out _, out _, out int[] chosen);
+            for (int p = 0; p < PartCount; p++) found[p + 1] = chosen[p] >= 0;
+            return found;
+        }
+
         /// <summary>Bounds the assignment search (at most 7^4 combinations).</summary>
         private const int MaxCandidatesPerPart = 6;
 

@@ -104,8 +104,13 @@ namespace SummaRace.Features.Reader
         /// correct state would blunt the one moment on this screen that has to be unmistakable.
         /// If a future pass wants a bolder pill, raise the green first and re-measure both.
         /// </summary>
-        private static readonly Color OptionNormal = new Color(0.87f, 0.83f, 0.78f);
-        private static readonly Color OptionCorrect = new Color(0.55f, 0.85f, 0.45f); // friendly green
+        // GAME SKIN (client feedback 2026-09-14, "feels like a survey"): answers are now chunky
+        // white cards with a dark outline, drop shadow and a coloured letter badge; the correct
+        // answer turns full grass green with white type and pays coins. The luminance contrast
+        // the notes above were protecting is now carried by the outline (a hard dark edge on
+        // every card), not by a 1.25:1 fill difference.
+        private static readonly Color OptionNormal = Color.white;
+        private static readonly Color OptionCorrect = Theme.Grass;
 
         /// <summary>
         /// The pill the learner actually tapped, when it was not the answer. One shade deeper
@@ -115,7 +120,8 @@ namespace SummaRace.Features.Reader
         /// <see cref="OnAnswer"/>, because the disabled ColorTint MULTIPLIES this image colour
         /// and would flatten a colour-only cue along with everything else.
         /// </summary>
-        private static readonly Color OptionChosen = new Color(0.78f, 0.74f, 0.69f);
+        private static readonly Color OptionChosen = new Color(0.78f, 0.78f, 0.80f);
+        private static readonly Color OptionInk = new Color(0.13f, 0.13f, 0.18f);
 
         // Both feedback colours are read against the question card, which is the kit's
         // "Daily Reward pannel" — a CREAM interior (0.971, 0.923, 0.829 after the card_paper
@@ -259,7 +265,72 @@ namespace SummaRace.Features.Reader
                     optionButtons[i].onClick.AddListener(() => OnAnswer(index));
             }
 
+            ApplyGameSkin();
             ShowPage(0);
+        }
+
+        /// <summary>
+        /// The game look (client feedback 2026-09-14): a sunny banner behind the question, chunky
+        /// outlined answer cards with a round letter badge, bold readable answer type, and the
+        /// coin counter. Built once; per-question state changes only swap fills.
+        /// </summary>
+        private void ApplyGameSkin()
+        {
+            if (questionText != null && questionText.transform.parent != null)
+            {
+                var card = questionText.transform.parent;
+                var banner = card.Find("QuestionBanner");
+                if (banner == null)
+                {
+                    var go = new GameObject("QuestionBanner", typeof(RectTransform));
+                    go.transform.SetParent(card, false);
+                    go.transform.SetSiblingIndex(questionText.transform.GetSiblingIndex());
+                    var img = go.AddComponent<Image>();
+                    img.raycastTarget = false;
+                    SummaRace.UI.GameSkin.Card(img, Theme.Sunny, 5f, 6f);
+                    var brt = img.rectTransform;
+                    var qrt = questionText.rectTransform;
+                    brt.anchorMin = new Vector2(0.04f, qrt.anchorMin.y);
+                    brt.anchorMax = new Vector2(0.96f, qrt.anchorMax.y);
+                    brt.offsetMin = new Vector2(0f, 8f);
+                    brt.offsetMax = new Vector2(0f, -10f);
+                }
+                SummaRace.UI.GameSkin.Heading(questionText, Theme.TextBrownDeep, outlined: false);
+            }
+
+            for (int i = 0; i < optionButtons.Length; i++)
+            {
+                var b = optionButtons[i];
+                if (b == null) continue;
+                SummaRace.UI.GameSkin.Card(b.image, OptionNormal, 5f, 7f);
+                SummaRace.UI.GameSkin.FriendlyDisabledTint(b);
+                string letter = i < GameText.OptionLetters.Length ? GameText.OptionLetters[i].Trim().TrimEnd('.') : "";
+                SummaRace.UI.GameSkin.Badge(b.transform, "LetterBadge", letter, SwbstLetterColor(i), Color.white,
+                    new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(18f, 0f), 66f);
+                if (optionLabels != null && i < optionLabels.Length && optionLabels[i] != null)
+                {
+                    var l = optionLabels[i];
+                    SummaRace.UI.GameSkin.BodyBold(l, OptionInk);
+                    var m = l.margin; m.x = 100f; l.margin = m;
+                }
+            }
+
+            if (feedbackText != null) SummaRace.UI.GameSkin.Heading(feedbackText, feedbackText.color, outlined: false);
+
+            var root = ResolveSceneCanvas();
+            if (root != null)
+                SummaRace.UI.CoinHud.Ensure(root, new Vector2(0.035f, 0.902f), new Vector2(0.25f, 0.945f));
+        }
+
+        /// <summary>Badge colours for A/B/C — bright and distinct, never the correct-answer green.</summary>
+        private static Color SwbstLetterColor(int i)
+        {
+            switch (i)
+            {
+                case 0: return Theme.Sky;
+                case 1: return new Color(0.93f, 0.40f, 0.55f);   // candy pink
+                default: return new Color(0.55f, 0.36f, 0.85f);  // grape
+            }
         }
 
         private void ShowPage(int index) => ShowPage(index, reread: false);
@@ -619,12 +690,13 @@ namespace SummaRace.Features.Reader
                 if (optionButtons[i].image != null) optionButtons[i].image.color = OptionNormal;
 
                 string optionText = question.options[optionIndex];
+                // The letter now lives in the round badge (ApplyGameSkin), so the label carries
+                // only the answer; its left margin keeps a wrapped line clear of the badge.
                 if (optionLabels != null && i < optionLabels.Length && optionLabels[i] != null)
-                    optionLabels[i].text = i < GameText.OptionLetters.Length
-                        // <indent> hangs the letter to the left so a wrapped second
-                        // line starts under the text, not under the "C.".
-                        ? GameText.OptionLetters[i] + "<indent=9%>" + optionText + "</indent>"
-                        : optionText;
+                {
+                    optionLabels[i].text = optionText;
+                    optionLabels[i].color = OptionInk;
+                }
 
                 var option = optionButtons[i].transform;
                 Tween.StopAll(onTarget: option);
@@ -743,6 +815,12 @@ namespace SummaRace.Features.Reader
                 if (isCorrect)
                 {
                     if (optionButtons[i].image != null) optionButtons[i].image.color = OptionCorrect;
+                    if (optionLabels != null && i < optionLabels.Length && optionLabels[i] != null)
+                        optionLabels[i].color = Color.white;
+                    // The payout: coins burst out of the right answer and fly to the counter.
+                    // A first try pays more than a retry, so careful reading beats guessing.
+                    SummaRace.UI.CoinHud.Reward((RectTransform)optionButtons[i].transform,
+                        _pageAttempts <= 1 ? GameRules.CoinsReaderFirstTry : GameRules.CoinsReaderRetry);
                     // The "you got it" beat — the flattest moment in the scene until now.
                     // Stop + reset first: these buttons carry ButtonSquash, whose release tween
                     // (0.18s back to scale 1) is still running on this same transform when the

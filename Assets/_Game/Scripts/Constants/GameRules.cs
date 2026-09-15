@@ -812,6 +812,19 @@ namespace SummaRace.Constants
         /// so the branch it guards is not flagged as unreachable.</summary>
         public static readonly bool ReaderShowSlotHint = false;
 
+        // ---- Coins: the reward loop (client feedback 2026-09-14, "feel like a game") ----
+        // Never part of stars, unlocks or the study log. First tries pay more than retries so
+        // careful reading is the best strategy, never guessing fast.
+        public const int CoinsReaderFirstTry = 3;
+        public const int CoinsReaderRetry = 1;
+        public const int CoinsRacePartFirstTry = 3;
+        public const int CoinsRacePartRetry = 1;
+        public const int CoinsArrangeSlot = 1;
+        public const int CoinsArrangePerfectBonus = 3;
+        public const int CoinsSummary = 5;
+        /// <summary>Most coin sprites flown in one burst (the counter still adds the full amount).</summary>
+        public const int CoinBurstMaxSprites = 6;
+
         // ---- Arrange mastery (client feedback 2026-09-14) ----
 
         /// <summary>From this CHECK ORDER attempt on, a wrong order names the most-missed box and

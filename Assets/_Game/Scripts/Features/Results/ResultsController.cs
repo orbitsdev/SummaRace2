@@ -48,7 +48,10 @@ namespace SummaRace.Features.Results
         // unmistakably unlit. DARKER rather than lighter on purpose: the sprite is gold, so a
         // lighter off state would read as "lit but pale", the one thing this must never be
         // confusable with. Nothing about how stars are COUNTED changes here.
-        private static readonly Color StarOff = new Color(0.05f, 0.10f, 0.12f);
+        // GAME SKIN (client feedback 2026-09-14): three near-black star silhouettes read as a
+        // verdict — two holes where rewards should be. An unlit star is now a soft, see-through
+        // slot: still clearly not earned (grey-blue, 60% alpha), no longer a black mark.
+        private static readonly Color StarOff = new Color(0.08f, 0.16f, 0.26f, 0.45f); // gold sprite x navy at 45%: a soft dark slot, not olive
         private static readonly Color StarOn = Color.white;
 
         // The learner's own sentence, shown back to them (see BuildSummaryCard). Cream card,
@@ -134,6 +137,23 @@ namespace SummaRace.Features.Results
 
             foreach (var star in starImages)
                 if (star != null) star.color = StarOff;
+
+            // Victory panel: the kit's dark teal frame read as a report card. A bright sky-blue
+            // chunky panel (gold stars and the cream Main Idea card pop on it) reads as a win.
+            var panel = GameObject.Find("ResultsPanel");
+            var pimg = panel != null ? panel.GetComponent<UnityEngine.UI.Image>() : null;
+            if (pimg != null) SummaRace.UI.GameSkin.Card(pimg, new Color(0.22f, 0.52f, 0.86f), 6f, 10f);
+            if (praiseText != null) SummaRace.UI.GameSkin.Heading(praiseText, Color.white);
+
+            // The story's coin total, bottom-left beside the treasure (client feedback
+            // 2026-09-14: a game shows what you earned). Reads GameManager.RunCoins.
+            if (titleText != null)
+            {
+                var canvas = titleText.GetComponentInParent<Canvas>();
+                if (canvas != null)
+                    SummaRace.UI.CoinHud.Ensure(canvas.rootCanvas.transform,
+                        new Vector2(0.04f, 0.035f), new Vector2(0.34f, 0.085f));
+            }
 
             if (nextButton != null)
             {
@@ -519,10 +539,12 @@ namespace SummaRace.Features.Results
                 rt.offsetMin = Vector2.zero;
                 rt.offsetMax = Vector2.zero;
                 var img = chip.GetComponent<Image>();
-                if (chipSprite != null) { img.sprite = chipSprite; img.type = Image.Type.Sliced; }
-                img.color = earned
+                // Chunky card on the neutral rounded sprite (the kit chip is tinted lilac, which
+                // greyed every gem). Every part is collected now (mastery), so an un-earned gem
+                // is only a lighter shade of its own colour, never grey.
+                SummaRace.UI.GameSkin.Card(img, earned
                     ? SwbstPalette.ForIndex(i)
-                    : Color.Lerp(SwbstPalette.ForIndex(i), new Color(0.6f, 0.6f, 0.6f), 0.65f);
+                    : Color.Lerp(SwbstPalette.ForIndex(i), Color.white, 0.45f), 4f, 6f);
 
                 var letterGo = new GameObject("Letter", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
                 letterGo.transform.SetParent(chip.transform, false);
@@ -536,8 +558,7 @@ namespace SummaRace.Features.Results
                 letter.alignment = TextAlignmentOptions.Center;
                 letter.enableAutoSizing = true;
                 letter.fontSizeMax = 46; letter.fontSizeMin = 10;
-                letter.fontStyle = FontStyles.Bold;
-                letter.color = earned ? Color.white : new Color(1f, 1f, 1f, 0.6f);
+                SummaRace.UI.GameSkin.Heading(letter, Color.white);
 
                 chip.transform.localScale = Vector3.zero;
                 Tween.Scale(chip.transform, Vector3.one, 0.3f, Ease.OutBack);

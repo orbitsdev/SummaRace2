@@ -208,6 +208,7 @@ namespace SummaRace.Features.Arrange
                 SceneLoader.Go(SceneNames.StorySelect);
             });
 
+            ApplyGameSkin();
             RefreshUI();
             SetStatus(GameText.ArrangeIntroStatus);
 
@@ -541,7 +542,12 @@ namespace SummaRace.Features.Arrange
                     if (_slotContent[i] == i)
                     {
                         _slotLocked[i] = true;
-                        if (slotButtons[i] != null) slotButtons[i].image.color = SlotLocked;
+                        if (slotButtons[i] != null)
+                        {
+                            SummaRace.UI.GameSkin.Chunky(slotButtons[i].image, Theme.Grass, 5f, 7f);
+                            if (slotLabels[i] != null) slotLabels[i].color = Color.white;
+                            SummaRace.UI.CoinHud.Reward((RectTransform)slotButtons[i].transform, GameRules.CoinsArrangeSlot);
+                        }
                         if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxSlotLock);
                         yield return new WaitForSeconds(0.15f);
                     }
@@ -562,7 +568,8 @@ namespace SummaRace.Features.Arrange
                             worstElement = wrongElement;
                         }
 
-                        if (slotButtons[i] != null) slotButtons[i].image.color = SlotWrong;
+                        if (slotButtons[i] != null)
+                            SummaRace.UI.GameSkin.Chunky(slotButtons[i].image, Theme.AmberWarn, 5f, 7f);
                         if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxSlotWiggle);
                         yield return new WaitForSeconds(0.35f);
                         _slotContent[i] = -1; // wrong piece returns to the pool
@@ -575,6 +582,8 @@ namespace SummaRace.Features.Arrange
                 {
                     if (AudioManager.Instance != null) AudioManager.Instance.PlaySfx(AudioKeys.SfxCorrect);
                     SetStatus(SummaRace.Core.Praise.ArrangePerfect());
+                    if (_attempts <= 1 && verifyButton != null)
+                        SummaRace.UI.CoinHud.Reward((RectTransform)verifyButton.transform, GameRules.CoinsArrangePerfectBonus);
                     if (SummaRace.Core.GameManager.Instance != null) SummaRace.Core.GameManager.Instance.SetArrangeResult(_attempts);
                     EventBus.Raise(new ArrangeVerified
                     {
@@ -654,6 +663,45 @@ namespace SummaRace.Features.Arrange
             return false;
         }
 
+        /// <summary>
+        /// The game look (client feedback 2026-09-14): every box and story part becomes a chunky
+        /// card on a neutral rounded sprite (the kit's Rectangle 356 is tinted lilac, which washed
+        /// every fill out), plus the coin counter. Per-state colours are applied in RefreshUI.
+        /// </summary>
+        private void ApplyGameSkin()
+        {
+            for (int i = 0; i < 5; i++)
+            {
+                if (slotButtons[i] != null)
+                {
+                    SummaRace.UI.GameSkin.Card(slotButtons[i].image, SwbstPalette.ForIndex(i), 5f, 7f);
+                    SummaRace.UI.GameSkin.FriendlyDisabledTint(slotButtons[i]);
+                }
+                if (pieceButtons[i] != null)
+                {
+                    SummaRace.UI.GameSkin.Card(pieceButtons[i].image, Color.white, 4f, 6f);
+                    SummaRace.UI.GameSkin.FriendlyDisabledTint(pieceButtons[i]);
+                }
+                if (pieceLabels[i] != null) SummaRace.UI.GameSkin.BodyBold(pieceLabels[i], LabelFilled);
+            }
+
+            // Ms. Lumi's bubble: clean white comic bubble instead of the kit's pink tint.
+            var bubble = GameObject.Find("SpeechBubble");
+            var bimg = bubble != null ? bubble.GetComponent<Image>() : null;
+            if (bimg != null) SummaRace.UI.GameSkin.Card(bimg, Color.white, 4f, 5f);
+            if (titleText != null) SummaRace.UI.GameSkin.Heading(titleText, Theme.TextBrownDeep, outlined: false);
+
+            Transform root = null;
+            if (verifyButton != null)
+            {
+                var canvas = verifyButton.GetComponentInParent<Canvas>();
+                if (canvas != null) root = canvas.rootCanvas.transform;
+            }
+            // Beside the last (single) piece in the pool's third row, clear of every card.
+            if (root != null)
+                SummaRace.UI.CoinHud.Ensure(root, new Vector2(0.62f, 0.215f), new Vector2(0.94f, 0.262f));
+        }
+
         private void RefreshUI()
         {
             for (int i = 0; i < 5; i++)
@@ -688,7 +736,13 @@ namespace SummaRace.Features.Arrange
                     // read by 9-year-olds on a classroom tablet at low brightness. Ink is the
                     // same hue darkened further (0.45 vs 0.30), so the SWBST colour language
                     // is unchanged and only the legibility moves.
-                    slotLabels[i].color = filled ? LabelFilled : SwbstPalette.InkForIndex(i);
+                    // GAME SKIN (client feedback 2026-09-14): an empty box is now a bold card in its
+                    // own SWBST colour with white outlined type; a filled box is a white card that
+                    // keeps the SWBST colour as its outline. The contrast the note above protected
+                    // is carried by the outlined heading type on the saturated fill.
+                    if (_slotLocked[i]) SummaRace.UI.GameSkin.BodyBold(slotLabels[i], Color.white);
+                    else if (filled) SummaRace.UI.GameSkin.BodyBold(slotLabels[i], LabelFilled);
+                    else SummaRace.UI.GameSkin.Heading(slotLabels[i], Color.white);
                 }
                 if (slotButtons[i] != null && !_slotLocked[i])
                 {
@@ -708,10 +762,12 @@ namespace SummaRace.Features.Arrange
                     // empty slot, not the correct one — this screen is a test of sequence, and
                     // lighting only the right box would answer the question for them.
                     bool armed = _selectedPiece >= 0 && !filled && !_slotLocked[i];
-                    slotButtons[i].image.color =
-                        filled ? SlotFilled
-                               : armed ? SlotArmed
-                                       : SwbstPalette.PastelForIndex(i);
+                    Color swbst = SwbstPalette.ForIndex(i);
+                    if (filled)
+                        SummaRace.UI.GameSkin.Chunky(slotButtons[i].image, Color.white, 6f, 7f, swbst);
+                    else
+                        SummaRace.UI.GameSkin.Chunky(slotButtons[i].image,
+                            armed ? Color.Lerp(swbst, Color.white, 0.25f) : swbst, 5f, 7f);
                     var srt = slotButtons[i].transform as RectTransform;
                     if (srt != null) srt.localScale = Vector3.one * (armed ? 1.04f : 1f);
                 }
@@ -721,7 +777,10 @@ namespace SummaRace.Features.Arrange
                 if (pieceButtons[i] != null)
                 {
                     pieceButtons[i].gameObject.SetActive(!placed);
-                    pieceButtons[i].image.color = element == _selectedPiece ? PieceSelected : PieceNormal;
+                    bool selected = element == _selectedPiece;
+                    SummaRace.UI.GameSkin.Chunky(pieceButtons[i].image, selected ? Theme.Sunny : Color.white,
+                        selected ? 6f : 4f, selected ? 10f : 6f);
+                    pieceButtons[i].transform.localScale = Vector3.one * (selected ? 1.05f : 1f);
                 }
                 if (pieceLabels[i] != null) pieceLabels[i].text = _pieceTexts[element];
             }

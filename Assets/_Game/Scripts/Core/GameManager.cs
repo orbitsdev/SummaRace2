@@ -66,6 +66,20 @@ namespace SummaRace.Core
         public int LastArrangeAttempts { get; private set; }
         public string LastSummaryText { get; set; }
 
+        /// <summary>
+        /// Coins earned in the current story — the game's reward loop (client feedback
+        /// 2026-09-14: "feels like a survey, not a game"). Pure motivation: never part of stars,
+        /// unlocks or the study log, and reset when a story starts. Paid by the learning screens
+        /// through <see cref="AddCoins"/> (more for a first try than a retry, so reading carefully
+        /// pays better than guessing).
+        /// </summary>
+        public int RunCoins { get; private set; }
+
+        public void AddCoins(int amount)
+        {
+            if (amount > 0) RunCoins += amount;
+        }
+
         private void Awake()
         {
             if (Instance != null && Instance != this) { Destroy(gameObject); return; }
@@ -86,6 +100,7 @@ namespace SummaRace.Core
 
             CurrentStory = story;
             LastRaceResult = null;
+            RunCoins = 0;
             EventBus.Raise(new StoryStarted { storyId = storyId });
             SceneLoader.Go(SceneNames.Reader);
         }

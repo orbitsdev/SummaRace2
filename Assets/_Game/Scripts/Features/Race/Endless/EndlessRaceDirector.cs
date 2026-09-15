@@ -1423,6 +1423,13 @@ namespace SummaRace.Features.Race.Endless
             if (element >= 0 && element < 5) _collected[element] = true;
             _activeCardVisuals.Clear();
 
+            // Coins for the story's reward loop (shown on Results): a part collected on its first
+            // encounter pays more than one collected on a return. Never part of stars or the log.
+            if (SummaRace.Core.GameManager.Instance != null && element >= 0 && element < 5)
+                SummaRace.Core.GameManager.Instance.AddCoins(_retryCount[element] == 0
+                    ? SummaRace.Constants.GameRules.CoinsRacePartFirstTry
+                    : SummaRace.Constants.GameRules.CoinsRacePartRetry);
+
             if (SummaRace.Core.AudioManager.Instance != null)
                 SummaRace.Core.AudioManager.Instance.PlaySfx(SummaRace.Constants.AudioKeys.SfxCollect);
 

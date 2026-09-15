@@ -102,6 +102,24 @@ namespace SummaRace.Constants
         // A gold pill ON a cream card is fine; gold LETTERING on cream is invisible to a child
         // on a classroom tablet at arm's length. Put gold type on Navy or Ink instead.
 
+        // ---- Game skin (client feedback 2026-09-14: "feels like a survey, not a game") ------
+        // The learning screens were pastel, thin-bordered and flat — the visual language of a
+        // worksheet app — while the title screens and the race are bold and saturated. These are
+        // the saturated "toy" colours the learning screens now share with the rest of the game
+        // (see UI/GameSkin). Chosen to sit with the SWBST palette, never to replace it.
+
+        /// <summary>Sunny yellow. Question banners and "your turn" highlights (dark text on it).</summary>
+        public static readonly Color Sunny = new Color(1f, 0.82f, 0.22f);
+
+        /// <summary>Sky blue. Letter badges and informational chips (white text on it, 3.1:1 bold).</summary>
+        public static readonly Color Sky = new Color(0.16f, 0.58f, 0.92f);
+
+        /// <summary>Grass green. The "correct / locked in" fill (white bold text on it, 3.3:1).</summary>
+        public static readonly Color Grass = new Color(0.20f, 0.66f, 0.28f);
+
+        /// <summary>The dark outline every chunky game panel carries. Warm near-black.</summary>
+        public static readonly Color Outline = new Color(0.16f, 0.12f, 0.10f);
+
         /// <summary>Same colour, different alpha — Unity has no Color.WithAlpha.</summary>
         public static Color Alpha(Color c, float a) { c.a = a; return c; }
 
