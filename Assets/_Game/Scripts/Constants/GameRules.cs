@@ -833,6 +833,11 @@ namespace SummaRace.Constants
 
         // ---- Summary check (client feedback 2026-09-14: the summary must match the story) ----
 
+        /// <summary>Story Select game skin (2026-09-15): no wood frames on the wood board, and
+        /// one chunky difficulty chip style. Flip either back to restore the old look.</summary>
+        public static readonly bool StorySelectWoodFrames = false;
+        public static readonly bool StorySelectGameChips = true;
+
         /// <summary>"Stars = your race score" under each story card's stars. OFF (remove
         /// unnecessary text).</summary>
         public static readonly bool StorySelectShowStarCaption = false;

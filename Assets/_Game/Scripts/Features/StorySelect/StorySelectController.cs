@@ -47,7 +47,9 @@ namespace SummaRace.Features.StorySelect
         [SerializeField] private TMP_Text titleText;
 
         // Same silhouette trick as ResultsController: the sprite is golden, so "off" is dark.
-        private static readonly Color StarOff = Theme.Slate;
+        // GAME SKIN (2026-09-15): an unearned star is a soft see-through slot, the same as on
+        // Results — Slate on the gold sprite read as three dark marks on every new card.
+        private static readonly Color StarOff = new Color(0.10f, 0.16f, 0.30f, 0.45f);
         private static readonly Color StarOn = Color.white;
         private static readonly Color CardLocked = new Color(0.62f, 0.66f, 0.70f);
 
@@ -246,6 +248,18 @@ namespace SummaRace.Features.StorySelect
             // pointed at the wrong card the moment Easy was finished. Drive it, or hide it.
             PlaceGlow(next >= 0 ? cards[next] : null);
 
+            // The title banner and its mission line hang over the top card like a ribbon: draw
+            // them last, so the first card's chunky outline can never cover the mission line.
+            if (titleText != null && titleText.transform.parent != null)
+            {
+                var banner = titleText.transform.parent;
+                banner.SetAsLastSibling();
+                var subtitle = banner.parent != null ? banner.parent.Find("Subtitle") : null;
+                if (subtitle != null) subtitle.SetAsLastSibling();
+            }
+            if (SummaRace.UI.CoinHud.Current != null) SummaRace.UI.CoinHud.Current.transform.SetAsLastSibling();
+            if (backButton != null) backButton.transform.SetAsLastSibling();
+
             // The learner arrived MainMenu → SessionMap → here, so back is the map: picking
             // another story in the same session stays one tap.
             if (backButton != null)
@@ -301,7 +315,10 @@ namespace SummaRace.Features.StorySelect
             // fillCenter OFF, so only its carved 26px rim renders around the hero art — the
             // storybook look of a picture in a wooden frame, at zero cost to the card's own
             // layout. Sibling behind the card at its own index so nothing draws over it wrongly.
-            EnsureWoodFrame(card);
+            // GAME SKIN (2026-09-15): the wood picture-frame put wood on the wood board. Each
+            // card is now a chunky level card outlined in its DIFFICULTY colour (see
+            // DifficultyColor), with a bold outlined title — the level-select look.
+            if (GameRules.StorySelectWoodFrames) EnsureWoodFrame(card);
 
             // A story that fails to load never reaches anything but Locked (see Start).
             bool playable = state != CardState.Locked;
@@ -407,8 +424,16 @@ namespace SummaRace.Features.StorySelect
 
             if (card.button == null) return;
 
-                        var background = card.button.GetComponent<Image>();
-            if (background != null) background.color = playable ? Color.white : CardLocked;
+            var background = card.button.GetComponent<Image>();
+            if (background != null)
+            {
+                background.color = playable ? Color.white : CardLocked;
+                SummaRace.UI.GameSkin.Chunky(background, background.color, playable ? 9f : 6f, 10f,
+                    playable ? DifficultyColor(difficulty) : Theme.Alpha(Theme.Outline, 0.85f));
+            }
+            if (card.titleText != null && story != null)
+                SummaRace.UI.GameSkin.Heading(card.titleText, Color.white);
+            if (card.lockedLabel != null) SummaRace.UI.GameSkin.Heading(card.lockedLabel, Color.white);
 
             // The "Stars = your race score" caption is no longer drawn (client feedback
             // 2026-09-14, remove unnecessary text): a star row on a story card is a convention
@@ -469,6 +494,19 @@ namespace SummaRace.Features.StorySelect
             if (background == null && card.chipText.transform.parent != null)
                 background = card.chipText.transform.parent.GetComponent<Image>();
 
+            // GAME SKIN (2026-09-15): the three chips were three different kit pills (green,
+            // tan, red) — green meant EASY here and "go" everywhere else, red read as danger.
+            // One chunky chip, coloured by difficulty: Sky / Sunny / Grape, the same colour that
+            // outlines the card.
+            if (GameRules.StorySelectGameChips && background != null)
+            {
+                SummaRace.UI.GameSkin.Card(background, DifficultyColor(difficulty), 4f, 5f);
+                SummaRace.UI.GameSkin.Heading(card.chipText,
+                    difficulty == "average" ? Theme.TextBrownDeep : Color.white,
+                    outlined: difficulty != "average");
+                return;
+            }
+
             switch (difficulty)
             {
                 case "average":
@@ -494,6 +532,18 @@ namespace SummaRace.Features.StorySelect
                     if (background != null) background.color = HardChipTint;
                     card.chipText.color = ChipInkLight;
                     break;
+            }
+        }
+
+        /// <summary>The difficulty colour language: EASY sky blue, MEDIUM sunny yellow, HARD
+        /// grape. Deliberately not green (that is "go") and not red (that reads as danger).</summary>
+        private static Color DifficultyColor(string difficulty)
+        {
+            switch (difficulty)
+            {
+                case "easy": return Theme.Sky;
+                case "average": return Theme.Sunny;
+                default: return new Color(0.55f, 0.36f, 0.85f);
             }
         }
 
