@@ -701,6 +701,19 @@ namespace SummaRace.Constants
         public const string NextLabel = "QUESTION!";
         public const string NextPageLabel = "NEXT PAGE";
         public const string StartRaceLabel = "START RACE!";
+        // ---- Ms. Lumi's speech bubble (client feedback 2026-09-14: she was a still picture) ----
+        // Process praise, never ability praise; encouragement never says "wrong".
+        private static readonly string[] LumiCheerLines = { "Yay!", "Great reading!", "You got it!", "Super!", "Nice work!" };
+        private static readonly string[] LumiEncourageLines = { "Let's think!", "Try again!", "You can do it!", "Look again!" };
+        private static int _lumiCheer, _lumiEncourage;
+        public static string LumiCheerLine() => LumiCheerLines[(_lumiCheer++) % LumiCheerLines.Length];
+        public static string LumiEncourageLine() => LumiEncourageLines[(_lumiEncourage++) % LumiEncourageLines.Length];
+
+        // ---- Mission path (client feedback 2026-09-14: finish each part before the next) ----
+        public static readonly string[] MissionSteps = { "READ", "RACE", "ORDER", "WRITE" };
+        public const string MissionPathTitle = "Your story mission";
+        public const string MissionPathAllDone = "Mission complete!";
+
         // ---- Reader mastery (client feedback 2026-09-14) ----
         // A wrong answer no longer reveals the right one. The learner is invited to read the
         // page again or try another answer, and cannot move on until the question is answered

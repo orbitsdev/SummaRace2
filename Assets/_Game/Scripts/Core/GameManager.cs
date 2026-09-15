@@ -80,6 +80,9 @@ namespace SummaRace.Core
             if (amount > 0) RunCoins += amount;
         }
 
+        /// <summary>The saved wallet of the current learner (0 with no learner).</summary>
+        public int WalletCoins => CurrentLearner != null ? CurrentLearner.coins : 0;
+
         private void Awake()
         {
             if (Instance != null && Instance != this) { Destroy(gameObject); return; }
@@ -420,6 +423,8 @@ namespace SummaRace.Core
                 }
                 progress.completed = true;
                 if (stars > progress.bestStars) progress.bestStars = stars;   // never decreases
+                // Bank the story's coins into the saved wallet in the same write.
+                CurrentLearner.coins += RunCoins;
                 PersistProfiles();
 
                 // Was that the third story of the session? The Session Map celebrates it.

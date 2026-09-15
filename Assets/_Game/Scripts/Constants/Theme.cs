@@ -108,6 +108,19 @@ namespace SummaRace.Constants
         // the saturated "toy" colours the learning screens now share with the rest of the game
         // (see UI/GameSkin). Chosen to sit with the SWBST palette, never to replace it.
 
+        // COLOUR ROLES (owner, 2026-09-15: "we don't have a consistent colour - sometimes green,
+        // orange, teal, yellow, blue"). Games teach a colour language in the first minute and
+        // never break it; this one had none. One job, one colour, on every screen:
+        //   GREEN (kit green button)  = the main "go forward" action. Every screen has exactly one.
+        //   NAVY                      = secondary controls and HUD info (back, undo, hear again,
+        //                               voice, progress, coins).
+        //   WOOD                      = boards and title banners (map, story select, results).
+        //   CREAM + gold frame        = something to READ (story page, question card, main idea).
+        //   SUNNY yellow              = the question / "look here" highlight.
+        //   GRASS green / AMBER       = right / try again.
+        //   SwbstPalette colours      = the five story parts, and nothing else.
+        // Orange, teal and cyan are no longer UI colours.
+
         /// <summary>Sunny yellow. Question banners and "your turn" highlights (dark text on it).</summary>
         public static readonly Color Sunny = new Color(1f, 0.82f, 0.22f);
 

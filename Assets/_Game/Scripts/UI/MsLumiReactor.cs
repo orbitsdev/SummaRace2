@@ -54,6 +54,14 @@ namespace SummaRace.UI
         [SerializeField] private bool reactToArrangeVerified = true;
         [SerializeField] private bool reactToSummarySubmitted = true;
 
+        [Header("Life (client feedback 2026-09-14: she was a still picture)")]
+        [Tooltip("Pose she shows when the learner needs another try. Encouraging, never sad (D7).")]
+        [SerializeField] private string encouragePose = "lumi_thinking";
+        [Tooltip("Show a short speech bubble with each reaction.")]
+        [SerializeField] private bool speechBubble = false;
+        [Tooltip("Seconds between idle pose changes (a random value up to +50% is added).")]
+        [SerializeField] private float idleShuffleSeconds = 6f;
+
         [Header("Layout")]
         [Tooltip("Her head width in reference-canvas pixels. 0 = leave the RectTransform alone.")]
         [SerializeField] private float headPixels = 0f;
@@ -78,24 +86,89 @@ namespace SummaRace.UI
             ShowRest();
         }
 
+        private Coroutine _idleLife;
+        private Tween _sway;
+
         private void OnEnable()
         {
             if (reactToReaderAnswer) EventBus.Subscribe<PageAnswered>(OnPageAnswered);
             if (reactToArrangeVerified) EventBus.Subscribe<ArrangeVerified>(OnArrangeVerified);
-            if (reactToSummarySubmitted) EventBus.Subscribe<SummarySubmitted>(OnSummarySubmitted);
+            if (reactToSummarySubmitted)
+            {
+                EventBus.Subscribe<SummarySubmitted>(OnSummarySubmitted);
+                EventBus.Subscribe<SummaryRejected>(OnSummaryRejected);
+            }
+            _idleLife = StartCoroutine(IdleLife());
+            StartSway();
         }
 
         private void OnDisable()
         {
             if (reactToReaderAnswer) EventBus.Unsubscribe<PageAnswered>(OnPageAnswered);
             if (reactToArrangeVerified) EventBus.Unsubscribe<ArrangeVerified>(OnArrangeVerified);
-            if (reactToSummarySubmitted) EventBus.Unsubscribe<SummarySubmitted>(OnSummarySubmitted);
+            if (reactToSummarySubmitted)
+            {
+                EventBus.Unsubscribe<SummarySubmitted>(OnSummarySubmitted);
+                EventBus.Unsubscribe<SummaryRejected>(OnSummaryRejected);
+            }
+            if (_idleLife != null) { StopCoroutine(_idleLife); _idleLife = null; }
+            if (_sway.isAlive) _sway.Stop();
         }
 
-        // Never react to a wrong answer — see the class comment.
-        private void OnPageAnswered(PageAnswered evt) { if (evt.correct) Celebrate(); }
-        private void OnArrangeVerified(ArrangeVerified evt) { if (evt.correct) Celebrate(); }
+        // A wrong answer now gets a reaction too, but only ever an ENCOURAGING one: a thinking
+        // pose, a small head tilt and a kind word. Never a sad or stern pose (D7); those poses
+        // stay out of every pool. The rule was "no disappointment", not "no warmth": a buddy who
+        // ignores you when you are stuck felt like a picture, not a friend.
+        private void OnPageAnswered(PageAnswered evt) { if (evt.correct) Celebrate(); else Encourage(); }
+        private void OnArrangeVerified(ArrangeVerified evt) { if (evt.correct) Celebrate(); else Encourage(); }
         private void OnSummarySubmitted(SummarySubmitted evt) { Celebrate(); }
+        private void OnSummaryRejected(SummaryRejected evt) { Encourage(); }
+
+        /// <summary>Turn the speech bubble on (the Reader's full-body Ms. Lumi uses it).</summary>
+        public void EnableSpeechBubble(bool on = true) => speechBubble = on;
+
+        /// <summary>A slow, gentle side-to-side sway so she always looks alive.</summary>
+        private void StartSway()
+        {
+            if (_sway.isAlive) _sway.Stop();
+            transform.localRotation = Quaternion.Euler(0, 0, -2f);
+            _sway = Tween.LocalRotation(transform, Quaternion.Euler(0, 0, 2f), 1.8f, Ease.InOutSine,
+                cycles: -1, cycleMode: CycleMode.Yoyo);
+        }
+
+        /// <summary>Every few seconds she changes pose with a little bounce, like she is talking.</summary>
+        private IEnumerator IdleLife()
+        {
+            while (true)
+            {
+                yield return new WaitForSeconds(idleShuffleSeconds * (1f + Random.value * 0.5f));
+                if (_routine != null || !isActiveAndEnabled) continue;
+                _restSprite = null;
+                ShowRest();
+                Tween.PunchScale(transform, new Vector3(0.04f, 0.07f, 0f), 0.35f);
+            }
+        }
+
+        /// <summary>Thinking pose + head tilt + a kind word. Safe to call from anywhere.</summary>
+        public void Encourage()
+        {
+            if (!isActiveAndEnabled) return;
+            if (_routine != null) StopCoroutine(_routine);
+            _routine = StartCoroutine(EncourageRoutine());
+        }
+
+        private IEnumerator EncourageRoutine()
+        {
+            var pose = LumiExpressions.Get(encouragePose);
+            if (pose != null) ApplyPose(pose);
+            if (_sway.isAlive) _sway.Stop();
+            Tween.PunchLocalRotation(transform, new Vector3(0, 0, 8f), 0.6f, frequency: 4);
+            ShowBubble(SummaRace.Constants.GameText.LumiEncourageLine());
+            yield return new WaitForSeconds(2.2f);
+            StartSway();
+            ShowRest();
+            _routine = null;
+        }
 
         /// <summary>The badge portrait both Arrange and Summary already carry.</summary>
         public const string BadgeObjectName = "TeacherAvatar";
@@ -141,6 +214,7 @@ namespace SummaRace.UI
             if (LumiExpressions.CountIn(LumiExpressions.PoolBadgeIdle) == 0) return null;
 
             var r = go.AddComponent<MsLumiReactor>();
+            r.encouragePose = "badgemood_thinking";
             r.Configure(LumiExpressions.PoolBadgeIdle, LumiExpressions.PoolBadgeCheer);
             return r;
         }
@@ -166,7 +240,13 @@ namespace SummaRace.UI
             try
             {
                 if (_group != null) _group.alpha = 1f; // pop back in (she may have been hidden)
-                Tween.PunchScale(transform, Vector3.one * 0.18f, 0.5f);
+                Tween.PunchScale(transform, Vector3.one * 0.22f, 0.55f, frequency: 6);
+                if (_sway.isAlive) _sway.Stop();
+                Tween.PunchLocalRotation(transform, new Vector3(0, 0, 10f), 0.7f, frequency: 6);
+                if (_rect != null) CoinHud.Sparkle(_rect);
+                ShowBubble(SummaRace.Constants.GameText.LumiCheerLine());
+                yield return new WaitForSeconds(0.7f);
+                StartSway();
                 yield return new WaitForSeconds(cheerSeconds);
                 ShowRest();
                 _routine = null;
@@ -175,6 +255,49 @@ namespace SummaRace.UI
             {
                 if (_group != null) _group.alpha = alphaBefore;
             }
+        }
+
+        private RectTransform _bubble;
+        private TMPro.TMP_Text _bubbleText;
+
+        /// <summary>
+        /// A short comic speech bubble above her head. Built once, parented to her so it moves
+        /// with her; pops in, holds, pops out.
+        /// </summary>
+        private void ShowBubble(string line)
+        {
+            if (!speechBubble || string.IsNullOrEmpty(line)) return;
+            if (_bubble == null)
+            {
+                var go = new GameObject("LumiBubble", typeof(RectTransform));
+                go.transform.SetParent(transform, false);
+                _bubble = (RectTransform)go.transform;
+                _bubble.anchorMin = _bubble.anchorMax = new Vector2(0.5f, 0.96f);
+                _bubble.pivot = new Vector2(0.4f, 0f);
+                _bubble.sizeDelta = new Vector2(300f, 110f);
+                var img = go.AddComponent<Image>();
+                img.raycastTarget = false;
+                GameSkin.Card(img, Color.white, 4f, 6f);
+
+                var tgo = new GameObject("Text", typeof(RectTransform));
+                tgo.transform.SetParent(go.transform, false);
+                _bubbleText = tgo.AddComponent<TMPro.TextMeshProUGUI>();
+                GameSkin.Heading(_bubbleText, SummaRace.Constants.Theme.TextBrownDeep, outlined: false);
+                _bubbleText.alignment = TMPro.TextAlignmentOptions.Center;
+                _bubbleText.enableAutoSizing = true; _bubbleText.fontSizeMin = 22f; _bubbleText.fontSizeMax = 44f;
+                _bubbleText.raycastTarget = false;
+                var trt = _bubbleText.rectTransform;
+                trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one;
+                trt.offsetMin = new Vector2(16f, 8f); trt.offsetMax = new Vector2(-16f, -8f);
+            }
+            _bubbleText.text = line;
+            _bubble.SetAsLastSibling();
+            Tween.StopAll(onTarget: _bubble);
+            _bubble.localScale = Vector3.zero;
+            Sequence.Create()
+                .Chain(Tween.Scale(_bubble, Vector3.one, 0.25f, Ease.OutBack))
+                .ChainDelay(1.6f)
+                .Chain(Tween.Scale(_bubble, Vector3.zero, 0.2f, Ease.InBack));
         }
 
         /// <summary>

@@ -142,7 +142,9 @@ namespace SummaRace.Features.Results
             // chunky panel (gold stars and the cream Main Idea card pop on it) reads as a win.
             var panel = GameObject.Find("ResultsPanel");
             var pimg = panel != null ? panel.GetComponent<UnityEngine.UI.Image>() : null;
-            if (pimg != null) SummaRace.UI.GameSkin.Card(pimg, new Color(0.22f, 0.52f, 0.86f), 6f, 10f);
+            // WOOD, the same board the Session Map and Story Select use (colour roles), so the
+            // screen that ends a story looks like the screens that start one.
+            if (pimg != null) SummaRace.UI.GameSkin.Card(pimg, Theme.Wood, 6f, 10f);
             if (praiseText != null) SummaRace.UI.GameSkin.Heading(praiseText, Color.white);
 
             // The story's coin total, bottom-left beside the treasure (client feedback
@@ -151,7 +153,7 @@ namespace SummaRace.Features.Results
             {
                 var canvas = titleText.GetComponentInParent<Canvas>();
                 if (canvas != null)
-                    SummaRace.UI.CoinHud.Ensure(canvas.rootCanvas.transform,
+                    SummaRace.UI.CoinHud.EnsureWallet(canvas.rootCanvas.transform,
                         new Vector2(0.04f, 0.035f), new Vector2(0.34f, 0.085f));
             }
 
@@ -174,7 +176,15 @@ namespace SummaRace.Features.Results
             // down by the coroutine's finally.
             BuildSkipCatcher();
 
-            if (SummaRace.Core.GameManager.Instance != null) SummaRace.Core.GameManager.Instance.CompleteStory(stars);
+            if (SummaRace.Core.GameManager.Instance != null)
+            {
+                var gm = SummaRace.Core.GameManager.Instance;
+                int walletBefore = gm.WalletCoins;
+                gm.CompleteStory(stars);   // banks RunCoins into the saved wallet
+                // The story's coins pour into the saved wallet as the celebration lands.
+                if (SummaRace.UI.CoinHud.Current != null)
+                    SummaRace.UI.CoinHud.Current.CountUp(walletBefore, gm.WalletCoins, 1.4f, 1.2f);
+            }
 
             // Android BACK mirrors the NEXT button: same destination, same session test. Registered
             // AFTER CompleteStory so a BACK press can never lose the run — the row and progress are

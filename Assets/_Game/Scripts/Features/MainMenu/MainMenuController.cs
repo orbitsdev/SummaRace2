@@ -71,6 +71,10 @@ namespace SummaRace.Features.MainMenu
 
         private void Start()
         {
+            // The learner's saved coin wallet, top-right (client feedback 2026-09-14: a game
+            // shows what you have earned, and it is a reason to come back).
+            SummaRace.UI.CoinHud.EnsureWalletTopRight();
+
             var learner = Core.GameManager.Instance != null
                 ? Core.GameManager.Instance.CurrentLearner
                 : null;
@@ -155,7 +159,21 @@ namespace SummaRace.Features.MainMenu
                 AudioManager.Instance.PlayMusic(AudioKeys.MusicMenu);
 
             if (startButton != null)
+            {
                 startButton.onClick.AddListener(OnStartTapped);
+                // COLOUR ROLES (Theme): the "go" action is the kit GREEN on every screen. This was
+                // the one orange button in the game, on the very first screen a child sees.
+                var green = Resources.Load<Sprite>("UI/Buttons/cta_green");
+                if (green != null && startButton.image != null)
+                {
+                    startButton.image.sprite = green;
+                    startButton.image.type = Image.Type.Sliced;
+                    startButton.image.color = Color.white;
+                    var frame = GameObject.Find("StartButtonFrame");
+                    var fimg = frame != null ? frame.GetComponent<Image>() : null;
+                    if (fimg != null) { fimg.sprite = green; fimg.type = Image.Type.Sliced; }
+                }
+            }
 
             if (teacherButton != null)
             {

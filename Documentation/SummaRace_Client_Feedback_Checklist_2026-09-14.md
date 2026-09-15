@@ -73,6 +73,25 @@ Evidence screenshots (portrait, from Play mode) are in `Captures/client_feedback
 | I | The race still has only one visible "obstacle" type (the answer gate). Coins/jump/slide obstacles are switched off by earlier design ("the only obstacle is a wrong answer") | ⬜ decision if the researchers want more "game" |
 | J | Changing D7 ("wrong answers never block") and the Arrange/Summary "always accept" rules are **locked GDD decisions** — GDD §10.2 asks for researcher + developer sign-off | ⬜ get written OK from the researchers |
 
+## Game feel (owner follow-up 2026-09-15: "still feels like a survey")
+
+Diagnosed by capturing every screen in portrait and comparing with the mockups: the learning
+screens (Reader, Arrange, Summary, Results) used pastel, thin-bordered, flat "worksheet" styling;
+a correct answer earned nothing; nothing showed the four-part mission; Ms. Lumi was a still
+picture; and colour had no rules (green, orange, teal, cyan, yellow and blue buttons).
+
+| | Change | Status |
+|---|---|---|
+| K | Shared game skin: chunky outlined cards with drop shadow, bold rounded type, badges (`UI/GameSkin`) | ✅ |
+| L | Reward loop: coins burst from correct answers into a counter; first tries pay more than retries (`UI/CoinHud`). Never part of stars or study data | ✅ |
+| M | Saved coin wallet on the learner profile, shown top-right on Main Menu, Session Map, Story Select; Results counts the story's coins into it | ✅ |
+| N | Ms. Lumi alive: constant gentle sway, pose changes with a bounce, cheer (spin + sparkles + "Great reading!") on success, thinking pose + "Look again!" when stuck — never sad (D7). Stays on the question screen | ✅ |
+| O | Mission path READ → RACE → ORDER → WRITE on the loading card between parts: finished parts get a star, the next part pulses (the client's goal made visible) | ✅ |
+| P | Summary live gems: S-W-B-S-T light up as each part is written (same matching as SUBMIT) | ✅ |
+| Q | Colour roles, one job per colour on every screen: green = go, navy = secondary/HUD, wood = boards, cream+gold = reading, yellow = question, SWBST colours = story parts only (documented in `Theme.cs`) | ✅ |
+| R | Results: wood board like the map, soft empty stars instead of black ones | ✅ |
+| S | Check on the tablet: colours at classroom brightness, Ms. Lumi's bubble not covering text on small screens | 🟡 |
+
 ## Before study day
 
 - [x] Pick the narration voice (item 8) — voice C

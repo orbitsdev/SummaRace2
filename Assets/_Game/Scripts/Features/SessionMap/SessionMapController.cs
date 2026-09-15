@@ -109,6 +109,10 @@ namespace SummaRace.Features.SessionMap
 
         private void Start()
         {
+            // The learner's saved coin wallet, top-right (client feedback 2026-09-14: a game
+            // shows what you have earned, and it is a reason to come back).
+            SummaRace.UI.CoinHud.EnsureWalletTopRight();
+
             if (titleText != null)
             {
                 titleText.text = GameText.SessionMapTitle;

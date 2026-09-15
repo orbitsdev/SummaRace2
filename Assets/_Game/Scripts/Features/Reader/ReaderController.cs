@@ -225,7 +225,7 @@ namespace SummaRace.Features.Reader
             // that owns the study's reading support, and the one PulseVoiceButtonOnce exists to
             // draw the eye to. Navy on that cyan measures about 7:1. Set here rather than in the
             // scene so it cannot drift back with a prefab or kit-sprite change.
-            if (voiceButtonLabel != null) voiceButtonLabel.color = Theme.Navy;
+            // (label colour now set by RefreshVoiceButton: gold on the navy chip)
             RefreshVoiceButton();
             PulseVoiceButtonOnce();
 
@@ -315,7 +315,25 @@ namespace SummaRace.Features.Reader
                 }
             }
 
-            if (feedbackText != null) SummaRace.UI.GameSkin.Heading(feedbackText, feedbackText.color, outlined: false);
+            // HUD chips are NAVY (Theme colour roles): the page badge was green and the voice
+            // toggle cyan, so the top row carried two more colours with no meaning.
+            if (progressText != null && progressText.transform.parent != null)
+            {
+                var badge = progressText.transform.parent.GetComponent<Image>();
+                if (badge != null) SummaRace.UI.GameSkin.Card(badge, Theme.Navy, 3f, 5f);
+                SummaRace.UI.GameSkin.Heading(progressText, Theme.Gold, outlined: false);
+            }
+            if (voiceButton != null && voiceButton.image != null)
+                SummaRace.UI.GameSkin.Card(voiceButton.image, Theme.Navy, 3f, 5f);
+
+            if (feedbackText != null)
+            {
+                SummaRace.UI.GameSkin.Heading(feedbackText, feedbackText.color, outlined: false);
+                // Leave the card's lower-left for Ms. Lumi's speech bubble, which now appears
+                // there on every answer: the feedback line starts a third of the way across.
+                var frt = feedbackText.rectTransform;
+                frt.anchorMin = new Vector2(Mathf.Max(frt.anchorMin.x, 0.32f), frt.anchorMin.y);
+            }
 
             var root = ResolveSceneCanvas();
             if (root != null)
@@ -330,6 +348,40 @@ namespace SummaRace.Features.Reader
                 case 0: return Theme.Sky;
                 case 1: return new Color(0.93f, 0.40f, 0.55f);   // candy pink
                 default: return new Color(0.55f, 0.36f, 0.85f);  // grape
+            }
+        }
+
+        private bool _lumiLayoutCaptured;
+        private Vector2 _lumiAnchorMin, _lumiAnchorMax;
+        private int _lumiSibling;
+
+        /// <summary>Reading page: her authored spot. Question page: small, bottom-left, in front.</summary>
+        private void PlaceLumi(bool onQuestion)
+        {
+            if (teacherGroup == null) return;
+            var rt = teacherGroup.transform as RectTransform;
+            if (rt == null) return;
+            if (!_lumiLayoutCaptured)
+            {
+                _lumiLayoutCaptured = true;
+                _lumiAnchorMin = rt.anchorMin; _lumiAnchorMax = rt.anchorMax;
+                _lumiSibling = rt.GetSiblingIndex();
+                // She is never a tap target: in front of the question she must not eat a tap
+                // meant for an answer or for NEXT.
+                teacherGroup.blocksRaycasts = false;
+                var reactor = teacherGroup.GetComponent<SummaRace.UI.MsLumiReactor>();
+                if (reactor != null) reactor.EnableSpeechBubble();
+            }
+            if (onQuestion)
+            {
+                rt.anchorMin = new Vector2(-0.02f, 0.0f);
+                rt.anchorMax = new Vector2(0.26f, 0.19f);
+                rt.SetAsLastSibling();
+            }
+            else
+            {
+                rt.anchorMin = _lumiAnchorMin; rt.anchorMax = _lumiAnchorMax;
+                if (rt.GetSiblingIndex() != _lumiSibling) rt.SetSiblingIndex(_lumiSibling);
             }
         }
 
@@ -396,6 +448,7 @@ namespace SummaRace.Features.Reader
             // across the page turn, to land on the NEXT question's nudge and cut its delay short.
             if (hintText != null) Tween.StopAll(onTarget: hintText);
             if (teacherGroup != null) teacherGroup.alpha = 1f; // buddy is back for reading
+            PlaceLumi(onQuestion: false);
             if (nextButtonLabel != null)
                 nextButtonLabel.text = reread ? GameText.ReaderBackToQuestionLabel : GameText.NextLabel;
 
@@ -578,8 +631,10 @@ namespace SummaRace.Features.Reader
         {
             if (voiceButtonLabel == null) return;
             voiceButtonLabel.text = NarrationEnabled ? GameText.VoiceOn : GameText.VoiceOff;
+            // Navy chip (colour roles); ON reads gold, OFF reads dim — the word carries the state.
             if (voiceButton != null && voiceButton.image != null)
-                voiceButton.image.color = NarrationEnabled ? Color.white : new Color(0.75f, 0.75f, 0.78f);
+                voiceButton.image.color = NarrationEnabled ? Theme.Navy : Theme.Alpha(Theme.Navy, 0.55f);
+            voiceButtonLabel.color = NarrationEnabled ? Theme.Gold : Theme.Alpha(Theme.Paper, 0.75f);
         }
 
         private void OnNext()
@@ -628,7 +683,12 @@ namespace SummaRace.Features.Reader
             if (progressText != null)
                 progressText.text = GameText.QuestionProgress(_pageIndex + 1, _story.pages.Length);
             if (questionPanel != null) questionPanel.SetActive(true);
-            if (teacherGroup != null) teacherGroup.alpha = 0f; // hide the buddy — focus on the answers
+            // Ms. Lumi STAYS for the question now (client feedback 2026-09-14: she left too
+            // quickly, and a buddy who vanishes whenever it gets hard is not a buddy). She moves
+            // to the bottom-left corner, smaller and in front, where she reacts to each answer
+            // with a cheer or a "Let's think!" instead of disappearing.
+            if (teacherGroup != null) teacherGroup.alpha = 1f;
+            PlaceLumi(onQuestion: true);
             if (nextButton != null) nextButton.gameObject.SetActive(false);
             if (feedbackText != null) feedbackText.text = "";
             RefreshSecondaryControls(readingPage: false);

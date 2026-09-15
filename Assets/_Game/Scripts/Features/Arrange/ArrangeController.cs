@@ -685,6 +685,10 @@ namespace SummaRace.Features.Arrange
                 if (pieceLabels[i] != null) SummaRace.UI.GameSkin.BodyBold(pieceLabels[i], LabelFilled);
             }
 
+            // UNDO is a secondary control: NAVY (colour roles), not the kit's grey.
+            if (undoButton != null && undoButton.image != null)
+                SummaRace.UI.GameSkin.Card(undoButton.image, Theme.Navy, 5f, 7f);
+
             // Ms. Lumi's bubble: clean white comic bubble instead of the kit's pink tint.
             var bubble = GameObject.Find("SpeechBubble");
             var bimg = bubble != null ? bubble.GetComponent<Image>() : null;

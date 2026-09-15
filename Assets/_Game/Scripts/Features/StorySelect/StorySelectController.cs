@@ -168,6 +168,10 @@ namespace SummaRace.Features.StorySelect
 
         private void Start()
         {
+            // The learner's saved coin wallet, top-right (client feedback 2026-09-14: a game
+            // shows what you have earned, and it is a reason to come back).
+            SummaRace.UI.CoinHud.EnsureWalletTopRight();
+
             // Read before the title, which now names it.
             int session = Core.GameManager.Instance != null ? Core.GameManager.Instance.SelectedSession : 1;
 
@@ -631,14 +635,16 @@ namespace SummaRace.Features.StorySelect
         {
             if (badge == null) return;
 
+            // COLOUR ROLES (Theme): PLAY is this screen's one "go" action, so it is the same
+            // GREEN as every other go button; REPLAY is secondary, so NAVY.
             var pill = badge.GetComponent<Image>();
-            if (pill != null) pill.color = cleared ? Theme.Alpha(Theme.Ink, 0.72f) : Color.white;
+            if (pill != null) SummaRace.UI.GameSkin.Card(pill, cleared ? Theme.Navy : Theme.Grass, 4f, 5f);
 
             var label = badge.GetComponentInChildren<TMP_Text>(true);
             if (label == null) return;
 
             label.text = cleared ? GameText.ReplayBadge : GameText.PlayBadge;
-            label.color = cleared ? Theme.Cream : Theme.Gold;
+            SummaRace.UI.GameSkin.Heading(label, cleared ? Theme.Cream : Color.white);
             // REPLAY is 6 chars against PLAY's 4 in the same pill, so give autosize room to
             // find a smaller size rather than letting it run over the pill's rounded ends.
             label.fontSizeMin = cleared ? 14f : 18f;

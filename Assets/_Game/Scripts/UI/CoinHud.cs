@@ -38,6 +38,14 @@ namespace SummaRace.UI
 
         /// <summary>Builds (once per scene) the counter chip inside <paramref name="canvasRoot"/>.</summary>
         public static CoinHud Ensure(Transform canvasRoot, Vector2 anchorMin, Vector2 anchorMax)
+            => Ensure(canvasRoot, anchorMin, anchorMax, wallet: false);
+
+        /// <summary>The same chip showing the learner's SAVED wallet (Session Map, Story Select,
+        /// Main Menu, Results): the running total that gives a learner a reason to come back.</summary>
+        public static CoinHud EnsureWallet(Transform canvasRoot, Vector2 anchorMin, Vector2 anchorMax)
+            => Ensure(canvasRoot, anchorMin, anchorMax, wallet: true);
+
+        private static CoinHud Ensure(Transform canvasRoot, Vector2 anchorMin, Vector2 anchorMax, bool wallet)
         {
             if (canvasRoot == null) return null;
             if (Current != null && Current.transform.parent == canvasRoot) return Current;
@@ -79,7 +87,8 @@ namespace SummaRace.UI
             var hud = go.AddComponent<CoinHud>();
             hud._count = text;
             hud._icon = irt;
-            hud._shown = SummaRace.Core.GameManager.Instance != null ? SummaRace.Core.GameManager.Instance.RunCoins : 0;
+            var gm = SummaRace.Core.GameManager.Instance;
+            hud._shown = gm == null ? 0 : wallet ? gm.WalletCoins : gm.RunCoins;
             text.text = hud._shown.ToString();
             Current = hud;
             return hud;
@@ -103,6 +112,41 @@ namespace SummaRace.UI
                 return;
             }
             hud.FlyCoins(source, amount);
+        }
+
+        /// <summary>
+        /// Wallet chip in the top-right corner of the active scene's own canvas — the one call
+        /// the menu screens (Main Menu, Session Map, Story Select) make. Skips SceneLoader's
+        /// persistent overlay canvas, which lives in DontDestroyOnLoad.
+        /// </summary>
+        public static CoinHud EnsureWalletTopRight()
+        {
+            var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+            foreach (var c in Object.FindObjectsByType<Canvas>(FindObjectsInactive.Exclude))
+            {
+                if (c.gameObject.scene != scene || !c.isRootCanvas) continue;
+                if (c.renderMode == RenderMode.WorldSpace) continue;
+                return EnsureWallet(c.transform, new Vector2(0.70f, 0.952f), new Vector2(0.975f, 0.992f));
+            }
+            return null;
+        }
+
+        /// <summary>Counts the number up from <paramref name="from"/> to <paramref name="to"/>
+        /// with coins raining into the icon — Results uses it to bank a story into the wallet.</summary>
+        public void CountUp(int from, int to, float seconds = 1.2f, float delay = 0f)
+        {
+            if (to <= from) { SetCount(to); return; }
+            SetCount(from);
+            int last = from;
+            Tween.Custom(this, (float)from, (float)to, seconds, (hud, v) =>
+            {
+                int n = Mathf.RoundToInt(v);
+                if (n == last) return;
+                last = n;
+                hud.SetCount(n);
+                if (hud._icon != null) { Tween.StopAll(onTarget: hud._icon); hud._icon.localScale = Vector3.one; Tween.PunchScale(hud._icon, Vector3.one * 0.2f, 0.12f); }
+                if (AudioManager.Instance != null && n % 2 == 0) AudioManager.Instance.PlaySfx(AudioKeys.SfxCoin, 1f + 0.03f * (n % 8));
+            }, Ease.OutQuad, startDelay: delay);
         }
 
         private void SetCount(int value)

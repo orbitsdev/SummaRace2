@@ -72,6 +72,14 @@ namespace SummaRace.Data
         /// force a content rebuild and switch Trash Dash's own character carousel back on.
         /// </summary>
         public int runnerIndex;
+
+        /// <summary>
+        /// The learner's saved coin wallet — every coin earned across every story (client
+        /// feedback 2026-09-14: a reason to come back, like any game). Appended per the rule
+        /// above, so old profiles load with 0. Motivation only: never part of stars, unlocks,
+        /// the session log or the export.
+        /// </summary>
+        public int coins;
     }
 
     /// <summary>

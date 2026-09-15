@@ -102,6 +102,19 @@ namespace SummaRace.Core
             StartCoroutine(LoadRoutine(sceneName, showTips));
         }
 
+        private SummaRace.UI.MissionPath _missionPath;
+
+        /// <summary>Which mission part a scene is (0 READ .. 3 WRITE, 4 = all done), or -1.</summary>
+        private static int MissionStepFor(string sceneName)
+        {
+            if (sceneName == SceneNames.Reader) return 0;
+            if (sceneName == SceneNames.RaceEndless) return 1;
+            if (sceneName == SceneNames.Arrange) return 2;
+            if (sceneName == SceneNames.Summary) return 3;
+            if (sceneName == SceneNames.Results) return 4;
+            return -1;
+        }
+
         private IEnumerator LoadRoutine(string sceneName, bool showTips)
         {
             _loading = true;
@@ -110,7 +123,22 @@ namespace SummaRace.Core
             // ("SO is what the character did about it.") read as unnecessary survey-style text
             // between screens, so the loading overlay no longer shows or speaks a tip. The bar
             // and the "loading" label stay: they are the proof the tap landed.
-            if (_tipCard != null) _tipCard.SetActive(false);
+            // The tip card now carries the MISSION PATH (client feedback 2026-09-14, the goal:
+            // complete each part before the next, and make it feel like a game). Between the
+            // parts of a story it shows READ -> RACE -> ORDER -> WRITE with the part just
+            // finished checked off and the next one pulsing. Other loads show no card.
+            int missionStep = MissionStepFor(sceneName);
+            bool showPath = showTips && missionStep >= 0;
+            if (_tipCard != null)
+            {
+                _tipCard.SetActive(showPath);
+                if (showPath)
+                {
+                    if (_tipText != null) _tipText.gameObject.SetActive(false);
+                    if (_missionPath == null) _missionPath = SummaRace.UI.MissionPath.Build(_tipCard.transform);
+                    _missionPath.Show(missionStep);
+                }
+            }
             if (_barRoot != null) _barRoot.SetActive(showTips);
             if (_loadingLabel != null) _loadingLabel.SetActive(showTips);
             if (AudioManager.Instance != null)
@@ -257,8 +285,8 @@ namespace SummaRace.Core
                 card.color = Theme.Cream;
             }
             var cardRect = card.rectTransform;
-            cardRect.anchorMin = new Vector2(0.08f, 0.42f);
-            cardRect.anchorMax = new Vector2(0.92f, 0.58f);
+            cardRect.anchorMin = new Vector2(0.06f, 0.42f);
+            cardRect.anchorMax = new Vector2(0.94f, 0.60f);
             cardRect.offsetMin = Vector2.zero;
             cardRect.offsetMax = Vector2.zero;
 
