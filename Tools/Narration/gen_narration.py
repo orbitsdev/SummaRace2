@@ -1,5 +1,5 @@
 import asyncio, json, glob, os, edge_tts
-VOICE="en-US-AvaMultilingualNeural"; RATE="-5%"; OUT="VoiceSamples/ava"  # staging, OUTSIDE Assets/ (git-excluded); copy over the existing clips so .meta survives
+VOICE="en-US-AvaMultilingualNeural"; RATE="-15%"; OUT="VoiceSamples/ava"  # staging, OUTSIDE Assets/ (git-excluded); copy over the existing clips so .meta survives
 jobs=[]
 for f in sorted(glob.glob("Assets/_Game/Resources/Stories/s*.json")):
     s=json.load(open(f,encoding="utf-8"))

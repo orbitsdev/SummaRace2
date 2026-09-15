@@ -866,7 +866,7 @@ namespace SummaRace.Constants
         /// became a TAIL that holds station behind the runner. The written line is what the
         /// learner reads and is now accurate; the spoken line is one phrase out of date. To
         /// re-cut it, per the narration recipe in CLAUDE.md:
-        ///   python -m edge_tts --voice en-US-AvaMultilingualNeural --rate=-5% -f &lt;file&gt; --write-media vo_race_briefing_patrol.mp3
+        ///   python -m edge_tts --voice en-US-AvaMultilingualNeural --rate=-15% -f &lt;file&gt; --write-media vo_race_briefing_patrol.mp3
         /// generating OUTSIDE Assets/ and importing as one batch.
         /// ✅ 2026-09-15: now also says a missed part COMES BACK (mastery loop), and the clip was
         /// re-cut with these exact words in the current voice.

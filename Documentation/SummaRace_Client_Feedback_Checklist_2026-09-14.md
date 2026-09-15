@@ -25,7 +25,7 @@ Evidence screenshots (portrait, from Play mode) are in `Captures/client_feedback
 | 5 | Remove unnecessary text like "SO is what the character did about it." | ✅ | Loading screen no longer shows or speaks the SWBST definition tips. Also removed the italic line under each question that restated it ("Who is the story mainly about?" / "Who is this story about?") |
 | 6 | Teacher/narration too fast; keep her longer per page | ✅ | QUESTION! waits until the page narration has finished (4 s minimum with voice off) — verified with the Boot flow on `s03_average`. Ms. Lumi's cheer 1.6 s → 3 s |
 | 7 | Center "next page" and "question" texts | ✅ | The button was anchored off-centre (30–80% of the width); now centred |
-| 8 | Consistent voice, less obviously AI | ✅ | Voice C chosen: all 150 pages + 11 instruction lines regenerated in `en-US-AvaMultilingualNeural` (rate −5%), one voice everywhere; verified 161/161 clips load in the Editor (`8fa172d`). A human recording remains the only way to remove the synthetic sound entirely |
+| 8 | Consistent voice, less obviously AI | ✅ | Voice C chosen: all 150 pages + 11 instruction lines regenerated in `en-US-AvaMultilingualNeural` (rate −15%, slower than the original voice because the client said narration was too fast), one voice everywhere; verified 161/161 clips load in the Editor (`8fa172d`). A human recording remains the only way to remove the synthetic sound entirely |
 
 ## Processing questions
 
