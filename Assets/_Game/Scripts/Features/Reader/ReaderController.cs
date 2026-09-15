@@ -315,6 +315,11 @@ namespace SummaRace.Features.Reader
                 }
             }
 
+            // Story text was small in a big empty card (critique 2026-09-15) — hard for a Grade-4
+            // reader and it looked like a form. Let it grow to fill the page.
+            if (pageText != null) { pageText.enableAutoSizing = true; pageText.fontSizeMin = 40f; pageText.fontSizeMax = 72f; }
+            if (feedbackText != null) { feedbackText.enableAutoSizing = true; feedbackText.fontSizeMin = 34f; feedbackText.fontSizeMax = 56f; }
+
             // HUD chips are NAVY (Theme colour roles): the page badge was green and the voice
             // toggle cyan, so the top row carried two more colours with no meaning.
             if (progressText != null && progressText.transform.parent != null)

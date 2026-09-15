@@ -685,6 +685,28 @@ namespace SummaRace.Features.Arrange
                 if (pieceLabels[i] != null) SummaRace.UI.GameSkin.BodyBold(pieceLabels[i], LabelFilled);
             }
 
+            // The 1-5 numbers sat half outside the boxes, cut by the dashed frame (critique
+            // 2026-09-15). They become round badges INSIDE each box's left end.
+            for (int i = 0; i < 5; i++)
+            {
+                if (slotButtons[i] == null) continue;
+                var num = slotButtons[i].transform.parent != null ? null : (Transform)null;
+                foreach (var t in slotButtons[i].GetComponentsInChildren<TMP_Text>(true))
+                    if (t.gameObject.name == "Num") t.gameObject.SetActive(false);
+                var canvasRoot = slotButtons[i].transform.parent;
+                if (canvasRoot != null)
+                    for (int c = 0; c < canvasRoot.childCount; c++)
+                    {
+                        var child = canvasRoot.GetChild(c);
+                        if (child.name == "Num" || child.name == "Num_" + i) child.gameObject.SetActive(false);
+                    }
+                SummaRace.UI.GameSkin.Badge(slotButtons[i].transform, "NumBadge", (i + 1).ToString(),
+                    Theme.Alpha(Color.white, 0.95f), Theme.TextBrownDeep,
+                    new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(12f, 0f), 58f);
+            }
+            if (statusText != null) { statusText.enableAutoSizing = true; statusText.fontSizeMin = 26f; statusText.fontSizeMax = 40f; }
+            if (titleText != null) titleText.fontSizeMax = Mathf.Max(titleText.fontSizeMax, 44f);
+
             // UNDO is a secondary control: NAVY (colour roles), not the kit's grey.
             if (undoButton != null && undoButton.image != null)
                 SummaRace.UI.GameSkin.Card(undoButton.image, Theme.Navy, 5f, 7f);

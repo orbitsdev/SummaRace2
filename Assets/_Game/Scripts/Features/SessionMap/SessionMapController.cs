@@ -107,6 +107,15 @@ namespace SummaRace.Features.SessionMap
         private GameObject _cheerPill;
         private TMP_Text _cheerText;
 
+        private System.Collections.IEnumerator RaiseTitleNextFrame()
+        {
+            yield return null;
+            if (titleText == null) yield break;
+            var banner = titleText.transform.parent;
+            if (banner != null) banner.SetAsLastSibling();
+            if (SummaRace.UI.CoinHud.Current != null) SummaRace.UI.CoinHud.Current.transform.SetAsLastSibling();
+        }
+
         private void Start()
         {
             // The learner's saved coin wallet, top-right (client feedback 2026-09-14: a game
@@ -126,6 +135,9 @@ namespace SummaRace.Features.SessionMap
                 // under the title, half-behind it in the first capture.
                 var subtitle = SummaRace.UI.SubtitleLine.Add(titleText, GameText.SessionMapSubtitle);
                 if (subtitle != null) subtitle.transform.parent.SetAsLastSibling();
+                // The board is styled later in Start and drew over the subtitle (critique
+                // 2026-09-15); re-raise the title banner one frame later.
+                StartCoroutine(RaiseTitleNextFrame());
             }
 
             // Android BACK now answers instead of being swallowed (owner, 2026-08-22).

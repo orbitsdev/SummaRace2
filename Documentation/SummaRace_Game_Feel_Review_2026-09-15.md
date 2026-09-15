@@ -154,6 +154,19 @@ Colour roles now in force (`Theme.cs`): **green** = go · **navy** = secondary a
 | Backgrounds / images | Good illustrated art; 30 real hero images | Unchanged (already strong) |
 | Text load | Tips, captions, long briefing | Removed or shortened |
 
+---
+
+## 6. Second critique pass (screens re-captured at 720x1280)
+
+| Screen | Found | Fixed |
+|---|---|---|
+| Session Map | Subtitle line half hidden behind the board | Title banner re-raised after the board is built |
+| Reader page | Story text small in a big empty card | Autosize up to 72pt (was capped at 46) |
+| Reader question | "You found it!" tiny at the bottom | Feedback up to 56pt |
+| Arrange | 1–5 numbers cut by the dashed frame; Ms. Lumi's line and status text tiny | Numbers are badges inside each box; shorter line ("Great running! Put the story parts in order!", re-recorded); status up to 40pt |
+| Summary | Five small lines at the top of a tall empty card | Up to 46pt, centred, more line spacing; bigger title |
+| Results | Story-name strip stuck out past both board edges; Main Idea small | Strip kept inside the board; Main Idea up to 52pt, centred |
+
 ## 5. Still open (honest)
 
 - **Tablet playtest** — colours at classroom brightness, touch sizes, performance.

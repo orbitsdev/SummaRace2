@@ -7,7 +7,7 @@ for f in sorted(glob.glob("Assets/_Game/Resources/Stories/s*.json")):
         name=os.path.basename(p["narration"])
         jobs.append((p["text"], f"{OUT}/{name}.mp3", "Stories/Narration/"+name+".mp3"))
 vo={
- "vo_arrange_title":"Great running! Now put the story parts in S. W. B. S. T. order.",
+ "vo_arrange_title":"Great running! Put the story parts in order!",
  "vo_name_hello":"Hi! What's your name?",
  "vo_arrange_how":"Tap a story part, then tap where it goes.",
  "vo_summary_title":"Write your summary!",

@@ -133,7 +133,15 @@ namespace SummaRace.Features.Results
             if (praiseText != null) praiseText.text = "";
             EnsureLumiBadge();
             if (mainIdeaPanel != null) mainIdeaPanel.SetActive(false);
-            if (mainIdeaText != null) mainIdeaText.text = _story.mainIdea;
+            if (mainIdeaText != null)
+            {
+                mainIdeaText.text = _story.mainIdea;
+                // Small type in a big empty card (critique 2026-09-15): fill it, centred.
+                mainIdeaText.enableAutoSizing = true;
+                mainIdeaText.fontSizeMin = 30f;
+                mainIdeaText.fontSizeMax = 52f;
+                mainIdeaText.alignment = TMPro.TextAlignmentOptions.Center;
+            }
 
             foreach (var star in starImages)
                 if (star != null) star.color = StarOff;
@@ -322,7 +330,11 @@ namespace SummaRace.Features.Results
                     string sub = "\u201C" + _story.title + "\u201D";
                     if (race != null && race.runSeconds > 0f)
                         sub += "   " + GameText.ResultsRaceTime(Mathf.RoundToInt(race.runSeconds));
-                    SummaRace.UI.SubtitleLine.Add(praiseText, sub);
+                    var strip = SummaRace.UI.SubtitleLine.Add(praiseText, sub);
+                    // The strip took the praise line's full 1000px width and stuck out past both
+                    // edges of the board (screen critique 2026-09-15). Keep it inside the board.
+                    if (strip != null && strip.transform.parent is RectTransform srt)
+                        srt.sizeDelta = new Vector2(Mathf.Min(srt.sizeDelta.x, 760f), srt.sizeDelta.y);
                 }
                 // Ms. Lumi reacts on the same beat as the praise, so the line has a face saying
                 // it. Null-safe: no badge object or no badge art leaves the screen unchanged.

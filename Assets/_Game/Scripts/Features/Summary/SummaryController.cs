@@ -170,9 +170,13 @@ namespace SummaRace.Features.Summary
                 // ~56 characters would have spilled its last SWBST part off the card
                 // silently. Max stays 32 (nothing renders differently today); the floor of
                 // 26 is the smallest this audience should ever be asked to read.
-                referenceText.fontSizeMax = referenceText.fontSize;
+                // Five small lines at the top of a tall, mostly empty card (critique 2026-09-15):
+                // let them grow to fill it, centred vertically.
+                referenceText.fontSizeMax = 46f;
                 referenceText.fontSizeMin = 26f;
                 referenceText.enableAutoSizing = true;
+                referenceText.verticalAlignment = TMPro.VerticalAlignmentOptions.Middle;
+                referenceText.lineSpacing = 12f;
             }
 
             if (titleText != null) titleText.text = GameText.SummaryTitle;
@@ -383,7 +387,11 @@ namespace SummaRace.Features.Summary
                 var bimg = bubble != null ? bubble.GetComponent<UnityEngine.UI.Image>() : null;
                 if (bimg != null) SummaRace.UI.GameSkin.Card(bimg, Color.white, 4f, 5f);
             }
-            if (titleText != null) SummaRace.UI.GameSkin.Heading(titleText, Theme.TextBrownDeep, outlined: false);
+            if (titleText != null)
+            {
+                SummaRace.UI.GameSkin.Heading(titleText, Theme.TextBrownDeep, outlined: false);
+                titleText.enableAutoSizing = true; titleText.fontSizeMin = 28f; titleText.fontSizeMax = 52f;
+            }
 
             if (summaryInput == null) return;
             var box = summaryInput.GetComponent<UnityEngine.UI.Image>();

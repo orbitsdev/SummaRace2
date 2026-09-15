@@ -1084,7 +1084,7 @@ namespace SummaRace.Constants
         /// designer's words for this screen, and ArrangeTitle/ArrangeIntroStatus already
         /// teach the learner's ("story parts"). One vocabulary per screen.</summary>
         public const string ArrangeLumiIntro =
-            "Great running! Now put the story parts in S.W.B.S.T order.";
+            "Great running! Put the story parts in order!";
         public const string UndoLabel = "UNDO";
         /// <summary>"Verify" is a designer's word; the learner is checking their work.</summary>
         public const string VerifyLabel = "CHECK ORDER";
