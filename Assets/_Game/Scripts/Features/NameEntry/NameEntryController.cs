@@ -91,6 +91,11 @@ namespace SummaRace.Features.NameEntry
                 // outline, so nothing was holding the edge. Dark brown on that lime clears AA
                 // comfortably and needs no plaque, which is what keeps this a one-line fix.
                 avatarPromptText.color = SummaRace.Constants.Theme.TextBrownDeep;
+                // Game heading type, bigger: it is the screen's second question.
+                SummaRace.UI.GameSkin.Heading(avatarPromptText, SummaRace.Constants.Theme.TextBrownDeep, outlined: false);
+                avatarPromptText.enableAutoSizing = true;
+                avatarPromptText.fontSizeMin = 30f;
+                avatarPromptText.fontSizeMax = 58f;
             }
             if (confirmLabel != null) confirmLabel.text = GameText.NameEntryConfirm;
 
@@ -276,12 +281,17 @@ namespace SummaRace.Features.NameEntry
                 var image = avatarButtons[i].GetComponent<Image>();
                 if (image != null)
                 {
-                    // Chunky character card (game skin): white when chosen with a thick SUNNY
-                    // outline, a dimmer card with the normal dark outline when not.
-                    SummaRace.UI.GameSkin.Card(image, selected ? Color.white : new Color(0.94f, 0.94f, 0.96f),
-                        selected ? 10f : 5f, selected ? 12f : 6f);
-                    SummaRace.UI.GameSkin.Chunky(image, image.color, selected ? 10f : 5f, selected ? 12f : 6f,
+                    // CHARACTER-SELECT CARD (owner, 2026-09-15: "name entry looks weird"). A 3D
+                    // runner on a flat white card read as a sticker. Each card is now a sky-blue
+                    // STAGE with a floor shadow under the runner's feet, so the character stands
+                    // somewhere; the chosen one is brighter with a thick sunny outline and a green
+                    // star badge (the old orange glow blob behind the card is gone).
+                    var stage = selected ? new Color(0.60f, 0.82f, 1f) : new Color(0.80f, 0.87f, 0.94f);
+                    SummaRace.UI.GameSkin.Card(image, stage, selected ? 10f : 5f, selected ? 12f : 6f);
+                    SummaRace.UI.GameSkin.Chunky(image, stage, selected ? 10f : 5f, selected ? 12f : 6f,
                         selected ? SummaRace.Constants.Theme.Sunny : (Color?)null);
+                    EnsureFloorShadow(avatarButtons[i].transform);
+                    SetChosenBadge(avatarButtons[i].transform, selected);
                 }
 
                 // The runner's own portrait replaces the badge glyph, so the child chooses a
@@ -309,13 +319,56 @@ namespace SummaRace.Features.NameEntry
 
                 // Cue two: a gold halo around the chosen badge — a shape that is either there
                 // or not, readable with no colour discrimination at all.
+                // The soft gold halo read as an orange blob behind the card on the stage colour;
+                // the outline, the star badge and size now carry the selection.
                 if (_selectionRings != null && i < _selectionRings.Length && _selectionRings[i] != null)
-                    _selectionRings[i].gameObject.SetActive(selected);
+                    _selectionRings[i].gameObject.SetActive(false);
 
                 // Cue three: size.
                 var icon = AvatarIcon(i);
                 if (icon != null)
                     icon.localScale = selected ? Vector3.one * SelectedIconScale : Vector3.one;
+            }
+        }
+
+        /// <summary>A soft oval shadow under the runner's feet, drawn behind the portrait.</summary>
+        private static void EnsureFloorShadow(Transform card)
+        {
+            if (card.Find("FloorShadow") != null) return;
+            var go = new GameObject("FloorShadow", typeof(RectTransform));
+            go.transform.SetParent(card, false);
+            go.transform.SetSiblingIndex(0);
+            var img = go.AddComponent<Image>();
+            img.sprite = SummaRace.UI.GameSkin.RoundSprite;
+            img.color = new Color(0f, 0f, 0f, 0.22f);
+            img.raycastTarget = false;
+            var rt = img.rectTransform;
+            rt.anchorMin = new Vector2(0.22f, 0.03f);
+            rt.anchorMax = new Vector2(0.78f, 0.10f);
+            rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
+        }
+
+        /// <summary>Green badge with a gold star in the chosen card's top-right corner.</summary>
+        private static void SetChosenBadge(Transform card, bool on)
+        {
+            var existing = card.Find("ChosenBadge");
+            if (!on) { if (existing != null) existing.gameObject.SetActive(false); return; }
+            var label = SummaRace.UI.GameSkin.Badge(card, "ChosenBadge", "", SummaRace.Constants.Theme.Grass, Color.white,
+                new Vector2(1f, 1f), new Vector2(0.5f, 0.5f), new Vector2(-14f, -14f), 84f);
+            var badge = label.transform.parent;
+            badge.gameObject.SetActive(true);
+            badge.SetAsLastSibling();
+            if (badge.Find("Star") == null)
+            {
+                var star = new GameObject("Star", typeof(RectTransform));
+                star.transform.SetParent(badge, false);
+                var simg = star.AddComponent<Image>();
+                simg.sprite = Resources.Load<Sprite>("UI/icon_star");
+                simg.preserveAspect = true;
+                simg.raycastTarget = false;
+                var srt = simg.rectTransform;
+                srt.anchorMin = new Vector2(0.18f, 0.18f); srt.anchorMax = new Vector2(0.82f, 0.82f);
+                srt.offsetMin = Vector2.zero; srt.offsetMax = Vector2.zero;
             }
         }
 
